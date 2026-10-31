@@ -4,7 +4,7 @@
 import { Fragment, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import { isTerminatedContract, WAITING_PROGRESS } from "@/types";
 import { formatMoney } from "@/lib/format/money";
-import { allHalted, averageProgress, isHaltedSlot } from "@/lib/analytics/contract-slots";
+import { allHalted, averageProgress, isHaltedSlot, slotOf } from "@/lib/analytics/contract-slots";
 import type { CompanyWorkItem } from "../_lib/company-work-view";
 import { fmtDate, renderNameWithHighlight } from "./nameHighlight";
 import WorkActivityBadge, { type ActivityLoadState } from "./WorkActivityBadge";
@@ -48,10 +48,10 @@ export default function ContractListTable({ items, selectedKey, onSelect, highli
         const selected = item.key === selectedKey;
         // 업체당 한 장 — 진행건이 여럿이면 줄마다 보여 주고, 수수료는 합계·진행률은 평균(belie 2026-09-29).
         // 중도중지 진행건은 평균에서 뺀다 — 전부 중도중지면 퍼센트 대신 「중도중지」(2026-10-23 belie).
-        const workSlots = works.map((w) => cp[`수납${w.slot}`]);
+        const workSlots = works.map((w) => slotOf(cp, w.slot));
         const allStopped = allHalted(workSlots);
         const pct = allStopped ? 0 : averageProgress(workSlots);
-        const fee = works.reduce((sum, w) => sum + cp[`수납${w.slot}`].수납액, 0);
+        const fee = works.reduce((sum, w) => sum + slotOf(cp, w.slot).수납액, 0);
         // 해지만 흐리게 — 이월(아레나 시작 전) 계약도 또렷하게(2026-10-08 belie).
         const muted = isTerminatedContract(cp);
         const inlineOpen = Boolean(renderDetail && selected && detailExpanded);
@@ -74,7 +74,7 @@ export default function ContractListTable({ items, selectedKey, onSelect, highli
                 {selected && <span className="shrink-0 rounded-full bg-blue-600 px-1.5 py-0.5 text-px-10 font-bold text-white">조회 중</span>}
               </span>
               {hasProgress ? works.map((w) => {
-                const data = cp[`수납${w.slot}`];
+                const data = slotOf(cp, w.slot);
                 const halted = isHaltedSlot(data);
                 return (<Fragment key={w.key}>
                 <span className={`mt-1 flex min-w-0 items-center gap-1.5 pl-7 text-px-11 font-semibold ${halted ? "text-slate-400" : w.key === work.key ? "text-blue-700" : "text-blue-600/80"}`}>

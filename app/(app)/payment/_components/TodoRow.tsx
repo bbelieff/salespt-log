@@ -16,7 +16,7 @@ interface Props {
   /** 방금 추가한 기록 — 잠깐 옅은 파랑 배경. */
   fresh?: boolean;
   /** 「진행 N 기록으로」 지정 버튼(번호 없는 옛 기록 중 진행건이 애매한 것). */
-  assignSlot?: 1 | 2 | 3;
+  assignSlot?: number;
   assignTitle?: string;
   onToggleDone: (done: boolean) => void;
   onSaveResult: (result: string) => void;

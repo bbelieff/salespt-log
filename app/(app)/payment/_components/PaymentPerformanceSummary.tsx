@@ -23,7 +23,7 @@ interface Props {
   dataState?: "loading" | "error" | "ready";
   workState?: "loading" | "error" | "ready";
   onRetry?: () => void;
-  onNavigate: (row: number | null, slot: 1 | 2 | 3) => void;
+  onNavigate: (row: number | null, slot: number) => void;
 }
 
 export default function PaymentPerformanceSummary({ rows, workRows, todos, onNavigate, dataState = "ready", workState = "ready", onRetry }: Props) {

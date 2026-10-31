@@ -9,17 +9,17 @@
  */
 import type { ContractPayment } from "@/types";
 import { checkedCount, TOTAL_CHECKBOXES } from "../_components/CheckboxList";
-import { averageProgress, isContractComplete, progressPct, visibleSlotCount } from "@/lib/analytics/contract-slots";
+import { averageProgress, isContractComplete, progressPct, slotsOf, visibleSlotCount } from "@/lib/analytics/contract-slots";
 
 export type AccentFamily = "green" | "emerald" | "blue" | "violet" | "slate";
 
 export function contractAccentFamily(cp: ContractPayment): AccentFamily {
   const vis = visibleSlotCount(cp);
-  const visSlots = [cp.수납1, cp.수납2, cp.수납3].slice(0, vis);
+  const visSlots = slotsOf(cp).map(([, slot]) => slot).slice(0, vis);
   if (isContractComplete(checkedCount(cp), TOTAL_CHECKBOXES, averageProgress(visSlots))) return "green";
   const fam = ["emerald", "blue", "violet"] as const;
   for (let i = vis - 1; i >= 0; i--) {
-    if (progressPct(visSlots[i]?.진행률 ?? "") > 0) return fam[i] ?? "slate";
+    if (progressPct(visSlots[i]?.진행률 ?? "") > 0) return fam[i % fam.length] ?? "slate";
   }
   return "slate";
 }

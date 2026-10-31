@@ -22,7 +22,7 @@ interface Props {
   contractRef: string;
   institutionRef: string;
   /** 몇 번째 진행건의 기록인가(없으면 옛 방식). */
-  slot?: 1 | 2 | 3;
+  slot?: number;
   companyName: string;
   initial: TodoDraftSeed;
   /** 있으면 수정 모드(2026-10-27 belie 「투두 내용·일정이 바뀌면 고치고 싶다」) — 이 기록을 고친다. 종류(Todo/History)는 못 바꾼다(서버 PATCH 미지원). */

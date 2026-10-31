@@ -16,6 +16,7 @@ import { isTerminatedContract } from "@/types";
 import type { Meeting } from "@/types";
 import { useContractPayments } from "@/query/contract-payment-hooks";
 import { formatMoney } from "@/lib/format/money";
+import { slotTotals } from "@/lib/analytics/contract-slots";
 
 interface Props {
   meetings: Meeting[];
@@ -67,7 +68,7 @@ export default function SummaryBar({ meetings, goalSummary }: Props) {
         weekContractKeys.has(contractRef(cp.계약일, cp.업체명)),
       )
       .reduce(
-        (s, cp) => s + cp.수납1.수납액 + cp.수납2.수납액 + cp.수납3.수납액,
+        (s, cp) => s + slotTotals(cp).received,
         0,
       );
   }, [cpQuery.data, meetings]);

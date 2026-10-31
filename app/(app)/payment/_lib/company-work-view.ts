@@ -1,6 +1,6 @@
 import type { ContractPayment } from "@/types";
 import { slotHasData } from "@/lib/analytics/payment-work-status";
-import { isHaltedSlot } from "@/lib/analytics/contract-slots";
+import { isHaltedSlot, slotOf } from "@/lib/analytics/contract-slots";
 import { activityTodayISO, compareWorkActivity } from "./payment-progress";
 import { companyActivityKey, type InstitutionWorkItem } from "./institution-view";
 
@@ -27,10 +27,10 @@ export function buildCompanyWorkItems(rows: ContractPayment[], works: Institutio
   }
   return [...byContract.entries()].map(([key, group]) => {
     const cp = contracts.get(key)!;
-    const populated = group.filter((w) => slotHasData(cp[`수납${w.slot}`])).sort((a, b) => a.slot - b.slot);
+    const populated = group.filter((w) => slotHasData(slotOf(cp, w.slot))).sort((a, b) => a.slot - b.slot);
     // 중도중지 진행건은 대표(D-day 배지·정렬)에서 뺀다 — 장기관리에서 꺼내 새 진행건에 할 일을 넣어도
     // 멈춘 진행건의 오래된 History 가 먼저 잡혀 D-day 가 안 보이던 문제(2026-10-26 belie). 전부 멈췄으면 그대로.
-    const live = populated.filter((w) => !isHaltedSlot(cp[`수납${w.slot}`]));
+    const live = populated.filter((w) => !isHaltedSlot(slotOf(cp, w.slot)));
     const primary = [...(live.length ? live : populated)].sort((a, b) => compareWorkActivity(a, b, todayISO))[0] ?? group[0]!;
     return { key, cp, work: primary, works: populated, hasProgress: populated.length > 0 };
   });

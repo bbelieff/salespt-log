@@ -77,7 +77,7 @@ export interface CreateTodoArgs {
   showOnCalendar: boolean;
   기록종류?: TodoRecordKind;
   /** 몇 번째 진행건(1~3)의 기록인가. */
-  slot?: 1 | 2 | 3 | null;
+  slot?: number | null;
   /** 「+ 다음」으로 이어 만든 할 일이면 원래 기록 id. */
   prevId?: string;
   /** N 열 — 일반이벤트 분류, 또는 공고 할 일 "공고:<id>"(맞춤공고 4b). */

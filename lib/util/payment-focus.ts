@@ -1,6 +1,7 @@
 export interface PaymentSlotTarget {
   row: number;
-  slot: 1 | 2 | 3;
+  /** 진행건 번호(1부터, 4번부터는 추가진행). */
+  slot: number;
 }
 
 /** 대시보드 상태 목록에서 전달하는 진행 회차 링크만 허용한다. */
@@ -8,7 +9,7 @@ export function parsePaymentSlotTarget(search: string): PaymentSlotTarget | null
   const params = new URLSearchParams(search);
   const row = Number(params.get("row"));
   const slot = Number(params.get("slot"));
-  if (!Number.isSafeInteger(row) || row <= 0 || (slot !== 1 && slot !== 2 && slot !== 3)) return null;
+  if (!Number.isSafeInteger(row) || row <= 0 || !Number.isSafeInteger(slot) || slot < 1) return null;
   return { row, slot };
 }
 
@@ -22,7 +23,7 @@ export const PAYMENT_FOCUS_EVENT = "payment-focus-request";
 export interface PaymentRowTarget {
   row: number;
   /** null means company-only: the receiving page must not guess a work slot. */
-  slot: 1 | 2 | 3 | null;
+  slot: number | null;
 }
 
 export function parsePaymentRowTarget(search: string): PaymentRowTarget | null {
@@ -33,6 +34,6 @@ export function parsePaymentRowTarget(search: string): PaymentRowTarget | null {
 }
 
 /** A row-only deep link intentionally suppresses the company's representative slot. */
-export function paymentFocusedSlot(target: PaymentRowTarget | null, row: number | undefined, fallback: 1 | 2 | 3 | null | undefined): 1 | 2 | 3 | null | undefined {
+export function paymentFocusedSlot(target: PaymentRowTarget | null, row: number | undefined, fallback: number | null | undefined): number | null | undefined {
   return target && target.row === row ? target.slot : fallback;
 }

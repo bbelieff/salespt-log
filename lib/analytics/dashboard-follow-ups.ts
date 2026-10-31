@@ -6,7 +6,7 @@ import { dbSheetResultLabel, isDbSheetFollowUpResult, isDbSheetParkedStage, type
 import { addDays, diffDays, fmtISO, isValidISODate, parseISO } from "@/util/week";
 import { normalizeInstitution } from "@/util/institution-match";
 import { activeWorkContracts, isSlotClosed, slotHasData } from "./payment-work-status";
-import { isShortWaitSlot } from "./contract-slots";
+import { isShortWaitSlot, slotOf, slotsOf, type SlotNo } from "./contract-slots";
 import { isLongTermContract } from "./long-term";
 
 export const STALL_DAYS = 7;
@@ -21,21 +21,19 @@ export interface FollowUpItem {
   key: string; kind: FollowUpKind; step: FollowUpStep; group: FollowUpGroup;
   title: string; company: string; detail: string; badge: string; href: string;
   dueISO: string | null; overdueDays: number | null; action: string; reasons: string[];
-  facts: Array<{ label: string; value: string }>; slot?: 1 | 2 | 3;
+  facts: Array<{ label: string; value: string }>; slot?: SlotNo;
   /** 조건 대기·단기관리 진행건 — 세기는 하되 목록 맨 뒤로(2026-10-23 belie). */
   deferred?: boolean;
 }
 export type FollowUpCounts = Record<FollowUpKind, number>;
-const SLOTS = [1, 2, 3] as const;
 const shiftISO = (iso: string, days: number) => fmtISO(addDays(parseISO(iso), days));
 const daysBetween = (later: string, earlier: string) => diffDays(parseISO(later), parseISO(earlier));
 const contractRefOf = (cp: ContractPayment) => contractRef(cp.계약일, cp.업체명);
-const slotOf = (cp: ContractPayment, slot: 1 | 2 | 3): PaymentSlot => cp[`수납${slot}`];
 /** 오늘 챙길 일 대상 계약 — 숨김·해지·장기관리 업체는 뺀다(장기관리: long-term.ts). */
 const followUpContracts = (contracts: ContractPayment[]) => activeWorkContracts(contracts).filter(cp => !isLongTermContract(cp));
 const WAIT_REASON = "조건 대기(단기관리)";
-const visibleSlots = (cp: ContractPayment): Array<1 | 2 | 3> => {
-  const populated = SLOTS.filter(slot => slotHasData(slotOf(cp, slot)));
+const visibleSlots = (cp: ContractPayment): SlotNo[] => {
+  const populated = slotsOf(cp).filter(([, slot]) => slotHasData(slot)).map(([n]) => n);
   return populated.length ? populated : [1];
 };
 function timing(due: string | null, today: string) {
@@ -55,7 +53,7 @@ export function compareFollowUpUrgency(a: FollowUpItem, b: FollowUpItem): number
 }
 export interface TodoFollowUps { overdue: FollowUpItem[]; today: FollowUpItem[]; upcoming: FollowUpItem[]; unlinked: number }
 /** 기록의 진행건 — 번호가 있으면 그대로, 옛 기록은 기관이 한 진행건에만 맞을 때만(정본: todo-slot). */
-function slotForTodo(cp: ContractPayment, todo: Todo): 1 | 2 | 3 | undefined {
+function slotForTodo(cp: ContractPayment, todo: Todo): SlotNo | undefined {
   const { slot, ambiguous } = todoSlotOf(cp, todo);
   return slot && !ambiguous ? slot : undefined;
 }

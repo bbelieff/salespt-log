@@ -25,8 +25,8 @@ import { useContractCompanyInfo } from "./useContractCompanyInfo";
 import LinkedFieldsEditor from "./LinkedFieldsEditor";
 import CompanyInfoContractSection from "@/components/CompanyInfoContractSection";
 import CarryoverBadge from "@/components/CarryoverBadge";
-import { progressPct, initialVisiblePayments, EMPTY_SLOT, validContractDraft } from "../_lib/payment-progress";
-import { allHalted, averageProgress, isContractComplete, isHaltedSlot, slotTotals } from "@/lib/analytics/contract-slots";
+import { progressPct, initialVisiblePayments, validContractDraft } from "../_lib/payment-progress";
+import { allHalted, averageProgress, isContractComplete, isHaltedSlot, slotOf, slotsOf, slotTotals, withSlot, withoutSlot } from "@/lib/analytics/contract-slots";
 import type { WorkActivitySummary } from "../_lib/institution-view";
 import WorkActivityBadge, { type ActivityLoadState } from "./WorkActivityBadge";
 import { useAutosave } from "@/components/autosave/useAutosave";
@@ -65,7 +65,7 @@ interface Props {
   detailLeftPct?: number;
   onDetailLeftPctChange?: (pct: number) => void;
   focusTodoId?: string | null;
-  focusedSlot?: 1 | 2 | 3 | null;
+  focusedSlot?: number | null;
   focusRequestId?: number;
   highlight?: string;
   courseStartISO?: string;
@@ -209,12 +209,12 @@ export default function ContractRow({
     </span>
   );
 
-  const [visiblePayments, setVisiblePayments] = useState<1 | 2 | 3>(() =>
+  const [visiblePayments, setVisiblePayments] = useState<number>(() =>
     initialVisiblePayments(cp),
   );
   useEffect(() => {
     if (focusedSlot) {
-      setVisiblePayments((current) => Math.max(current, focusedSlot) as 1 | 2 | 3);
+      setVisiblePayments((current) => Math.max(current, focusedSlot));
       if (!selectable) setOpen(true);
     }
   }, [focusedSlot, selectable]);
@@ -238,7 +238,7 @@ export default function ContractRow({
       const v = t.institutionRef?.trim();
       if (v) set.add(v);
     }
-    for (const s of [cp.수납1, cp.수납2, cp.수납3]) {
+    for (const [, s] of slotsOf(cp)) {
       const v = s.진행기관?.trim();
       if (v) set.add(v);
     }
@@ -249,7 +249,7 @@ export default function ContractRow({
   const docsDone = checkedCount(draft);
 
   const visibleSlots = useMemo(
-    () => [draft.수납1, draft.수납2, draft.수납3].slice(0, visiblePayments),
+    () => slotsOf(draft).map(([, slot]) => slot).slice(0, visiblePayments),
     [draft, visiblePayments],
   );
   const avgPct = useMemo(() => averageProgress(visibleSlots), [visibleSlots]);
@@ -271,16 +271,13 @@ export default function ContractRow({
   const accent = ACCENT[family];
   const leftBar = bare ? "" : `border-l-4 ${accent.leftBar}`;
 
-  const handleAddSlot = () => {
-    if (visiblePayments < 3) {
-      setVisiblePayments((v) => (v + 1) as 1 | 2 | 3);
-    }
-  };
-  const handleRemoveSlot = (slotIdx: 1 | 2 | 3) => {
+  // 진행건 개수 제한 없음(2026-10-31 belie) — 4번부터는 추가진행(DB). 빈 진행건은 저장하지 않고 화면에만 연다.
+  const handleAddSlot = () => setVisiblePayments((v) => v + 1);
+  const handleRemoveSlot = (slotIdx: number) => {
     if (slotIdx === 1) return;
-    editDraft((d) => ({ ...d, [`수납${slotIdx}`]: EMPTY_SLOT }));
+    editDraft((d) => withoutSlot(d, slotIdx));
     if (slotIdx === visiblePayments)
-      setVisiblePayments((v) => Math.max(1, v - 1) as 1 | 2 | 3);
+      setVisiblePayments((v) => Math.max(1, v - 1));
   };
 
   const actionButtons = <div className="flex gap-2 pt-1">
@@ -457,10 +454,10 @@ export default function ContractRow({
               <GrantMatchBox 계약일={cp.계약일} 업체명={cp.업체명} grants={grants} todos={allTodos}/>
               <section className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <ContractSlots desktopHeading draft={draft} cp={cp} contractRef={contractRef} slotInstitutionOptions={slotInstitutionOptions} todos={allTodos} focusTodoId={focusTodoId} focusedSlot={focusedSlot} focusRequestId={focusRequestId} visiblePayments={visiblePayments} totalApproved={totalApproved} totalReceived={totalReceived} onAddSlot={handleAddSlot} onRemoveSlot={handleRemoveSlot} onSlotChange={(index, next) => {
-                  const prev = draft[`수납${index}`];
+                  const prev = slotOf(draft, index);
                   // 진행률·조건 대기 기간(칩)은 고르는 즉시 저장, 글자 칸은 칸을 떠날 때 저장.
                   const typing = next.진행률 === prev.진행률 && next.대기기간 === prev.대기기간;
-                  (typing ? stageDraft : editDraft)((d) => ({ ...d, [`수납${index}`]: next }));
+                  (typing ? stageDraft : editDraft)((d) => withSlot(d, index, next));
                 }} onEnsureSaved={commitGroup}/>
               </section>
               {bare && actionButtons}

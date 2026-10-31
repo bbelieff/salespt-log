@@ -11,11 +11,11 @@
  * 「진행 중」의 뜻은 `slotKeepsCompanyActive` 하나 — 규칙을 바꿀 땐 여기만 고친다.
  */
 import type { ContractPayment, PaymentSlot } from "@/types";
-import { slotHasData, slotsOf, type SlotNo } from "./contract-slots";
+import { slotHasData, slotsOf, type SlotNo, type SlotSource } from "./contract-slots";
 import { isSlotClosed } from "./payment-work-status";
 
 export type CompanyStage = "진행" | "장기관리";
-type StageInput = Pick<ContractPayment, "수납1" | "수납2" | "수납3" | "관리상태" | "관리상태진행건">;
+type StageInput = SlotSource & Pick<ContractPayment, "관리상태" | "관리상태진행건">;
 
 /**
  * 이 진행건이 업체를 「진행」에 붙잡아 두나 — 적힌 것이 있고, 수납완료·중도중지·조건 대기(장기관리)가 아니다.
@@ -27,12 +27,12 @@ export function slotKeepsCompanyActive(slot: PaymentSlot): boolean {
 }
 
 /** 지금 진행 중인 진행건 번호. 직접 장기관리로 보낼 때 함께 저장한다. */
-export function activeSlotNumbers(cp: Pick<ContractPayment, "수납1" | "수납2" | "수납3">): SlotNo[] {
+export function activeSlotNumbers(cp: SlotSource): SlotNo[] {
   return slotsOf(cp).filter(([, slot]) => slotKeepsCompanyActive(slot)).map(([n]) => n);
 }
 
 /** 자동 판정 — 직접 지정을 보지 않는다. */
-export function autoCompanyStage(cp: Pick<ContractPayment, "수납1" | "수납2" | "수납3">): CompanyStage {
+export function autoCompanyStage(cp: SlotSource): CompanyStage {
   const populated = slotsOf(cp).filter(([, slot]) => slotHasData(slot));
   return populated.length > 0 && activeSlotNumbers(cp).length === 0 ? "장기관리" : "진행";
 }
@@ -52,7 +52,7 @@ export function isLongTermContract(cp: StageInput): boolean {
 }
 
 /** 배너 토글이 저장할 값 — 장기관리로 보낼 땐 지금 진행 중인 진행건을 함께 적는다. */
-export function stagePatch(cp: Pick<ContractPayment, "수납1" | "수납2" | "수납3">, stage: CompanyStage): Pick<ContractPayment, "관리상태" | "관리상태진행건"> {
+export function stagePatch(cp: SlotSource, stage: CompanyStage): Pick<ContractPayment, "관리상태" | "관리상태진행건"> {
   return stage === "장기관리" ? { 관리상태: "장기관리", 관리상태진행건: activeSlotNumbers(cp) } : { 관리상태: "진행", 관리상태진행건: [] };
 }
 

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ContractPayment } from "@/types";
+import { slotOf } from "@/lib/analytics/contract-slots";
 import { PAYMENT_FOCUS_EVENT, paymentFocusedSlot, parsePaymentRowTarget, type PaymentRowTarget } from "@/util/payment-focus";
 
 /** Resolve once after rows arrive, so a cold mobile entry selects its actual company too. */
@@ -49,9 +50,9 @@ export function usePaymentFocusSelection(target: PaymentRowTarget | null, onSele
 }
 
 /** Header uses the same target as the open form, including company-only ambiguity. */
-export function paymentCompanyDetailLabel(target: PaymentRowTarget | null, cp: ContractPayment | undefined, fallback: 1 | 2 | 3 | null): string {
+export function paymentCompanyDetailLabel(target: PaymentRowTarget | null, cp: ContractPayment | undefined, fallback: number | null): string {
   const slot = paymentFocusedSlot(target, cp?.row, fallback);
-  const data = slot && cp ? cp[`수납${slot}`] : null;
+  const data = slot && cp ? slotOf(cp, slot) : null;
   return data
     ? `진행 ${slot} · ${data.진행기관 || "기관 미입력"}${data.진행상품 ? ` · ${data.진행상품}` : ""}`
     : target?.row === cp?.row ? "연결 진행건 확인 필요" : "진행건 미등록";
