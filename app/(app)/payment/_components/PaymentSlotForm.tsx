@@ -22,6 +22,10 @@ import ProgressWaitFields, { WaitBadge } from "./ProgressWaitFields";
 import { sameInstitution } from "@/util/institution-match";
 import { todoSlotOf } from "@/lib/analytics/todo-slot";
 import type { SlotSource } from "@/lib/analytics/contract-slots";
+import WorkActivityBadge from "./WorkActivityBadge";
+import { activityLabel } from "../_lib/institution-view";
+import { activityTodayISO } from "../_lib/payment-progress";
+import { isValidISODate } from "@/util/week";
 
 const SLOT_STYLES = {
   1: {
@@ -153,11 +157,13 @@ export default function PaymentSlotForm({
   const [open, setOpen] = useState(autoOpen);
   useEffect(() => { if (autoOpen) setOpen(true); }, [autoOpen, focusRequestId]);
   const pctColor = pct === 0 ? "text-gray-400" : style.pctText;
+  // 이 진행건의 기록(번호로, 옛 기록은 기관 이름으로) · 다음 할 일 배지 = 미완료 Todo 가장 이른 예정일(2026-10-31 belie, 접혀도 보이게).
+  const slotTodos = (todos ?? []).filter((t) => savedContract ? todoSlotOf(savedContract, t).slot === index : sameInstitution(t.institutionRef, savedInstitution));
+  const nextTodo = slotTodos.filter((t) => (t.기록종류 ?? "todo") !== "history" && !t.완료여부 && isValidISODate(t.예정일자)).map((t) => t.예정일자).sort()[0];
 
   return (
     <div id={slotId} className={`scroll-mt-28 rounded-lg border p-3 shadow-sm ${style.card}`}>
-      {/* 슬롯 헤더 — 클릭으로 접기/펼치기. 기본 접힘(위 주석).
-          펼친 진행건은 제목 줄이 「실무진행」 제목 아래에 붙어 있다(2026-10-31 belie — 스크롤해도 어느 진행건인지 보이게). */}
+      {/* 슬롯 헤더 — 클릭으로 접기/펼치기. 기본 접힘. 펼치면 「실무진행」 제목 아래에 붙는다(2026-10-31 belie). */}
       <div
         data-payment-slot-head={open ? "sticky" : undefined}
         className={`flex cursor-pointer items-center justify-between gap-2 ${
@@ -198,6 +204,7 @@ export default function PaymentSlotForm({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {nextTodo && <WorkActivityBadge activity={{ activityKind: "todo", activityDate: nextTodo, activityLabel: activityLabel("todo", nextTodo, activityTodayISO()) }} />}
           {/* [10] 주제 = 진행기관명 (펼침 시만; 접힘 땐 좌측 요약에 표시). */}
           {open && slot.진행기관 && (
             <span
@@ -210,10 +217,7 @@ export default function PaymentSlotForm({
           {removable && onRemove && (
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemove();
-              }}
+              onClick={(e) => { e.stopPropagation(); onRemove(); }}
               className="shrink-0 text-xs text-gray-400 hover:text-red-500"
               aria-label="수납 제거"
               title="이 수납 제거"
@@ -300,9 +304,7 @@ export default function PaymentSlotForm({
             onEnsureSaved={onEnsureSaved}
             focusId={focusTodoId}
             slot={index}
-            todos={(todos ?? []).filter((t) =>
-              savedContract ? todoSlotOf(savedContract, t).slot === index : sameInstitution(t.institutionRef, savedInstitution),
-            )}
+            todos={slotTodos}
             ambiguousIds={savedContract ? new Set((todos ?? []).filter((t) => todoSlotOf(savedContract, t).ambiguous).map((t) => t.id)) : undefined}
           />
         )}
