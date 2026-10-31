@@ -27,6 +27,7 @@ const SLOT_STYLES = {
     name: "진행 1",
     family: "emerald" as const,
     card: "border-emerald-300 bg-emerald-50/70",
+    head: "bg-emerald-50",
     pctText: "text-emerald-700",
     chip: "bg-emerald-100 text-emerald-800",
     chipFull: "bg-emerald-600 text-white",
@@ -38,6 +39,7 @@ const SLOT_STYLES = {
     name: "진행 2",
     family: "blue" as const,
     card: "border-blue-300 bg-blue-50/70",
+    head: "bg-blue-50",
     pctText: "text-blue-700",
     chip: "bg-blue-100 text-blue-800",
     chipFull: "bg-blue-600 text-white",
@@ -49,6 +51,7 @@ const SLOT_STYLES = {
     name: "진행 3",
     family: "violet" as const,
     card: "border-violet-300 bg-violet-50/70",
+    head: "bg-violet-50",
     pctText: "text-violet-700",
     chip: "bg-violet-100 text-violet-800",
     chipFull: "bg-violet-600 text-white",
@@ -149,10 +152,12 @@ export default function PaymentSlotForm({
 
   return (
     <div id={slotId} className={`scroll-mt-28 rounded-lg border p-3 shadow-sm ${style.card}`}>
-      {/* 슬롯 헤더 — 클릭으로 접기/펼치기. 기본 접힘(위 주석). */}
+      {/* 슬롯 헤더 — 클릭으로 접기/펼치기. 기본 접힘(위 주석).
+          펼친 진행건은 제목 줄이 「실무진행」 제목 아래에 붙어 있다(2026-10-31 belie — 스크롤해도 어느 진행건인지 보이게). */}
       <div
+        data-payment-slot-head={open ? "sticky" : undefined}
         className={`flex cursor-pointer items-center justify-between gap-2 ${
-          open ? "mb-2.5" : ""
+          open ? `payment-slot-head -mx-3 -mt-3 mb-2.5 rounded-t-lg px-3 pb-2 pt-3 ${style.head}` : ""
         }`}
         onClick={() => setOpen((v) => !v)}
         role="button"
