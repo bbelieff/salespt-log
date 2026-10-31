@@ -830,3 +830,9 @@ DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서
 ## 트레이닝일지 (2026-10-30, `lib/types/training-log.ts`)
 
 - `TrainingLogItem`: 노션 기수 「[○○N기] 트레이닝 일지」 DB 의 내 행 한 줄(id·title·week(제목의 N주차, 없으면 null)·createdTime). `TrainingLogDetail` = Item + `blocks: LogBlock[]`(노션 블록을 화면용으로 줄인 모양, `LogText` 글자 조각). `TrainingLogList` = `{status, items}` — status `ok`·`not_configured`(NOTION_TOKEN 없음)·`no_cohort`·`no_database`·`unavailable`. 저장 없음(노션 읽기 전용, 서버 5분 캐시). 소유 판정 = 레지스트리 기수·이름(서버), 계획 `docs/plans/completed/training-log-own-only.md`.
+
+## 통화 정리 (2026-10-31, `lib/types/call.ts` · migration 0014)
+- `CallStatus` = queued · processing(글자 변환+정리) · review(확인 대기) · confirmed(확정 저장) · failed(사유) · discarded(저장 안 하고 닫음).
+- `CallExtraction`(코드 변환 후 값): summary(≤3줄) · memo(상담메모 초안 ≤2000) · answered(컨택 가이드 1~12번 중 답한 번호, `CallGuideQuestion`) · lead(company·owner — DB 원본 칸 제안) · company(`CallCompanyInfo` = CompanyInfo 에서 `CALL_EXCLUDED_FIELDS` 자택주소지·주민등록번호와 커스텀 JSON 을 뺀 partial, 저장 형식 값) · custom(커스텀.업체 라벨→값) · meeting(`CallMeetingDraft` meetingDate·time(15분 단위 또는 빈값)·place·reservationNote ≤500 | null) · evidence(칸 → 근거 문장). `CALL_SENSITIVE_FIELDS`(신용점수·기대출개인)는 확인 화면에서 「민감」 표시.
+- `CallRecord`: id · spreadsheetId · leadId · email · status · calledAt(상대 날짜 기준) · audioSeconds · transcript · extraction · error · attempts · createdAt · confirmedAt.
+- 표 `call_records`: (spreadsheet_id, lead_id) → `db_sheet_leads` on delete cascade(리드 휴지통 이동 시 함께 삭제) · audio_path(변환 직후 비움) · raw(AI 원답 jsonb) · extraction jsonb · 대기열 부분 인덱스(queued·processing) · 브라우저 역할 권한 회수·RLS. 확정 전에는 DB정보·미팅·지표에 쓰지 않는다. 계획 [call-summary](../plans/active/call-summary.md).
