@@ -136,23 +136,13 @@ export function buildInitialLeads(leads: DbSheetLead[], today: string): FollowUp
   return leads.filter(l => leadIsActive(l) && l.result === "미컨택" && !l.first && !l.followUp?.lastContactDate && (!isValidISODate(l.date) || l.date <= today))
     .map(l => leadItem(l, today, true, l.date, "첫 연락 전")).sort(compareFollowUpUrgency);
 }
-/**
- * 장기관리로 넘긴 업체도 「1·3·6개월 후」로 다음 연락일을 잡았으면 그날이 다가올 때 다시 올린다(2026-10-31 belie).
- * 넘기기 전 부재·재통화가 남긴 옛 다음 연락일(마지막 연락 다음날 등)로 쏟아지지 않게, 마지막 연락에서 4주 이상 뒤로 잡은 날만 본다.
- */
-export const LONG_TERM_RECALL_MIN_DAYS = 28;
-function longTermRecall(lead: DbSheetLead): boolean {
-  if (lead.stage !== "장기관리" || lead.meetingId || lead.funnel === "계약" || !isValidISODate(lead.next)) return false;
-  const last = [lead.followUp?.lastContactDate, lead.first, lead.date].find((d) => d && isValidISODate(d));
-  return !last || lead.next >= shiftISO(last, LONG_TERM_RECALL_MIN_DAYS);
-}
 export function buildRecontactLeads(leads: DbSheetLead[], today: string): FollowUpItem[] {
-  return leads.filter(l => (leadIsActive(l) && l.result !== "미컨택" && isDbSheetFollowUpResult(l.result)) || longTermRecall(l)).flatMap(l => {
+  return leads.filter(l => leadIsActive(l) && l.result !== "미컨택" && isDbSheetFollowUpResult(l.result)).flatMap(l => {
     const completed = l.followUp && l.followUp.completedGeneration === l.followUp.generation;
     if (isValidISODate(l.next) && !completed) {
-      return l.next <= shiftISO(today, UPCOMING_DAYS) ? [leadItem(l, today, false, l.next, l.stage === "장기관리" ? "장기관리 · 다시 연락 예정" : "다시 연락 예정")] : [];
+      return l.next <= shiftISO(today, UPCOMING_DAYS) ? [leadItem(l, today, false, l.next, "다시 연락 예정")] : [];
     }
-    if (l.stage === "장기관리" || !["부재", "컨택진행", "재통화"].includes(l.result)) return [];
+    if (!["부재", "컨택진행", "재통화"].includes(l.result)) return [];
     // A completed contact consumes its old reservation. A fresh reservation is a new generation.
     // 재통화는 다음 연락일을 꼭 잡아야 한다 — 안 잡았으면 최초상담일부터 지난 날수(D+N)로 오늘 챙길 일에(2026-10-25 belie).
     const since = l.result === "재통화" && isValidISODate(l.first) ? l.first : l.followUp?.lastContactDate || null;
