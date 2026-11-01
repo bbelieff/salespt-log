@@ -21,12 +21,18 @@ import TodoSection from "./TodoSection";
 import ProgressWaitFields, { WaitBadge } from "./ProgressWaitFields";
 import { sameInstitution } from "@/util/institution-match";
 import { todoSlotOf } from "@/lib/analytics/todo-slot";
+import type { SlotSource } from "@/lib/analytics/contract-slots";
+import WorkActivityBadge from "./WorkActivityBadge";
+import { activityLabel } from "../_lib/institution-view";
+import { activityTodayISO } from "../_lib/payment-progress";
+import { isValidISODate } from "@/util/week";
 
 const SLOT_STYLES = {
   1: {
     name: "진행 1",
     family: "emerald" as const,
     card: "border-emerald-300 bg-emerald-50/70",
+    head: "bg-emerald-50",
     pctText: "text-emerald-700",
     chip: "bg-emerald-100 text-emerald-800",
     chipFull: "bg-emerald-600 text-white",
@@ -38,6 +44,7 @@ const SLOT_STYLES = {
     name: "진행 2",
     family: "blue" as const,
     card: "border-blue-300 bg-blue-50/70",
+    head: "bg-blue-50",
     pctText: "text-blue-700",
     chip: "bg-blue-100 text-blue-800",
     chipFull: "bg-blue-600 text-white",
@@ -49,6 +56,7 @@ const SLOT_STYLES = {
     name: "진행 3",
     family: "violet" as const,
     card: "border-violet-300 bg-violet-50/70",
+    head: "bg-violet-50",
     pctText: "text-violet-700",
     chip: "bg-violet-100 text-violet-800",
     chipFull: "bg-violet-600 text-white",
@@ -73,9 +81,12 @@ function pctToProgress(pct: number): Progress {
   return `${pct}%` as Progress;
 }
 
-function getSegClass(slotIdx: 1 | 2 | 3, pct: number): string {
+/** 진행건 색 — 1·2·3 색을 4번부터 되풀이한다(진행건 개수 제한 없음, 2026-10-31). */
+const styleOf = (slotIdx: number) => SLOT_STYLES[(((slotIdx - 1) % 3) + 1) as 1 | 2 | 3];
+
+function getSegClass(slotIdx: number, pct: number): string {
   if (pct === 0) return "bg-gray-300";
-  const s = SLOT_STYLES[slotIdx];
+  const s = styleOf(slotIdx);
   if (pct <= 40) return s.segLow;
   if (pct <= 80) return s.segMid;
   return s.segHigh;
@@ -83,9 +94,9 @@ function getSegClass(slotIdx: 1 | 2 | 3, pct: number): string {
 
 interface Props {
   slotId?: string;
-  index: 1 | 2 | 3;
+  index: number;
   slot: PaymentSlot;
-  removable?: boolean; // 슬롯 2/3만 제거 가능
+  removable?: boolean; // 맨 뒤 진행건만(1번 제외) 제거 가능
   onChange: (next: PaymentSlot) => void;
   onRemove?: () => void;
   /** Scope 2 — ToDo 섹션. contractRef 있을 때만 표시 (신규 계약은 미표시). */
@@ -97,7 +108,7 @@ interface Props {
   /** 저장본(cp) 진행기관 — ToDo 키(draft 아닌 저장값과만 묶어 새로고침 후 매칭 유지). */
   savedInstitution?: string;
   /** 저장본 계약 — 기록을 진행건 번호로 나눌 때 쓴다(todo-slot). 없으면 옛 방식(기관 이름). */
-  savedContract?: Pick<ContractPayment, "수납1" | "수납2" | "수납3">;
+  savedContract?: SlotSource;
   /** [3] 진행기관 콤보박스 후보 (자유입력 + 과거값 자동완성). */
   institutionOptions?: string[];
   /** [4] ToDo 추가 시 미저장 진행기관이면 이 콜백으로 슬롯(계약)을 먼저 저장. */
@@ -128,7 +139,7 @@ export default function PaymentSlotForm({
   autoOpen = false,
   focusRequestId,
 }: Props) {
-  const style = SLOT_STYLES[index];
+  const style = styleOf(index);
   const pct = progressToPct(slot.진행률);
   const fillClass = getSegClass(index, pct);
   const chipClass = pct >= 100 ? style.chipFull : style.chip;
@@ -146,13 +157,17 @@ export default function PaymentSlotForm({
   const [open, setOpen] = useState(autoOpen);
   useEffect(() => { if (autoOpen) setOpen(true); }, [autoOpen, focusRequestId]);
   const pctColor = pct === 0 ? "text-gray-400" : style.pctText;
+  // 이 진행건의 기록(번호로, 옛 기록은 기관 이름으로) · 다음 할 일 배지 = 미완료 Todo 가장 이른 예정일(2026-10-31 belie, 접혀도 보이게).
+  const slotTodos = (todos ?? []).filter((t) => savedContract ? todoSlotOf(savedContract, t).slot === index : sameInstitution(t.institutionRef, savedInstitution));
+  const nextTodo = slotTodos.filter((t) => (t.기록종류 ?? "todo") !== "history" && !t.완료여부 && isValidISODate(t.예정일자)).map((t) => t.예정일자).sort()[0];
 
   return (
     <div id={slotId} className={`scroll-mt-28 rounded-lg border p-3 shadow-sm ${style.card}`}>
-      {/* 슬롯 헤더 — 클릭으로 접기/펼치기. 기본 접힘(위 주석). */}
+      {/* 슬롯 헤더 — 클릭으로 접기/펼치기. 기본 접힘. 펼치면 「실무진행」 제목 아래에 붙는다(2026-10-31 belie). */}
       <div
+        data-payment-slot-head={open ? "sticky" : undefined}
         className={`flex cursor-pointer items-center justify-between gap-2 ${
-          open ? "mb-2.5" : ""
+          open ? `payment-slot-head -mx-3 -mt-3 mb-2.5 rounded-t-lg px-3 pb-2 pt-3 ${style.head}` : ""
         }`}
         onClick={() => setOpen((v) => !v)}
         role="button"
@@ -167,7 +182,7 @@ export default function PaymentSlotForm({
             {index}
           </div>
           <span className="min-w-0 truncate text-sm font-semibold text-gray-800">
-            {style.name}{slot.진행상품 ? ` : ${slot.진행상품}` : ""}
+            {`진행 ${index}`}{slot.진행상품 ? ` : ${slot.진행상품}` : ""}
           </span>
           {/* 접힘 요약: 진행기관 · 진행률 · 수납/승인 */}
           {!open && (
@@ -189,6 +204,7 @@ export default function PaymentSlotForm({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {nextTodo && <WorkActivityBadge activity={{ activityKind: "todo", activityDate: nextTodo, activityLabel: activityLabel("todo", nextTodo, activityTodayISO()) }} />}
           {/* [10] 주제 = 진행기관명 (펼침 시만; 접힘 땐 좌측 요약에 표시). */}
           {open && slot.진행기관 && (
             <span
@@ -201,10 +217,7 @@ export default function PaymentSlotForm({
           {removable && onRemove && (
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onRemove();
-              }}
+              onClick={(e) => { e.stopPropagation(); onRemove(); }}
               className="shrink-0 text-xs text-gray-400 hover:text-red-500"
               aria-label="수납 제거"
               title="이 수납 제거"
@@ -291,9 +304,7 @@ export default function PaymentSlotForm({
             onEnsureSaved={onEnsureSaved}
             focusId={focusTodoId}
             slot={index}
-            todos={(todos ?? []).filter((t) =>
-              savedContract ? todoSlotOf(savedContract, t).slot === index : sameInstitution(t.institutionRef, savedInstitution),
-            )}
+            todos={slotTodos}
             ambiguousIds={savedContract ? new Set((todos ?? []).filter((t) => todoSlotOf(savedContract, t).ambiguous).map((t) => t.id)) : undefined}
           />
         )}

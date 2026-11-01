@@ -23,10 +23,11 @@ import GrantMatchBox, { grantMatchCount } from "./GrantMatchBox";
 import type { GrantMatchesResponse } from "@/lib/analytics/grant-match";
 import { useContractCompanyInfo } from "./useContractCompanyInfo";
 import LinkedFieldsEditor from "./LinkedFieldsEditor";
+import { detailSplitFocus } from "./DetailSplitToggle";
 import CompanyInfoContractSection from "@/components/CompanyInfoContractSection";
 import CarryoverBadge from "@/components/CarryoverBadge";
-import { progressPct, initialVisiblePayments, EMPTY_SLOT, validContractDraft } from "../_lib/payment-progress";
-import { allHalted, averageProgress, isContractComplete, isHaltedSlot, slotTotals } from "@/lib/analytics/contract-slots";
+import { progressPct, initialVisiblePayments, validContractDraft } from "../_lib/payment-progress";
+import { allHalted, averageProgress, isContractComplete, isHaltedSlot, slotOf, slotsOf, slotTotals, withSlot, withoutSlot } from "@/lib/analytics/contract-slots";
 import type { WorkActivitySummary } from "../_lib/institution-view";
 import WorkActivityBadge, { type ActivityLoadState } from "./WorkActivityBadge";
 import { useAutosave } from "@/components/autosave/useAutosave";
@@ -65,7 +66,7 @@ interface Props {
   detailLeftPct?: number;
   onDetailLeftPctChange?: (pct: number) => void;
   focusTodoId?: string | null;
-  focusedSlot?: 1 | 2 | 3 | null;
+  focusedSlot?: number | null;
   focusRequestId?: number;
   highlight?: string;
   courseStartISO?: string;
@@ -109,6 +110,8 @@ export default function ContractRow({
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
   const detailResizeStart = useRef<{ x: number; pct: number; width: number } | null>(null);
+  // 드래그 중에는 너비 전환 애니메이션을 끈다(손을 따라가야 하므로) — globals.css [data-split-dragging].
+  const endDetailResize = (e: { currentTarget: HTMLElement }) => { detailResizeStart.current = null; const grid = e.currentTarget.parentElement; if (grid) delete grid.dataset.splitDragging; };
 
   // 루틴 draft 자동 저장 — target=row 고정, 공유 코어(Scope A)가 영속화.
   const {
@@ -209,12 +212,12 @@ export default function ContractRow({
     </span>
   );
 
-  const [visiblePayments, setVisiblePayments] = useState<1 | 2 | 3>(() =>
+  const [visiblePayments, setVisiblePayments] = useState<number>(() =>
     initialVisiblePayments(cp),
   );
   useEffect(() => {
     if (focusedSlot) {
-      setVisiblePayments((current) => Math.max(current, focusedSlot) as 1 | 2 | 3);
+      setVisiblePayments((current) => Math.max(current, focusedSlot));
       if (!selectable) setOpen(true);
     }
   }, [focusedSlot, selectable]);
@@ -238,7 +241,7 @@ export default function ContractRow({
       const v = t.institutionRef?.trim();
       if (v) set.add(v);
     }
-    for (const s of [cp.수납1, cp.수납2, cp.수납3]) {
+    for (const [, s] of slotsOf(cp)) {
       const v = s.진행기관?.trim();
       if (v) set.add(v);
     }
@@ -249,7 +252,7 @@ export default function ContractRow({
   const docsDone = checkedCount(draft);
 
   const visibleSlots = useMemo(
-    () => [draft.수납1, draft.수납2, draft.수납3].slice(0, visiblePayments),
+    () => slotsOf(draft).map(([, slot]) => slot).slice(0, visiblePayments),
     [draft, visiblePayments],
   );
   const avgPct = useMemo(() => averageProgress(visibleSlots), [visibleSlots]);
@@ -271,16 +274,13 @@ export default function ContractRow({
   const accent = ACCENT[family];
   const leftBar = bare ? "" : `border-l-4 ${accent.leftBar}`;
 
-  const handleAddSlot = () => {
-    if (visiblePayments < 3) {
-      setVisiblePayments((v) => (v + 1) as 1 | 2 | 3);
-    }
-  };
-  const handleRemoveSlot = (slotIdx: 1 | 2 | 3) => {
+  // 진행건 개수 제한 없음(2026-10-31 belie) — 4번부터는 추가진행(DB). 빈 진행건은 저장하지 않고 화면에만 연다.
+  const handleAddSlot = () => setVisiblePayments((v) => v + 1);
+  const handleRemoveSlot = (slotIdx: number) => {
     if (slotIdx === 1) return;
-    editDraft((d) => ({ ...d, [`수납${slotIdx}`]: EMPTY_SLOT }));
+    editDraft((d) => withoutSlot(d, slotIdx));
     if (slotIdx === visiblePayments)
-      setVisiblePayments((v) => Math.max(1, v - 1) as 1 | 2 | 3);
+      setVisiblePayments((v) => Math.max(1, v - 1));
   };
 
   const actionButtons = <div className="flex gap-2 pt-1">
@@ -428,18 +428,18 @@ export default function ContractRow({
           )}
           {bare && statusTarget ? createPortal(pcStatus, statusTarget) : pcStatus}
           {!inline && (ciState.error || (status === "error" && error)) && <p data-payment-pc-error className="text-px-11 font-medium text-red-600" aria-live="polite">⚠ {ciState.error ? `업체정보: ${ciState.error}` : error} — 입력은 유지됩니다</p>}
-          <div data-payment-main-content className={bare ? "grid min-h-0 min-w-0 flex-1 gap-1.5" : "grid min-w-0 gap-3 min-[1500px]:grid-cols-[minmax(300px,.9fr)_minmax(420px,1.1fr)]"} style={bare ? { gridTemplateColumns: `minmax(0,${detailLeftPct}fr) 8px minmax(0,${100 - detailLeftPct}fr)` } : undefined}>
-            <div className={bare ? "payment-detail-scroll min-h-0 min-w-0 pr-1" : "min-w-0"}>
+          <div data-payment-main-content className={bare ? "grid min-h-0 min-w-0 flex-1 gap-1.5" : "grid min-w-0 gap-3 min-[1500px]:grid-cols-[minmax(300px,.9fr)_minmax(420px,1.1fr)]"} data-split-focus={bare ? detailSplitFocus(detailLeftPct) : undefined} style={bare ? { gridTemplateColumns: `minmax(0,${detailLeftPct}fr) 8px minmax(0,${100 - detailLeftPct}fr)` } : undefined}>
+            <div data-split-col={bare ? "info" : undefined} className={bare ? "payment-detail-scroll min-h-0 min-w-0 pr-1" : "min-w-0"}>
               <CompanyInfoContractSection 계약일={cp.계약일} 업체명={cp.업체명} pendingValue={ciPending} hideSave defaultOpen={companyInfoDefaultOpen} compactMobile={inline} onChange={onCiChange} identityKey={`contract-row:${cp.row}`} grantMatchCount={grantMatchCount(grants, cp.계약일, cp.업체명, allTodos)} desktopHeading splitInline={bare && detailLeftPct >= 55} />
             </div>
             {bare && <button type="button" role="separator" aria-label="업체정보와 실무정보 열 너비 조절" aria-orientation="vertical" aria-valuemin={38} aria-valuemax={62} aria-valuenow={detailLeftPct} title="드래그하거나 화살표 키로 열 너비 조절" className="group relative h-full w-2 cursor-col-resize touch-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
-              onPointerDown={(e) => { const grid = e.currentTarget.parentElement; if (!grid || !onDetailLeftPctChange) return; e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); const gap = parseFloat(getComputedStyle(grid).columnGap) || 0; detailResizeStart.current = { x: e.clientX, pct: detailLeftPct, width: Math.max(1, grid.clientWidth - 8 - 2 * gap) }; }}
+              onPointerDown={(e) => { const grid = e.currentTarget.parentElement; if (!grid || !onDetailLeftPctChange) return; e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); grid.dataset.splitDragging = ""; const gap = parseFloat(getComputedStyle(grid).columnGap) || 0; detailResizeStart.current = { x: e.clientX, pct: detailLeftPct, width: Math.max(1, grid.clientWidth - 8 - 2 * gap) }; }}
               onPointerMove={(e) => { const start = detailResizeStart.current; if (start) onDetailLeftPctChange?.(Math.max(38, Math.min(62, Math.round(start.pct + (e.clientX - start.x) / start.width * 100)))); }}
-              onPointerUp={() => { detailResizeStart.current = null; }} onPointerCancel={() => { detailResizeStart.current = null; }} onLostPointerCapture={() => { detailResizeStart.current = null; }}
+              onPointerUp={endDetailResize} onPointerCancel={endDetailResize} onLostPointerCapture={endDetailResize}
               onKeyDown={(e) => { if (e.key === "ArrowLeft" || e.key === "ArrowRight") { e.preventDefault(); onDetailLeftPctChange?.(Math.max(38, Math.min(62, detailLeftPct + (e.key === "ArrowLeft" ? -2 : 2)))); } if (e.key === "Home") { e.preventDefault(); onDetailLeftPctChange?.(60); } }}>
               <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-slate-200 group-hover:bg-blue-400 group-focus-visible:bg-blue-400"/><span className="absolute left-1/2 top-1/2 h-8 w-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-slate-300 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100"/>
             </button>}
-            <div className={bare ? "payment-detail-scroll min-h-0 min-w-0 space-y-2 pr-1" : "min-w-0 space-y-2"}>
+            <div data-split-col={bare ? "work" : undefined} className={bare ? "payment-detail-scroll min-h-0 min-w-0 space-y-2 pr-1" : "min-w-0 space-y-2"}>
               <details data-payment-contract-info={inline ? "" : undefined} className="group rounded-lg border border-slate-200 bg-white">
                 <summary className="disclosure-summary payment-sticky-title flex cursor-pointer list-none items-center justify-between gap-2 rounded-lg bg-white group-open:rounded-b-none px-3 py-2 text-sm font-bold text-slate-800">
                   <span className="shrink-0">📑 계약정보</span><span data-payment-contract-summary className="truncate text-xs font-normal text-slate-500">{fmtDate(draft.계약일)} · 수임비 ₩{fmtMoney(draft.수임비)} · 비고 {draft.계약비고 ? "있음" : "없음"} <DisclosureChevron /></span><span data-payment-contract-caret aria-hidden="true" className="hidden"><DisclosureChevron /></span>
@@ -457,10 +457,10 @@ export default function ContractRow({
               <GrantMatchBox 계약일={cp.계약일} 업체명={cp.업체명} grants={grants} todos={allTodos}/>
               <section className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <ContractSlots desktopHeading draft={draft} cp={cp} contractRef={contractRef} slotInstitutionOptions={slotInstitutionOptions} todos={allTodos} focusTodoId={focusTodoId} focusedSlot={focusedSlot} focusRequestId={focusRequestId} visiblePayments={visiblePayments} totalApproved={totalApproved} totalReceived={totalReceived} onAddSlot={handleAddSlot} onRemoveSlot={handleRemoveSlot} onSlotChange={(index, next) => {
-                  const prev = draft[`수납${index}`];
+                  const prev = slotOf(draft, index);
                   // 진행률·조건 대기 기간(칩)은 고르는 즉시 저장, 글자 칸은 칸을 떠날 때 저장.
                   const typing = next.진행률 === prev.진행률 && next.대기기간 === prev.대기기간;
-                  (typing ? stageDraft : editDraft)((d) => ({ ...d, [`수납${index}`]: next }));
+                  (typing ? stageDraft : editDraft)((d) => withSlot(d, index, next));
                 }} onEnsureSaved={commitGroup}/>
               </section>
               {bare && actionButtons}

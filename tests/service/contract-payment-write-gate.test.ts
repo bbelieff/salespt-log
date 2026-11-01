@@ -97,6 +97,21 @@ describe("patchContractPayment — 수납 슬롯 편집 게이트", () => {
   });
 });
 
+describe("patchContractPayment — 진행 4번부터(추가진행, 2026-10-31)", () => {
+  const slot = { 진행기관: "중진공", 진행상품: "", 진행률: "", 현황: "", 승인금액: 0, 수납액: 0, 수납일: "", 메모: "" } as const;
+  it("DB 정본 기수는 저장한다", async () => {
+    await patchContractPayment(EMAIL, mkCp({ 추가진행: [slot] }));
+    expect(updateUserFields).toHaveBeenCalledWith(SHEET, expect.objectContaining({ 추가진행: [slot] }), { syncDb: true });
+  });
+  it("시트를 정본으로 읽는 옛 기수는 막는다(저장해도 다시 안 읽힌다)", async () => {
+    setCohort("1");
+    await expect(patchContractPayment(EMAIL, mkCp({ 추가진행: [slot] }))).rejects.toThrow("3개까지");
+    expect(updateUserFields).not.toHaveBeenCalled();
+    await patchContractPayment(EMAIL, mkCp({ 추가진행: [] }));
+    expect(updateUserFields).toHaveBeenCalledOnce();
+  });
+});
+
 describe("terminateContract — 해지 게이트", () => {
   it("파일럿 → writeTermination(…, {syncDb:true})", async () => {
     await terminateContract(EMAIL, { row: 9, 사유: "폐업", 반환액: 0, 숨김: false });

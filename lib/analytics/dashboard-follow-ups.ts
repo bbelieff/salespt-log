@@ -6,7 +6,7 @@ import { dbSheetResultLabel, isDbSheetFollowUpResult, isDbSheetParkedStage, type
 import { addDays, diffDays, fmtISO, isValidISODate, parseISO } from "@/util/week";
 import { normalizeInstitution } from "@/util/institution-match";
 import { activeWorkContracts, isSlotClosed, slotHasData } from "./payment-work-status";
-import { isShortWaitSlot } from "./contract-slots";
+import { isShortWaitSlot, slotOf, slotsOf, type SlotNo } from "./contract-slots";
 import { isLongTermContract } from "./long-term";
 
 export const STALL_DAYS = 7;
@@ -21,21 +21,19 @@ export interface FollowUpItem {
   key: string; kind: FollowUpKind; step: FollowUpStep; group: FollowUpGroup;
   title: string; company: string; detail: string; badge: string; href: string;
   dueISO: string | null; overdueDays: number | null; action: string; reasons: string[];
-  facts: Array<{ label: string; value: string }>; slot?: 1 | 2 | 3;
+  facts: Array<{ label: string; value: string }>; slot?: SlotNo;
   /** 조건 대기·단기관리 진행건 — 세기는 하되 목록 맨 뒤로(2026-10-23 belie). */
   deferred?: boolean;
 }
 export type FollowUpCounts = Record<FollowUpKind, number>;
-const SLOTS = [1, 2, 3] as const;
 const shiftISO = (iso: string, days: number) => fmtISO(addDays(parseISO(iso), days));
 const daysBetween = (later: string, earlier: string) => diffDays(parseISO(later), parseISO(earlier));
 const contractRefOf = (cp: ContractPayment) => contractRef(cp.계약일, cp.업체명);
-const slotOf = (cp: ContractPayment, slot: 1 | 2 | 3): PaymentSlot => cp[`수납${slot}`];
 /** 오늘 챙길 일 대상 계약 — 숨김·해지·장기관리 업체는 뺀다(장기관리: long-term.ts). */
 const followUpContracts = (contracts: ContractPayment[]) => activeWorkContracts(contracts).filter(cp => !isLongTermContract(cp));
 const WAIT_REASON = "조건 대기(단기관리)";
-const visibleSlots = (cp: ContractPayment): Array<1 | 2 | 3> => {
-  const populated = SLOTS.filter(slot => slotHasData(slotOf(cp, slot)));
+const visibleSlots = (cp: ContractPayment): SlotNo[] => {
+  const populated = slotsOf(cp).filter(([, slot]) => slotHasData(slot)).map(([n]) => n);
   return populated.length ? populated : [1];
 };
 function timing(due: string | null, today: string) {
@@ -55,7 +53,7 @@ export function compareFollowUpUrgency(a: FollowUpItem, b: FollowUpItem): number
 }
 export interface TodoFollowUps { overdue: FollowUpItem[]; today: FollowUpItem[]; upcoming: FollowUpItem[]; unlinked: number }
 /** 기록의 진행건 — 번호가 있으면 그대로, 옛 기록은 기관이 한 진행건에만 맞을 때만(정본: todo-slot). */
-function slotForTodo(cp: ContractPayment, todo: Todo): 1 | 2 | 3 | undefined {
+function slotForTodo(cp: ContractPayment, todo: Todo): SlotNo | undefined {
   const { slot, ambiguous } = todoSlotOf(cp, todo);
   return slot && !ambiguous ? slot : undefined;
 }
@@ -138,23 +136,13 @@ export function buildInitialLeads(leads: DbSheetLead[], today: string): FollowUp
   return leads.filter(l => leadIsActive(l) && l.result === "미컨택" && !l.first && !l.followUp?.lastContactDate && (!isValidISODate(l.date) || l.date <= today))
     .map(l => leadItem(l, today, true, l.date, "첫 연락 전")).sort(compareFollowUpUrgency);
 }
-/**
- * 장기관리로 넘긴 업체도 「1·3·6개월 후」로 다음 연락일을 잡았으면 그날이 다가올 때 다시 올린다(2026-10-31 belie).
- * 넘기기 전 부재·재통화가 남긴 옛 다음 연락일(마지막 연락 다음날 등)로 쏟아지지 않게, 마지막 연락에서 4주 이상 뒤로 잡은 날만 본다.
- */
-export const LONG_TERM_RECALL_MIN_DAYS = 28;
-function longTermRecall(lead: DbSheetLead): boolean {
-  if (lead.stage !== "장기관리" || lead.meetingId || lead.funnel === "계약" || !isValidISODate(lead.next)) return false;
-  const last = [lead.followUp?.lastContactDate, lead.first, lead.date].find((d) => d && isValidISODate(d));
-  return !last || lead.next >= shiftISO(last, LONG_TERM_RECALL_MIN_DAYS);
-}
 export function buildRecontactLeads(leads: DbSheetLead[], today: string): FollowUpItem[] {
-  return leads.filter(l => (leadIsActive(l) && l.result !== "미컨택" && isDbSheetFollowUpResult(l.result)) || longTermRecall(l)).flatMap(l => {
+  return leads.filter(l => leadIsActive(l) && l.result !== "미컨택" && isDbSheetFollowUpResult(l.result)).flatMap(l => {
     const completed = l.followUp && l.followUp.completedGeneration === l.followUp.generation;
     if (isValidISODate(l.next) && !completed) {
-      return l.next <= shiftISO(today, UPCOMING_DAYS) ? [leadItem(l, today, false, l.next, l.stage === "장기관리" ? "장기관리 · 다시 연락 예정" : "다시 연락 예정")] : [];
+      return l.next <= shiftISO(today, UPCOMING_DAYS) ? [leadItem(l, today, false, l.next, "다시 연락 예정")] : [];
     }
-    if (l.stage === "장기관리" || !["부재", "컨택진행", "재통화"].includes(l.result)) return [];
+    if (!["부재", "컨택진행", "재통화"].includes(l.result)) return [];
     // A completed contact consumes its old reservation. A fresh reservation is a new generation.
     // 재통화는 다음 연락일을 꼭 잡아야 한다 — 안 잡았으면 최초상담일부터 지난 날수(D+N)로 오늘 챙길 일에(2026-10-25 belie).
     const since = l.result === "재통화" && isValidISODate(l.first) ? l.first : l.followUp?.lastContactDate || null;

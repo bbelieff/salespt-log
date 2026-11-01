@@ -62,6 +62,8 @@ function contractRow(c: ContractPayment): Record<string, unknown> {
     ["수납1", c.수납1],
     ["수납2", c.수납2],
     ["수납3", c.수납3],
+    // 진행 4번부터(DB 확장) — 있는 계약만 열이 생긴다(SheetJS 는 모든 행의 열을 모은다).
+    ...(c.추가진행 ?? []).map((slot, i): [string, PaymentSlot] => [`수납${4 + i}`, slot]),
   ];
   for (const [prefix, slot] of slots) {
     for (const [field, label] of SLOT_FIELDS) row[`${prefix} ${label}`] = slot[field] ?? "";

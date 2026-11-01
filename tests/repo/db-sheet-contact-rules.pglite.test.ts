@@ -136,6 +136,19 @@ it("read backfills 단순거절 even when an old empty manual first-date save le
   expect((await get(lead.id)).first).toBe("2027-05-05");
 });
 
+it("a 최초상담일 the user cleared stays empty on read, and setting a date again re-enables the fill", async () => {
+  let lead = await fresh();
+  lead = (await saveDbSheetContact(ctx, lead.id, { date: "2027-05-04", result: "재통화", note: "" }, lead.revision)).lead;
+  lead = (await setDbSheetFirstDate(ctx, lead.id, "", lead.revision)).lead;
+  expect(lead).toMatchObject({ first: "", firstCleared: true });
+  expect((await get(lead.id)).first).toBe("");
+  lead = (await saveDbSheetLead(ctx, { ...DbSheetLeadInput.parse(lead), supplier: "합성수정" }, lead.revision)).lead;
+  expect((await get(lead.id)).first).toBe("");
+  lead = (await setDbSheetFirstDate(ctx, lead.id, "2027-05-07", lead.revision)).lead;
+  expect(lead.firstCleared).toBeUndefined();
+  expect((await get(lead.id)).first).toBe("2027-05-07");
+});
+
 it("read fills every 부재 row without 다음 연락일 with the day after the 부재, as a pending (not completed) reservation", async () => {
   let lead = await fresh();
   lead = (await saveDbSheetContact(ctx, lead.id, { date: "2027-05-06", result: "부재", note: "" }, lead.revision)).lead;

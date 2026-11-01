@@ -8,7 +8,7 @@ type Slot = ContractPayment["수납1"];
 /** 자동 저장 coherent 그룹 검증 — 금액 유한·0이상, 수납일 빈값/YYYY-MM-DD. */
 export function validContractDraft(d: ContractPayment): boolean {
   if (!Number.isFinite(d.수임비) || d.수임비 < 0) return false;
-  for (const s of [d.수납1, d.수납2, d.수납3]) {
+  for (const s of [d.수납1, d.수납2, d.수납3, ...(d.추가진행 ?? [])]) {
     if (!Number.isFinite(s.승인금액) || s.승인금액 < 0) return false;
     if (!Number.isFinite(s.수납액) || s.수납액 < 0) return false;
     if (s.수납일 !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(s.수납일)) return false;

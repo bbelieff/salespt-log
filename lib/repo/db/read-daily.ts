@@ -218,6 +218,8 @@ export function contractFromDbPayload(
     수납1: { ...parsed.수납1, ...((p.수납1 as Record<string, unknown> | undefined) ?? {}) },
     수납2: { ...parsed.수납2, ...((p.수납2 as Record<string, unknown> | undefined) ?? {}) },
     수납3: { ...parsed.수납3, ...((p.수납3 as Record<string, unknown> | undefined) ?? {}) },
+    // 진행 4번부터(2026-10-31) — 시트 좌표가 없어 payload 그대로. 없으면 undefined(옛 계약).
+    추가진행: Array.isArray(p.추가진행) && p.추가진행.length ? p.추가진행 : undefined,
   });
 }
 

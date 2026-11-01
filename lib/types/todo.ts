@@ -40,9 +40,9 @@ export const Todo = z.object({
   분류: z.string().default(""),
   /** Todo=할 일, History=이미 한 일. 기존 행은 Todo로 읽는다. */
   기록종류: TodoRecordKind.default("todo"),
-  /** 몇 번째 진행건(수납1~3)의 기록인가 — Q 컬럼. null = 진행건 번호 없이 기관 이름으로만 묶이던 옛 기록
+  /** 몇 번째 진행건(1부터, 4번부터는 추가진행)의 기록인가 — Q 컬럼. null = 진행건 번호 없이 기관 이름으로만 묶이던 옛 기록
    *  (2026-10-23: 같은 기관을 쓰는 진행건 1·2에 기록이 함께 붙던 문제 → 새 기록부터 번호로 연결). */
-  slot: z.union([z.literal(1), z.literal(2), z.literal(3)]).nullable().default(null),
+  slot: z.number().int().min(1).nullable().default(null),
   /** 완료한 할 일의 결과 한 줄 — R 컬럼(2026-10-23). 옛 기록·null = 빈값. */
   result: z.string().nullish().transform((v) => v ?? ""),
   /** 「+ 다음」으로 이어 만든 할 일이면 원래 기록의 id — S 컬럼(2026-10-23). 빈값 = 연결 없음. 화면에는 표시 안 함. */

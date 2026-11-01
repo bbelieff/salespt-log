@@ -18,7 +18,7 @@ const POPOVER_WIDTH = 360;
 
 interface Props {
   items: WorkStatusItem[];
-  onNavigate: (row: number | null, slot: 1 | 2 | 3) => void;
+  onNavigate: (row: number | null, slot: number) => void;
   popoverPlacement?: "top" | "bottom";
 }
 

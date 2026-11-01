@@ -83,11 +83,11 @@ describe("조건 대기 입력", () => {
 describe("실무/수납 화면 연결", () => {
   const page = readFileSync(join(process.cwd(), "app/(app)/payment/page.tsx"), "utf8");
   const form = readFileSync(join(process.cwd(), "app/(app)/payment/_components/PaymentSlotForm.tsx"), "utf8");
-  it("장기관리 업체는 목록 맨 아래 접힌 묶음, 배너는 장기관리면 호박색 + 「기본 너비」 옆 토글", () => {
+  it("장기관리 업체는 목록 맨 아래 접힌 묶음, 배너는 장기관리면 호박색 + 넓히기 전환 버튼 옆 토글", () => {
     expect(page).toContain("<LongTermFold count={longCompanyItems.length}");
     expect(page).toContain("startIndex={activeCompanyItems.length}");
     expect(page).toContain("const companyItems = [...activeCompanyItems, ...longCompanyItems];");
-    expect(page).toMatch(/기본 너비<\/button>\{stageToggle\(selectedCp\)\}/);
+    expect(page).toMatch(/<DetailSplitToggle [\s\S]*?\/>\{stageToggle\(selectedCp\)\}/);
     expect(page).toContain("from-amber-100/95");
     // 상세 초안 저장이 토글 값을 되돌리지 않는다.
     expect(page).toContain("관리상태: saved.관리상태, 관리상태진행건: saved.관리상태진행건");

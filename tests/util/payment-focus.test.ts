@@ -7,7 +7,7 @@ describe("parsePaymentSlotTarget", () => {
   });
 
   it("잘못된 행·회차는 상세를 열지 않는다", () => {
-    for (const search of ["", "?row=0&slot=1", "?row=1.5&slot=1", "?row=1&slot=4", "?row=abc&slot=1"]) {
+    for (const search of ["", "?row=0&slot=1", "?row=1.5&slot=1", "?row=1&slot=0", "?row=1&slot=2.5", "?row=abc&slot=1"]) {
       expect(parsePaymentSlotTarget(search)).toBeNull();
     }
   });
@@ -19,7 +19,8 @@ describe("company-only and explicit-slot entry",()=>{
   expect(parsePaymentRowTarget("?row=17&focus=todo")).toEqual({row:17,slot:null});
   expect(parsePaymentSlotTarget("?row=17&focus=todo")).toBeNull();
   expect(parsePaymentRowTarget("?row=17&slot=2")).toEqual({row:17,slot:2});
-  for(const search of ["?row=17&slot=4","?row=17&slot=","?row=0","?row=1.5"]){expect(parsePaymentRowTarget(search)).toBeNull();}
+  expect(parsePaymentRowTarget("?row=17&slot=4")).toEqual({row:17,slot:4}); // 진행 4번부터(2026-10-31)
+  for(const search of ["?row=17&slot=0","?row=17&slot=","?row=0","?row=1.5"]){expect(parsePaymentRowTarget(search)).toBeNull();}
  });
  it("explicit target beats representative slot; company-only remains unset and clearing restores user selection",()=>{
   expect(paymentFocusedSlot({row:17,slot:2},17,1)).toBe(2);

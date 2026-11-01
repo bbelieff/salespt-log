@@ -1,5 +1,5 @@
 /**
- * 기록(Todo·History)이 몇 번째 진행건(수납1~3)의 것인가 — 정본 한 곳.
+ * 기록(Todo·History)이 몇 번째 진행건(1부터, 4번부터 추가진행)의 것인가 — 정본 한 곳.
  *
  * 2026-10-23 belie: 진행 1·2 가 같은 기관이면 기록이 두 진행건에 모두 붙었다(기관 이름으로만 연결).
  * 새 기록은 진행건 번호(slot)를 저장하고, 번호 없는 옛 기록은 기관 이름으로 추정한다 —
@@ -15,7 +15,7 @@
  */
 import type { ContractPayment, Todo } from "@/types";
 import { normalizeInstitution } from "@/util/institution-match";
-import { slotHasData, slotsOf, type SlotNo } from "./contract-slots";
+import { slotHasData, slotsOf, type SlotNo, type SlotSource } from "./contract-slots";
 
 /** shared = 같은 기관 진행건이 여럿 · unmatched = 기관 이름이 어느 진행건과도 같지 않음. */
 export type TodoSlotUncertainty = "shared" | "unmatched";
@@ -36,7 +36,7 @@ export function grantIdOfTodo(todo: { 분류?: string }): string {
 }
 
 export function todoSlotOf(
-  cp: Pick<ContractPayment, "수납1" | "수납2" | "수납3">,
+  cp: SlotSource,
   todo: Pick<Todo, "institutionRef"> & { slot?: Todo["slot"]; 분류?: string },
 ): TodoSlot {
   if (todo.slot) return { slot: todo.slot, ambiguous: false };

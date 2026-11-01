@@ -1,7 +1,7 @@
 import { contractRef, normalizeContractRef } from "@/util/contract-ref";
 import { isTerminatedContract, type ContractPayment, type PaymentSlot, type Todo } from "@/types";
 import { normalizeInstitution } from "@/util/institution-match";
-import { isHaltedSlot, isLongWaitSlot, isWaitingSlot, slotHasData, slotsOf } from "./contract-slots";
+import { isHaltedSlot, isLongWaitSlot, isWaitingSlot, slotHasData, slotsOf, type SlotNo } from "./contract-slots";
 import { todoSlotOf } from "./todo-slot";
 // long-term.ts 도 이 파일의 isSlotClosed 를 쓴다(서로 참조) — 둘 다 함수 안에서만 불러 순환 문제 없음.
 import { isLongTermContract } from "./long-term";
@@ -21,7 +21,7 @@ export interface WorkStatusItem {
   key: string;
   status: WorkStatusKey;
   row: number | null;
-  slot: 1 | 2 | 3;
+  slot: SlotNo;
   company: string;
   product: string;
   institution: string;
@@ -113,7 +113,7 @@ export function buildWorkStatusItems(
     const populated = slotsOf(cp).filter(([, slot]) => slotHasData(slot));
     const live = populated.filter(([, slot]) => !isHaltedSlot(slot));
     if (populated.length && !live.length) continue;
-    const effective = live.length ? live : ([slotsOf(cp)[0]!] as Array<[1 | 2 | 3, PaymentSlot]>);
+    const effective = live.length ? live : ([slotsOf(cp)[0]!] as Array<[SlotNo, PaymentSlot]>);
     const longTermCompany = isLongTermContract(cp);
     for (const [slotNo, slot] of effective) {
       // 기관 이름이 어느 진행건과도 맞지 않는 옛 기록(unmatched)은 화면에 보이게만 하고 상태는 바꾸지 않는다.

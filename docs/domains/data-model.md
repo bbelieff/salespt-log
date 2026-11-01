@@ -617,7 +617,7 @@ DB 정본 실패 후 시트 강등에서는 stale 미러로 최근 기록을 대
 | `HALTED_PROGRESS` | const | `"중도중지"` — 비교용 상수(`isHaltedSlot`) |
 | `WAITING_PROGRESS` | const | `"조건 대기"`(2026-10-23) — 조건이 풀리길 기다리는 진행건. 슬롯 `대기사유`(한 줄)·`대기기간`(`단기`=2개월 내, 진행 중·오늘 챙길 일 맨 뒤 / `장기`=3개월 이상, 중도중지처럼 오늘 챙길 일 제외, 없으면 단기). 판정: `isWaitingSlot`·`waitTermOf`·`isShortWaitSlot`·`isLongWaitSlot`(contract-slots) |
 | `PaymentSlot` | z.object | 분할 수납 1슬롯. 기존 필드에 `진행상품`을 추가한다. 기존 시트의 고정 열은 그대로 두고 Postgres `sheet_rows.payload` JSONB에 필드명으로 저장한다. 2026-10-23: 선택 필드 `대기사유?: string`·`대기기간?: "단기" \| "장기"`(조건 대기 전용, 옛 기록엔 없음 — 시트 열 없음). |
-| `ContractPayment` | z.object | 1계약 row. 기존 필드에 `계약비고`를 추가한다. `진행상품`과 함께 JSONB 확장 필드로 저장해 기존 시트 열과 과거 행을 변경하지 않는다. `플러그이관`은 과거 호환 필드로만 읽고 새 UI·완료 집계에서는 제외한다. 2026-10-23: 선택 필드 `관리상태?: "진행" \| "장기관리"`(업체 상태 직접 지정, 없으면 자동)·`관리상태진행건?: number[]`(직접 장기관리로 보낼 때 진행 중이던 진행건 번호 — 그 밖의 진행건이 진행 중이 되면 저절로 진행). 둘 다 JSONB 확장(`USER_AREA_KEYS`), 시트 열 없음. 판정 정본 = `lib/analytics/long-term.ts`(`companyStage`·`isLongTermContract`·`slotKeepsCompanyActive`). |
+| `ContractPayment` | z.object | 1계약 row. 기존 필드에 `계약비고`를 추가한다. `진행상품`과 함께 JSONB 확장 필드로 저장해 기존 시트 열과 과거 행을 변경하지 않는다. `플러그이관`은 과거 호환 필드로만 읽고 새 UI·완료 집계에서는 제외한다. 2026-10-23: 선택 필드 `관리상태?: "진행" \| "장기관리"`(업체 상태 직접 지정, 없으면 자동)·`관리상태진행건?: number[]`(직접 장기관리로 보낼 때 진행 중이던 진행건 번호 — 그 밖의 진행건이 진행 중이 되면 저절로 진행). 둘 다 JSONB 확장(`USER_AREA_KEYS`), 시트 열 없음. 판정 정본 = `lib/analytics/long-term.ts`(`companyStage`·`isLongTermContract`·`slotKeepsCompanyActive`). 2026-10-31: 선택 필드 `추가진행?: PaymentSlot[]` — 진행 4번부터(번호 = 4 + 배열 순서, 개수 제한 없음). JSONB 확장(`USER_AREA_KEYS`), 시트 열 없음(시트 백업은 1~3만). 번호로 읽고 쓰기·합계·매출은 `lib/analytics/contract-slots.ts`(`slotsOf`·`slotOf`·`withSlot`·`withoutSlot`·`slotTotals`)와 `periodRevenue` 정본. 시트를 정본으로 읽는 기수는 저장을 막는다(`patchContractPayment`). Todo `slot` 은 1 이상의 정수(4번부터 추가진행). |
 | `isTerminatedContract` | function | 해지 판정 단일 결정점 — `해지일` 존재 = 해지. 클라·서버 공용 (contract-termination) |
 | `TERMINATED_IN_CONTRACT_COUNT` | const | 해지 계약의 건수 포함 여부 (기본 `false` = 제외 + "해지 N건" 별도 표시. belie 미확정 — 정책 변경 시 이 상수만) |
 
@@ -626,7 +626,7 @@ DB 정본 실패 후 시트 강등에서는 stale 미러로 최근 기록을 대
 |---|---|---|
 | `TodoType` | z.enum | 실무투두 종류 4: `기타` / `미팅` / `전화` / `메시지` (캘린더 type 아이콘) |
 | `TodoRecordKind` | z.enum | 기록 의미: `todo`(할 일) / `history`(한 일). 기존 행 기본값은 `todo`. |
-| `Todo` | z.object | (계약×기관) 실무 기록. `기록종류=todo|history`를 추가한다. 시트 A~N은 기존 본문, O는 gcal 이벤트 ID로 보존하고 P에 기록종류를 저장한다. 기존 P 빈값은 `todo`로 읽는다. `slot`(1·2·3|null, Q)은 진행건 번호 — 새 기록은 번호로, null 인 옛 기록은 기관 이름으로 진행건을 추정한다(2026-10-23). `result`(string, R)는 완료한 할 일의 결과 한 줄 — 없거나 null 인 옛 데이터는 빈값으로 읽는다(2026-10-23). `prevId`(string, S)는 「+ 다음」으로 이어 만든 할 일의 원래 기록 id — 빈값 = 연결 없음, 화면 표시 없음(2026-10-23). 캘린더는 04 미팅 + 05 기록을 합쳐 표시한다. |
+| `Todo` | z.object | (계약×기관) 실무 기록. `기록종류=todo|history`를 추가한다. 시트 A~N은 기존 본문, O는 gcal 이벤트 ID로 보존하고 P에 기록종류를 저장한다. 기존 P 빈값은 `todo`로 읽는다. `slot`(1 이상 정수|null, Q — 2026-10-31 전에는 1·2·3)은 진행건 번호 — 새 기록은 번호로, null 인 옛 기록은 기관 이름으로 진행건을 추정한다(2026-10-23). `result`(string, R)는 완료한 할 일의 결과 한 줄 — 없거나 null 인 옛 데이터는 빈값으로 읽는다(2026-10-23). `prevId`(string, S)는 「+ 다음」으로 이어 만든 할 일의 원래 기록 id — 빈값 = 연결 없음, 화면 표시 없음(2026-10-23). 캘린더는 04 미팅 + 05 기록을 합쳐 표시한다. |
 
 ### 새소식 (레지스트리 updates·notices 탭 · announcement-popup §1)
 | 식별자 | 종류 | 의미 |
@@ -798,6 +798,7 @@ DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서
 - DbSheetLeadInput의 optional `asReceived`(boolean), `asNote`(최대20,000자): db_sheet_leads JSONB에 저장. 구버전 클라이언트에서 생략하면 기존값 유지.
 - DbSheetLead의 서버 소유 `firstManual`: 명시 최초상담일 편집/비우기 뒤 자동 날짜 덮어쓰기 방지. 클라이언트 save input에서는 받지 않음.
   - 2026-10-23 개정: 날짜를 **넣은** 직접 입력만 잠근다. 빈 값(비우기·칸을 눌렀다 떼기)은 `firstManual=false` 로 저장하고, 옛 `firstManual=true·first=""` 도 자동으로 본다(`nextDbSheetFirstContact`).
+  - 2026-11-01 `firstCleared`(서버 소유): 날짜가 있던 최초상담일을 직접 비우면 true — 읽기 보정(`backfillDbSheetDates`)이 컨택 기록으로 다시 채우지 않는다. 날짜를 다시 넣으면 지운다. 새 상담 컨택 기록은 여전히 그 날짜로 채운다.
 - `first-date` 명령: id/revision/first(날짜 또는 빈값), 실제 상담 이력/집계는 변경하지 않음.
 - `inflow-preview`, `inflow`: id/revision/inflow(boolean). 기존 tenant/revision·트랜잭션 잠금 아래 해당 날짜·채널의 실제 DB 기여 수와 `_dbSheetInflow`를 exact 대조하고, 전후 전체/DB 수의 안전 정수·비음수 및 직접생산 합계 일치를 확인한 뒤 해당 한 건만 증감한다. 수동분(전체−DB 기여)·기존 상담/미팅 기여를 보존하며, 양수인데 생산값이 없거나 기여/합계가 모순되면 preview/저장 모두 거부한다(없는 0 baseline은 허용). 이력 부재만으로 정상 legacy를 잠그지 않으며, 연결 복구/고객 백필/집계 조정은 수행하지 않는다. 기존 `recording`은 사후 활동반영 정책을 유지하고 삭제 안전 가드는 별도 보존한다.
 - 별도 테이블·migration·백필 없음. 기존 tenant-scoped 트랜잭션/리비전/이력 저장을 사용.

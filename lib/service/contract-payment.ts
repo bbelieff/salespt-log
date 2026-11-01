@@ -276,6 +276,8 @@ export async function patchContractPayment(
   cp: ContractPayment,
 ): Promise<void> {
   const { spreadsheetId, syncDb } = await resolveSheetWithSyncDb(email);
+  // 진행 4번부터는 DB 에만 저장된다 — 시트를 정본으로 읽는 옛 기수는 저장해도 다시 읽히지 않아 막는다(2026-10-31).
+  if (!syncDb && (cp.추가진행?.length ?? 0) > 0) throw new Error("이 기수는 진행건을 3개까지 쓸 수 있어요");
   await updateUserFields(spreadsheetId, cp, { syncDb });
 }
 

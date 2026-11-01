@@ -87,6 +87,9 @@ export const ContractPayment = z.object({
   수납1: PaymentSlot.default(EMPTY_SLOT),
   수납2: PaymentSlot.default(EMPTY_SLOT),
   수납3: PaymentSlot.default(EMPTY_SLOT),
+  /** 진행 4번부터(2026-10-31 belie 「실무진행 무제한」). DB JSONB 확장 필드 — 시트 열 없음(시트 백업은 1~3만).
+   *  번호 = 4 + 배열 순서. 진행건 번호로 읽고 쓰는 곳은 `@/lib/analytics/contract-slots` 의 slotsOf·slotOf·withSlot. */
+  추가진행: z.array(PaymentSlot).optional(),
   /** 로드맵 메모 (카드 차원, 슬롯들 위) — 시트 AE. 2026-05-17 재배치. */
   로드맵메모: z.string().default(""),
   /** 계약 특약·지급 조건 메모. DB JSONB additive field. */
@@ -107,7 +110,7 @@ export const ContractPayment = z.object({
    *  상세 배너의 「진행 | 장기관리」 토글만 쓴다. DB JSONB 확장 필드 — 시트 열 없음. */
   관리상태: z.enum(["진행", "장기관리"]).optional(),
   /** 직접 「장기관리」로 보낼 때 진행 중이던 진행건 번호. 그 밖의 진행건이 새로 진행 중이 되면 저절로 「진행」으로 돌아온다. */
-  관리상태진행건: z.array(z.number().int().min(1).max(3)).optional(),
+  관리상태진행건: z.array(z.number().int().min(1)).optional(),
 });
 export type ContractPayment = z.infer<typeof ContractPayment>;
 

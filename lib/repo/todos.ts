@@ -92,7 +92,7 @@ const COL = {
   생성시각: 12,
   분류: 13, // N — 일반이벤트 카테고리(기존/기타), consultation-log §1-3
   기록종류: 15, // P — O(gcal_event_ids)를 보존, 기존 빈칸은 todo
-  slot: 16, // Q — 진행건 번호(1~3). 빈칸 = 옛 기록(기관 이름으로만 묶임)
+  slot: 16, // Q — 진행건 번호(1부터, 4번부터 추가진행). 빈칸 = 옛 기록(기관 이름으로만 묶임)
   result: 17, // R — 완료한 할 일의 결과 한 줄. 빈칸 = 결과 없음
   prevId: 18, // S — 「+ 다음」으로 이어 만든 할 일의 원래 기록 id. 빈칸 = 연결 없음
 } as const;
@@ -140,10 +140,10 @@ function todoToRow(t: Todo): (string | number | boolean)[] {
   return row;
 }
 
-/** Q 칸 → 진행건 번호. 1·2·3 이 아니면 null(옛 기록). */
-function slotFromCell(v: unknown): 1 | 2 | 3 | null {
+/** Q 칸 → 진행건 번호(1부터, 4번부터는 추가진행). 양의 정수가 아니면 null(옛 기록). */
+function slotFromCell(v: unknown): number | null {
   const n = Number(String(v ?? "").trim());
-  return n === 1 || n === 2 || n === 3 ? n : null;
+  return Number.isSafeInteger(n) && n >= 1 ? n : null;
 }
 
 /** 시트 1행 배열 → Todo (parse 실패 시 null). R2-6 DB read 가 열문자 복원 후 재사용. */
