@@ -94,7 +94,7 @@ async function save(c:PoolClient,ctx:DbSheetContext,raw:unknown,revision:number|
   current=await linkedProjection(c,ctx,old);
   if(linkedKeys.some(key=>canonical(input.contact[key])!==canonical(current!.contact[key])))throw new DbSheetLinkedMeetingReadOnly();
  }
- const lead:DbSheetLead={...input,asReceived:input.asReceived??old?.asReceived??false,asNote:input.asNote??old?.asNote??"",firstManual:old?.firstManual??false,recording:old?.recording??input.recording??{inflow:true,activities:true},_recorded:old?structuredClone(old._recorded):{inflow:false,contacts:[],meeting:false},next:old&&!scheduleNext?old.next:input.next,phone:formatMobilePhone(input.phone),contact:{...input.contact,registered:old?.contact.registered??false},revision:(old?.revision??0)+1,result:old?.result??"미컨택",first:old?.first??"",hasQualifiedContact:old?.hasQualifiedContact??!!old?.first,stage:current?.stage??"미컨택",meetingId:old?.meetingId??null,...(old?.manualStage?{manualStage:old.manualStage}:{}),
+ const lead:DbSheetLead={...input,asReceived:input.asReceived??old?.asReceived??false,asNote:input.asNote??old?.asNote??"",firstManual:old?.firstManual??false,...(old?.firstCleared?{firstCleared:true}:{}),recording:old?.recording??input.recording??{inflow:true,activities:true},_recorded:old?structuredClone(old._recorded):{inflow:false,contacts:[],meeting:false},next:old&&!scheduleNext?old.next:input.next,phone:formatMobilePhone(input.phone),contact:{...input.contact,registered:old?.contact.registered??false},revision:(old?.revision??0)+1,result:old?.result??"미컨택",first:old?.first??"",hasQualifiedContact:old?.hasQualifiedContact??!!old?.first,stage:current?.stage??"미컨택",meetingId:old?.meetingId??null,...(old?.manualStage?{manualStage:old.manualStage}:{}),
   // 입력 칸에 없는 기록(부재 시각·「연결」 표시)은 그대로 둔다 — 고쳐 저장하면 사라져 연결을 못 풀던 문제(2026-10-26).
   ...(old?.absences?{absences:old.absences}:{}),...(old?.linkedExisting?{linkedExisting:true}:{}),
   followUp:{generation:(old?.followUp?.generation??0)+(old&&scheduleNext?1:0),completedGeneration:old?.followUp?.completedGeneration??null,lastContactDate:old?.followUp?.lastContactDate??""},
@@ -176,6 +176,7 @@ export async function setDbSheetFirstDate(ctx:DbSheetContext,leadId:string,first
   const stored=await expected(c,ctx,leadId,expectedRevision);
   const old=stored.meetingId?await linkedProjection(c,ctx,stored):stored;
   const lead:DbSheetLead={...old,first,firstManual:first!=="",hasQualifiedContact:old.hasQualifiedContact??!!old.first,revision:old.revision+1};
+  if(first===""&&old.first)lead.firstCleared=true;else if(first)delete lead.firstCleared;
   await persist(c,ctx,lead);return {lead,changedSales:[]};
  });
 }

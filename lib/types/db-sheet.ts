@@ -54,13 +54,13 @@ export function autoDbSheetNextContact(result: string, next: string, tomorrow: s
  * · 부재인데 다음 연락일이 비었으면 → 마지막 부재(컨택일·부재 기록 중 늦은 날) 다음날
  * 최초상담일이 비어 있으면 「직접 입력」 표시(firstManual)가 있어도 채운다 — 빈 직접 입력은 표 칸을 눌렀다 떼기만 한 옛 저장이라
  * 잠금이 아니다(nextDbSheetFirstContact 와 같은 기준, 2026-10-25 belie 「최초상담일이 안 적혀」). 부재의 빈 다음 연락일은 전부 채운다.
- * 컨택 기록이 없으면 그대로 둔다.
+ * 컨택 기록이 없으면 그대로 둔다. 사용자가 날짜를 직접 지운 업체(firstCleared, 2026-11-01 belie 「지울 수 없다」)는 다시 채우지 않는다.
  */
-export function backfillDbSheetDates<T extends { result: string; first: string; next: string; firstManual?: boolean; absences?: { date: string }[] }>(
+export function backfillDbSheetDates<T extends { result: string; first: string; next: string; firstManual?: boolean; firstCleared?: boolean; absences?: { date: string }[] }>(
   lead: T, lastContactDate: string, dayAfter: (date: string) => string, firstConsultDate = "",
 ): T {
   let out = lead;
-  if (!lead.first && firstConsultDate) out = { ...out, first: firstConsultDate };
+  if (!lead.first && !lead.firstCleared && firstConsultDate) out = { ...out, first: firstConsultDate };
   if (DB_SHEET_AUTO_NEXT_RESULTS.includes(lead.result) && !lead.next) {
     const last = [lastContactDate, ...(lead.absences ?? []).map(a => a.date)].filter(Boolean).sort().at(-1);
     if (last) out = { ...out, next: dayAfter(last) };
@@ -118,7 +118,7 @@ export const DbSheetFunnelStep = z.enum(["유입", "연락", "상담", "미팅",
 export type DbSheetFunnelStep = z.infer<typeof DbSheetFunnelStep>;
 /** Server-owned action generations. Draft contact dates never complete a scheduled action. */
 export type DbSheetFollowUp = { generation: number; completedGeneration: number | null; lastContactDate: string };
-export type DbSheetLead = DbSheetLeadInput & {inflowStatus?:DbSheetInflowStatus;_recorded?:{inflow:boolean;contacts:string[];meeting:boolean;meetingIds?:string[];legacyUnknown?:boolean};revision:number;result:z.infer<typeof DbSheetResult>;manualStage?:DbSheetManualStage;absences?:DbSheetAbsence[];linkedExisting?:boolean;first:string;firstManual?:boolean;hasQualifiedContact?:boolean;stage:string;meetingId:string|null;effectiveMeetingId?:string;meetingLineageIds?:string[];funnel?:DbSheetFunnelStep;followUp?:DbSheetFollowUp;/** 읽기 투영 전용 — 연결된 살아 있는 계약의 실무/수납 행(「STEP 4 실무/수납 →」 바로가기, 2026-10-25). 저장하지 않는다. */contractRow?:number};
+export type DbSheetLead = DbSheetLeadInput & {inflowStatus?:DbSheetInflowStatus;_recorded?:{inflow:boolean;contacts:string[];meeting:boolean;meetingIds?:string[];legacyUnknown?:boolean};revision:number;result:z.infer<typeof DbSheetResult>;manualStage?:DbSheetManualStage;absences?:DbSheetAbsence[];linkedExisting?:boolean;first:string;firstManual?:boolean;/** 최초상담일을 직접 지움 — 읽기 보정이 다시 채우지 않는다. */firstCleared?:boolean;hasQualifiedContact?:boolean;stage:string;meetingId:string|null;effectiveMeetingId?:string;meetingLineageIds?:string[];funnel?:DbSheetFunnelStep;followUp?:DbSheetFollowUp;/** 읽기 투영 전용 — 연결된 살아 있는 계약의 실무/수납 행(「STEP 4 실무/수납 →」 바로가기, 2026-10-25). 저장하지 않는다. */contractRow?:number};
 export type DbSheetContext = { spreadsheetId:string;cohort:string;email:string };
 export type DbSheetChange = {lead:DbSheetLead;changedSales:{date:string;channel:z.infer<typeof Channel>}[];meetingId?:string;impact?:DbSheetImpact};
 /** 휴지통 한 줄(2026-10-26) — 삭제한 DB 보관본 요약. 되돌리면 같은 id 로 돌아온다. */

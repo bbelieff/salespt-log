@@ -13,7 +13,9 @@ body.db-sheet-route .db-absence-add .sheet-input{width:auto;min-width:0}
 body.db-sheet-route .db-absence-hours{display:grid;grid-template-columns:repeat(14,1fr);gap:2px}
 body.db-sheet-route .db-absence-hours i{height:10px;border-radius:3px;background:#e2e8f0}
 body.db-sheet-route .db-absence-hours i.is-tried{background:#fca5a5}
-body.db-sheet-route .db-absence-scale{display:flex;justify-content:space-between;font-size:10px;color:#94a3b8}
+/* 눈금은 막대와 같은 14칸 — 08시는 첫 칸 왼쪽, 12시는 다섯째 칸 가운데, 21시는 끝 칸 오른쪽(2026-11-01 belie). */
+body.db-sheet-route .db-absence-scale{display:grid;grid-template-columns:repeat(14,1fr);gap:2px;font-size:10px;color:#94a3b8;white-space:nowrap}
+body.db-sheet-route .db-absence-scale span:nth-child(2){grid-column:5;justify-self:center}body.db-sheet-route .db-absence-scale span:nth-child(3){grid-column:14;justify-self:end}
 body.db-sheet-route .db-absence-hint{margin:0;font-size:11px;color:#64748b}
 body.db-sheet-route .db-meeting-link{display:flex;flex-direction:column;gap:6px;margin-top:6px;padding:8px 10px;border:1px solid #bfdbfe;border-radius:8px;background:#eff6ff;font-size:12px;color:#1e3a8a}
 body.db-sheet-route .db-meeting-link p{margin:0}

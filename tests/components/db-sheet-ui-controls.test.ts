@@ -149,3 +149,13 @@ it("부재·재통화 highlight the 다음 연락일 field with an auto-schedule
   expect(host.querySelector('input[aria-label="DB정보 다음 연락일"]')!.closest("label")!.className).not.toContain("db-next-auto");
 });
 
+it("최초상담일 has a 지우기 button only while a date is set, and it clears the date (2026-11-01 belie)", () => {
+  const noop = vi.fn(), onEdit = vi.fn();
+  const render = (first: string) => act(() => root.render(React.createElement(DbDetail, { row: { ...row, result: "재통화", first }, draft: contactDraft(row), onChange: noop, onEdit, onResult: noop, onRegister: noop, onOpen: noop, onClose: noop, onDelete: noop, onAsInfo: noop, onInflowChange: async () => {} })));
+  render("2026-10-20");
+  click(host.querySelector('button[aria-label="최초상담일 지우기"]')!);
+  expect(onEdit).toHaveBeenCalledWith("first", "");
+  expect(host.querySelector('button[aria-label="다음 연락일 지우기"]')).toBeNull();
+  render("");
+  expect(host.querySelector('button[aria-label="최초상담일 지우기"]')).toBeNull();
+});
