@@ -67,6 +67,14 @@ export const adminEmails = (): string[] => {
 };
 
 /**
+ * 통화 정리 기능 스위치(call-summary). env CALL_SUMMARY_EMAILS="a@x.com,b@y.com" 에 든 사람에게만 📞·녹음 올리기를 보인다.
+ * 미설정 = 아무에게도 안 보임. 화면(PR-5)보다 먼저 들어가 운영에 나가도 꺼진 채로 조립한다.
+ */
+export const callSummaryEmails = (): string[] =>
+  (process.env.CALL_SUMMARY_EMAILS ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+export const isCallSummaryUser = (email: string): boolean => callSummaryEmails().includes(email.trim().toLowerCase());
+
+/**
  * 관리자(소유자) Google Drive refresh token (ADR-0015).
  * SA(masterbot)는 Drive 용량 0 → My-Drive 공유 폴더에 파일을 *소유*하며 만들 수 없음.
  * 시트 복제/폴더 생성만 이 토큰(belie OAuth)으로 수행해 belie 소유로 생성한다.

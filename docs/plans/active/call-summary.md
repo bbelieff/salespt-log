@@ -29,18 +29,26 @@ worktree: ../_wt/salespt-log/call-summary-contract
 
 ## PR 나누기 (직렬 병합, 각 PR check.sh + CI + 배포 health)
 1. **PR-1 계약** `chore/call-summary-contract` — `lib/types/call.ts`(CallStatus·CallExtraction·CallMeetingDraft·CallRecord), `0014_call_records.sql`, data-model 등재, 계약 시험. 운영 DB 적용은 PR-2 병합 전 DB Migrate 워크플로로.
-2. **PR-2 저장소** — `lib/repo/db/call-records.ts`(생성·상태·대기열 `for update skip locked`·오래된 원본), `lib/repo/ai/call-gemini.ts`(키는 VPS `.env`, 가짜 구현 포함). 녹음 임시 폴더는 레포 밖.
+2. **PR-2 저장소·스위치** `chore/call-summary-store` — `lib/repo/db/call-records.ts`(생성·녹음 붙이기·대기열 `for update skip locked`·멈춘 처리 회수·재시도 3회·오래된 원본), `lib/repo/ai/call-gemini.ts`+`call-prompt.ts`(0단계 지시문 그대로, 키는 VPS `.env`, 키 없으면 멈춤·가짜 답은 로컬 `CALL_AI_FAKE=1` 만), 기능 스위치 `CALL_SUMMARY_EMAILS`(`lib/config`). 녹음 임시 폴더는 레포 밖. 녹음은 요청에 그대로 실어 보내므로 **파일 상한 14MB**(0단계 익시오 42kbps 기준 약 45분).
 3. **PR-3 변환** — `lib/service/call-extract-map.ts`: 0단계 `convert.py` 규칙을 TS 로(기존 `lib/document-ocr/*`·`company-*` 함수 재사용), 0단계 정답지 15건을 「AI 원답 → 저장 형식」 고정 시험으로.
-4. **PR-4 API·작업자** — 📞 기록(`dialed` 생성), 업로드(30MB·30분·하루 상한), 상태 조회, `POST /api/calls/[id]/confirm`(상담메모·업체정보·미팅·컨택결과를 한 번에, 다시 보내도 한 번), `instrumentation.ts` 처리 루프.
-5. **PR-5 화면** — DB관리시트 목록·DB정보에 📞 버튼(전화번호 있을 때), 돌아오면 「방금 통화한 녹음 올리기」, 「통화 정리 확인」 화면(목업 승인본 기준, impeccable Operate).
-6. **PR-6 켜기** — 첫 업로드 고지(D6), 기능 플래그(연습 기수 + belie).
+4. **PR-4 API·작업자** — 📞 기록(`dialed` 생성), 업로드(14MB·하루 상한), 상태 조회, `POST /api/calls/[id]/confirm`(상담메모·업체정보·미팅·컨택결과를 한 번에, 다시 보내도 한 번), `instrumentation.ts` 처리 루프.
+5. **PR-5 화면** — 스위치(`isCallSummaryUser`)가 켜진 사람에게만. DB관리시트 목록·DB정보에 📞 버튼(전화번호 있을 때), 돌아오면 「방금 통화한 녹음 올리기」, 「통화 정리 확인」 화면(목업 승인본 기준, impeccable Operate).
+6. **PR-6 켜기** — 첫 업로드 고지(D6), `CALL_SUMMARY_EMAILS` 에 belie·연습 기수 등록. 스위치는 PR-2 로 앞당김(belie 2026-11-01: 하나씩 운영에 붙여 조립 — 화면이 스위치보다 먼저 나가면 바로 보이므로).
 
 ## Acceptance Criteria — PR-1
 - [x] `CallExtraction` 이 자택주소지·주민등록번호를 실을 수 없다(시험)
 - [x] 미팅 초안 시간은 15분 단위 또는 빈값, 예약비고 500자(시험)
 - [x] `call_records` 는 추가 전용, 리드 삭제 시 함께 삭제, 브라우저 역할 권한 회수·RLS
-- [ ] `bash scripts/check.sh` 통과 · CI 초록 · 병합 · 배포 health
-- 운영 DB 적용(마이그레이션 실행)은 이 PR 범위 밖 — PR-2 병합 전에 실행
+- [x] `bash scripts/check.sh` 통과 · CI 초록 · 병합(#1292, 294ed588) · 배포 run 41303143451 success · health 200
+- [x] 운영 DB 적용 — DB Migrate dry-run(대기 = 0014 하나) 후 belie 실행 run 41304443399 「적용 완료: 0014_call_records.sql」
+
+## Acceptance Criteria — PR-2
+- [x] 대기열은 오래된 것부터 한 번만, 멈춘 처리는 10분 뒤 다시, 3번 넘으면 failed(시험)
+- [x] 정리 끝·실패 때 녹음 경로를 돌려주고 비운다, 오래 남은 원본을 찾는다(시험)
+- [x] Gemini: 키는 헤더로만, 키 없으면 보내지 않음, 14MB 초과 거절, 429·5xx 재시도 / 400 아님, 오류 문구에 키·본문 없음(가짜 fetch 시험)
+- [x] 스위치 미설정 = 아무도 안 켜짐(시험)
+- [ ] check.sh · CI · 병합 · 배포 health. 사용자 화면 변화 없음
 
 ## Log
 - 2026-10-31 PR-1 착수. 0단계 완료(실제 목소리 3건 통과).
+- 2026-11-01 PR-1 병합·배포·운영 DB 적용 완료. PR-2 착수(스위치 앞당김, 파일 상한 14MB).
