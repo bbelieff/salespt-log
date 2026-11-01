@@ -224,3 +224,18 @@ export function redactOcrText(raw: string): string {
     })
     .join("\n");
 }
+
+/**
+ * 출처: MSC 리드디벨롭 `garbledText`(L-115).
+ * 글자층이 깨진 PDF — 글꼴에 글자 대응표가 없어 제어 문자·사용자 영역 글자·"/123" 같은 글꼴 번호만 나온다.
+ * 한글이 거의 없고 이상한 글자 비율이 높으면 스캔본처럼 글자 인식(OCR)으로 넘긴다.
+ */
+export function isGarbledText(text: string): boolean {
+  const all = text.replace(/\s+/g, "");
+  if (all.length < 20) return false;
+  const han = (all.match(/[가-힣]/g) ?? []).length;
+  // 제어 문자·글꼴 사용자 영역(E000~F8FF)·대체 문자(FFFD).
+  const oddChar = (c: string) => { const n = c.charCodeAt(0); return n < 0x20 || (n >= 0xe000 && n <= 0xf8ff) || n === 0xfffd; };
+  const odd = [...all].filter(oddChar).length + (all.match(/\/\d{1,3}/g) ?? []).length * 2;
+  return han < 10 && odd / all.length > 0.2;
+}

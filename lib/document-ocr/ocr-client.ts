@@ -21,7 +21,7 @@ import {
   withTimeout,
 } from "./limits";
 import type { OcrProgress, OcrStage } from "./types";
-import { readPdfTextLayer, renderPdfFirstPageToBlob } from "./ocr-pdf";
+import { readPdfTextLayer, renderPdfPages } from "./ocr-pdf";
 import { recognizeWithPaddle, type PaddleManifest } from "./ocr-paddle";
 
 export type OcrEngineText = {
@@ -31,6 +31,12 @@ export type OcrEngineText = {
   confidence?: number;
   /** PaddleOCR 로 같은 이미지를 읽은 글(읽었을 때만). */
   altText?: string;
+  /** PDF 쪽별 글(글자층 또는 쪽마다 인식) — 합본 나누기(bundle.ts)에 쓴다. 사진이면 없다. */
+  pages?: string[];
+  /** 쪽별 Paddle 글(pages 와 같은 길이, 못 읽은 쪽은 ""). */
+  altPages?: string[];
+  /** 스캔 PDF 에서 시간·쪽 상한 때문에 다 못 읽었을 때: 읽은 쪽 / 전체 쪽. */
+  partial?: { read: number; total: number };
 };
 
 export type RunOcrOptions = {
@@ -346,32 +352,47 @@ export async function runDocumentOcr(
           opts.onProgress,
           assets.pdfWorkerSrc,
         );
-        if (layerText !== null) return { text: layerText, sourceKind: "pdf-text" };
+        if (layerText !== null) return { text: layerText.text, sourceKind: "pdf-text", pages: layerText.pages };
       } finally {
         pdfGuard.dispose();
       }
-      // 텍스트층이 부족하면 첫 페이지만 렌더해 OCR 폴백한다.
-      const { blob } = await renderPdfFirstPageToBlob(
+      // 텍스트층이 부족하거나 깨졌으면 쪽마다 그려 OCR 한다(최대 scanMaxPages 쪽, MSC 이식).
+      // 전체 시간 상한 안에서 다음 쪽을 읽을 여유가 없으면 거기까지만 — 읽은 쪽은 버리지 않는다.
+      const pages: string[] = [];
+      const altPages: string[] = [];
+      const confidences: number[] = [];
+      const deadline = Date.now() + OCR_LIMITS.ocrTimeoutMs - OCR_LIMITS.scanPageReserveMs;
+      const { rendered, total } = await renderPdfPages(
         file as Blob,
         guard.signal,
         opts.onProgress,
         assets.pdfWorkerSrc,
+        OCR_LIMITS.scanMaxPages,
+        async (blob, n, last) => {
+          const capped = await toCappedImageBlob(blob, guard.signal);
+          try {
+            // 스캔 서류 표의 숫자는 영어 모델을 함께 써야 한글 잡음으로 바뀌지 않는다(2026-09-29 실측).
+            const out = await recognizeBlob(capped.blob, opts.langs ?? "kor+eng", manifest, guard.signal, opts.onProgress);
+            pages.push(out.text);
+            if (typeof out.confidence === "number") confidences.push(out.confidence);
+            altPages.push((await tryPaddle(capped.blob, manifest, opts.signal, opts.onProgress)) ?? "");
+          } finally {
+            capped.objectUrls.forEach((u) => URL.revokeObjectURL(u));
+          }
+          return n < last && Date.now() < deadline;
+        },
       );
-      const capped = await toCappedImageBlob(blob, guard.signal);
-      try {
-        // 스캔 서류 표의 숫자는 영어 모델을 함께 써야 한글 잡음으로 바뀌지 않는다(2026-09-29 실측).
-        const out = await recognizeBlob(
-          capped.blob,
-          opts.langs ?? "kor+eng",
-          manifest,
-          guard.signal,
-          opts.onProgress,
-        );
-        const altText = await tryPaddle(capped.blob, manifest, opts.signal, opts.onProgress);
-        return { text: out.text, sourceKind: "ocr", confidence: out.confidence, ...(altText ? { altText } : {}) };
-      } finally {
-        capped.objectUrls.forEach((u) => URL.revokeObjectURL(u));
-      }
+      const text = pages.join("\n\n");
+      const altText = altPages.some((t) => t.trim()) ? altPages.join("\n\n") : undefined;
+      const confidence = confidences.length ? confidences.reduce((x, y) => x + y, 0) / confidences.length : undefined;
+      return {
+        text,
+        sourceKind: "ocr",
+        confidence,
+        pages,
+        ...(altText ? { altText, altPages } : {}),
+        ...(rendered < total ? { partial: { read: rendered, total } } : {}),
+      };
     }
     const capped = await toCappedImageBlob(file as Blob, guard.signal);
     try {
