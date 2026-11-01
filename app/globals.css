@@ -871,7 +871,14 @@ body {
     box-shadow: 0 1px 2px rgb(15 23 42 / 0.05), 0 6px 16px rgb(15 23 42 / 0.07);
   }
   .desktop-shell [data-split-focus="info"] > [data-split-col="work"]:not(:hover, :focus-within),
-  .desktop-shell [data-split-focus="work"] > [data-split-col="info"]:not(:hover, :focus-within) { background: #f1f5f9; }
+  .desktop-shell [data-split-focus="work"] > [data-split-col="info"]:not(:hover, :focus-within) { background: #e9eef4; }
+  /* 좁힌 칸 안 흰 카드도 함께 가라앉힌다 — 카드가 칸을 꽉 채워 바탕만 바꾸면 안 보였다(2026-11-01 belie 「안 보인다」).
+     입력 칸·버튼은 흰색 그대로 둬서 「쓸 수 있는 곳」이 오히려 또렷하다. */
+  .desktop-shell [data-split-focus="info"] > [data-split-col="work"]:not(:hover, :focus-within) :is(.bg-white, [class*="bg-white/"]):not(input, textarea, select, button),
+  .desktop-shell [data-split-focus="work"] > [data-split-col="info"]:not(:hover, :focus-within) :is(.bg-white, [class*="bg-white/"]):not(input, textarea, select, button) {
+    background-color: #f1f5f9;
+    transition: background-color 200ms ease-out;
+  }
   @media (prefers-reduced-motion: reduce) {
     .desktop-shell [data-split-focus], .desktop-shell [data-split-col] { transition: none; }
   }
