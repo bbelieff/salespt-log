@@ -51,7 +51,7 @@ export function AbsenceLog({ row, onAbsence, suggested = [] }: { row: Pick<Row, 
     </ol>}
     {list.length > 0 && <>
       <div className="db-absence-hours" aria-hidden="true">{DB_SHEET_CALL_HOURS.map(h => <i key={h} className={tried.has(h) ? "is-tried" : ""} title={`${h}시`} />)}</div>
-      <div className="db-absence-scale" aria-hidden="true"><span>08시</span><span>부재 걸었던 시간</span><span>21시</span></div>
+      <div className="db-absence-scale" aria-hidden="true"><span>08시</span><span>12시</span><span>21시</span></div>
       <p className="db-absence-hint">{dbSheetAbsenceHint(list)}</p>
     </>}
     {error && <small role="alert" className="sheet-error">{error}</small>}

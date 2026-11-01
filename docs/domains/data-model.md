@@ -798,6 +798,7 @@ DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서
 - DbSheetLeadInput의 optional `asReceived`(boolean), `asNote`(최대20,000자): db_sheet_leads JSONB에 저장. 구버전 클라이언트에서 생략하면 기존값 유지.
 - DbSheetLead의 서버 소유 `firstManual`: 명시 최초상담일 편집/비우기 뒤 자동 날짜 덮어쓰기 방지. 클라이언트 save input에서는 받지 않음.
   - 2026-10-23 개정: 날짜를 **넣은** 직접 입력만 잠근다. 빈 값(비우기·칸을 눌렀다 떼기)은 `firstManual=false` 로 저장하고, 옛 `firstManual=true·first=""` 도 자동으로 본다(`nextDbSheetFirstContact`).
+  - 2026-11-01 `firstCleared`(서버 소유): 날짜가 있던 최초상담일을 직접 비우면 true — 읽기 보정(`backfillDbSheetDates`)이 컨택 기록으로 다시 채우지 않는다. 날짜를 다시 넣으면 지운다. 새 상담 컨택 기록은 여전히 그 날짜로 채운다.
 - `first-date` 명령: id/revision/first(날짜 또는 빈값), 실제 상담 이력/집계는 변경하지 않음.
 - `inflow-preview`, `inflow`: id/revision/inflow(boolean). 기존 tenant/revision·트랜잭션 잠금 아래 해당 날짜·채널의 실제 DB 기여 수와 `_dbSheetInflow`를 exact 대조하고, 전후 전체/DB 수의 안전 정수·비음수 및 직접생산 합계 일치를 확인한 뒤 해당 한 건만 증감한다. 수동분(전체−DB 기여)·기존 상담/미팅 기여를 보존하며, 양수인데 생산값이 없거나 기여/합계가 모순되면 preview/저장 모두 거부한다(없는 0 baseline은 허용). 이력 부재만으로 정상 legacy를 잠그지 않으며, 연결 복구/고객 백필/집계 조정은 수행하지 않는다. 기존 `recording`은 사후 활동반영 정책을 유지하고 삭제 안전 가드는 별도 보존한다.
 - 별도 테이블·migration·백필 없음. 기존 tenant-scoped 트랜잭션/리비전/이력 저장을 사용.
