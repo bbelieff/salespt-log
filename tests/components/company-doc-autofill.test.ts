@@ -357,3 +357,47 @@ describe("CompanyDocAutofillDialog — 리뷰 회귀", () => {
     expect(alert).not.toContain("Invalid");
   });
 });
+
+describe("MSC 이식 — 합본 나누기 · 다른 회사 경고 · 묶음 되돌리기", () => {
+  it("합본 PDF 는 서류마다 한 줄(쪽 범위 이름)로 나뉜다", async () => {
+    runDocumentOcr.mockImplementationOnce(async () => ({
+      text: `${PERSONAL_CERT}\n\n${LEASE_TEXT}`,
+      sourceKind: "pdf-text" as const,
+      pages: [PERSONAL_CERT, LEASE_TEXT],
+    }) as never);
+    mount(h(CompanyDocAutofillDialog, { current: CompanyInfo.parse({}), onApply: vi.fn(), onClose: vi.fn() }));
+    await pickFiles(new File([new Uint8Array([1])], "bundle.pdf", { type: "application/pdf" }));
+    expect(document.querySelector<HTMLSelectElement>('select[aria-label="bundle.pdf (1쪽) 문서 종류"]')!.value).toBe("사업자등록증");
+    expect(document.querySelector<HTMLSelectElement>('select[aria-label="bundle.pdf (2쪽) 문서 종류"]')!.value).toBe("임대차계약서");
+  });
+
+  it("업체정보와 사업자등록번호가 다른 서류는 경고하고 기본 체크를 푼다", async () => {
+    mount(h(CompanyDocAutofillDialog, { current: CompanyInfo.parse({ 사업자등록번호: "220-81-00016" }), onApply: vi.fn(), onClose: vi.fn() }));
+    await pickFiles(png());
+    expect(document.body.textContent).toContain("다른 회사 서류 같아요(사업자등록번호 123-45-67891)");
+    expect(box("이름").checked).toBe(false);
+  });
+
+  it("적용 뒤 알림의 「되돌리기」로 이번 묶음만 이전 값으로", async () => {
+    const { default: CompanyDocAutofillButton } = await import("@/components/company-doc/CompanyDocAutofillButton");
+    let latest = CompanyInfo.parse({});
+    function Host() {
+      const [ci, setCi] = React.useState(latest);
+      latest = ci;
+      return h(CompanyDocAutofillButton, { current: ci, onApply: (p: Record<string, string>) => setCi((d) => ({ ...d, ...p })) });
+    }
+    mount(h(Host));
+    await act(async () => buttonByText("문서로 자동입력").click());
+    await flush();
+    await pickFiles(png());
+    await act(async () => buttonByText("선택 항목 적용").click());
+    expect(latest.대표자이름).toBe("홍길동");
+    const notice = document.querySelector('[role="status"]')!;
+    expect(notice.textContent).toMatch(/문서로 \d+칸 채웠어요/);
+    expect(document.querySelector("style")!.textContent).toContain('[id$="-대표자이름"]');
+    await act(async () => buttonByText("되돌리기").click());
+    expect(latest.대표자이름).toBe("");
+    expect(latest.사업자등록번호).toBe("");
+    expect(document.querySelector('[role="status"]')).toBeNull();
+  });
+});

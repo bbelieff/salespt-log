@@ -7,6 +7,7 @@
  * - 읽은 값이 비면 → 행 자체가 없다(빈 값은 절대 덮지 않는다).
  * - 형식 검증 실패(사업자등록번호 체크섬 등) → 체크 해제 + 경고.
  * - 두 문서가 같은 칸에 다른 값을 내면 → 충돌 표시, 정확도 높은 쪽이 기본 선택.
+ * - 사업자등록번호가 다른 회사 서류(otherCompanyFiles)에서만 나온 값 → 체크 해제 + 경고(MSC 이식 2026-11-01).
  *
  * [재무] 금액 칸(백만원, company-finance-won-grid)은 비교표에서 "250.1백만원 (원문 250,123,456원)" 으로
  * 보여 준다(displayValue·sourceNote). 매출 칸을 채우는데 업체에 기준 연도가 없으면 반영값에
@@ -17,6 +18,7 @@ import { SALES_BASE_YEAR_KEY } from "@/util/company-sales";
 import { isMoneyKey, isSignedMoneyKey, moneyWithUnit } from "@/util/company-money";
 import type { CompanyInfo } from "@/types";
 import { groupThousands } from "./amount";
+import { digitsOnly, formatBizNo, isValidBizNo } from "./bizno";
 import type { CompanyInfoKey, ParsedField } from "./types";
 
 export type Accuracy = "높음" | "보통" | "낮음";
@@ -54,6 +56,32 @@ export type FileProposal = { fileName: string; fields: ParsedField[] };
 export const KEEP_NOTE = "지금 값이 있어 기본으로 안 덮어요";
 export const SAME_NOTE = "지금 값과 같아요";
 export const INVALID_NOTE = "번호가 맞지 않아 기본으로 안 넣어요";
+export const OTHER_COMPANY_NOTE = "다른 회사 서류에서 읽은 값이라 기본으로 안 넣어요";
+
+/**
+ * 다른 회사 서류 찾기 — 파일마다 읽은 사업자등록번호(검증식 통과한 것만: 오독으로 같은 회사를 남으로 보지 않게)를
+ * 기준 번호와 비교한다. 기준 = 업체정보의 번호(맞는 번호일 때), 없으면 서류들에서 가장 많이 나온 번호.
+ * 돌려주는 값: 파일 이름 → 그 서류의 번호(000-00-00000). 출처: MSC 리드디벨롭 `markOtherCompany`(L-160).
+ */
+export function otherCompanyFiles(currentBizNo: string, proposals: FileProposal[]): Map<string, string> {
+  const noOf = new Map<string, string>();
+  for (const p of proposals) {
+    const f = p.fields.find((x) => x.key === "사업자등록번호" && x.valid !== false);
+    const d = f ? digitsOnly(f.value) : "";
+    if (d.length === 10 && isValidBizNo(d)) noOf.set(p.fileName, d);
+  }
+  const cur = digitsOnly(currentBizNo);
+  let target = cur.length === 10 && isValidBizNo(cur) ? cur : "";
+  if (!target) {
+    const count = new Map<string, number>();
+    for (const n of noOf.values()) count.set(n, (count.get(n) ?? 0) + 1);
+    target = [...count].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "";
+  }
+  const out = new Map<string, string>();
+  if (!target) return out;
+  for (const [file, n] of noOf) if (n !== target) out.set(file, formatBizNo(n));
+  return out;
+}
 
 /** 반영 직전 값 정리 — 문서에서 읽은 주민등록번호는 앞 6자리만(뒷자리는 문서에서 읽지 않는다, ADR-0035 §범위). */
 export function sanitizeForKey(key: CompanyInfoKey, value: string): string {
@@ -79,6 +107,7 @@ export function buildDiffRows(
   current: Partial<CompanyInfo>,
   proposals: FileProposal[],
   order: readonly string[] = [],
+  otherFiles: ReadonlySet<string> = new Set(),
 ): DiffRow[] {
   const byKey = new Map<CompanyInfoKey, Candidate[]>();
   for (const p of proposals) {
@@ -119,7 +148,12 @@ export function buildDiffRows(
     // 주민등록번호: 문서는 앞 6자리만 준다 — 지금 값(13자리, ADR-0035)의 앞자리와 같으면 「같아요」로 두어
     // 기본 체크로 뒷자리를 지우지 않게 한다.
     const sameRrnFront = key === "주민등록번호" && cur.trim() !== "" && normalizeRrnFront(cur) === candidates[0]!.value;
-    const { checked, note } = sameRrnFront ? { checked: false, note: SAME_NOTE } : checkState(cur, candidates[0]!);
+    const fromOther = candidates[0]!.sources.every((s) => otherFiles.has(s));
+    const { checked, note } = sameRrnFront
+      ? { checked: false, note: SAME_NOTE }
+      : fromOther
+        ? { checked: false, note: OTHER_COMPANY_NOTE }
+        : checkState(cur, candidates[0]!);
     rows.push({ key, current: cur, candidates, conflict: candidates.length > 1, defaultChecked: checked, note });
   }
   return rows.sort((a, b) => rank(a.key) - rank(b.key));

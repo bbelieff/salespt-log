@@ -18,7 +18,8 @@ import type { CompanyInfo } from "@/types";
 import { OCR_ACCEPT_ATTR, OCR_UNAVAILABLE_MESSAGE, validateOcrFile } from "@/lib/document-ocr/limits";
 import { redactOcrText } from "@/lib/document-ocr/text-utils";
 import { classifyDocumentText, isSupportedDocType, parseDocument } from "@/lib/document-ocr/registry";
-import { buildDiffRows, defaultCheckFor, selectedPatch, withBaseYear } from "@/lib/document-ocr/diff";
+import { bundlePieces } from "@/lib/document-ocr/bundle";
+import { buildDiffRows, defaultCheckFor, otherCompanyFiles, selectedPatch, withBaseYear } from "@/lib/document-ocr/diff";
 import { mergeParseResults } from "@/lib/document-ocr/merge";
 import { DOC_TYPES, DOC_TYPE_LABEL, type CompanyInfoKey, type DocType } from "@/lib/document-ocr/types";
 import { MEMO_MAX_BYTES, decodeMemoBytes, isMemoFile } from "@/lib/document-ocr/memo-file";
@@ -143,11 +144,19 @@ export default function CompanyDocAutofillDialog({ current, onApply, onVault, on
         });
         if (ac.signal.aborted) return;
         // 원문은 가린 뒤에만 state 에 둔다(주민등록번호 뒷자리 등이 메모리·DevTools 에 남지 않게).
+        const message = out.partial ? `${out.partial.total}쪽 중 ${out.partial.read}쪽까지 읽었어요` : "다 읽었어요";
+        // 합본 PDF — 서류마다 한 줄(MSC 이식). 첫 조각은 이 줄을 쓰고 나머지는 새 줄로 바로 뒤에 넣는다.
+        const pieces = bundlePieces(file.name, out.pages?.map(redactOcrText), out.altPages?.map(redactOcrText));
+        if (pieces) {
+          const rows = pieces.map((p, i): Row => ({ ...p, id: i === 0 ? id : (seq.current += 1), status: "done", ratio: 1, message }));
+          setFiles((fs) => fs.flatMap((f) => (f.id === id ? rows : [f])));
+          return;
+        }
         const text = redactOcrText(out.text);
         const altText = out.altText ? redactOcrText(out.altText) : undefined;
         const kind = classifyDocumentText(text);
         const docType = kind === "unknown" && altText ? classifyDocumentText(altText) : kind;
-        patch({ status: "done", ratio: 1, message: "다 읽었어요", text, altText, docType });
+        patch({ status: "done", ratio: 1, message, text, altText, docType });
       } catch (e) {
         if (ac.signal.aborted) return;
         // 실행기가 사용자용으로 정리한 오류(code 있음)만 그대로 보여 준다.
@@ -192,23 +201,25 @@ export default function CompanyDocAutofillDialog({ current, onApply, onVault, on
         .map((f) => ({ f, result: parseBoth(f, baseYear) })),
     [files, baseYear],
   );
+  const proposals = useMemo(
+    () => parsed.flatMap(({ f, result }) => (result ? [{ fileName: f.name, fields: result.fields }] : [])),
+    [parsed],
+  );
+  // 사업자등록번호가 다른 회사 서류 — 그 서류에서만 나온 값은 기본 체크 해제(MSC 이식).
+  const otherFiles = useMemo(() => otherCompanyFiles(current.사업자등록번호 ?? "", proposals), [current.사업자등록번호, proposals]);
   const rows = useMemo(
-    () =>
-      buildDiffRows(
-        current,
-        parsed.flatMap(({ f, result }) => (result ? [{ fileName: f.name, fields: result.fields }] : [])),
-        order,
-      ),
-    [current, parsed, order],
+    () => buildDiffRows(current, proposals, order, new Set(otherFiles.keys())),
+    [current, proposals, order, otherFiles],
   );
   const checked = useMemo(() => {
     const out: Record<string, boolean> = {};
     for (const r of rows) {
       const c = r.candidates[choice[r.key] ?? 0] ?? r.candidates[0]!;
-      out[r.key] = r.key in userChecked ? userChecked[r.key]! : defaultCheckFor(r.current, c);
+      const fromOther = c.sources.every((name) => otherFiles.has(name));
+      out[r.key] = r.key in userChecked ? userChecked[r.key]! : !fromOther && defaultCheckFor(r.current, c);
     }
     return out;
-  }, [rows, userChecked, choice]);
+  }, [rows, userChecked, choice, otherFiles]);
   const memos = parsed.flatMap(({ f, result }) =>
     result && "vault" in result ? [{ id: f.id, ...(result as MemoParseResult) }] : [],
   );
@@ -299,7 +310,7 @@ export default function CompanyDocAutofillDialog({ current, onApply, onVault, on
           >
             메모 붙여넣기
           </button>
-          <p className="mt-1 text-gray-400">JPG·PNG·WebP·PDF 15MB 이하 · PDF 는 10쪽까지(스캔본은 첫 쪽) · 미팅 메모 TXT</p>
+          <p className="mt-1 text-gray-400">JPG·PNG·WebP·PDF 15MB 이하 · PDF 는 10쪽까지(스캔본은 6쪽) · 여러 서류 합본 OK · 미팅 메모 TXT</p>
           <input
             ref={inputRef}
             type="file"
@@ -410,6 +421,12 @@ export default function CompanyDocAutofillDialog({ current, onApply, onVault, on
                       {result?.documentWarnings.map((w) => (
                         <p key={w} className="text-amber-700">⚠ {w}</p>
                       ))}
+                      {f.message !== "다 읽었어요" && <p className="text-amber-700">⚠ {f.message} — 나머지 쪽은 따로 올려 주세요</p>}
+                      {otherFiles.has(f.name) && (
+                        <p className="text-amber-700" role="alert">
+                          ⚠ 다른 회사 서류 같아요(사업자등록번호 {otherFiles.get(f.name)}) — 이 서류 값은 기본으로 안 넣어요
+                        </p>
+                      )}
                     </div>
                   )}
                 </li>

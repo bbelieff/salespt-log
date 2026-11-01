@@ -4,12 +4,11 @@
  *
  * - 이미지는 JPEG/PNG/WebP 만.
  * - PDF 텍스트층이 충분하면 OCR 을 건너뛰고(빠르고 정확) 최대 pdfTextMaxPages 쪽까지 읽는다.
- *   텍스트층이 부족한 스캔 PDF 는 첫 페이지만 그려 OCR 한다.
+ *   텍스트층이 부족하거나 깨진 스캔 PDF 는 최대 scanMaxPages 쪽까지 그려 OCR 한다(전체 시간 상한 안에서).
  */
 
 export const OCR_LIMITS = {
   maxFileBytes: 15 * 1024 * 1024,
-  maxPages: 1,
   /** PDF 텍스트층이 이 글자 수(공백 제외) 이상이면 OCR 생략. */
   pdfTextMinChars: 30,
   /** 텍스트층을 읽는 최대 쪽 수 — 표준재무제표(표지+5쪽) 전체를 덮는다. */
@@ -18,6 +17,10 @@ export const OCR_LIMITS = {
   maxImageDim: 3000,
   /** 스캔 PDF 를 그리는 배율 — A4 가 maxImageDim(3000) 안에 들도록(행 높이 ~15px 로는 숫자가 깨졌다). */
   pdfRenderScale: 3.5,
+  /** 스캔 PDF 를 그려 읽는 최대 쪽 수 — 한 쪽 약 10~15초(tesseract), 120초 안에 끝나게. */
+  scanMaxPages: 6,
+  /** 스캔 다음 쪽을 시작하려면 전체 상한까지 남아 있어야 하는 시간. */
+  scanPageReserveMs: 30_000,
   ocrTimeoutMs: 120_000,
   pdfTimeoutMs: 60_000,
   /** Paddle 한 번 더 읽기 상한 — 첫 사용은 모델·wasm(약 40MB) 받기가 들어간다. 넘으면 tesseract 결과만. */
