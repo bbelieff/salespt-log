@@ -3,3 +3,4 @@
 - 원인·변경·수용은 docs/plans/completed/db-sheet-clear-first-date.md. 새 서버 필드 `firstCleared`(data-model.md).
 - 되돌리기 = squash revert(데이터 변경 없음).
 - 추가: DB정보 머리줄 닫기·유입 반영 위치(모바일에서 닫기가 아래로 떨어지던 것).
+- 추가: 날짜 셋 정렬 — 좁은 칸(1024px 창)에서 바로 넣기 버튼이 칸 밖으로 23~28px 넘치던 것. subgrid 로 입력 칸 높이 맞춤, 버튼 줄바꿈. 375·768·1024·1440 실측 넘침 0.
