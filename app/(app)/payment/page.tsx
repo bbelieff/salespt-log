@@ -47,6 +47,7 @@ import CompanySearchBar from "./_components/CompanySearchBar";
 import PaymentSortControl from "./_components/PaymentSortControl";
 import PaymentListModeTabs from "./_components/PaymentListModeTabs";
 import useMasterPaneWidth, { MASTER_PANE_MIN_WIDTH } from "./_components/useMasterPaneWidth";
+import DetailSplitToggle from "./_components/DetailSplitToggle";
 import usePaymentFocus, { paymentCompanyDetailLabel, usePaymentFocusSelection } from "./_components/usePaymentFocus";
 import { buildCompanyWorkItems, companyKeyOfRow, sortCompanyWorkItems, type CompanyWorkItem, type PaymentSortKey } from "./_lib/company-work-view";
 import TopHeader from "@/components/TopHeader";
@@ -415,7 +416,7 @@ export default function PaymentPage() {
               <div className={`payment-detail-shell flex h-full min-h-0 min-w-0 flex-col overflow-y-auto overflow-x-hidden rounded-2xl border bg-white shadow-sm ${listMode === "institution" ? "border-red-200" : "border-blue-200"}`}>
                 <div data-payment-detail-banner={selectedLong ? "long-term" : "active"} className={`sticky top-0 z-20 flex shrink-0 items-center justify-between border-b bg-gradient-to-r px-4 py-2.5 backdrop-blur-xl ${selectedLong ? "border-amber-200 from-amber-100/95 via-amber-50/95 to-white/95" : listMode === "institution" ? "border-red-100 from-red-100/95 via-red-50/95 to-white/95" : "border-blue-100 from-blue-100/95 via-indigo-50/95 to-white/95"}`}>
                   <div className="min-w-0"><h2 className={`truncate text-base font-black ${selectedLong ? "text-amber-950" : listMode === "institution" ? "text-red-950" : "text-blue-950"}`}>{selectedCp.업체명}</h2>{selectedLong ? <p className="truncate text-px-11 text-amber-800">장기관리 · {listMode === "institution" && selectedWork ? `${selectedWork.institution || "기관 미입력"} · 진행 ${selectedWork.slot}` : companyDetailLabel}</p> : listMode === "institution" && selectedWork ? <p className="truncate text-px-11 text-red-700">{selectedWork.institution || "기관 미입력"} · 진행 {selectedWork.slot}{selectedWork.product ? ` · ${selectedWork.product}` : ""}</p> : selectedCompany && <p className="truncate text-px-11 text-blue-700">{companyDetailLabel}</p>}</div>
-                  <div className="flex shrink-0 items-center gap-2"><span ref={setDetailStatusTarget} data-payment-pc-status-slot /><button type="button" onClick={() => { setMasterWidth(MASTER_PANE_MIN_WIDTH); setDetailLeftPct(60); }} className="h-7 rounded-md border border-slate-200 bg-white/80 px-2 text-px-11 font-semibold text-slate-500 hover:text-slate-800">기본 너비</button>{stageToggle(selectedCp)}</div>
+                  <div className="flex shrink-0 items-center gap-2"><span ref={setDetailStatusTarget} data-payment-pc-status-slot /><DetailSplitToggle pct={detailLeftPct} onToggle={(next) => { setMasterWidth(MASTER_PANE_MIN_WIDTH); setDetailLeftPct(next); }} />{stageToggle(selectedCp)}</div>
                 </div>
                 {focusPayment?.row === selectedCp.row && focusNotice}
                 <ContractRow grants={grants}
