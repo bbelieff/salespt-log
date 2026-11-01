@@ -12,6 +12,9 @@ export const DETAIL_SPLIT_MAX = 62;
 export const isInfoWide = (pct: number) => pct >= 50;
 /** 다음 상태: 업체정보가 넓으면 진행 최대로, 아니면 업체정보 최대로. */
 export const nextDetailSplit = (pct: number) => (isInfoWide(pct) ? DETAIL_SPLIT_MIN : DETAIL_SPLIT_MAX);
+/** 강조할 칸 — 한쪽 끝까지 넓혔을 때만(버튼·드래그 끝). 넓힌 칸은 떠 보이고 좁힌 칸은 연회색 바탕으로 가라앉는다(globals.css [data-split-focus]). */
+export const detailSplitFocus = (pct: number): "info" | "work" | "none" =>
+  pct >= DETAIL_SPLIT_MAX ? "info" : pct <= DETAIL_SPLIT_MIN ? "work" : "none";
 
 export default function DetailSplitToggle({ pct, onToggle }: { pct: number; onToggle: (next: number) => void }) {
   const infoWide = isInfoWide(pct);

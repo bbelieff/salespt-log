@@ -859,6 +859,22 @@ body {
   .desktop-shell .payment-detail-scroll::-webkit-scrollbar-track { background: transparent; }
   .desktop-shell .payment-detail-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
   .desktop-shell .payment-detail-scroll::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+  /* 상세 두 칸 넓히기 강조(2026-11-01 belie) — 강조 신호는 바탕 하나만: 넓힌 칸 = 흰 바탕 + 옅은 그림자(떠 보임),
+     좁힌 칸 = 연회색 바탕(가라앉음). 글자·입력 칸은 그대로라 좁힌 칸도 바로 쓸 수 있고(반투명 금지 — 못 누르는 칸처럼 보임),
+     마우스·포커스가 들어가면 흰 바탕으로 돌아온다. 너비는 0.2초에 걸쳐 바뀌어 눈이 변화를 따라간다(드래그 중엔 끔). */
+  .desktop-shell [data-split-focus] { transition: grid-template-columns 200ms ease-out; }
+  .desktop-shell [data-split-focus][data-split-dragging] { transition: none; }
+  .desktop-shell [data-split-col] { border-radius: 0.75rem; transition: background-color 200ms ease-out, box-shadow 200ms ease-out; }
+  .desktop-shell [data-split-focus="info"] > [data-split-col="info"],
+  .desktop-shell [data-split-focus="work"] > [data-split-col="work"] {
+    background: #fff;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.05), 0 6px 16px rgb(15 23 42 / 0.07);
+  }
+  .desktop-shell [data-split-focus="info"] > [data-split-col="work"]:not(:hover, :focus-within),
+  .desktop-shell [data-split-focus="work"] > [data-split-col="info"]:not(:hover, :focus-within) { background: #f1f5f9; }
+  @media (prefers-reduced-motion: reduce) {
+    .desktop-shell [data-split-focus], .desktop-shell [data-split-col] { transition: none; }
+  }
 
 }
 
