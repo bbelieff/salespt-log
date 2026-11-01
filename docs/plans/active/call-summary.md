@@ -47,8 +47,16 @@ worktree: ../_wt/salespt-log/call-summary-contract
 - [x] 정리 끝·실패 때 녹음 경로를 돌려주고 비운다, 오래 남은 원본을 찾는다(시험)
 - [x] Gemini: 키는 헤더로만, 키 없으면 보내지 않음, 14MB 초과 거절, 429·5xx 재시도 / 400 아님, 오류 문구에 키·본문 없음(가짜 fetch 시험)
 - [x] 스위치 미설정 = 아무도 안 켜짐(시험)
+- [x] check.sh · CI · 병합(#1298, 94ff05ae) · 배포 run 41312547283 success · health 200. 사용자 화면 변화 없음
+
+## Acceptance Criteria — PR-3
+- [x] 0단계 정답지 15건(합성 12·실제 목소리 3)의 AI 원답 → convert.py 와 같은 CallExtraction(고정 시험, 사례 파일에 받아쓰기 없음)
+- [x] 채운 칸마다 근거 문장(evidence), 근거 없는 답은 버림, 자택주소·주민번호는 실리지 않음(시험)
+- [x] 백만원 표기는 기존 `wonToMillion`, 매출 칸은 `salesSlotOf` 재사용. 말 금액(「3천」=3천만·「십이억」)은 서류 글 해석 `parseSalesAmount` 와 규칙이 달라 `spokenWon` 으로 따로 둠
 - [ ] check.sh · CI · 병합 · 배포 health. 사용자 화면 변화 없음
+- 남은 차이: 0단계의 소개처(`q1_referrer`)는 CallExtraction 에 칸이 없어 아직 버린다 — 필요하면 PR-4 확정 때 계약에 추가
 
 ## Log
 - 2026-10-31 PR-1 착수. 0단계 완료(실제 목소리 3건 통과).
 - 2026-11-01 PR-1 병합·배포·운영 DB 적용 완료. PR-2 착수(스위치 앞당김, 파일 상한 14MB).
+- 2026-11-01 PR-2 병합(#1298)·배포 완료. PR-3 착수.
