@@ -20,11 +20,13 @@ describe("DetailSplitToggle", () => {
     expect(nextDetailSplit(45)).toBe(DETAIL_SPLIT_MAX);
   });
 
-  it("강조는 한쪽 끝까지 넓혔을 때만 — 중간 너비는 강조 없음", () => {
+  it("강조는 한쪽이 확실히 넓을 때(기본 60% 포함) — 가운데 근처는 강조 없음", () => {
     expect(detailSplitFocus(DETAIL_SPLIT_MAX)).toBe("info");
     expect(detailSplitFocus(DETAIL_SPLIT_MIN)).toBe("work");
-    expect(detailSplitFocus(60)).toBe("none");
+    expect(detailSplitFocus(60)).toBe("info");
+    expect(detailSplitFocus(45)).toBe("work");
     expect(detailSplitFocus(50)).toBe("none");
+    expect(detailSplitFocus(54)).toBe("none");
   });
 
   it("누를 때마다 번갈아 바뀌고, 버튼 그림·설명이 지금 넓은 칸을 따라간다", () => {
