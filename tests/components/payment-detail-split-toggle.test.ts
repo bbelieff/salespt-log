@@ -4,7 +4,7 @@ import * as React from "react";
 import { act, createElement as h, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
-import DetailSplitToggle, { DETAIL_SPLIT_MAX, DETAIL_SPLIT_MIN, nextDetailSplit } from "@/app/(app)/payment/_components/DetailSplitToggle";
+import DetailSplitToggle, { DETAIL_SPLIT_MAX, DETAIL_SPLIT_MIN, detailSplitFocus, nextDetailSplit } from "@/app/(app)/payment/_components/DetailSplitToggle";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -18,6 +18,13 @@ describe("DetailSplitToggle", () => {
     expect(nextDetailSplit(DETAIL_SPLIT_MAX)).toBe(DETAIL_SPLIT_MIN);
     expect(nextDetailSplit(DETAIL_SPLIT_MIN)).toBe(DETAIL_SPLIT_MAX);
     expect(nextDetailSplit(45)).toBe(DETAIL_SPLIT_MAX);
+  });
+
+  it("강조는 한쪽 끝까지 넓혔을 때만 — 중간 너비는 강조 없음", () => {
+    expect(detailSplitFocus(DETAIL_SPLIT_MAX)).toBe("info");
+    expect(detailSplitFocus(DETAIL_SPLIT_MIN)).toBe("work");
+    expect(detailSplitFocus(60)).toBe("none");
+    expect(detailSplitFocus(50)).toBe("none");
   });
 
   it("누를 때마다 번갈아 바뀌고, 버튼 그림·설명이 지금 넓은 칸을 따라간다", () => {
