@@ -59,7 +59,6 @@ function CohortList({
           linkedBySheet={h.linkedBySheet}
           viewOnly={h.viewOnly}
           collapsed
-          wide
           forceOpen={h.searching}
         />
       ))}
@@ -74,7 +73,7 @@ export default function ArenaSeasonGroups({
   const { seasons, orphans } = groupArenaBySeason(groups);
 
   return (
-    <div className="space-y-4 pc:grid pc:grid-cols-2 pc:items-start pc:gap-3 pc:space-y-0 wide:grid-cols-3">
+    <div className="space-y-4 pc:grid pc:grid-cols-3 pc:items-start pc:gap-3 pc:space-y-0">
       {seasons.map((s) => {
         const start = fmtDateYY(s.startISO);
         const end = fmtDateYY(s.endISO);

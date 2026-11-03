@@ -90,7 +90,6 @@ export default function CohortCategoryBoxes({
                     linkedBySheet={linkedBySheet}
                     viewOnly={viewOnly}
                     collapsed
-                    wide
                     forceOpen={searching}
                   />
                 ))}

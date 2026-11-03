@@ -471,7 +471,7 @@ export default function AdminUserPicker({
                     linkedBySheet={linkedBySheet}
                     archived
                     viewOnly={viewOnly}
-                    collapsed wide forceOpen={q.trim() !== ""}
+                    collapsed forceOpen={q.trim() !== ""}
                   />
                 ))}
               </div>
