@@ -42,3 +42,71 @@ body.db-sheet-route .sheet-mobile-row>.sheet-mobile-card{flex:1;min-width:0;bord
 .dbs-call-toast button{color:#bfdbfe;font-weight:700;white-space:nowrap}
 .dbs-call-meta .num,.dbs-call-note .num,.dbs-call-file .num,.dbs-call-bar .num{font-variant-numeric:tabular-nums}
 @media(max-width:430px){.dbs-call-paste{font-size:16px}.dbs-call-bar>.dbs-call-actions{margin-left:0;width:100%}.dbs-call-bar .dbs-button{flex:1}}
+
+/* 「통화 정리 확인」(PR-5b) — 목록 위를 덮는 화면. 폰 한 줄, PC(1024~) 두 열, 아래 고정 줄. */
+.dbs-cc{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;background:#f1f5f9;color:#0f172a;font-size:14px;line-height:1.5}
+.dbs-cc-top{flex:none;background:#fff;border-bottom:1px solid #e2e8f0;padding-top:env(safe-area-inset-top,0px)}
+.dbs-cc-top-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:8px;padding-block:10px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));outline:none}
+.dbs-cc-top h1{font-size:17px;font-weight:700;letter-spacing:-.3px}
+.dbs-cc-top p{font-size:12px;color:#64748b}
+.dbs-cc-back{display:grid;place-items:center;width:40px;height:40px;border-radius:10px;color:#334155}
+.dbs-cc-back:hover{background:#f1f5f9}
+.dbs-cc-main{flex:1;overflow:auto;width:100%;max-width:1180px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-content:start;padding-block:12px 24px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+.dbs-cc-col{display:grid;gap:12px;min-width:0;align-content:start}
+@media(min-width:1024px){.dbs-cc-main{grid-template-columns:minmax(0,440px) minmax(0,1fr);gap:16px;padding-top:16px}}
+.dbs-cc-panel{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;display:grid;gap:12px;min-width:0;align-content:start}
+.dbs-cc-panel-h{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dbs-cc-panel-h h2{font-size:15px;font-weight:700}
+.dbs-cc-panel-h>span{font-size:12px;color:#64748b}
+.dbs-cc-lead{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px}
+.dbs-cc-lead strong{font-size:17px;font-weight:700;letter-spacing:-.3px;overflow-wrap:anywhere}
+.dbs-cc-lead>span:last-child{font-size:13px;color:#475569}
+.dbs-cc-channel{font-size:11px;font-weight:600;border-radius:5px;padding:2px 6px;background:#f1f5f9;color:#475569}
+.dbs-cc-facts{font-size:12px;color:#64748b;margin-top:-6px}
+.dbs-cc-qa{border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;display:grid;gap:8px;background:#f8fafc}
+.dbs-cc-qa p{font-size:13px}.dbs-cc-qa p span{color:#64748b}
+.dbs-cc-qa ol{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:4px}
+.dbs-cc-qa li{display:grid;place-items:center;height:26px;border-radius:6px;background:#fff;border:1px dashed #cbd5e1;color:#94a3b8;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.dbs-cc-qa li.is-yes{background:#dbeafe;border:1px solid #bfdbfe;color:#1d4ed8}
+.dbs-cc-summary{margin:0;padding-left:18px;display:grid;gap:4px;font-size:13px;color:#1e293b}
+.dbs-cc-field{display:grid;gap:6px;font-size:12px;font-weight:600;color:#334155}
+.dbs-cc-field small{font-weight:400;color:#64748b}
+.dbs-cc-field .sheet-input,.dbs-cc-panel>select.sheet-input,.dbs-cc-row .sheet-input{width:100%;min-width:0;min-height:38px;padding:7px 10px;font-size:13px;font-weight:400;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#0f172a}
+.dbs-cc-field textarea.sheet-input,.dbs-cc-row textarea.sheet-input{line-height:1.6;resize:vertical}
+.dbs-cc-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.dbs-cc-stack{display:grid;gap:12px}
+.dbs-cc-said{font-size:12px;color:#475569;background:#f8fafc;border-radius:8px;padding:8px 10px}
+.dbs-cc-said b{font-weight:600;color:#0f172a}
+.dbs-cc-switch{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#1d4ed8;cursor:pointer}
+.dbs-cc-switch input{width:16px;height:16px;accent-color:#2563eb}
+.dbs-cc-empty,.dbs-cc-hint,.dbs-cc-fixed{font-size:13px;color:#64748b}
+.dbs-cc-hint{margin-top:-6px;font-size:12px}
+.dbs-cc-raw summary{cursor:pointer;font-size:13px;color:#2563eb;font-weight:600}
+.dbs-cc-raw p{margin-top:8px;white-space:pre-wrap;font-size:13px;color:#334155;background:#f8fafc;border-radius:8px;padding:10px;max-height:240px;overflow:auto}
+.dbs-cc-raw small{display:block;margin-top:4px;font-size:11px;color:#64748b}
+.dbs-cc-group{display:grid;gap:8px}
+.dbs-cc-group h3{font-size:13px;font-weight:700;color:#334155;padding-top:4px}
+.dbs-cc-group h3 small{font-weight:400;color:#64748b}
+.dbs-cc-row{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;align-items:start;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px}
+.dbs-cc-row.is-on{border-color:#93c5fd;background:#f8fbff}
+.dbs-cc-row.is-same{background:#f8fafc}
+.dbs-cc-row>input{width:16px;height:16px;margin-top:3px;accent-color:#2563eb}
+.dbs-cc-row>div{display:grid;gap:6px;min-width:0}
+.dbs-cc-label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;font-weight:600;color:#334155}
+.dbs-cc-tag{flex:none;font-size:11px;font-weight:600;border-radius:5px;padding:1px 6px;white-space:nowrap}
+.dbs-cc-tag.is-new{background:#dcfce7;color:#15803d}
+.dbs-cc-tag.is-keep{background:#fef3c7;color:#b45309}
+.dbs-cc-tag.is-same{background:#f1f5f9;color:#475569}
+.dbs-cc-tag.is-priv{background:#ede9fe;color:#6d28d9}
+.dbs-cc-row .sheet-input:disabled{background:#f8fafc;color:#64748b}
+.dbs-cc-cur{font-size:12px;color:#b45309;overflow-wrap:anywhere}
+.dbs-cc-src{font-size:12px;color:#64748b;overflow-wrap:anywhere}
+.dbs-cc-foot{flex:none;background:#fff;border-top:1px solid #e2e8f0;box-shadow:0 -4px 16px #0f172a0d;padding-bottom:env(safe-area-inset-bottom,0px)}
+.dbs-cc-foot-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:8px;padding-block:10px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+.dbs-cc-foot-in p{flex:1;min-width:0;font-size:12px;color:#475569;overflow-wrap:anywhere}
+.dbs-cc-foot-in .dbs-button{min-height:42px;flex:none}
+.dbs-cc-block{color:#b45309;font-weight:600}
+.dbs-cc-err{color:#b91c1c;font-weight:600}
+.dbs-cc button:focus-visible,.dbs-cc input:focus-visible,.dbs-cc select:focus-visible,.dbs-cc textarea:focus-visible,.dbs-cc summary:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
+.dbs-cc .num{font-variant-numeric:tabular-nums}
+@media(max-width:640px){.dbs-cc-foot-in{flex-wrap:wrap}.dbs-cc-foot-in p{flex-basis:100%}.dbs-cc-foot-in .dbs-button{flex:1}.dbs-cc-field .sheet-input,.dbs-cc-row .sheet-input,.dbs-cc-panel>select.sheet-input{font-size:16px}}

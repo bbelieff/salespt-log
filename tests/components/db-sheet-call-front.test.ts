@@ -117,3 +117,32 @@ it("📞 없이 올리면 녹음 저장 시각으로 통화를 먼저 기록한�
   expect(JSON.parse(String(fetchMock.mock.calls[0]![1].body))).toEqual({ leadId: row.id, calledAt: new Date(at).toISOString() });
   expect(fetchMock.mock.calls[1]![0]).toBe("/api/calls/new-call/upload");
 });
+
+it("통화 정리 확인: 결과를 골라야 확정, 체크한 칸만 보내고, 409 면 문구를 보여 주고 닫지 않는다", async () => {
+  const { CallConfirmScreen } = await import("@/app/(app)/db-sheet/_components/CallConfirmScreen");
+  const { CallExtraction } = await import("@/types/call");
+  const { DbSheetContact } = await import("@/types/db-sheet");
+  const extraction = CallExtraction.parse({ answered: [11], company: { 신용점수: "780", 소재지: "합성시 새주소" }, memo: "AI 메모", evidence: { 신용점수: "상대: 780점" } });
+  const lead = { ...row, revision: 7, contact: DbSheetContact.parse({ note: "옛 메모", ci: { 소재지: "합성시 옛주소" } }) } as never;
+  const call = { id: "call-9", leadId: row.id, status: "review", calledAt: "2026-11-03T05:00:00Z", transcript: "", extraction } as never;
+  const saved = vi.fn(), close = vi.fn();
+  fetchMock.mockResolvedValueOnce(new Response(JSON.stringify({ error: "다른 화면에서 이 DB 가 바뀌었어요. 새로고침한 뒤 다시 확정해 주세요." }), { status: 409 }));
+  await act(async () => root.render(createElement(CallConfirmScreen, { lead, call, onSaved: saved, onClose: close })));
+  const save = button("확정하고 저장");
+  expect(save.disabled).toBe(true);
+  expect(host.textContent).toContain("컨택결과를 골라 주세요");
+  expect((host.querySelector("textarea") as HTMLTextAreaElement).value).toBe("옛 메모\n\nAI 메모");
+  const select = host.querySelector("select[aria-label=컨택결과]") as HTMLSelectElement;
+  act(() => { select.value = "재통화"; select.dispatchEvent(new Event("change", { bubbles: true })); });
+  expect(save.disabled).toBe(false);
+  await act(async () => save.click());
+  const [url, init] = fetchMock.mock.calls[0]!;
+  expect(url).toBe("/api/calls/call-9/confirm");
+  expect(JSON.parse(String(init.body))).toMatchObject({ revision: 7, date: "2026-11-03", result: "재통화", company: { 신용점수: "780" }, meeting: null });
+  expect(JSON.parse(String(init.body)).company.소재지).toBeUndefined();
+  expect(host.textContent).toContain("다른 화면에서 이 DB 가 바뀌었어요");
+  expect(saved).not.toHaveBeenCalled();
+  fetchMock.mockResolvedValueOnce(ok({ lead: {} }));
+  await act(async () => button("확정하고 저장").click());
+  expect(saved).toHaveBeenCalledOnce();
+});

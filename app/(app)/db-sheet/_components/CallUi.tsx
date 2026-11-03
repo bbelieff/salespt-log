@@ -4,8 +4,10 @@
  * 꺼진 사람(GET /api/calls 404)에게는 아무것도 그리지 않는다.
  */
 import { useState } from "react";
-import { FileAudio, X } from "lucide-react";
+import { ClipboardCheck, FileAudio, X } from "lucide-react";
 import type { CallRecord } from "@/types/call";
+import type { DbSheetLead } from "@/types/db-sheet";
+import { CallConfirmScreen } from "./CallConfirmScreen";
 import type { Row } from "./model";
 import { CallButton, CallChip, CallDialDialog } from "./CallDial";
 import { CallUploadDialog } from "./CallUploadDialog";
@@ -16,11 +18,15 @@ import "../call.css";
 /** 이어서 올릴 수 있는 통화 — 전화만 건(녹음 대기) 또는 정리 실패. */
 const resumable = (c?: CallRecord) => c && (c.status === "dialed" || c.status === "failed") ? c : null;
 
-export function useCallUi(rows: Row[]) {
+/** rows = DB관리시트 원본(revision·contact.ci 포함). onSaved = 확정 뒤 목록 다시 읽기. */
+export function useCallUi(rows: DbSheetLead[], onSaved: () => void | Promise<void>) {
   const company = (leadId: string) => rows.find(r => r.id === leadId)?.company || "이 업체";
   const calls = useCalls(company);
   const [dial, setDial] = useState<Row | null>(null);
   const [upload, setUpload] = useState<{ row: Row; call: CallRecord | null; asked: boolean } | null>(null);
+  const [confirm, setConfirm] = useState<string | null>(null);
+  const review = (leadId: string) => { const c = calls.latest.get(leadId); return c?.status === "review" && c.extraction ? c : null; };
+  const confirming = confirm ? { lead: rows.find(r => r.id === confirm), call: review(confirm) } : null;
 
   const returnedRow = calls.returned && rows.find(r => r.id === calls.returned!.leadId);
   const asking = !upload && !dial && returnedRow ? {
@@ -33,6 +39,7 @@ export function useCallUi(rows: Row[]) {
   const bar = (r: Row) => calls.enabled ? <div className="dbs-call-bar">
     <strong>통화</strong><CallChip call={calls.latest.get(r.id)} />
     <span className="dbs-call-actions">
+      {review(r.id) && <button type="button" className="dbs-button primary" onClick={() => setConfirm(r.id)}><ClipboardCheck size={15} aria-hidden="true" />통화 정리 확인</button>}
       <CallButton row={r} label onDial={() => setDial(r)} />
       <button type="button" className="dbs-button dbs-call-text" onClick={() => setUpload({ row: r, call: resumable(calls.latest.get(r.id)), asked: false })}><FileAudio size={15} aria-hidden="true" />통화 녹음 올리기</button>
     </span>
@@ -42,7 +49,13 @@ export function useCallUi(rows: Row[]) {
     {dial && <CallDialDialog row={dial} onDialed={calls.dialed} onClose={() => setDial(null)} />}
     {upload && <CallUploadDialog row={upload.row} call={upload.call} asked={upload.asked} onUploaded={id => calls.uploaded(id, upload.row.id)} onClose={() => setUpload(null)} />}
     {asking && <CallUploadDialog row={asking.row} call={asking.call} asked onUploaded={id => calls.uploaded(id, asking.row.id)} onClose={calls.clearReturned} />}
-    {calls.toast && <div className="sheet-toast dbs-call-toast" role="status"><span>{calls.toast}</span><button type="button" aria-label="알림 닫기" onClick={calls.clearToast}><X size={16} aria-hidden="true" /></button></div>}
+    {confirming?.lead && confirming.call && <CallConfirmScreen lead={confirming.lead} call={confirming.call} onClose={() => setConfirm(null)} onSaved={async () => {
+      const company = confirming.lead!.company || "이 업체";
+      setConfirm(null); await onSaved(); await calls.refresh(); calls.say(`${company} 통화 정리를 저장했어요.`);
+    }} />}
+    {calls.toast && <div className="sheet-toast dbs-call-toast" role="status"><span>{calls.toast.text}</span>
+      {calls.toast.open && <button type="button" onClick={() => { setConfirm(calls.toast!.open!); calls.clearToast(); }}>확인하기</button>}
+      <button type="button" aria-label="알림 닫기" onClick={calls.clearToast}><X size={16} aria-hidden="true" /></button></div>}
   </>;
   return { enabled: calls.enabled, slot, bar, layer };
 }

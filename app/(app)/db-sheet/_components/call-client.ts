@@ -94,3 +94,4 @@ export function uploadCallAudio(id: string, file: File) {
   return call(`/api/calls/${id}/upload`, { method: "POST", body: form });
 }
 export const uploadCallText = (id: string, text: string) => call(`/api/calls/${id}/upload`, json({ text }));
+export const confirmCall = (id: string, body: unknown) => call<{ lead?: unknown; already?: boolean }>(`/api/calls/${id}/confirm`, json(body));

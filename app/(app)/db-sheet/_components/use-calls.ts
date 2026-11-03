@@ -19,7 +19,8 @@ function readPending(): DialedCall | null {
 export function useCalls(nameOf: (leadId: string) => string) {
   const [enabled, setEnabled] = useState(false);
   const [calls, setCalls] = useState<CallRecord[]>([]);
-  const [toast, setToast] = useState("");
+  /** open = 확인 화면으로 갈 업체(정리가 끝난 통화). */
+  const [toast, setToast] = useState<{ text: string; open?: string } | null>(null);
   const [returned, setReturned] = useState<DialedCall | null>(null);
   const watched = useRef(new Set<string>());
   const name = useRef(nameOf); name.current = nameOf;
@@ -31,8 +32,8 @@ export function useCalls(nameOf: (leadId: string) => string) {
     setEnabled(true);
     for (const c of list) {
       if (!watched.current.has(c.id)) continue;
-      if (c.status === "review") { watched.current.delete(c.id); setToast(`${name.current(c.leadId)} 통화 정리가 끝났어요. 「확인 대기」를 눌러 확인해 주세요.`); }
-      if (c.status === "failed") { watched.current.delete(c.id); setToast(`${name.current(c.leadId)} 통화를 정리하지 못했어요. ${c.error || "다시 올려 주세요."}`); }
+      if (c.status === "review") { watched.current.delete(c.id); setToast({ text: `${name.current(c.leadId)} 통화 정리가 끝났어요.`, open: c.leadId }); }
+      if (c.status === "failed") { watched.current.delete(c.id); setToast({ text: `${name.current(c.leadId)} 통화를 정리하지 못했어요. ${c.error || "다시 올려 주세요."}` }); }
     }
     setCalls(list);
   }, []);
@@ -62,13 +63,14 @@ export function useCalls(nameOf: (leadId: string) => string) {
   return {
     enabled, calls, toast, returned,
     latest: latestCallByLead(calls),
-    clearToast: () => setToast(""),
+    clearToast: () => setToast(null),
+    say: (text: string) => setToast({ text }),
     clearReturned: () => setReturned(null),
     refresh,
     /** 📞 를 눌러 서버에 기록한 직후 — 다른 앱에 다녀오면 녹음을 묻는다. */
     dialed(p: DialedCall) { try { sessionStorage.setItem(PENDING_KEY, JSON.stringify(p)); } catch { /* 묻지 못하면 DB정보에서 올리면 된다 */ } void refresh(); },
     /** 녹음·글자를 올렸다 — 끝나면 알린다. */
-    uploaded(id: string, leadId: string) { watched.current.add(id); setToast(`${name.current(leadId)} 통화 정리 중 — 다른 화면으로 가도 돼요.`); void refresh(); },
+    uploaded(id: string, leadId: string) { watched.current.add(id); setToast({ text: `${name.current(leadId)} 통화 정리 중 — 다른 화면으로 가도 돼요.` }); void refresh(); },
   };
 }
 export type CallsState = ReturnType<typeof useCalls>;
