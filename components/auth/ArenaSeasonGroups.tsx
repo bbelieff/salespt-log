@@ -13,7 +13,7 @@
 
 import PersistentDetails from "./PersistentDetails";
 import DisclosureChevron from "@/components/ui/DisclosureChevron";
-import { CohortSection, type Trainee, type Trainer } from "./AdminUserPickerSections";
+import { COHORT_GRID, CohortSection, type Trainee, type Trainer } from "./AdminUserPickerSections";
 import { fmtDateYY, cohortProgress } from "./AdminUserPickerTypes";
 import { groupArenaBySeason } from "./arena-season";
 
@@ -29,6 +29,8 @@ export interface ArenaSeasonHandlers {
   activeTrainers?: Trainer[];
   linkedBySheet?: Map<string, string[]>;
   viewOnly?: boolean;
+  /** 검색 중 — 시즌·기수 박스를 펼쳐 결과를 바로 보여 준다. */
+  searching?: boolean;
 }
 
 /** 기수 카드 리스트 — 시즌 안/밖(orphan) 공용. */
@@ -40,7 +42,7 @@ function CohortList({
   h: ArenaSeasonHandlers;
 }) {
   return (
-    <div className="space-y-8">
+    <div className={COHORT_GRID}>
       {groups.map(([cohort, list]) => (
         <CohortSection
           key={cohort}
@@ -56,6 +58,9 @@ function CohortList({
           activeTrainers={h.activeTrainers}
           linkedBySheet={h.linkedBySheet}
           viewOnly={h.viewOnly}
+          collapsed
+          wide
+          forceOpen={h.searching}
         />
       ))}
     </div>
@@ -69,7 +74,7 @@ export default function ArenaSeasonGroups({
   const { seasons, orphans } = groupArenaBySeason(groups);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pc:grid pc:grid-cols-2 pc:items-start pc:gap-3 pc:space-y-0 wide:grid-cols-3">
       {seasons.map((s) => {
         const start = fmtDateYY(s.startISO);
         const end = fmtDateYY(s.endISO);
@@ -82,8 +87,9 @@ export default function ArenaSeasonGroups({
           <PersistentDetails
             key={s.season}
             persistKey={`arena-season:${s.season}`}
-            defaultOpen
-            className="group/season overflow-hidden rounded-2xl border-2 border-purple-200 bg-purple-50/40 open:bg-white"
+            defaultOpen={false}
+            forceOpen={h.searching}
+            className="group/season overflow-hidden pc:open:col-span-full rounded-2xl border-2 border-purple-200 bg-purple-50/40 open:bg-white"
           >
             <summary className="disclosure-summary flex cursor-pointer flex-wrap items-baseline gap-x-2 gap-y-0.5 border-l-4 border-purple-500 bg-purple-50 px-4 py-3 group-open/season:bg-white hover:bg-purple-100">
               <DisclosureChevron className="text-purple-500" />
@@ -114,7 +120,7 @@ export default function ArenaSeasonGroups({
         );
       })}
       {/* 시즌 파싱 실패분 — 삼키지 않고 그대로 노출(유실 방지). */}
-      {orphans.length > 0 && <CohortList groups={orphans} h={h} />}
+      {orphans.length > 0 && <div className="pc:col-span-full"><CohortList groups={orphans} h={h} /></div>}
     </div>
   );
 }

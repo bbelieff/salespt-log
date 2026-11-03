@@ -47,7 +47,7 @@ import {
   arrayMove,
   sortableKeyboardCoordinates,
   useSortable,
-  verticalListSortingStrategy,
+  rectSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
@@ -118,7 +118,7 @@ export default function SortableList<T>({
     >
       <SortableContext
         items={order.map(getId)}
-        strategy={verticalListSortingStrategy}
+        strategy={rectSortingStrategy}
       >
         {order.map((it) => (
           <SortableItem
@@ -153,7 +153,7 @@ function SortableItem<T>({
   const handle: DragHandle = {
     ref: setNodeRef,
     style: {
-      transform: CSS.Transform.toString(transform),
+      transform: CSS.Translate.toString(transform),
       transition,
     },
     attributes,

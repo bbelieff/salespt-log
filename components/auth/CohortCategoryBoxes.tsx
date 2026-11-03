@@ -7,7 +7,7 @@
 "use client";
 
 import { cohortCategory, COHORT_CATEGORY_ORDER } from "@/types";
-import { CohortSection, type Trainee, type Trainer } from "./AdminUserPickerSections";
+import { COHORT_GRID, CohortSection, type Trainee, type Trainer } from "./AdminUserPickerSections";
 import ArenaSeasonGroups from "./ArenaSeasonGroups";
 
 const STYLE: Record<string, [string, string]> = {
@@ -28,6 +28,7 @@ export default function CohortCategoryBoxes({
   activeTrainers,
   linkedBySheet,
   viewOnly,
+  searching = false,
 }: {
   activeGroups: [string, Trainee[]][];
   busy: string | null;
@@ -40,6 +41,8 @@ export default function CohortCategoryBoxes({
   activeTrainers?: Trainer[];
   linkedBySheet?: Map<string, string[]>;
   viewOnly?: boolean;
+  /** 검색 중 — 박스를 펼쳐 결과를 바로 보여 준다. */
+  searching?: boolean;
 }) {
   return (
     <>
@@ -67,9 +70,10 @@ export default function CohortCategoryBoxes({
                 activeTrainers={activeTrainers}
                 linkedBySheet={linkedBySheet}
                 viewOnly={viewOnly}
+                searching={searching}
               />
             ) : (
-              <div className="space-y-8">
+              <div className={COHORT_GRID}>
                 {groups.map(([cohort, list]) => (
                   <CohortSection
                     key={cohort}
@@ -85,6 +89,9 @@ export default function CohortCategoryBoxes({
                     activeTrainers={activeTrainers}
                     linkedBySheet={linkedBySheet}
                     viewOnly={viewOnly}
+                    collapsed
+                    wide
+                    forceOpen={searching}
                   />
                 ))}
               </div>

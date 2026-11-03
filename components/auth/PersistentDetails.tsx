@@ -16,7 +16,7 @@
  * 구조: children[0] = <summary>, children[1:] = 콘텐츠 → 콘텐츠를 애니메이션
  * wrapper <div> 로 감쌈.
  *
- * 저장 형식: 단일 JSON object 키 `salespt:admin:collapsed`.
+ * 저장 형식: 단일 JSON object 키 `salespt:admin:collapsed:v2`.
  *   `{ "cohort:7": true, "team:7:서울": false, "reserved": true }` 형태.
  */
 "use client";
@@ -33,7 +33,8 @@ import {
   type ReactNode,
 } from "react";
 
-const STORAGE_KEY = "salespt:admin:collapsed";
+// v2(2026-11-03): 수강생관리 기수·팀·시즌 박스를 기본 접힘으로 바꾸며 예전 펼침 기억을 한 번 비운다.
+const STORAGE_KEY = "salespt:admin:collapsed:v2";
 const ANIM_MS = 240;
 
 function readStore(): Record<string, boolean> {
@@ -68,12 +69,15 @@ interface Props
   persistKey: string;
   /** SSR 및 localStorage 에 저장값 없을 때 사용. */
   defaultOpen?: boolean;
+  /** 검색 중 — 저장값과 상관없이 펼쳐 보여 준다(기억은 바꾸지 않음). */
+  forceOpen?: boolean;
   children: ReactNode;
 }
 
 export default function PersistentDetails({
   persistKey,
   defaultOpen = true,
+  forceOpen = false,
   children,
   ...rest
 }: Props) {
@@ -94,7 +98,8 @@ export default function PersistentDetails({
   useLayoutEffect(() => {
     if (animatingRef.current) return;
     const d = detailsRef.current;
-    if (d && d.open !== open) d.open = open;
+    const want = forceOpen || open;
+    if (d && d.open !== want) d.open = want;
   });
 
   function persist(next: boolean) {
@@ -106,6 +111,7 @@ export default function PersistentDetails({
   function handleSummaryClick(e: MouseEvent<HTMLElement>) {
     // native 즉시 토글 차단 — 우리가 애니메이션 후 details.open 직접 set.
     e.preventDefault();
+    if (forceOpen) return; // 검색 중엔 펼친 채 고정
     if (animatingRef.current) return; // 애니메이션 중 재클릭 무시
     const details = detailsRef.current;
     const content = contentRef.current;

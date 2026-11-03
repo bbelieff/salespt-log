@@ -12,7 +12,7 @@ import CohortCategoryBoxes from "./CohortCategoryBoxes";
 import {
   type Trainee,
   type Trainer,
-  CohortSection,
+  COHORT_GRID, CohortSection,
   ReservedSection,
   PendingTraineesSection,
 } from "./AdminUserPickerSections";
@@ -344,7 +344,7 @@ export default function AdminUserPicker({
   return (
     <main className="min-h-dvh bg-gray-50">
       <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4">
-        <div className="mx-auto flex max-w-3xl pc:max-w-5xl items-center justify-between gap-3">
+        <div className="mx-auto flex max-w-3xl pc:max-w-none items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-xs font-bold uppercase tracking-wider text-red-600">
               Master · 수강생 관리
@@ -362,7 +362,7 @@ export default function AdminUserPicker({
         </div>
       </header>
 
-      <div className="mx-auto max-w-3xl pc:max-w-5xl px-6 py-8">
+      <div className="mx-auto max-w-3xl pc:max-w-none px-6 py-8">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="text-2xl font-black tracking-tight text-gray-900">
@@ -444,6 +444,7 @@ export default function AdminUserPicker({
             activeTrainers={activeTrainers}
             linkedBySheet={linkedBySheet}
             viewOnly={viewOnly}
+            searching={q.trim() !== ""}
           />
 
           {archivedGroups.length > 0 && (
@@ -454,7 +455,7 @@ export default function AdminUserPicker({
                 </span>
                 <DisclosureChevron className="text-gray-400" />
               </summary>
-              <div className="space-y-6 border-t border-gray-200 px-4 py-4">
+              <div className={`${COHORT_GRID} border-t border-gray-200 px-4 py-4`}>
                 {archivedGroups.map(([cohort, list]) => (
                   <CohortSection
                     key={cohort}
@@ -470,6 +471,7 @@ export default function AdminUserPicker({
                     linkedBySheet={linkedBySheet}
                     archived
                     viewOnly={viewOnly}
+                    collapsed wide forceOpen={q.trim() !== ""}
                   />
                 ))}
               </div>
