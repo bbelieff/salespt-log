@@ -25,6 +25,9 @@ import {
   cohortProgress,
 } from "./AdminUserPickerTypes";
 
+/** 수강생관리 PC(1024px+) 배치 — 접힌 기수는 2열(1280px+ 3열) 칸, 펼친 기수는 한 줄 전체·안의 수강생 줄도 여러 열. */
+export const COHORT_GRID = "space-y-8 pc:grid pc:grid-cols-2 pc:items-start pc:gap-3 pc:space-y-0 wide:grid-cols-3";
+const ROW_GRID = "pc:grid pc:grid-cols-2 pc:gap-x-6 wide:grid-cols-3";
 // 호환성을 위한 re-export — 옛 import 경로 유지.
 export { parseAssigned, fmtDateYY, cohortProgress };
 export type { Trainee, Trainer };
@@ -94,6 +97,8 @@ export function CohortSection({
   viewOnly = false,
   trainerEmailLc,
   collapsed = false,
+  wide = false,
+  forceOpen = false,
 }: {
   cohort: string;
   list: Trainee[];
@@ -120,6 +125,10 @@ export function CohortSection({
   trainerEmailLc?: string;
   /** 처음 들어올 때(저장된 펼침 상태 없음) 기수·팀 박스를 접어 둔다 — 수강생관리. 트레이너 화면은 펼침 유지. */
   collapsed?: boolean;
+  /** PC 넓은 화면에서 수강생 줄을 여러 열로 — 수강생관리. */
+  wide?: boolean;
+  /** 검색 중 — 기수·팀 박스를 펼쳐 결과를 바로 보여 준다. */
+  forceOpen?: boolean;
 }) {
   // 기수 헤더 메타 — 첫 trainee 의 시작/종강일 사용 (같은 기수면 동일).
   const rep = list.find((u) => u.courseStartISO && u.graduationISO);
@@ -139,7 +148,8 @@ export function CohortSection({
     <PersistentDetails
       persistKey={`cohort:${cohort}${archived ? ":archived" : ""}`}
       defaultOpen={!collapsed}
-      className="group overflow-hidden rounded-2xl border-2 border-slate-300 bg-slate-100 shadow-sm open:bg-white open:shadow-md"
+      forceOpen={forceOpen}
+      className="group overflow-hidden pc:open:col-span-full rounded-2xl border-2 border-slate-300 bg-slate-100 shadow-sm open:bg-white open:shadow-md"
     >
       <summary className="disclosure-summary flex cursor-pointer flex-wrap items-baseline gap-x-2 gap-y-0.5 border-l-4 border-indigo-500 bg-slate-50 px-4 py-3 group-open:bg-white hover:bg-slate-100">
         <DisclosureChevron className="text-indigo-500" />
@@ -189,6 +199,8 @@ export function CohortSection({
         activeTrainers={activeTrainers}
         trainerEmailLc={trainerEmailLc}
         collapsed={collapsed}
+        wide={wide}
+        forceOpen={forceOpen}
       />
     </PersistentDetails>
   );
@@ -211,6 +223,8 @@ function CohortBody({
   activeTrainers,
   trainerEmailLc,
   collapsed,
+  wide,
+  forceOpen,
 }: {
   /** PersistentDetails key 구성 (`team:<cohort>:<teamName>`) 에 사용 */
   cohort: string;
@@ -228,12 +242,15 @@ function CohortBody({
   activeTrainers?: Trainer[];
   trainerEmailLc?: string;
   collapsed: boolean;
+  wide: boolean;
+  forceOpen: boolean;
 }) {
   const { unassigned, teamGroups } = groupByTeam(list);
+  const rows = wide ? ROW_GRID : "";
   return (
     <div className="space-y-2 border-t border-gray-100 px-4 py-2">
       {/* 미배정 trainees — 팀 제목 없이 줄 목록. PR C-1: 박스 단위 dnd. */}
-      <SortableTraineeBox
+      {unassigned.length > 0 && <div className={rows}><SortableTraineeBox
         members={unassigned}
         archived={archived}
         viewOnly={viewOnly}
@@ -247,20 +264,21 @@ function CohortBody({
         onAssignTrainers={onAssignTrainers}
         activeTrainers={activeTrainers}
         trainerEmailLc={trainerEmailLc}
-      />
+      /></div>}
       {/* 팀 박스들 — 같은 팀 trainees 를 collapsible 로 묶음. */}
       {teamGroups.map(([teamName, members]) => (
         <PersistentDetails
           key={teamName}
           persistKey={`team:${cohort}:${teamName}${archived ? ":archived" : ""}`}
           defaultOpen={!collapsed}
+          forceOpen={forceOpen}
           className="pt-1"
         >
           {/* 2026-10-26 박스 다이어트: 팀은 상자 대신 제목 줄 + 아래 선(상자 2단 = 기수 박스까지). */}
           <summary className="cursor-pointer border-b border-indigo-200 py-1.5 text-px-11 font-bold text-indigo-700 hover:text-indigo-900">
             {teamName} <span className="font-medium text-gray-400">{members.length}명</span>
           </summary>
-          <div>
+          <div className={rows}>
             <SortableTraineeBox
               members={members}
               archived={archived}

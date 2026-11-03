@@ -4,6 +4,7 @@
  *  ① collapsed → 저장된 펼침 상태가 없으면 기수·팀 박스 모두 닫힘.
  *  ② collapsed 없음(트레이너 화면) → 예전처럼 펼침.
  *  ③ 사용자가 펼쳐 둔 기수는 다시 들어와도 펼침(저장 키 v2).
+ *  ④ 검색 중(forceOpen) → 접힌 박스도 펼쳐 결과를 보여 주고, 기억은 바꾸지 않음.
  * 합성 수강생만(실제 개인정보 없음).
  */
 import * as React from "react";
@@ -29,7 +30,7 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
-function render(collapsed?: boolean) {
+function render(collapsed?: boolean, forceOpen?: boolean) {
   host = document.createElement("div");
   document.body.appendChild(host);
   root = createRoot(host);
@@ -45,6 +46,7 @@ function render(collapsed?: boolean) {
         onSetTeam: () => {},
         viewOnly: true,
         collapsed,
+        forceOpen,
       }),
     );
   });
@@ -61,5 +63,9 @@ describe("CohortSection 기본 접힘", () => {
   it("펼쳐 둔 기수는 저장값대로 펼침", () => {
     window.localStorage.setItem("salespt:admin:collapsed:v2", JSON.stringify({ "cohort:99": true }));
     expect(render(true)).toEqual([true, false]);
+  });
+  it("검색 중 → 기수·팀 모두 펼침, 저장값은 그대로", () => {
+    expect(render(true, true)).toEqual([true, true]);
+    expect(window.localStorage.getItem("salespt:admin:collapsed:v2")).toBeNull();
   });
 });
