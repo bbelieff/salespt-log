@@ -36,7 +36,7 @@ import './absence-link.css';
 /** DB 목록이 먼저 보이도록 기본은 접힘. 공급처 바로가기 진입에서만 펼친다. */
 export default function DbSheetPage(){
  const router=useGuardedRouter(),data=useDbSheet(),rows=data.leads,me=useMe();
- const callUi=useCallUi(rows);
+ const callUi=useCallUi(rows,data.reload);
  const sizingRows=useMemo(()=>rows.map(r=>({...r,memo:r.contact.note.split(/\r?\n/)[0]||''})),[rows]);
  const accountKey=me.isSuccess&&me.data.email?JSON.stringify([me.data.email,me.data.cohort,me.data.spreadsheetId]):'';
  const [period,setPeriod]=useState<InflowPeriodId>('all');

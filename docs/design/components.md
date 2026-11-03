@@ -1799,7 +1799,8 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - 묶음 `CallUi.tsx`(`useCallUi(rows)` → `slot`·`bar`·`layer`) — 페이지는 Grid `callSlot`·DbDetail `callBar` 와 대화상자 층만 꽂는다. `GET /api/calls` 404(스위치 밖)면 아무것도 그리지 않아 카드 모양이 그대로.
 - `CallDial`(`CallDial.tsx`): `CallButton`(lucide Phone, 모바일 카드 오른쪽 52px 칸·초록 #16a34a, 번호 없는 줄은 같은 폭 빈칸) · `CallChip`(`.dbs-call-chip` 녹음 대기 slate·정리 중 blue-50·확인 대기 blue-100 굵게·정리 실패 red-50) · `CallDialDialog`(앱 이름만 라디오, [이번만]/[항상 이 앱으로], 녹음 앱은 번호 복사 안내) · `CallUploadDialog`(폰별 녹음 찾는 법, 아이폰 글자 탭, 파일 번호·시각 확인 노트 is-ok/is-warn/is-error/is-info). 모두 `SheetDialog`·`.dbs-button` 재사용, 스타일 `call.css`.
 - 규칙(`call-client.ts`): 파일 이름 번호 ≠ 📞 번호 또는 시각 30분 초과 → 한 번 묻기, 받침 따라 을/를·로/으로. 상태 `use-calls.ts`: 정리 중이면 4초 폴링, 📞 뒤 돌아오면 묻기(sessionStorage).
-- 합성 화면: `node tests/browser/call-summary-front/server.mjs` → `?s=list|pick|copied|upload|upload-ios|file-ok|file-warn|bar`.
+- `CallConfirmScreen`(`CallConfirmScreen.tsx`, PR-5b): 목록 위를 덮는 「통화 정리 확인」(`.dbs-cc`, z 200). 폰 한 줄 · PC(1024~) 왼쪽 440px 요약·미팅·컨택결과 / 오른쪽 업체정보, 아래 고정 줄(무엇이 저장될지 + [나중에]·[확정하고 저장], 막는 이유는 호박색). 가이드 질문 12칸(답함 blue-100 · 빠짐 점선), 업체정보 줄 `.dbs-cc-row`(체크 · 꼬리표 빈칸 채움 green · 지금 값 있음 amber · 같아요 slate(체크 불가) · 민감 violet · 들은 말). 규칙은 `call-confirm-model.ts`(칸 상태·기본 체크·업체 기준 연도로 매출 옮기기·확정 본문).
+- 합성 화면: `node tests/browser/call-summary-front/server.mjs` → `?s=list|pick|copied|upload|upload-ios|file-ok|file-warn|bar|confirm|confirm-nomeet`.
 
 ## DB관리시트 기록 선택·삭제 안전 (2026-10-15)
 - `SheetDialog`: 기존 제품 색·폰트·간격을 사용하는 접근 가능한 팝업, 닫기/초점 복귀.
