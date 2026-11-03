@@ -31,7 +31,7 @@ it("📞 기록 → id", async () => {
   const r = await POST(req());
   expect(r.status).toBe(200);
   expect(await r.json()).toEqual({ id: "call-id" });
-  expect(svc.startCall).toHaveBeenCalledWith(CTX, LEAD);
+  expect(svc.startCall).toHaveBeenCalledWith(CTX, LEAD, undefined);
 });
 
 it("다른 사이트·남의 계정 조회 중이면 403, 아무것도 만들지 않는다", async () => {
