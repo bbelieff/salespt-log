@@ -19,7 +19,8 @@ export const DbSheetCommand = z.discriminatedUnion("action", [
   z.object({action:z.literal("inflow-preview"),id:z.string().uuid(),revision,inflow:z.boolean()}),
   z.object({action:z.literal("inflow"),id:z.string().uuid(),revision,inflow:z.boolean()}),
   z.object({ action: z.literal("schedule"), id: z.string().uuid(), revision, next: z.union([DbSheetDate, z.literal("")]) }),
-  z.object({ action: z.literal("meeting"), id: z.string().uuid(), revision }),
+  // place: 통화 정리 확정이 넘기는 들은 장소(없으면 업체 소재지, 2026-11-03).
+  z.object({ action: z.literal("meeting"), id: z.string().uuid(), revision, place: z.string().max(200).optional() }),
   z.object({ action: z.literal("stage"), id: z.string().uuid(), revision, stage: DbSheetManualStage }),
   z.object({ action: z.literal("absence"), id: z.string().uuid(), revision, entry: DbSheetAbsence, remove: z.boolean().optional() }),
   z.object({ action: z.literal("link-meeting"), id: z.string().uuid(), revision, meetingId: z.string().uuid() }),
@@ -94,7 +95,7 @@ export async function executeDbSheet(ctx: DbSheetContext, command: z.infer<typeo
         id: command.id, 예약일: draft.date, 예약시각: time,
         미팅날짜: draft.meetingDate, 미팅시간: draft.time, channel: lead.channel,
         업체명: draft.companyName.trim() || lead.company,
-        장소: draft.ci.소재지?.trim() || "", 예약비고: draft.reservationNote,
+        장소: command.place?.trim() || draft.ci.소재지?.trim() || "", 예약비고: draft.reservationNote,
         업체정보: draft.ci,
       });
       changes = [await ledger.registerDbSheetMeeting(ctx, command.id, meeting, command.revision)];

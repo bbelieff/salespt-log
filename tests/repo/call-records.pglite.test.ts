@@ -134,3 +134,16 @@ it("없는 업체로는 못 만든다, 하루 올린 수, 닫기는 녹음 경�
   expect(await repo.discardCall(email, up)).toEqual({ ok: false, audioPath: null });
   expect(await repo.discardCall(email, dialed)).toEqual({ ok: true, audioPath: null });
 });
+
+it("확정 잠금은 review 에서 한 번만, 풀면 다시 review", async () => {
+  const id = await repo.createCall({ spreadsheetId: sheet, leadId: await lead(), email, calledAt: "2026-11-01T05:00:00Z", upload: audio });
+  expect(await repo.lockConfirmCall(email, id)).toBe(false);
+  await repo.claimNextCall();
+  await repo.finishCall(id, { transcript: "", raw: {}, extraction: {} as never, audioSeconds: null });
+  expect(await repo.lockConfirmCall("other@example.test", id)).toBe(false);
+  expect(await repo.lockConfirmCall(email, id)).toBe(true);
+  expect(await repo.lockConfirmCall(email, id)).toBe(false);
+  expect((await repo.getCall(email, id))?.confirmedAt).toBeTruthy();
+  await repo.unlockConfirmCall(id);
+  expect(await repo.getCall(email, id)).toMatchObject({ status: "review", confirmedAt: null });
+});

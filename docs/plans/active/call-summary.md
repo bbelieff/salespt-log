@@ -62,6 +62,13 @@ worktree: ../_wt/salespt-log/call-summary-contract
 - [x] 스위치 밖 = 404, 쓰기는 내 계정·같은 사이트만(시험). 없는 업체 = 404(외래 키)
 - [x] 녹음: m4a·mp3·wav·aac·ogg·flac, 14MB, 빈 파일 거절, 하루 상한 `CALL_DAILY_LIMIT`(기본 30). 레포 밖 임시 폴더, 무작위 이름, 폴더 밖 경로 거절(시험)
 - [x] 작업자: 녹음/글자 → Gemini → `mapCallExtraction` → review. 429·5xx 다시 대기(3회), 그 밖 failed. 끝·실패·닫기 때 녹음 삭제, 하루 넘은 파일 정리(시험). 스위치가 비면 루프를 돌리지 않음
+- [x] check.sh · CI · 병합(#1302, ab30bbc6) · 배포 run 41633540781 success · health 200 · 운영 `/api/calls` 로그인 없이 401 확인. 사용자 화면 변화 없음(스위치 비어 있음)
+
+## Acceptance Criteria — PR-4b
+- [x] `POST /api/calls/[id]/confirm` — DB관리시트 기존 명령을 순서대로: save(업체정보·사용자 추가 칸·미팅 초안, DB 원본 업체명·대표자명은 빈칸만) → contact(날짜·결과·상담메모) → meeting(초안이 있을 때만, 들은 장소)
+- [x] 두 번 보내도 한 번(review → confirmed 잠금), 중간 실패·revision 어긋남이면 review 로 되돌림(시험)
+- [x] 미팅은 날짜·시간 필수, 결과 컨택진행. 자택주소·주민번호는 요청에 실려도 버림(시험)
+- [x] DB관리시트 `meeting` 명령에 선택 칸 `place`(없으면 지금처럼 소재지) — 기존 화면 동작 그대로(시험)
 - [ ] check.sh · CI · 병합 · 배포 health. 사용자 화면 변화 없음(스위치 비어 있음)
 
 ## Log
@@ -69,3 +76,4 @@ worktree: ../_wt/salespt-log/call-summary-contract
 - 2026-11-01 PR-1 병합·배포·운영 DB 적용 완료. PR-2 착수(스위치 앞당김, 파일 상한 14MB).
 - 2026-11-01 PR-2 병합(#1298)·배포 완료. PR-3 착수.
 - 2026-11-03 PR-3 병합(#1299)·배포 완료. PR-4 착수, 확정 저장은 PR-4b 로 나눔.
+- 2026-11-03 PR-4 병합(#1302)·배포 완료. PR-4b 착수.
