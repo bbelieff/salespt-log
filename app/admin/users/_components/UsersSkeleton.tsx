@@ -6,7 +6,7 @@
 export default function UsersSkeleton() {
   return (
     <main className="min-h-dvh bg-gray-50">
-      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4">
+      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4 pc:hidden">
         <div className="mx-auto flex max-w-3xl pc:max-w-5xl items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-xs font-bold uppercase tracking-wider text-red-600">
