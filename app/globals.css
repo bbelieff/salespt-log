@@ -859,28 +859,39 @@ body {
   .desktop-shell .payment-detail-scroll::-webkit-scrollbar-track { background: transparent; }
   .desktop-shell .payment-detail-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
   .desktop-shell .payment-detail-scroll::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
-  /* 상세 두 칸 넓히기 강조(2026-11-01 belie) — 강조 신호는 바탕 하나만: 넓힌 칸 = 흰 바탕 + 옅은 그림자(떠 보임),
-     좁힌 칸 = 연회색 바탕(가라앉음). 글자·입력 칸은 그대로라 좁힌 칸도 바로 쓸 수 있고(반투명 금지 — 못 누르는 칸처럼 보임),
-     마우스·포커스가 들어가면 흰 바탕으로 돌아온다. 너비는 0.2초에 걸쳐 바뀌어 눈이 변화를 따라간다(드래그 중엔 끔). */
-  .desktop-shell [data-split-focus] { transition: grid-template-columns 200ms ease-out; }
+  /* 상세 두 칸 넓히기 강조 — 뜨고 가라앉기(2026-11-03 belie 「뜨고 가라앉는 효과로」, 색만 바꾼 11-01 판은 구분이 약했다).
+     넓힌 칸 = 위로 들려 큰 그림자(종이가 떠 있는 느낌), 좁힌 칸 = 아래로 눌려 안쪽 그림자 + 회색(파인 홈).
+     글자·입력 칸은 그대로라 좁힌 칸도 바로 쓸 수 있고(반투명 금지), 마우스·포커스가 들어가면 제자리로 올라온다.
+     너비·높이 변화는 0.26초에 걸쳐 — 드래그 중엔 너비 전환을 끄고, 움직임 줄이기 설정이면 움직임 없이 그림자·색만. */
+  .desktop-shell [data-split-focus] { transition: grid-template-columns 260ms cubic-bezier(.2, .8, .2, 1); padding-top: 4px; }
   .desktop-shell [data-split-focus][data-split-dragging] { transition: none; }
-  .desktop-shell [data-split-col] { border-radius: 0.75rem; transition: background-color 200ms ease-out, box-shadow 200ms ease-out; }
+  .desktop-shell [data-split-col] {
+    border-radius: 0.875rem;
+    transform-origin: 50% 0;
+    transition: transform 260ms cubic-bezier(.2, .8, .2, 1), box-shadow 260ms ease-out, background-color 260ms ease-out;
+  }
   .desktop-shell [data-split-focus="info"] > [data-split-col="info"],
   .desktop-shell [data-split-focus="work"] > [data-split-col="work"] {
     background: #fff;
-    box-shadow: 0 1px 2px rgb(15 23 42 / 0.05), 0 6px 16px rgb(15 23 42 / 0.07);
+    transform: translateY(-4px);
+    box-shadow: 0 0 0 1px rgb(15 23 42 / 0.06), 0 4px 8px rgb(15 23 42 / 0.06), 0 20px 40px -8px rgb(15 23 42 / 0.22);
   }
   .desktop-shell [data-split-focus="info"] > [data-split-col="work"]:not(:hover, :focus-within),
-  .desktop-shell [data-split-focus="work"] > [data-split-col="info"]:not(:hover, :focus-within) { background: #e9eef4; }
-  /* 좁힌 칸 안 흰 카드도 함께 가라앉힌다 — 카드가 칸을 꽉 채워 바탕만 바꾸면 안 보였다(2026-11-01 belie 「안 보인다」).
-     입력 칸·버튼은 흰색 그대로 둬서 「쓸 수 있는 곳」이 오히려 또렷하다. */
+  .desktop-shell [data-split-focus="work"] > [data-split-col="info"]:not(:hover, :focus-within) {
+    background: #e2e8f0;
+    transform: translateY(3px) scale(0.985);
+    box-shadow: inset 0 3px 10px rgb(15 23 42 / 0.16), inset 0 0 0 1px rgb(15 23 42 / 0.06);
+  }
+  /* 좁힌 칸 안 흰 카드도 함께 눌린다 — 카드 자기 그림자를 지우고 연회색으로(입력 칸·버튼은 흰색 = 「쓸 수 있는 곳」). */
   .desktop-shell [data-split-focus="info"] > [data-split-col="work"]:not(:hover, :focus-within) :is(.bg-white, [class*="bg-white/"]):not(input, textarea, select, button),
   .desktop-shell [data-split-focus="work"] > [data-split-col="info"]:not(:hover, :focus-within) :is(.bg-white, [class*="bg-white/"]):not(input, textarea, select, button) {
-    background-color: #f1f5f9;
-    transition: background-color 200ms ease-out;
+    background-color: #eef2f6;
+    box-shadow: none;
+    transition: background-color 260ms ease-out;
   }
   @media (prefers-reduced-motion: reduce) {
     .desktop-shell [data-split-focus], .desktop-shell [data-split-col] { transition: none; }
+    .desktop-shell [data-split-col] { transform: none !important; }
   }
 
 }
