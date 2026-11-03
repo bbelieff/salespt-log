@@ -82,7 +82,7 @@ export default async function AdminArenaPage() {
           </Link>
           <Link
             href="/admin"
-            className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-600 hover:bg-gray-50"
+            className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-600 hover:bg-gray-50 pc:hidden"
           >
             ← 메뉴
           </Link>

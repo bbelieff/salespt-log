@@ -23,7 +23,7 @@ export default async function AdminPopupPage() {
     <div className="min-h-dvh bg-slate-100 pb-16">
       <header className="sticky top-0 z-50 border-b border-gray-100 bg-white">
         <div className="mx-auto flex h-12 max-w-4xl items-center gap-3 px-4">
-          <Link href="/admin" className="text-sm font-bold text-gray-400 hover:text-gray-700">
+          <Link href="/admin" className="text-sm font-bold text-gray-400 hover:text-gray-700 pc:hidden">
             ← 메뉴
           </Link>
           <h1 className="text-sm font-black text-gray-900">📢 팝업관리</h1>

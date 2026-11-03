@@ -92,7 +92,7 @@ export default function CohortMgmtPanel({
             {!viewOnly && <ArenaCreateModal />}
             <Link
               href="/admin"
-              className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
+              className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50 pc:hidden"
             >
               ← 마스터 메뉴
             </Link>

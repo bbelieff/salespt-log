@@ -135,3 +135,5 @@ export {
   type UpdateGroup,
 } from "./update-groups";
 export { getDbPilotStatus, type DbPilotStatus } from "./db-pilot";
+
+export { getAdminPendingCounts } from "./admin-pending";
