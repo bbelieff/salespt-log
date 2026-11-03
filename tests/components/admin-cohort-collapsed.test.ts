@@ -4,6 +4,7 @@
  *  ① collapsed → 저장된 펼침 상태가 없으면 기수·팀 박스 모두 닫힘.
  *  ② collapsed 없음(트레이너 화면) → 예전처럼 펼침.
  *  ③ 사용자가 펼쳐 둔 기수는 다시 들어와도 펼침(저장 키 v2).
+ *  ⑤ PC 3기수 나란히 — 격자 3열 고정, 펼쳐도 한 줄 전체를 차지하지 않음.
  *  ④ 검색 중(forceOpen) → 접힌 박스도 펼쳐 결과를 보여 주고, 기억은 바꾸지 않음.
  * 합성 수강생만(실제 개인정보 없음).
  */
@@ -11,7 +12,7 @@ import * as React from "react";
 import { act, createElement as h } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
-import { CohortSection, type Trainee } from "@/components/auth/AdminUserPickerSections";
+import { COHORT_GRID, CohortSection, type Trainee } from "@/components/auth/AdminUserPickerSections";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -67,5 +68,10 @@ describe("CohortSection 기본 접힘", () => {
   it("검색 중 → 기수·팀 모두 펼침, 저장값은 그대로", () => {
     expect(render(true, true)).toEqual([true, true]);
     expect(window.localStorage.getItem("salespt:admin:collapsed:v2")).toBeNull();
+  });
+  it("PC 3열 고정 — 펼친 기수도 자기 칸 유지", () => {
+    expect(COHORT_GRID).toContain("pc:grid-cols-3");
+    render(true, true);
+    expect(host!.querySelector("details")!.className).not.toContain("col-span");
   });
 });
