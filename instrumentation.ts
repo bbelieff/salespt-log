@@ -9,6 +9,9 @@ export async function register() {
     // 기동을 막지 않도록 fire-and-forget, 조건 판정은 startCacheWarmLoop 내부에서.
     const { startCacheWarmLoop } = await import("./lib/service/cache-warm");
     startCacheWarmLoop();
+    // 통화 정리 작업자 — 스위치(CALL_SUMMARY_EMAILS)가 비어 있으면 돌지 않는다.
+    const { startCallWorkerLoop } = await import("./lib/service/call-summary");
+    startCallWorkerLoop();
   }
   if (process.env.NEXT_RUNTIME === "edge") {
     await import("./sentry.edge.config");
