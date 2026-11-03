@@ -121,7 +121,7 @@ export function CohortSection({
   /** 트레이너 뷰 — 본인 email (lowercase). viewOnly 일 때 본인 담당 trainee 만
    *  시트/웹앱 버튼 노출. TraineeCard 까지 plumb. */
   trainerEmailLc?: string;
-  /** 처음 들어올 때(저장된 펼침 상태 없음) 기수·팀 박스를 접어 둔다 — 수강생관리. 트레이너 화면은 펼침 유지. */
+  /** 처음 들어올 때(저장된 펼침 상태 없음) 기수 박스를 접어 둔다 — 수강생관리. 안의 팀 박스는 늘 펼침으로 시작. 트레이너 화면은 펼침 유지. */
   collapsed?: boolean;
   /** 검색 중 — 기수·팀 박스를 펼쳐 결과를 바로 보여 준다. */
   forceOpen?: boolean;
@@ -194,7 +194,6 @@ export function CohortSection({
         onAssignTrainers={onAssignTrainers}
         activeTrainers={activeTrainers}
         trainerEmailLc={trainerEmailLc}
-        collapsed={collapsed}
         forceOpen={forceOpen}
       />
     </PersistentDetails>
@@ -217,7 +216,6 @@ function CohortBody({
   onAssignTrainers,
   activeTrainers,
   trainerEmailLc,
-  collapsed,
   forceOpen,
 }: {
   /** PersistentDetails key 구성 (`team:<cohort>:<teamName>`) 에 사용 */
@@ -235,7 +233,6 @@ function CohortBody({
   onAssignTrainers?: (traineeEmail: string, trainerEmails: string[]) => void;
   activeTrainers?: Trainer[];
   trainerEmailLc?: string;
-  collapsed: boolean;
   forceOpen: boolean;
 }) {
   const { unassigned, teamGroups } = groupByTeam(list);
@@ -262,7 +259,7 @@ function CohortBody({
         <PersistentDetails
           key={teamName}
           persistKey={`team:${cohort}:${teamName}${archived ? ":archived" : ""}`}
-          defaultOpen={!collapsed}
+          defaultOpen
           forceOpen={forceOpen}
           className="pt-1"
         >

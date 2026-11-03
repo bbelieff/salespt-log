@@ -109,11 +109,16 @@ export default function TraineeCard({
     return parseAssigned(u.assignedTrainer).includes(trainerEmailLc);
   }
 
+  // 지금 트레이너 풀(퇴출·관리부서 전환 제외). 비어 있으면(풀 모름) 거르지 않는다.
+  const activeLc = new Set((activeTrainers ?? []).map((t) => t.email.toLowerCase()));
+  const isActiveTrainer = (lc: string) => activeLc.size === 0 || activeLc.has(lc);
+
   function toggleTrainer(trainerEmailLc: string) {
     if (!onAssignTrainers) return;
     const newChecked = !isChecked(trainerEmailLc);
     setOptimistic((prev) => new Map(prev).set(trainerEmailLc, newChecked));
-    const current = parseAssigned(u.assignedTrainer);
+    // 퇴출된 트레이너 잔재는 이번 저장 때 함께 뺀다(일괄 재작성 없이 손댄 수강생만).
+    const current = parseAssigned(u.assignedTrainer).filter(isActiveTrainer);
     const next = newChecked
       ? Array.from(new Set([...current, trainerEmailLc]))
       : current.filter((e) => e !== trainerEmailLc);
@@ -126,9 +131,10 @@ export default function TraineeCard({
   // 현재 배정된 트레이너 라벨 (옵티미스틱 반영).
   const assignedLc = (activeTrainers ?? []).map((t) => t.email.toLowerCase());
   const checkedLcs = assignedLc.filter(isChecked);
-  // 옛 assigned 중 activeTrainers 에 없는 케이스 (트레이너 퇴출 잔재) 도 포함해서 표시.
+  // 퇴출된 트레이너(활성 풀에 없음)는 담당 표시에서 뺀다(belie 2026-11-03). 기록은 남아도
+  // 권한은 자격 재확인으로 이미 막혀 있다(trainer-recruitment remove).
   const allChecked = Array.from(
-    new Set([...checkedLcs, ...parseAssigned(u.assignedTrainer)]),
+    new Set([...checkedLcs, ...parseAssigned(u.assignedTrainer).filter(isActiveTrainer)]),
   ).filter((lc) => {
     if (optimistic.has(lc) && !optimistic.get(lc)) return false;
     return true;

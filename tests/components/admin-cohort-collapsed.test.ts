@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * 수강생관리 기수·팀 박스 기본 접힘(2026-11-03, admin-users-collapsed-default).
- *  ① collapsed → 저장된 펼침 상태가 없으면 기수·팀 박스 모두 닫힘.
+ *  ① collapsed → 저장된 펼침 상태가 없으면 기수 박스는 닫힘, 안의 팀 박스는 펼침(기수를 열면 팀이 바로 보임).
  *  ② collapsed 없음(트레이너 화면) → 예전처럼 펼침.
  *  ③ 사용자가 펼쳐 둔 기수는 다시 들어와도 펼침(저장 키 v2).
  *  ⑤ PC 3기수 나란히 — 격자 3열 고정, 펼쳐도 한 줄 전체를 차지하지 않음.
@@ -55,14 +55,14 @@ function render(collapsed?: boolean, forceOpen?: boolean) {
 }
 
 describe("CohortSection 기본 접힘", () => {
-  it("collapsed → 기수·팀 박스 모두 닫힘", () => {
-    expect(render(true)).toEqual([false, false]);
+  it("collapsed → 기수는 닫힘, 팀은 펼침", () => {
+    expect(render(true)).toEqual([false, true]);
   });
   it("collapsed 없음(트레이너 화면) → 펼침 유지", () => {
     expect(render()).toEqual([true, true]);
   });
-  it("펼쳐 둔 기수는 저장값대로 펼침", () => {
-    window.localStorage.setItem("salespt:admin:collapsed:v2", JSON.stringify({ "cohort:99": true }));
+  it("펼쳐 둔 기수는 저장값대로 펼침, 사용자가 접은 팀은 접힘 유지", () => {
+    window.localStorage.setItem("salespt:admin:collapsed:v2", JSON.stringify({ "cohort:99": true, "team:99:서울": false }));
     expect(render(true)).toEqual([true, false]);
   });
   it("검색 중 → 기수·팀 모두 펼침, 저장값은 그대로", () => {
