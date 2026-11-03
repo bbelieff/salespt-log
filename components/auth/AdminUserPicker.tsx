@@ -470,6 +470,7 @@ export default function AdminUserPicker({
                     linkedBySheet={linkedBySheet}
                     archived
                     viewOnly={viewOnly}
+                    collapsed
                   />
                 ))}
               </div>

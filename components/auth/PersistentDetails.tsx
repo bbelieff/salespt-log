@@ -16,7 +16,7 @@
  * 구조: children[0] = <summary>, children[1:] = 콘텐츠 → 콘텐츠를 애니메이션
  * wrapper <div> 로 감쌈.
  *
- * 저장 형식: 단일 JSON object 키 `salespt:admin:collapsed`.
+ * 저장 형식: 단일 JSON object 키 `salespt:admin:collapsed:v2`.
  *   `{ "cohort:7": true, "team:7:서울": false, "reserved": true }` 형태.
  */
 "use client";
@@ -33,7 +33,8 @@ import {
   type ReactNode,
 } from "react";
 
-const STORAGE_KEY = "salespt:admin:collapsed";
+// v2(2026-11-03): 수강생관리 기수·팀·시즌 박스를 기본 접힘으로 바꾸며 예전 펼침 기억을 한 번 비운다.
+const STORAGE_KEY = "salespt:admin:collapsed:v2";
 const ANIM_MS = 240;
 
 function readStore(): Record<string, boolean> {

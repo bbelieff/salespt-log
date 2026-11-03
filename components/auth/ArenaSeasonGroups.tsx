@@ -56,6 +56,7 @@ function CohortList({
           activeTrainers={h.activeTrainers}
           linkedBySheet={h.linkedBySheet}
           viewOnly={h.viewOnly}
+          collapsed
         />
       ))}
     </div>
@@ -82,7 +83,7 @@ export default function ArenaSeasonGroups({
           <PersistentDetails
             key={s.season}
             persistKey={`arena-season:${s.season}`}
-            defaultOpen
+            defaultOpen={false}
             className="group/season overflow-hidden rounded-2xl border-2 border-purple-200 bg-purple-50/40 open:bg-white"
           >
             <summary className="disclosure-summary flex cursor-pointer flex-wrap items-baseline gap-x-2 gap-y-0.5 border-l-4 border-purple-500 bg-purple-50 px-4 py-3 group-open/season:bg-white hover:bg-purple-100">

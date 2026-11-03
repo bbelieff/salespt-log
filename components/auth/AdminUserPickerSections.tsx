@@ -93,6 +93,7 @@ export function CohortSection({
   archived = false,
   viewOnly = false,
   trainerEmailLc,
+  collapsed = false,
 }: {
   cohort: string;
   list: Trainee[];
@@ -117,6 +118,8 @@ export function CohortSection({
   /** 트레이너 뷰 — 본인 email (lowercase). viewOnly 일 때 본인 담당 trainee 만
    *  시트/웹앱 버튼 노출. TraineeCard 까지 plumb. */
   trainerEmailLc?: string;
+  /** 처음 들어올 때(저장된 펼침 상태 없음) 기수·팀 박스를 접어 둔다 — 수강생관리. 트레이너 화면은 펼침 유지. */
+  collapsed?: boolean;
 }) {
   // 기수 헤더 메타 — 첫 trainee 의 시작/종강일 사용 (같은 기수면 동일).
   const rep = list.find((u) => u.courseStartISO && u.graduationISO);
@@ -135,7 +138,7 @@ export function CohortSection({
     // 사고 (2026-05-14) — 외곽이 inner content 를 자기 모양으로 clip 하도록.
     <PersistentDetails
       persistKey={`cohort:${cohort}${archived ? ":archived" : ""}`}
-      defaultOpen
+      defaultOpen={!collapsed}
       className="group overflow-hidden rounded-2xl border-2 border-slate-300 bg-slate-100 shadow-sm open:bg-white open:shadow-md"
     >
       <summary className="disclosure-summary flex cursor-pointer flex-wrap items-baseline gap-x-2 gap-y-0.5 border-l-4 border-indigo-500 bg-slate-50 px-4 py-3 group-open:bg-white hover:bg-slate-100">
@@ -185,6 +188,7 @@ export function CohortSection({
         onAssignTrainers={onAssignTrainers}
         activeTrainers={activeTrainers}
         trainerEmailLc={trainerEmailLc}
+        collapsed={collapsed}
       />
     </PersistentDetails>
   );
@@ -206,6 +210,7 @@ function CohortBody({
   onAssignTrainers,
   activeTrainers,
   trainerEmailLc,
+  collapsed,
 }: {
   /** PersistentDetails key 구성 (`team:<cohort>:<teamName>`) 에 사용 */
   cohort: string;
@@ -222,6 +227,7 @@ function CohortBody({
   onAssignTrainers?: (traineeEmail: string, trainerEmails: string[]) => void;
   activeTrainers?: Trainer[];
   trainerEmailLc?: string;
+  collapsed: boolean;
 }) {
   const { unassigned, teamGroups } = groupByTeam(list);
   return (
@@ -247,7 +253,7 @@ function CohortBody({
         <PersistentDetails
           key={teamName}
           persistKey={`team:${cohort}:${teamName}${archived ? ":archived" : ""}`}
-          defaultOpen
+          defaultOpen={!collapsed}
           className="pt-1"
         >
           {/* 2026-10-26 박스 다이어트: 팀은 상자 대신 제목 줄 + 아래 선(상자 2단 = 기수 박스까지). */}

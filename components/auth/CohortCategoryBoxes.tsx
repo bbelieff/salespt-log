@@ -85,6 +85,7 @@ export default function CohortCategoryBoxes({
                     activeTrainers={activeTrainers}
                     linkedBySheet={linkedBySheet}
                     viewOnly={viewOnly}
+                    collapsed
                   />
                 ))}
               </div>
