@@ -147,3 +147,14 @@ it("확정 잠금은 review 에서 한 번만, 풀면 다시 review", async () =
   await repo.unlockConfirmCall(id);
   expect(await repo.getCall(email, id)).toMatchObject({ status: "review", confirmedAt: null });
 });
+
+it("진행 중 통화 목록은 내 것만, 확정·닫은 것은 빼고 최근 것부터", async () => {
+  const leadId = await lead();
+  const a = await repo.createCall({ spreadsheetId: sheet, leadId, email, calledAt: "2026-11-01T05:00:00Z" });
+  const b = await repo.createCall({ spreadsheetId: sheet, leadId, email, calledAt: "2026-11-01T05:00:00Z", upload: audio });
+  const gone = await repo.createCall({ spreadsheetId: sheet, leadId, email, calledAt: "2026-11-01T05:00:00Z" });
+  await repo.createCall({ spreadsheetId: sheet, leadId, email: "other@example.test", calledAt: "2026-11-01T05:00:00Z" });
+  await repo.discardCall(email, gone);
+  await fixture.db!.query("update call_records set created_at=now()-interval '1 minute' where id=$1", [a]);
+  expect((await repo.listActiveCalls(sheet, email)).map(c => c.id)).toEqual([b, a]);
+});

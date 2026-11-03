@@ -171,3 +171,14 @@ export async function unlockConfirmCall(id: string): Promise<void> {
   await pool().query(
     `update public.call_records set status='review', confirmed_at=null, updated_at=now() where id=$1 and status='confirmed'`, [id]);
 }
+
+/** 이 시트에서 내 진행 중 통화(확정·닫기 전), 최근 7일, 최근 것부터 — 목록의 상태 칩. */
+export async function listActiveCalls(spreadsheetId: string, email: string): Promise<CallRecord[]> {
+  const r = await pool().query<Row>(
+    `select ${COLS} from public.call_records
+     where spreadsheet_id=$1 and email=$2 and status in ('dialed','queued','processing','review','failed')
+       and created_at > now() - interval '7 days'
+     order by created_at desc limit 200`,
+    [spreadsheetId, key(email)]);
+  return r.rows.map(toRecord);
+}

@@ -34,10 +34,23 @@ function kstMidnight(now = new Date()): Date {
   return new Date(Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate()) - 9 * 3_600_000);
 }
 
-/** 📞 버튼 — 업체·시각만 남긴다. */
-export async function startCall(who: Who, leadId: string): Promise<string> {
+/**
+ * 📞 버튼 — 업체·시각만 남긴다. calledAt 은 📞 없이 건 통화를 올릴 때 녹음 파일의 저장 시각(지난 7일 안, 미래 금지).
+ * 「다음 주 화요일」을 날짜로 바꾸는 기준이라 실제 통화 시각이어야 한다.
+ */
+export async function startCall(who: Who, leadId: string, calledAt?: string): Promise<string> {
   gate(who.email);
-  return calls.createCall({ ...who, leadId, calledAt: new Date().toISOString() });
+  const now = Date.now(), at = calledAt ? Date.parse(calledAt) : now;
+  if (!Number.isFinite(at) || at > now + 5 * 60_000 || at < now - 7 * 86_400_000) {
+    throw new CallSummaryError("통화 시각을 확인해 주세요", 400);
+  }
+  return calls.createCall({ email: who.email, spreadsheetId: who.spreadsheetId, leadId, calledAt: new Date(at).toISOString() });
+}
+
+/** 이 시트에서 내 진행 중 통화 — 화면이 기능 켜짐(200/404)과 상태 칩을 한 번에 안다. */
+export async function listActiveCalls(who: Who): Promise<CallRecord[]> {
+  gate(who.email);
+  return calls.listActiveCalls(who.spreadsheetId, who.email);
 }
 
 export type CallUploadInput = { kind: "audio"; name: string; bytes: Uint8Array } | { kind: "text"; text: string };

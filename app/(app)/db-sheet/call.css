@@ -1,0 +1,44 @@
+/* 통화 정리 앞단(plan call-summary PR-5a, 목업 v5). 색은 db-sheet 의 기존 값(파랑 #3b82f6·호박 #b45309·초록 #16a34a)을 그대로 쓴다. */
+.dbs-call-chip{display:inline-flex;align-items:center;border-radius:5px;padding:2px 6px;font-size:11px;font-weight:500;line-height:16px;white-space:nowrap}
+.dbs-call-chip.is-wait{background:#f1f5f9;color:#475569}
+.dbs-call-chip.is-work{background:#eff6ff;color:#1d4ed8}
+.dbs-call-chip.is-ready{background:#dbeafe;color:#1d4ed8;font-weight:700}
+.dbs-call-chip.is-fail{background:#fef2f2;color:#b91c1c}
+body.db-sheet-route .sheet-mobile-row{display:flex;align-items:stretch;border-bottom:1px solid #f1f5f9}
+body.db-sheet-route .sheet-mobile-row:last-child{border-bottom:0}
+body.db-sheet-route .sheet-mobile-row>.sheet-mobile-card{flex:1;min-width:0;border-bottom:0}
+.dbs-call-btn{flex:none;width:52px;display:grid;place-items:center;border-left:1px solid #f1f5f9;color:#16a34a}
+.dbs-call-btn:hover{background:#f0fdf4}
+.dbs-call-btn:focus-visible{outline:2px solid #3b82f6;outline-offset:-2px}
+.dbs-call-text{display:inline-flex;align-items:center;gap:5px;color:#15803d}
+.dbs-call-bar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;font-size:12px;color:#475569}
+.dbs-call-bar>strong{font-size:12px;color:#0f172a}
+.dbs-call-bar>.dbs-call-actions{display:flex;gap:6px;margin-left:auto}
+.dbs-call-bar .dbs-button{min-height:34px}
+.dbs-call-meta{font-size:12px;color:#64748b;overflow-wrap:anywhere}
+.dbs-call-note{font-size:12px;line-height:1.6;border-radius:8px;padding:8px 10px}
+.dbs-call-note.is-info{background:#eff6ff;color:#1d4ed8}
+.dbs-call-note.is-ok{background:#f0fdf4;color:#15803d}
+.dbs-call-note.is-warn{background:#fffbeb;color:#b45309}
+.dbs-call-note.is-error{background:#fef2f2;color:#b91c1c}
+.dbs-call-apps{display:grid;gap:6px}
+.dbs-call-apps label{display:flex;gap:10px;align-items:center;min-height:44px;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;font-size:14px;color:#0f172a;cursor:pointer}
+.dbs-call-apps label:has(input:checked){border-color:#3b82f6;background:#eff6ff}
+.dbs-call-fixed{display:flex;align-items:center;gap:6px;font-size:12px;color:#64748b}
+.dbs-call-change{margin-left:auto;min-height:32px;padding:4px 6px;color:#2563eb;font-size:12px;font-weight:700}
+.dbs-call-change:focus-visible{outline:2px solid #3b82f6;outline-offset:2px;border-radius:6px}
+.dbs-call-steps{margin:0;padding:0;list-style:none;counter-reset:s;display:grid;gap:10px}
+.dbs-call-steps li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:8px;font-size:13px;line-height:1.6;color:#1e293b;counter-increment:s}
+.dbs-call-steps li::before{content:counter(s);width:22px;height:22px;border-radius:50%;background:#f1f5f9;color:#475569;font-size:12px;font-weight:700;display:grid;place-items:center}
+.dbs-call-tabs{display:grid;grid-template-columns:1fr 1fr;background:#f1f5f9;border-radius:10px;padding:3px}
+.dbs-call-tabs button{min-height:36px;border-radius:8px;font-size:13px;font-weight:500;color:#475569}
+.dbs-call-tabs button[aria-selected=true]{background:#fff;color:#0f172a;box-shadow:0 1px 2px #0f172a14}
+.dbs-call-tabs button:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
+.dbs-call-paste{width:100%;min-height:120px;padding:8px 10px;font-size:13px;line-height:1.6;resize:vertical}
+.dbs-call-file{display:flex;gap:10px;align-items:center;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;color:#2563eb}
+.dbs-call-file>div{min-width:0}
+.dbs-call-file strong{display:block;font-size:13px;font-weight:500;color:#0f172a;overflow-wrap:anywhere}
+.dbs-call-toast{display:flex;align-items:center;gap:12px}
+.dbs-call-toast button{color:#bfdbfe;font-weight:700;white-space:nowrap}
+.dbs-call-meta .num,.dbs-call-note .num,.dbs-call-file .num,.dbs-call-bar .num{font-variant-numeric:tabular-nums}
+@media(max-width:430px){.dbs-call-paste{font-size:16px}.dbs-call-bar>.dbs-call-actions{margin-left:0;width:100%}.dbs-call-bar .dbs-button{flex:1}}

@@ -18,6 +18,7 @@ import {Grid} from './_components/Grid';
 import {ImportDialog} from './_components/ImportDialog';
 import {DbDetail} from './_components/DbDetail';
 import {useDbSheet} from './_components/use-db-sheet';
+import {useCallUi} from './_components/CallUi';
 import {SupplierSummary} from './_components/SupplierSummary';
 import {BulkBar,TrashNoticeBar,bulkOutcomeText} from './_components/BulkBar';
 import {TrashDialog} from './_components/TrashDialog';
@@ -35,6 +36,7 @@ import './absence-link.css';
 /** DB 목록이 먼저 보이도록 기본은 접힘. 공급처 바로가기 진입에서만 펼친다. */
 export default function DbSheetPage(){
  const router=useGuardedRouter(),data=useDbSheet(),rows=data.leads,me=useMe();
+ const callUi=useCallUi(rows);
  const sizingRows=useMemo(()=>rows.map(r=>({...r,memo:r.contact.note.split(/\r?\n/)[0]||''})),[rows]);
  const accountKey=me.isSuccess&&me.data.email?JSON.stringify([me.data.email,me.data.cohort,me.data.spreadsheetId]):'';
  const [period,setPeriod]=useState<InflowPeriodId>('all');
@@ -106,13 +108,14 @@ export default function DbSheetPage(){
  {data.deleting&&<TrashNoticeBar key={JSON.stringify(data.deleting)} deleting={data.deleting} onOpen={()=>setTrashOpen(true)} onClose={data.undoDelete}/>}
  {data.notice&&<p role="alert" className="sheet-error">{data.notice} <button type="button" className="sheet-text-btn" onClick={data.clearNotice}>닫기</button></p>}
  {data.addition&&<ImportResultNotice key={JSON.stringify(data.addition)} result={data.addition} onClose={data.clearAddition}/>}
- <Grid sizingRows={sizingRows} mobileToolsTarget={mobile?mobileToolsTarget:undefined} rows={filtered.map(r=>({...r,memo:r.contact.note.split(/\r?\n/)[0]||''}))} visible={visible} fail={!!data.error} onDetail={setDetail} onChange={data.edit} selected={chosen} onSelect={pick} bulkBar={<BulkBar count={chosen.size} busy={bulkBusy} message={bulkMessage} onInflow={v=>void bulkInflow(v)} onSupplier={()=>setSupplierOpen(true)} onDelete={()=>void bulkDelete()} onClear={()=>{setPicked(new Set());setBulkMessage('');}}/>}/>
+ <Grid sizingRows={sizingRows} mobileToolsTarget={mobile?mobileToolsTarget:undefined} rows={filtered.map(r=>({...r,memo:r.contact.note.split(/\r?\n/)[0]||''}))} visible={visible} fail={!!data.error} onDetail={setDetail} onChange={data.edit} selected={chosen} onSelect={pick} bulkBar={<BulkBar count={chosen.size} busy={bulkBusy} message={bulkMessage} onInflow={v=>void bulkInflow(v)} onSupplier={()=>setSupplierOpen(true)} onDelete={()=>void bulkDelete()} onClear={()=>{setPicked(new Set());setBulkMessage('');}}/>} callSlot={callUi.enabled?callUi.slot:undefined}/>
  </section></PageContainer></div>
- {selected&&<DbDetail key={selected.id} row={selected} onStage={v=>data.stage(selected.id,v)} onAbsence={(entry,remove)=>data.absence(selected.id,entry,remove)} onLink={id=>data.linkMeeting(selected.id,id)} draft={selected.contact} onRestored={data.reload} onAsInfo={v=>data.asInfo(selected.id,v)} onInflowChange={value=>changeInflow(selected.id,value)} onDelete={()=>setRecording({id:selected.id,deleting:true})} onChange={v=>data.contact(selected.id,v)} onEdit={(k,v)=>data.edit(selected.id,k,v)} onResult={(v,date)=>{void data.record(selected.id,v,date).catch(()=>{});}} onRegister={()=>{void data.register(selected.id).catch(()=>{});}} onOpen={()=>{void data.flush(selected.id).then(()=>router.push(`/contact?date=${selected.contact.date}&channel=${encodeURIComponent(selected.channel)}`)).catch(()=>{});}} onClose={()=>{void data.flush(selected.id).catch(()=>{});setDetail('');}}/>}
+ {selected&&<DbDetail key={selected.id} row={selected} callBar={callUi.bar(selected)} onStage={v=>data.stage(selected.id,v)} onAbsence={(entry,remove)=>data.absence(selected.id,entry,remove)} onLink={id=>data.linkMeeting(selected.id,id)} draft={selected.contact} onRestored={data.reload} onAsInfo={v=>data.asInfo(selected.id,v)} onInflowChange={value=>changeInflow(selected.id,value)} onDelete={()=>setRecording({id:selected.id,deleting:true})} onChange={v=>data.contact(selected.id,v)} onEdit={(k,v)=>data.edit(selected.id,k,v)} onResult={(v,date)=>{void data.record(selected.id,v,date).catch(()=>{});}} onRegister={()=>{void data.register(selected.id).catch(()=>{});}} onOpen={()=>{void data.flush(selected.id).then(()=>router.push(`/contact?date=${selected.contact.date}&channel=${encodeURIComponent(selected.channel)}`)).catch(()=>{});}} onClose={()=>{void data.flush(selected.id).catch(()=>{});setDetail('');}}/>}
  {draft&&<DirectInputDialog initial={draft} rows={rows} onClose={()=>setDraft(null)} onExisting={id=>{setDraft(null);setDetail(id);}} onSave={async(row,allow)=>{await data.add([row],row.id,allow?[row.id]:[]);setDraft(null);}}/>}
  {importing&&<ImportDialog accountKey={accountKey} rows={rows} onListTrash={data.listTrash} onExisting={id=>{setImporting(false);setDetail(id);}} onClose={()=>setImporting(false)} onApply={async(added,allow)=>{await data.add(added,added[0]!.id,allow);setImporting(false);}}/>}
  {recording&&rows.find(r=>r.id===recording.id)&&<RecordingDialog row={rows.find(r=>r.id===recording.id)!} deleting={recording.deleting} onClose={()=>setRecording(null)} onPreview={v=>data.recordingPreview(recording.id,v,recording.deleting)} onConfirm={async v=>{await data.configure(recording.id,v,recording.deleting);if(recording.deleting)setDetail('');}}/>}
  {trashOpen&&<TrashDialog onList={data.listTrash} onRestore={data.restoreTrash} onEmpty={data.emptyTrash} onClose={()=>setTrashOpen(false)}/>}
+ {callUi.layer}
  {supplierOpen&&<BulkSupplierDialog count={chosen.size} suppliers={data.suppliers} onApply={bulkSupplier} onClose={()=>setSupplierOpen(false)}/>}
  </SupplierOptions.Provider>;
 }
