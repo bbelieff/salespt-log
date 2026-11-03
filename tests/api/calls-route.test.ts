@@ -14,6 +14,7 @@ import { POST } from "@/app/api/calls/route";
 import { POST as UPLOAD } from "@/app/api/calls/[id]/upload/route";
 
 const LEAD = "00000000-0000-4000-8000-000000000002";
+const CTX = { email: "caller@example.test", spreadsheetId: "sheet-synthetic", cohort: "연습" };
 const req = (headers: Record<string, string> = {}) => new NextRequest("https://fixture.test/api/calls", {
   method: "POST", headers: { "content-type": "application/json", origin: "https://fixture.test", ...headers }, body: JSON.stringify({ leadId: LEAD }),
 });
@@ -23,14 +24,14 @@ beforeEach(() => {
   auth.requireStudentViewContext.mockResolvedValue({ email: "caller@example.test" });
   auth.getWritableUserEmail.mockResolvedValue("caller@example.test");
   svc.startCall.mockResolvedValue("call-id");
-  sheet.resolveDbSheetContext.mockResolvedValue({ spreadsheetId: "sheet-synthetic" });
+  sheet.resolveDbSheetContext.mockResolvedValue(CTX);
 });
 
 it("📞 기록 → id", async () => {
   const r = await POST(req());
   expect(r.status).toBe(200);
   expect(await r.json()).toEqual({ id: "call-id" });
-  expect(svc.startCall).toHaveBeenCalledWith({ email: "caller@example.test", spreadsheetId: "sheet-synthetic" }, LEAD);
+  expect(svc.startCall).toHaveBeenCalledWith(CTX, LEAD);
 });
 
 it("다른 사이트·남의 계정 조회 중이면 403, 아무것도 만들지 않는다", async () => {

@@ -157,3 +157,17 @@ export async function discardCall(email: string, id: string): Promise<{ ok: bool
     [id, key(email)]);
   return r.rows[0] ? { ok: true, audioPath: r.rows[0].old } : { ok: false, audioPath: null };
 }
+
+/** 확정 시작 — review 인 내 통화만 confirmed 로 잠근다(두 번 눌러도 한 번). 잠갔으면 true. */
+export async function lockConfirmCall(email: string, id: string): Promise<boolean> {
+  const r = await pool().query(
+    `update public.call_records set status='confirmed', confirmed_at=now(), updated_at=now() where id=$1 and email=$2 and status='review'`,
+    [id, key(email)]);
+  return (r.rowCount ?? 0) > 0;
+}
+
+/** 확정 저장이 중간에 실패하면 다시 확인 대기로 돌린다. */
+export async function unlockConfirmCall(id: string): Promise<void> {
+  await pool().query(
+    `update public.call_records set status='review', confirmed_at=null, updated_at=now() where id=$1 and status='confirmed'`, [id]);
+}

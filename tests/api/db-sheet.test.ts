@@ -127,6 +127,10 @@ describe("DB sheet HTTP + real service boundary", () => {
     }), 1);
     expect(mocks.meetingSync).toHaveBeenCalledWith(ctx, batchId);
   });
+  it("통화 정리 확정이 넘긴 장소는 소재지 대신 미팅 장소가 된다", async () => {
+    await POST(request({ action: "meeting", id, revision: 1, place: " 공장(합성 주소) " }));
+    expect(mocks.meeting).toHaveBeenCalledWith(ctx, id, expect.objectContaining({ 장소: "공장(합성 주소)" }), 1);
+  });
   it("missing or stale meeting lead does not create a card", async () => {
     mocks.list.mockResolvedValue([]);
     expect((await POST(request({ action: "meeting", id, revision: 1 }))).status).toBe(409); expectNoWrites();

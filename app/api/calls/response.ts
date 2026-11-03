@@ -4,6 +4,8 @@ import { ZodError } from "zod";
 import { getWritableUserEmail, requireStudentViewContext, StudentViewContextError } from "@/auth/identity";
 import { CallLeadMissing, CallSummaryError } from "@/service/call-summary";
 import { DbSheetUnavailable, resolveDbSheetContext } from "@/service/db-sheet";
+import { DbSheetConflict, DbSheetDuplicate, DbSheetLinkedMeetingReadOnly, DbSheetOperationBlocked } from "@/service/call-confirm";
+import type { DbSheetContext } from "@/types/db-sheet";
 
 const headers = { "Cache-Control": "private, no-store" };
 
@@ -20,10 +22,8 @@ function sameSite(req: NextRequest): boolean {
   return (!origin || origin === expected) && req.headers.get("sec-fetch-site") !== "cross-site";
 }
 
-type Who = { email: string; spreadsheetId: string };
-
 /** write=true 면 조회 중인 계정이 내 계정이고 같은 사이트 요청일 때만. */
-export async function callResponse(req: NextRequest, write: boolean, run: (who: Who) => Promise<unknown>) {
+export async function callResponse(req: NextRequest, write: boolean, run: (ctx: DbSheetContext) => Promise<unknown>) {
   try {
     const view = await requireStudentViewContext();
     if (write) {
@@ -33,11 +33,13 @@ export async function callResponse(req: NextRequest, write: boolean, run: (who: 
       if (!sameSite(req)) return NextResponse.json({ error: "다른 사이트에서 보낸 요청은 허용하지 않습니다." }, { status: 403, headers });
     }
     const ctx = await resolveDbSheetContext(view.email, view.sheetOverride);
-    return NextResponse.json((await run({ email: view.email, spreadsheetId: ctx.spreadsheetId })) ?? { ok: true }, { headers });
+    return NextResponse.json((await run(ctx)) ?? { ok: true }, { headers });
   } catch (e) {
     if (e instanceof StudentViewContextError) return NextResponse.json({ error: e.code }, { status: e.status, headers });
     if (e instanceof CallSummaryError) return NextResponse.json({ error: e.message }, { status: e.status, headers });
     if (e instanceof CallLeadMissing) return NextResponse.json({ error: "업체를 찾을 수 없어요" }, { status: 404, headers });
+    if (e instanceof DbSheetConflict) return NextResponse.json({ error: "다른 화면에서 이 DB 가 바뀌었어요. 새로고침한 뒤 다시 확정해 주세요." }, { status: 409, headers });
+    if (e instanceof DbSheetLinkedMeetingReadOnly || e instanceof DbSheetOperationBlocked || e instanceof DbSheetDuplicate) return NextResponse.json({ error: e.message }, { status: 409, headers });
     if (e instanceof ZodError || e instanceof SyntaxError) return NextResponse.json({ error: "입력을 확인해 주세요." }, { status: 400, headers });
     if (e instanceof DbSheetUnavailable) return NextResponse.json({ error: e.message }, { status: 503, headers });
     return NextResponse.json({ error: "처리하지 못했어요. 잠시 뒤 다시 시도해 주세요." }, { status: 503, headers });
