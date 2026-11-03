@@ -119,3 +119,18 @@ it("오래 남은 녹음 원본을 찾아 비운다(처리 중인 것은 건드�
   expect(await repo.staleCallAudio(0)).toEqual([]);
   expect((await repo.listCallsForLead(sheet, leadId)).map(c => c.id)).toEqual([left]);
 });
+
+it("없는 업체로는 못 만든다, 하루 올린 수, 닫기는 녹음 경로를 돌려준다", async () => {
+  await expect(repo.createCall({ spreadsheetId: sheet, leadId: randomUUID(), email, calledAt: "2026-11-01T05:00:00Z" })).rejects.toBeInstanceOf(repo.CallLeadMissing);
+  const leadId = await lead();
+  const since = new Date(Date.now() - 60_000);
+  const dialed = await repo.createCall({ spreadsheetId: sheet, leadId, email, calledAt: "2026-11-01T05:00:00Z" });
+  const up = await repo.createCall({ spreadsheetId: sheet, leadId, email, calledAt: "2026-11-01T05:00:00Z", upload: audio });
+  expect(await repo.countCallUploadsSince(email, since)).toBe(1);
+  expect(await repo.discardCall("other@example.test", up)).toEqual({ ok: false, audioPath: null });
+  expect(await repo.discardCall(email, up)).toEqual({ ok: true, audioPath: "/tmp/call-audio/a.m4a" });
+  expect((await repo.getCall(email, up))?.status).toBe("discarded");
+  await repo.claimNextCall();
+  expect(await repo.discardCall(email, up)).toEqual({ ok: false, audioPath: null });
+  expect(await repo.discardCall(email, dialed)).toEqual({ ok: true, audioPath: null });
+});

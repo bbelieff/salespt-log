@@ -31,7 +31,8 @@ worktree: ../_wt/salespt-log/call-summary-contract
 1. **PR-1 계약** `chore/call-summary-contract` — `lib/types/call.ts`(CallStatus·CallExtraction·CallMeetingDraft·CallRecord), `0014_call_records.sql`, data-model 등재, 계약 시험. 운영 DB 적용은 PR-2 병합 전 DB Migrate 워크플로로.
 2. **PR-2 저장소·스위치** `chore/call-summary-store` — `lib/repo/db/call-records.ts`(생성·녹음 붙이기·대기열 `for update skip locked`·멈춘 처리 회수·재시도 3회·오래된 원본), `lib/repo/ai/call-gemini.ts`+`call-prompt.ts`(0단계 지시문 그대로, 키는 VPS `.env`, 키 없으면 멈춤·가짜 답은 로컬 `CALL_AI_FAKE=1` 만), 기능 스위치 `CALL_SUMMARY_EMAILS`(`lib/config`). 녹음 임시 폴더는 레포 밖. 녹음은 요청에 그대로 실어 보내므로 **파일 상한 14MB**(0단계 익시오 42kbps 기준 약 45분).
 3. **PR-3 변환** — `lib/service/call-extract-map.ts`: 0단계 `convert.py` 규칙을 TS 로(기존 `lib/document-ocr/*`·`company-*` 함수 재사용), 0단계 정답지 15건을 「AI 원답 → 저장 형식」 고정 시험으로.
-4. **PR-4 API·작업자** — 📞 기록(`dialed` 생성), 업로드(14MB·하루 상한), 상태 조회, `POST /api/calls/[id]/confirm`(상담메모·업체정보·미팅·컨택결과를 한 번에, 다시 보내도 한 번), `instrumentation.ts` 처리 루프.
+4. **PR-4 API·작업자** — 📞 기록(`dialed` 생성), 업로드(14MB·하루 상한), 상태 조회, 닫기, `instrumentation.ts` 처리 루프.
+   **PR-4b 확정** — `POST /api/calls/[id]/confirm`(상담메모·업체정보·미팅·컨택결과를 한 번에, 다시 보내도 한 번). DB관리시트 저장 경로를 건드리므로 PR-4 에서 나눔(2026-11-03).
 5. **PR-5 화면** — 스위치(`isCallSummaryUser`)가 켜진 사람에게만. DB관리시트 목록·DB정보에 📞 버튼(전화번호 있을 때), 돌아오면 「방금 통화한 녹음 올리기」, 「통화 정리 확인」 화면(목업 승인본 기준, impeccable Operate).
 6. **PR-6 켜기** — 첫 업로드 고지(D6), `CALL_SUMMARY_EMAILS` 에 belie·연습 기수 등록. 스위치는 PR-2 로 앞당김(belie 2026-11-01: 하나씩 운영에 붙여 조립 — 화면이 스위치보다 먼저 나가면 바로 보이므로).
 
@@ -53,10 +54,18 @@ worktree: ../_wt/salespt-log/call-summary-contract
 - [x] 0단계 정답지 15건(합성 12·실제 목소리 3)의 AI 원답 → convert.py 와 같은 CallExtraction(고정 시험, 사례 파일에 받아쓰기 없음)
 - [x] 채운 칸마다 근거 문장(evidence), 근거 없는 답은 버림, 자택주소·주민번호는 실리지 않음(시험)
 - [x] 백만원 표기는 기존 `wonToMillion`, 매출 칸은 `salesSlotOf` 재사용. 말 금액(「3천」=3천만·「십이억」)은 서류 글 해석 `parseSalesAmount` 와 규칙이 달라 `spokenWon` 으로 따로 둠
-- [ ] check.sh · CI · 병합 · 배포 health. 사용자 화면 변화 없음
-- 남은 차이: 0단계의 소개처(`q1_referrer`)는 CallExtraction 에 칸이 없어 아직 버린다 — 필요하면 PR-4 확정 때 계약에 추가
+- [x] check.sh · CI · 병합(#1299, ec853d21) · 배포 run 41627875613 success · health 200. 사용자 화면 변화 없음
+- 남은 차이: 0단계의 소개처(`q1_referrer`)는 CallExtraction 에 칸이 없어 아직 버린다 — 필요하면 PR-4b 확정 때 계약에 추가
+
+## Acceptance Criteria — PR-4
+- [x] `POST /api/calls`(📞 → dialed) · `GET /api/calls?leadId=` · `GET /api/calls/[id]` · `POST /api/calls/[id]/upload`(multipart 녹음 또는 JSON 글자) · `POST /api/calls/[id]/discard`
+- [x] 스위치 밖 = 404, 쓰기는 내 계정·같은 사이트만(시험). 없는 업체 = 404(외래 키)
+- [x] 녹음: m4a·mp3·wav·aac·ogg·flac, 14MB, 빈 파일 거절, 하루 상한 `CALL_DAILY_LIMIT`(기본 30). 레포 밖 임시 폴더, 무작위 이름, 폴더 밖 경로 거절(시험)
+- [x] 작업자: 녹음/글자 → Gemini → `mapCallExtraction` → review. 429·5xx 다시 대기(3회), 그 밖 failed. 끝·실패·닫기 때 녹음 삭제, 하루 넘은 파일 정리(시험). 스위치가 비면 루프를 돌리지 않음
+- [ ] check.sh · CI · 병합 · 배포 health. 사용자 화면 변화 없음(스위치 비어 있음)
 
 ## Log
 - 2026-10-31 PR-1 착수. 0단계 완료(실제 목소리 3건 통과).
 - 2026-11-01 PR-1 병합·배포·운영 DB 적용 완료. PR-2 착수(스위치 앞당김, 파일 상한 14MB).
 - 2026-11-01 PR-2 병합(#1298)·배포 완료. PR-3 착수.
+- 2026-11-03 PR-3 병합(#1299)·배포 완료. PR-4 착수, 확정 저장은 PR-4b 로 나눔.

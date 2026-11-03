@@ -34,6 +34,9 @@ const toRecord = (r: Row): CallRecord => ({
   createdAt: r.created_at.toISOString(), confirmedAt: r.confirmed_at?.toISOString() ?? null,
 });
 
+/** 이 업체가 이 DB관리시트에 없으면(휴지통 비움 등) 통화를 만들 수 없다. */
+export class CallLeadMissing extends Error { constructor() { super("call_lead_missing"); } }
+
 /** 📞 를 누르면 upload 없이(dialed), 📞 없이 DB정보에서 바로 올리면 upload 와 함께(queued) 만든다. */
 export async function createCall(input: {
   spreadsheetId: string; leadId: string; email: string; calledAt: string; upload?: CallUpload;
@@ -43,7 +46,8 @@ export async function createCall(input: {
     `insert into public.call_records (id, spreadsheet_id, lead_id, email, status, called_at, source, audio_path, transcript)
      values ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
     [id, input.spreadsheetId, input.leadId, key(input.email), u ? "queued" : "dialed", input.calledAt,
-      u?.source ?? null, u?.audioPath ?? null, u?.transcript ?? ""]);
+      u?.source ?? null, u?.audioPath ?? null, u?.transcript ?? ""])
+    .catch((e: { code?: string }) => { throw e.code === "23503" ? new CallLeadMissing() : e; });
   return id;
 }
 
@@ -133,4 +137,23 @@ export async function staleCallAudio(olderThanHours: number): Promise<{ id: stri
 
 export async function clearCallAudio(id: string): Promise<void> {
   await pool().query(`update public.call_records set audio_path=null, updated_at=now() where id=$1 and status <> 'processing'`, [id]);
+}
+
+/** 이 사람이 since 이후 올린 통화 수(녹음·글자) — 하루 상한. */
+export async function countCallUploadsSince(email: string, since: Date): Promise<number> {
+  const r = await pool().query<{ n: number }>(
+    `select count(*)::int as n from public.call_records where email=$1 and source is not null and updated_at >= $2`,
+    [key(email), since.toISOString()]);
+  return r.rows[0]?.n ?? 0;
+}
+
+/** 저장하지 않고 닫기 → discarded. 처리 중·확정된 통화는 못 닫는다. 비운 녹음 경로(옛 값)를 돌려준다. */
+export async function discardCall(email: string, id: string): Promise<{ ok: boolean; audioPath: string | null }> {
+  const r = await pool().query<{ old: string | null }>(
+    `update public.call_records c set status='discarded', audio_path=null, updated_at=now()
+     from (select id, audio_path as old from public.call_records
+           where id=$1 and email=$2 and status in ('dialed','queued','review','failed') for update) o
+     where c.id=o.id returning o.old`,
+    [id, key(email)]);
+  return r.rows[0] ? { ok: true, audioPath: r.rows[0].old } : { ok: false, audioPath: null };
 }
