@@ -14,6 +14,8 @@ import {
   formatWonInput,
   isCorporation,
   ownershipView,
+  thousandToWon,
+  wonToThousandView,
   showsUnitSuffix,
 } from "@/util/company-choice";
 
@@ -83,8 +85,28 @@ describe("② 소유여부", () => {
     ["자가 / 임차 : 보 00만, 월 00만", "자가", "자가 / 임차 : 보 00만, 월 00만"],
     ["월세 50만", "임차", "월세 50만"],
     ["모름", "", "모름"],
+    ["임차(무상)", "임차(무상)", ""],
+    ["기타", "기타", ""],
+    ["배우자명의 무상사용", "임차(무상)", "배우자명의 무상사용"],
   ])("%s → 선택 %s", (raw, choice, legacy) => {
     expect(ownershipView(raw)).toEqual({ choice, legacy });
+  });
+});
+
+describe("② 보증금·월세 천원 보이기 · 원 저장(belie 2026-11-04)", () => {
+  it("원 → 천원", () => {
+    expect(wonToThousandView("10,000,000")).toBe("10,000");
+    expect(wonToThousandView("500000")).toBe("500");
+    expect(wonToThousandView("1500")).toBe("1.5");
+    expect(wonToThousandView("")).toBe("");
+    expect(wonToThousandView("1,000만")).toBeNull();
+  });
+  it("천원 → 원(쉼표), 숫자가 아니면 그대로", () => {
+    expect(thousandToWon("10,000")).toBe("10,000,000");
+    expect(thousandToWon("1.5")).toBe("1,500");
+    expect(thousandToWon("1.")).toBe("1,000");
+    expect(thousandToWon("")).toBe("");
+    expect(thousandToWon("1천만")).toBe("1천만");
   });
 });
 

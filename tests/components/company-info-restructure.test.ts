@@ -3,7 +3,7 @@
  * 업체정보 편집기 재구성 (company-info-restructure, belie 2026-09-28).
  *  ① 섹션 순서 [대표자] → [기업정보] → [재무]
  *  ② 사업자구분 · 과세유형 한 칸 선택(옛 값 보존) · 법인등록번호는 법인일 때만
- *  ③ 소유여부 자가/임차 선택 + 임차 한 줄(보증금 원·월세 원·면적 ㎡) + 옛 글 안내 — 기업정보·대표자 같은 모양
+ *  ③ 소유여부 [면적 | 드롭다운] + 임차면 [보증금 | 월세](천원 보이기·원 저장) + 옛 글 안내 — 기업정보·대표자 같은 모양
  *  ④ 업종 · 업태 · 주생산품목 한 줄
  *  ⑤ [재무] 연도 라벨(주입한 오늘) · 연도별 매출 4줄×3칸(상반기|하반기|합계, company-finance-won-grid) ·
  *     매출증가율 자동 · 옛 한 칸 값 읽기 전용 메모
@@ -154,86 +154,70 @@ describe("② 사업자구분 · 과세유형 / 법인등록번호", () => {
   });
 });
 
-describe("③ 소유여부 — 기업정보 (글칸 + 자가·임차 빠른 선택, belie 2026-10-09)", () => {
-  const quick = (g: HTMLElement, key: string, label: "자가" | "임차") => {
-    const input = byKey(g, key)!;
-    act(() => input.focus());
-    const btn = [...g.querySelectorAll<HTMLButtonElement>('[aria-label="소유여부 빠른 선택"] button')].find((b) => b.textContent === label)!;
-    act(() => btn.click());
-  };
-  const lease = (g: HTMLElement) => g.querySelector<HTMLElement>('[aria-label="면적·임차 조건"]')!;
+describe("③ 소유여부 — 기업정보 ([면적 | 소유여부 드롭다운] + 임차면 [보증금 | 월세] 천원, belie 2026-11-04)", () => {
+  const lease = (g: HTMLElement) => g.querySelector<HTMLElement>('[aria-label="임차 조건"]');
 
-  it("「선택」 드롭다운이 없다 — 글칸을 누르면 자가·임차를 고를 수 있고, 면적은 늘 보인다", () => {
+  it("드롭다운 선택지는 자가·임차·임차(무상)·기타, 면적이 같은 줄 왼쪽", () => {
     render();
     const g = groupEl("기업정보");
-    const input = byKey(g, "소유여부")!;
-    expect(input.tagName).toBe("INPUT");
-    expect(g.querySelector('[aria-label="소유여부 빠른 선택"]')).toBeNull();
-    expect([...lease(g).querySelectorAll("input")].map((i) => i.id.split("-").at(-1))).toEqual(["임차면적"]);
-    quick(g, "소유여부", "임차");
+    const sel = byKey<HTMLSelectElement>(g, "소유여부")!;
+    expect(sel.tagName).toBe("SELECT");
+    expect([...sel.options].map((o) => o.value)).toEqual(["", "자가", "임차", "임차(무상)", "기타"]);
+    const row = sel.closest(".grid")!;
+    expect(row.contains(byKey(g, "임차면적"))).toBe(true);
+    expect(lease(g)).toBeNull();
+    choose(sel, "임차");
     expect(staged().소유여부).toBe("임차");
     expect(staged().업체기타메모).toBe("");
   });
 
-  it("그 밖(기타)은 칸에 바로 적는다", () => {
-    render();
-    typeInto(byKey(groupEl("기업정보"), "소유여부")!, "배우자명의 무상사용");
-    expect(staged().소유여부).toBe("배우자명의 무상사용");
+  it("주소지(소재지) 아래에 면적·소유여부, 기타메모는 맨 아래", () => {
+    render({ 업체기타메모: "적은 메모", 소재지: "서울특별시 중구 세종대로 1" });
+    const ids = [...groupEl("기업정보").querySelectorAll("input, select, textarea")].map((i) => i.id.split("-").at(-1));
+    expect(ids.indexOf("소재지")).toBeLessThan(ids.indexOf("임차면적"));
+    expect(ids.indexOf("임차면적")).toBeLessThan(ids.indexOf("소유여부"));
+    expect(ids.filter(Boolean).at(-1)).toBe("업체기타메모");
   });
 
-  it("자가여도 면적 칸은 살아 있다", () => {
-    render({ 소유여부: "자가", 임차면적: "40" });
-    const g = groupEl("기업정보");
-    expect(byKey(g, "임차면적")!.value).toBe("40");
-    expect(byKey(g, "임차보증금")).toBeNull();
+  it("임차(무상)·자가·기타는 보증금·월세 칸이 없다", () => {
+    for (const 소유여부 of ["임차(무상)", "자가", "기타"]) {
+      render({ 소유여부 });
+      expect(lease(groupEl("기업정보"))).toBeNull();
+      act(() => root?.unmount());
+      el?.remove();
+    }
   });
 
-  it("임차면 보증금(원)·월세(원)·면적(㎡) 세 칸이 한 줄, 숫자는 쉼표로", () => {
-    render({ 소유여부: "임차" });
-    const row = lease(groupEl("기업정보"));
+  it("임차면 보증금·월세가 소유여부 아래 한 줄 — 천원으로 보이고 적고, 저장은 원", () => {
+    render({ 소유여부: "임차", 임차보증금: "10,000,000", 임차월세: "500000" });
+    const row = lease(groupEl("기업정보"))!;
     const inputs = [...row.querySelectorAll("input")];
-    expect(inputs.map((i) => i.id.split("-").at(-1))).toEqual(["임차보증금", "임차월세", "임차면적"]);
-    expect(inputs.map((i) => labelOf(i))).toEqual(["보증금", "월세", "면적"]);
-    expect(row.textContent).toContain("원");
-    expect(row.textContent).toContain("㎡");
-    expect(row.className).toContain("xs:grid-cols-3");
-    typeInto(inputs[0]!, "10000000");
-    expect(staged().임차보증금).toBe("10,000,000"); // 입력하는 동시에 쉼표(belie 2026-09-29)
-    typeInto(inputs[2]!, "33.5");
-    expect(staged().임차면적).toBe("33.5");
+    expect(inputs.map((i) => i.id.split("-").at(-1))).toEqual(["임차보증금", "임차월세"]);
+    expect(inputs.map((i) => labelOf(i))).toEqual(["보증금", "월세"]);
+    expect(inputs.map((i) => i.value)).toEqual(["10,000", "500"]);
+    expect(row.textContent).toContain("천원"); // 칸 안 흐린 단위
+    typeInto(inputs[0]!, "20000");
+    expect(staged().임차보증금).toBe("20,000,000");
+    typeInto(inputs[1]!, "1.5");
+    expect(staged().임차월세).toBe("1,500");
+    expect(inputs[1]!.value).toBe("1.5"); // 적는 중 글은 그대로
   });
 
-  it("보증금·월세는 칸을 떠날 때 천 단위 쉼표, 옛 '1,000만' 은 그대로", () => {
-    render({ 소유여부: "임차", 임차보증금: "10000000", 임차월세: "1,000만", 임차면적: "33000" });
-    const g = groupEl("기업정보");
-    const blur = (key: string) =>
-      act(() => {
-        byKey(g, key)!.focus();
-        byKey(g, key)!.blur();
-      });
-    blur("임차보증금");
-    expect(staged().임차보증금).toBe("10,000,000");
-    stage.mockReset();
-    blur("임차월세");
-    blur("임차면적"); // 면적(㎡)은 원 금액이 아니라 쉼표를 찍지 않는다
-    expect(stage).not.toHaveBeenCalled();
-  });
-
-  it("옛 자유 글은 칸에 그대로 보이고, 빠른 선택으로 바꾸면 원문을 기타메모로 옮긴다", () => {
-    render({ 소유여부: "임차 : 보 1000만, 월 50만", 업체기타메모: "기존 메모" });
-    const g = groupEl("기업정보");
-    expect(byKey(g, "소유여부")!.value).toBe("임차 : 보 1000만, 월 50만");
-    quick(g, "소유여부", "자가");
-    expect(staged().소유여부).toBe("자가");
-    expect(staged().업체기타메모).toBe(["기존 메모", "소유여부 이전 내용: 임차 : 보 1000만, 월 50만"].join("\n"));
-  });
-
-  it("이미 적힌 임차 값(1,000만)은 소유여부가 비어도 보인다", () => {
+  it("옛 '1,000만' 은 그대로 보이고 단위를 또 붙이지 않는다", () => {
     render({ 소유여부: "", 임차보증금: "1,000만" });
     const dep = byKey(groupEl("기업정보"), "임차보증금")!;
     expect(dep.value).toBe("1,000만");
-    // 단위가 이미 적힌 옛 값에는 "원" 을 또 붙이지 않는다.
-    expect(dep.parentElement!.textContent).not.toContain("원");
+    expect(dep.parentElement!.textContent).not.toContain("천원");
+  });
+
+  it("옛 자유 글은 고를 수 없는 「지금 값」으로 보이고, 바꾸면 원문을 기타메모로 옮긴다", () => {
+    render({ 소유여부: "임차 : 보 1000만, 월 50만", 업체기타메모: "기존 메모" });
+    const sel = byKey<HTMLSelectElement>(groupEl("기업정보"), "소유여부")!;
+    expect(sel.options[sel.selectedIndex]!.textContent).toBe("임차 : 보 1000만, 월 50만");
+    expect(sel.options[sel.selectedIndex]!.disabled).toBe(true);
+    choose(sel, "자가");
+    expect(staged().소유여부).toBe("자가");
+    expect(staged().업체기타메모).toBe(["기존 메모", "소유여부 이전 내용: 임차 : 보 1000만, 월 50만"].join("\n"));
   });
 
   it("4대보험 직원과 특허 및 인증이 한 줄", () => {
@@ -246,35 +230,22 @@ describe("③ 소유여부 — 기업정보 (글칸 + 자가·임차 빠른 선�
 });
 
 describe("③ 소유여부 — 대표자(같은 모양, 대표 전용 키)", () => {
-  it("대표소유여부 글칸 + 대표임차 3칸", () => {
+  it("대표소유여부 드롭다운 + 대표임차 칸", () => {
     render({ 대표소유여부: "임차", 대표임차면적: "33", 대표임차보증금: "50000000" });
     const g = groupEl("대표자");
-    expect(byKey(g, "대표소유여부")!.value).toBe("임차");
-    const row = g.querySelector<HTMLElement>('[aria-label="면적·임차 조건"]')!;
-    expect([...row.querySelectorAll("input")].map((i) => i.id.split("-").at(-1))).toEqual([
-      "대표임차보증금",
-      "대표임차월세",
-      "대표임차면적",
-    ]);
+    expect(byKey<HTMLSelectElement>(g, "대표소유여부")!.value).toBe("임차");
     expect(byKey(g, "대표임차면적")!.value).toBe("33");
-    typeInto(byKey(g, "대표임차월세")!, "500000");
+    expect(byKey(g, "대표임차보증금")!.value).toBe("50,000");
+    typeInto(byKey(g, "대표임차월세")!, "500");
     expect(staged().대표임차월세).toBe("500,000");
     expect(staged().임차월세).toBe(""); // 기업정보 칸은 그대로
-    act(() => {
-      byKey(g, "대표임차보증금")!.focus();
-      byKey(g, "대표임차보증금")!.blur();
-    });
-    expect(staged().대표임차보증금).toBe("50,000,000");
   });
 
-  it("옛 글은 빠른 선택 때 대표 기타메모로 옮긴다", () => {
+  it("옛 글은 다른 값을 고를 때 대표 기타메모로 옮긴다", () => {
     render({ 대표소유여부: "배우자명의 무상사용" });
-    const g = groupEl("대표자");
-    const input = byKey(g, "대표소유여부")!;
-    act(() => input.focus());
-    const btn = [...g.querySelectorAll<HTMLButtonElement>('[aria-label="소유여부 빠른 선택"] button')].find((b) => b.textContent === "임차")!;
-    act(() => btn.click());
-    expect(staged().대표소유여부).toBe("임차");
+    const sel = byKey<HTMLSelectElement>(groupEl("대표자"), "대표소유여부")!;
+    choose(sel, "임차(무상)");
+    expect(staged().대표소유여부).toBe("임차(무상)");
     expect(staged().대표기타메모).toBe("소유여부 이전 내용: 배우자명의 무상사용");
     expect(staged().업체기타메모).toBe("");
   });
@@ -387,11 +358,10 @@ describe("⑤ [재무] 매출", () => {
 });
 
 describe("⑥ 좁은 폰 가로 넘침 방지", () => {
-  it("한 줄 묶음(업종 줄·임차 줄·증가율 줄)은 360px 미만 1열, 칸은 줄어들 수 있다(min-w-0)", () => {
+  it("세 칸 줄(업종 줄·증가율 줄)은 360px 미만 1열, 칸은 줄어들 수 있다(min-w-0)", () => {
     render({ 소유여부: "임차" });
     const rows = [
       byKey(groupEl("기업정보"), "업태")!.closest<HTMLElement>(".xs\\:grid-cols-3")!,
-      groupEl("기업정보").querySelector<HTMLElement>('[aria-label="면적·임차 조건"]')!,
       groupEl("매출증가율"),
     ];
     for (const row of rows) {
@@ -399,5 +369,19 @@ describe("⑥ 좁은 폰 가로 넘침 방지", () => {
       expect(row.className).toContain("xs:grid-cols-3");
       for (const cell of row.children) expect((cell as HTMLElement).className).toContain("min-w-0");
     }
+    // 개업일 줄은 칸 묶음 너비로 바뀐다(globals.css .company-biz-row) — 칸은 줄어들 수 있다.
+    const biz = byKey(groupEl("기업정보"), "개업일")!.closest<HTMLElement>(".company-biz-row-grid")!;
+    for (const cell of biz.children) expect((cell as HTMLElement).className).toContain("min-w-0");
+    // 두 칸 줄(임차 조건)은 폰에서도 둘 — 칸이 줄어들 수 있다.
+    const lease = groupEl("기업정보").querySelector<HTMLElement>('[aria-label="임차 조건"]')!;
+    for (const cell of lease.children) expect((cell as HTMLElement).className).toContain("min-w-0");
+  });
+
+  it("개업일 · 사업자구분/과세유형 · 사업자등록번호가 한 줄(belie 2026-11-04)", () => {
+    render();
+    const g = groupEl("기업정보");
+    const row = byKey(g, "개업일")!.closest<HTMLElement>(".company-biz-row-grid")!;
+    expect(row.contains(byKey(g, "사업자구분"))).toBe(true);
+    expect(row.contains(byKey(g, "사업자등록번호"))).toBe(true);
   });
 });

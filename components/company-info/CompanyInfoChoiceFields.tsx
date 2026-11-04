@@ -4,11 +4,10 @@
  * - BizTypeField: 사업자구분 · 과세유형 한 칸 select. 고르면 두 저장 키를 함께 쓴다.
  *   옛 값(과세유형 빈칸·목록 밖 자유 글)은 고를 수 없는 "지금 값" 선택지로 그대로 보인다.
  *   목록 밖 자유 글은 새 값으로 바꿀 때 기타메모로 옮겨 둔다(말없이 지우지 않는다).
- * - OwnershipField: 소유여부 글칸(belie 2026-10-09 — 「선택」 드롭다운 폐지). 칸을 누르면 자가·임차 빠른 선택이
- *   뜨고, 그 밖(무상사용 등)은 칸에 그대로 적는다. 옛 자유 글은 칸에 그대로 보인다. 빠른 선택으로 바꿀 때
- *   칸의 다른 글은 지우지 않고 기타메모로 옮긴다. 면적(㎡)은 늘 보이고, 보증금(원)·월세(원)는 임차일 때
- *   (또는 이미 값이 있을 때)만 — 한 줄 세 칸. 기업정보(소유여부)·대표자(대표소유여부)가 같은 모양.
- * - 보증금·월세 쉼표는 칸을 떠날 때(blur) 찍는다 — 입력 중에 다시 찍으면 커서가 끝으로 튄다(연락처와 같은 방식).
+ * - OwnershipField(belie 2026-11-04 재배치): 주소지 아래 [면적 | 소유여부(드롭다운: 자가·임차·임차(무상)·기타)],
+ *   임차면 그 아래 [보증금 | 월세]. 보증금·월세는 천원 단위로 보이고 적지만 저장은 원(옛 값·TXT·서류 자동입력 호환).
+ *   단위(㎡·천원)는 칸 안에 흐리게. 목록 밖 옛 자유 글은 고를 수 없는 「지금 값」으로 보이고, 다른 값을 고르면
+ *   기타메모로 옮긴다(말없이 지우지 않는다). 기업정보(소유여부)·대표자(대표소유여부)가 같은 모양.
  */
 "use client";
 
@@ -16,13 +15,14 @@ import { useState } from "react";
 import type { CompanyInfo } from "@/types";
 import {
   BIZ_TYPE_OPTIONS,
+  OWNERSHIP_OPTIONS,
   appendMemoLine,
   bizTypeChoose,
   bizTypeView,
-  formatWonInput,
   ownershipView,
   showsUnitSuffix,
-  type OwnershipChoice,
+  thousandToWon,
+  wonToThousandView,
 } from "@/util/company-choice";
 import { BIZ_TYPE_HINT, BIZ_TYPE_LABEL, LEASE_PARTS, type OwnershipSpec } from "@/components/company-info-defs";
 import { FieldLabel, hintIdOf, inputCls } from "./CompanyInfoField";
@@ -69,45 +69,45 @@ export function BizTypeField({ draft, onPatch, id }: { draft: CI; onPatch: Patch
   );
 }
 
-function UnitInput({
-  id,
-  label,
-  hint,
-  unit,
-  value,
-  won,
-  onChange,
-}: {
+/** 단위(㎡·천원)를 칸 안 오른쪽에 흐리게 보이는 숫자 칸. thousand = 저장은 원, 보이기·적기는 천원. */
+function UnitInput({ id, label, hint, unit, stored, thousand, onChange }: {
   id: string;
   label: string;
   hint: string;
   unit: string;
-  value: string;
-  won: boolean;
+  stored: string;
+  thousand: boolean;
   onChange: (v: string) => void;
 }) {
-  const formatOnBlur = () => {
-    const next = formatWonInput(value);
-    if (next !== value) onChange(next);
-  };
-  // 원 단위 칸(보증금·월세)은 입력하는 동시에 천 단위 쉼표(belie 2026-09-29). 면적(㎡)은 그대로.
-  const live = useLiveInput((raw, caret, prev) => (won ? groupTyping(raw, caret, prev) : null), value, onChange);
+  // 적는 동안은 친 글자를 그대로 붙잡는다 — 저장값(원)에서 다시 그리면 "1." 같은 중간 글이 사라진다.
+  const [typing, setTyping] = useState<string | null>(null);
+  const view = thousand ? (wonToThousandView(stored) ?? stored) : stored;
+  const shown = typing ?? view;
+  const live = useLiveInput(
+    (raw, caret, prev) => (thousand ? groupTyping(raw, caret, prev) : null),
+    shown,
+    (v) => {
+      setTyping(v);
+      onChange(thousand ? thousandToWon(v) : v);
+    },
+  );
+  // 옛 "1,000만"·"33㎡(10평)" 처럼 단위가 이미 적힌 값엔 단위를 또 보이지 않는다.
+  const showUnit = showsUnitSuffix(shown);
   return (
     <div className="min-w-0">
       <FieldLabel htmlFor={id} label={label} hint={hint} />
-      <div className="flex items-center gap-1">
+      <div className="relative">
         <input
           id={id}
-          className={`${inputCls} min-w-0`}
+          className={`${inputCls} min-w-0 ${showUnit ? "pr-10" : ""}`}
           aria-describedby={hintIdOf(id, label, hint)}
-          inputMode={won ? "numeric" : "decimal"}
+          inputMode="decimal"
           ref={live.ref}
-          value={value}
+          value={shown}
           onChange={live.onChange}
-          onBlur={won ? formatOnBlur : undefined}
+          onBlur={() => setTyping(null)}
         />
-        {/* 옛 "1,000만"·"33㎡(10평)" 처럼 단위가 이미 적힌 값엔 단위를 또 붙이지 않는다. */}
-        {showsUnitSuffix(value) && <span className="shrink-0 text-xs text-gray-500">{unit}</span>}
+        {showUnit && <span aria-hidden className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-xs text-gray-400">{unit}</span>}
       </div>
     </div>
   );
@@ -126,68 +126,54 @@ export function OwnershipField({
   idBase: string;
   className?: string;
 }) {
-  const inputId = `${idBase}-${spec.key}`;
+  const selectId = `${idBase}-${spec.key}`;
   const text = (k: keyof CI) => String(draft[k] ?? "");
   const raw = text(spec.key);
-  const { choice } = ownershipView(raw);
-  const [focused, setFocused] = useState(false);
+  const { choice, legacy } = ownershipView(raw);
   const hasLease = [spec.deposit, spec.rent].some((k) => text(k).trim() !== "");
-  // 자가·임차 빠른 선택. 칸에 직접 적은 다른 글(기타)이 있으면 지우지 않고 기타메모로 옮겨 둔다.
-  const pick = (next: Exclude<OwnershipChoice, "">) => {
+  // 고르면 그 값으로. 목록 밖 옛 글이 있었으면 지우지 않고 기타메모로 옮겨 둔다.
+  const pick = (next: string) => {
     const patch: Partial<CI> = { [spec.key]: next };
-    const old = raw.trim();
-    if (old && old !== "자가" && old !== "임차") patch[spec.memo] = appendMemoLine(text(spec.memo), `소유여부 이전 내용: ${old}`);
+    if (legacy) patch[spec.memo] = appendMemoLine(text(spec.memo), `소유여부 이전 내용: ${legacy}`);
     onPatch(patch);
   };
-  const part = (k: keyof CI, p: readonly [string, string, string], won: boolean) => (
+  const part = (k: keyof CI, p: readonly [string, string, string], thousand: boolean) => (
     <UnitInput
       id={`${idBase}-${String(k)}`}
       label={p[0]}
       unit={p[1]}
       hint={p[2]}
-      value={text(k)}
-      won={won}
+      stored={text(k)}
+      thousand={thousand}
       onChange={(v) => onPatch({ [k]: v } as Partial<CI>)}
     />
   );
   return (
-    <div className={`${className} min-w-0`}>
-      <FieldLabel htmlFor={inputId} label="소유여부" hint={spec.hint} />
-      {/* 「선택」 드롭다운 대신 글칸(belie 2026-10-09): 누르면 자가·임차를 바로 고르거나, 그 밖(무상사용 등)은 그대로 적는다. */}
-      <input
-        id={inputId}
-        className={inputCls}
-        aria-describedby={hintIdOf(inputId, "소유여부", spec.hint)}
-        placeholder="자가 · 임차 · 그 밖은 직접 적기"
-        value={raw}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        onChange={(e) => onPatch({ [spec.key]: e.target.value } as Partial<CI>)}
-      />
-      {focused && (
-        <div className="mt-1 flex gap-1.5" role="group" aria-label="소유여부 빠른 선택">
-          {(["자가", "임차"] as const).map((c) => (
-            <button
-              key={c}
-              type="button"
-              // 누르는 순간 칸이 포커스를 잃어 버튼이 사라지지 않게(클릭 전에 blur 막기).
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => pick(c)}
-              aria-pressed={raw.trim() === c}
-              className={`rounded-full border px-3 py-1 text-xs font-semibold ${raw.trim() === c ? "border-brand-red bg-red-50 text-brand-red" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"}`}
-            >
-              {c}
-            </button>
-          ))}
+    <div className={`${className} min-w-0 space-y-1.5`}>
+      <div className="grid grid-cols-2 items-end gap-1.5">
+        {part(spec.area, LEASE_PARTS.area, false)}
+        <div className="min-w-0">
+          <FieldLabel htmlFor={selectId} label="소유여부" hint={spec.hint} />
+          <select
+            id={selectId}
+            className={inputCls}
+            aria-describedby={hintIdOf(selectId, "소유여부", spec.hint)}
+            value={legacy ? "__legacy" : choice}
+            onChange={(e) => pick(e.target.value)}
+          >
+            <option value="">선택</option>
+            {legacy && <option value="__legacy" disabled>{legacy}</option>}
+            {OWNERSHIP_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+        </div>
+      </div>
+      {/* 보증금·월세는 임차일 때(또는 이미 값이 있을 때)만 — 소유여부 아래 한 줄. */}
+      {(choice === "임차" || hasLease) && (
+        <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="임차 조건">
+          {part(spec.deposit, LEASE_PARTS.deposit, true)}
+          {part(spec.rent, LEASE_PARTS.rent, true)}
         </div>
       )}
-      {/* 면적은 자가·임차 상관없이 늘 보인다(belie 2026-10-09). 보증금·월세는 임차일 때(또는 이미 값이 있을 때)만.
-          좁은 폰(360px 미만)은 세로로 쌓이고, 그 이상은 세 칸 한 줄 — 가로 넘침 없음. */}
-      <div className="mt-1.5 grid grid-cols-1 gap-1.5 xs:grid-cols-3" role="group" aria-label="면적·임차 조건">
-        {(choice === "임차" || hasLease) && part(spec.deposit, LEASE_PARTS.deposit, true)}
-        {(choice === "임차" || hasLease) && part(spec.rent, LEASE_PARTS.rent, true)}
-        {part(spec.area, LEASE_PARTS.area, false)}
-      </div>
     </div>
   );
 }
