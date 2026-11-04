@@ -32,6 +32,10 @@ const flush = () => act(async () => {
   for (let i = 0; i < 5; i++) await Promise.resolve();
   await new Promise((r) => setTimeout(r, 0));
 });
+/** 불러오기가 끝날 때까지(최대 2초) — 전체 시험이 함께 돌아 느릴 때 정해진 한 번의 flush 로는 모자라다. */
+const settle = async (done: () => boolean) => {
+  for (let i = 0; i < 100 && !done(); i++) await flush();
+};
 const btn = (el: HTMLElement, text: string) => [...el.querySelectorAll("button")].find((b) => b.textContent === text);
 
 describe("보기 칸", () => {
@@ -59,7 +63,7 @@ describe("ContactScriptPanel", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
     const el = mount(h(ContactScriptPanel));
-    await flush();
+    await settle(() => !!el.textContent?.includes("가상 대본"));
     expect(el.textContent).toContain("가상 대본");
     expect(el.textContent).toContain("기본 대본이에요");
     act(() => btn(el, "수정")!.click());
@@ -70,7 +74,7 @@ describe("ContactScriptPanel", () => {
       area.dispatchEvent(new Event("input", { bubbles: true }));
     });
     act(() => btn(el, "저장")!.click());
-    await flush();
+    await settle(() => !el.querySelector("textarea"));
     const putCall = fetchMock.mock.calls.find((c) => c[1]?.method === "PUT")!;
     expect(JSON.parse(String(putCall[1]!.body))).toEqual({ script: "고친 대본", sms: "가상 문자" });
     expect(el.querySelector("textarea")).toBeNull();
@@ -81,9 +85,9 @@ describe("ContactScriptPanel", () => {
     const writeText = vi.fn(async () => {});
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
     const el = mount(h(ContactScriptPanel));
-    await flush();
+    await settle(() => !!btn(el, "복사"));
     act(() => btn(el, "복사")!.click());
-    await flush();
+    await settle(() => !!el.textContent?.includes("복사했어요"));
     expect(writeText).toHaveBeenCalledWith("가상 문자");
     expect(el.textContent).toContain("복사했어요");
   });
