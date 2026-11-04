@@ -38,12 +38,24 @@ it("근거 문장 없는 답은 버리고, 자택주소·주민번호는 실리�
   expect(r.answered).toEqual([8]);
 });
 
-it("미팅: 요일이 어긋나면 날짜를 비우고, 사무실이면 주소를 붙인다", () => {
+it("사업자구분은 개인/법인, 들었으면 과세유형도", () => {
+  const a = mapCallExtraction({ q1_biz_kind: { said: "개인 일반과세자", evidence: "상대: 개인 일반과세자요." } }, AT);
+  expect(a.company).toMatchObject({ 사업자구분: "개인", 과세유형: "일반과세자" });
+  expect(a.evidence.과세유형).toBe("상대: 개인 일반과세자요.");
+  expect(mapCallExtraction({ q1_biz_kind: { said: "간이과세 개인사업자", evidence: "e" } }, AT).company).toMatchObject({ 사업자구분: "개인", 과세유형: "간이과세자" });
+  expect(mapCallExtraction({ q1_biz_kind: { said: "법인", evidence: "e" } }, AT).company.과세유형).toBeUndefined();
+});
+
+it("미팅: 요일이 어긋나면 날짜를 비우고, 업장·사무실이면 주소로 바꾼다", () => {
   const r = mapCallExtraction({
     address: { said: "서울 중구 세종대로 1번지", evidence: "e" },
     meeting: { date_said: "11월 3일 수요일", time_said: "두 시 반", place_said: "사무실", evidence: "e" },
   }, AT);
-  expect(r.meeting).toEqual({ meetingDate: "", time: "14:30", place: "사무실(서울 중구 세종대로 1)", reservationNote: "" });
+  expect(r.meeting).toEqual({ meetingDate: "", time: "14:30", place: "서울 중구 세종대로 1", reservationNote: "" });
+  const shop = mapCallExtraction({ address: { said: "서울시 서초구", evidence: "e" }, meeting: { date_said: "11월 4일", time_said: "3시", place_said: "업장", evidence: "e" } }, AT);
+  expect(shop.meeting?.place).toBe("서울시 서초구");
+  const cafe = mapCallExtraction({ address: { said: "서울시 서초구", evidence: "e" }, meeting: { date_said: "11월 4일", time_said: "3시", place_said: "역삼역 3번 출구 투썸", evidence: "e" } }, AT);
+  expect(cafe.meeting?.place).toBe("역삼역 3번 출구 투썸");
   const next = mapCallExtraction({ meeting: { date_said: "다음 주 월요일", time_said: "오전 11시 50분", place_said: "카페", evidence: "e" } }, AT);
   expect(next.meeting).toMatchObject({ meetingDate: "2026-11-02", time: "11:45" });
 });

@@ -2,6 +2,7 @@
 /**
  * 부재 기록(2026-10-23 belie) — 전화를 건 날짜·시각(08~21시)을 쌓아 다음 통화 시간대를 바꿔 볼 수 있게 한다.
  * 컨택결과·STEP 2 실적은 바꾸지 않는다(결과는 위 컨택결과에서). 미팅이 연결된 업체에는 보이지 않는다.
+ * 컨택결과가 「부재」일 때만 보인다(belie 2026-11-05).
  */
 import { useState } from "react";
 import { DB_SHEET_CALL_HOURS, dbSheetAbsenceHint, type DbSheetAbsence } from "@/types/db-sheet";

@@ -69,6 +69,9 @@ body.db-sheet-route .sheet-mobile-row>.sheet-mobile-card{flex:1;min-width:0;bord
 .dbs-cc-field{display:grid;gap:6px;font-size:12px;font-weight:600;color:#334155}
 .dbs-cc-field .sheet-input,.dbs-cc-panel>select.sheet-input,.dbs-cc-row .sheet-input{width:100%;min-width:0;min-height:38px;padding:7px 10px;font-size:13px;font-weight:400;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#0f172a}
 .dbs-cc-field textarea.sheet-input,.dbs-cc-row textarea.sheet-input{line-height:1.6;resize:vertical}
+/* 날짜·시간·글 칸 높이를 하나로(belie 2026-11-05: 날짜 칸만 살짝 높았음) — 폰 날짜 칸은 자체 높이를 가져 appearance 를 끈다. */
+.dbs-cc-field input.sheet-input,.dbs-cc-field select.sheet-input,.dbs-cc-row input.sheet-input,.dbs-cc-row select.sheet-input{height:38px;min-height:38px;line-height:20px}
+.dbs-cc input[type=date].sheet-input{-webkit-appearance:none;appearance:none;display:flex;align-items:center}
 .dbs-cc-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
 .dbs-cc-stack{display:grid;gap:12px}
 .dbs-cc-said{font-size:12px;color:#475569;background:#f8fafc;border-radius:8px;padding:8px 10px}

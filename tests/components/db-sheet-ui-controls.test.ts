@@ -128,13 +128,15 @@ it("keeps 480/600 → 400/680 in 1081px, restores left on shrink, and grows only
  expect(host.textContent).not.toContain('컨택일(최초컨택일)');expect(host.querySelector('[aria-label="상담메모"]')).not.toBeNull(); // 2026-10-26: 컨택일 칸·「컨택내용」 제목 제거, 상담메모는 컨택결과 묶음 안
  expect(host.querySelector('.db-call-heading .db-first-contact')).toBeNull();expect(host.querySelector('[aria-label="DB정보 최초상담일"]')).not.toBeNull();
 });
-it("hides 부재 기록 once the result is 단순거절 (2026-10-25)", () => {
+it("shows 부재 기록 only while the result is 부재 (2026-11-05 belie)", () => {
   const noop = vi.fn();
   const render = (result: string) => act(() => root.render(React.createElement(DbDetail, { row: { ...row, result }, draft: contactDraft(row), onChange: noop, onEdit: noop, onResult: noop, onRegister: noop, onOpen: noop, onClose: noop, onDelete: noop, onAsInfo: noop, onInflowChange: async () => {}, onAbsence: async () => {} })));
   render("부재");
   expect(host.querySelector('[aria-label="부재 기록"]')).not.toBeNull();
-  render("단순거절");
-  expect(host.querySelector('[aria-label="부재 기록"]')).toBeNull();
+  for (const other of ["단순거절", "재통화", "미컨택", ""]) {
+    render(other);
+    expect(host.querySelector('[aria-label="부재 기록"]')).toBeNull();
+  }
 });
 it("부재·재통화 highlight the 다음 연락일 field with an auto-schedule hint instead of a separate notice box (2026-10-25)", () => {
   const noop = vi.fn();

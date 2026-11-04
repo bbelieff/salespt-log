@@ -11,6 +11,7 @@ import type { CallRecord } from "@/types/call";
 import { DB_SHEET_RESULTS, dbSheetResultLabel, type DbSheetLead } from "@/types/db-sheet";
 import { buildCiRows, confirmBlocker, confirmBody, missingQuestions, noteDraft, timeOptions, type CiRow, type ConfirmState, type DbSheetResult } from "./call-confirm-model";
 import { confirmCall, hhmm } from "./call-client";
+import { meetingPlace } from "@/util/call-place";
 
 const QUESTIONS = ["대표 여부·법인/개인·상호", "업종", "창업연월", "연 매출", "올해 매출", "사업자 대출", "개인 대출", "4대보험", "수출·배달·키오스크", "특허·인증", "신용점수", "필요 자금"];
 const kstDate = (iso: string) => new Date(Date.parse(iso) + 9 * 3_600_000).toISOString().slice(0, 10);
@@ -22,7 +23,9 @@ export function CallConfirmScreen({ lead, call, onSaved, onClose }: { lead: DbSh
   const [s, setS] = useState<ConfirmState>(() => ({
     revision: lead.revision, date: kstDate(call.calledAt), result: x.meeting ? "컨택진행" : "",
     note: noteDraft(lead.contact.note, x.memo), rows: built.rows, baseYear: built.baseYear, hasBaseYear: !!Number(lead.contact.ci.매출기준연도),
-    meetingOn: !!x.meeting, meeting: x.meeting ?? { meetingDate: "", time: "", place: "", reservationNote: "" }, lead: x.lead,
+    meetingOn: !!x.meeting, lead: x.lead,
+    // 통화에서 주소를 못 들어 「업장」만 남았으면 업체에 저장된 소재지로(belie 2026-11-05).
+    meeting: x.meeting ? { ...x.meeting, place: meetingPlace(x.meeting.place, x.company.소재지 || lead.contact.ci.소재지 || "") } : { meetingDate: "", time: "", place: "", reservationNote: "" },
   }));
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
   const top = useRef<HTMLDivElement>(null);
@@ -93,7 +96,10 @@ export function CallConfirmScreen({ lead, call, onSaved, onClose }: { lead: DbSh
             <input type="checkbox" aria-label={`${r.label} 넣기`} checked={r.checked && r.status !== "same"} disabled={r.status === "same"} onChange={e => setRow(r.key, { checked: e.target.checked })} />
             <div>
               <div className="dbs-cc-label"><span>{r.label}</span>{r.sensitive && <span className="dbs-cc-tag is-priv">민감</span>}</div>
-              {r.value.length > 40 || r.value.includes("\n")
+              {r.options
+                ? <select className="sheet-input" aria-label={r.label} value={r.value} onChange={e => setRow(r.key, { value: e.target.value, checked: !!e.target.value })}>
+                  <option value="">고르기</option>{r.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
+                : r.value.length > 40 || r.value.includes("\n")
                 ? <textarea className="sheet-input" rows={2} aria-label={r.label} value={r.value} disabled={r.status === "same"} onChange={e => setRow(r.key, { value: e.target.value, checked: true })} />
                 : <input className="sheet-input num" aria-label={r.label} value={r.value} disabled={r.status === "same"} onChange={e => setRow(r.key, { value: e.target.value, checked: true })} />}
               {r.status === "keep" && <small className="dbs-cc-cur">지금: {r.current}</small>}
