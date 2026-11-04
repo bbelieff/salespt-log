@@ -1,4 +1,4 @@
-/** 통화 정리 화면 확인용(PR-5a·5b) — 가상 업체·번호, 서버 요청은 가짜 응답. ?s=list|pick|copied|upload|upload-ios|file-ok|file-warn|bar|confirm|confirm-nomeet */
+/** 통화 정리 화면 확인용(PR-5a·5b) — 가상 업체·번호, 서버 요청은 가짜 응답. ?s=list|pick|copied|upload|upload-ios|file-ok|file-warn|notice|bar|confirm|confirm-nomeet */
 import React, { useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { Grid } from "@/app/(app)/db-sheet/_components/Grid";
@@ -42,12 +42,13 @@ window.fetch = async (url: RequestInfo | URL, init?: RequestInit) => {
 localStorage.clear();
 if (scene === "copied") localStorage.setItem("db-sheet-call-app", "adot");
 
-function PickFile({ name }: { name: string }) {
+function PickFile({ name, then }: { name: string; then?: string }) {
   useEffect(() => { const t = setTimeout(() => {
     const input = document.querySelector<HTMLInputElement>("input[type=file]")!;
     const dt = new DataTransfer(); dt.items.add(new File([new Uint8Array(1_250_000)], name, { lastModified: DIALED + 2 * 60_000 }));
     input.files = dt.files; input.dispatchEvent(new Event("change", { bubbles: true }));
-  }, 50); return () => clearTimeout(t); }, [name]);
+    if (then) setTimeout(() => [...document.querySelectorAll("button")].find(b => b.textContent === then)?.click(), 50);
+  }, 50); return () => clearTimeout(t); }, [name, then]);
   return null;
 }
 
@@ -56,9 +57,9 @@ function Fixture() {
   const r = rows[0]!;
   const dialed = calls[0] as never;
   if (scene === "pick" || scene === "copied") return <CallDialDialog row={r} onDialed={() => {}} onClose={() => {}} />;
-  if (scene.startsWith("upload") || scene.startsWith("file")) return <>
+  if (scene.startsWith("upload") || scene.startsWith("file") || scene === "notice") return <>
     <CallUploadDialog row={r} call={dialed} asked onUploaded={() => {}} onClose={() => {}} />
-    {scene === "file-ok" && <PickFile name="통화 녹음 010-0000-1234_261103_140211.m4a" />}
+    {(scene === "file-ok" || scene === "notice") && <PickFile name="통화 녹음 010-0000-1234_261103_140211.m4a" then={scene === "notice" ? "올리기" : undefined} />}
     {scene === "file-warn" && <PickFile name="통화 녹음 010-0000-5678_261103_135511.m4a" />}
   </>;
   if (scene.startsWith("confirm")) return <CallConfirmScreen lead={confirmLead} call={calls[2] as never} onSaved={() => {}} onClose={() => {}} />;

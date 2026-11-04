@@ -15,7 +15,7 @@ import { useCalls } from "./use-calls";
 import { phoneDigits } from "./call-client";
 import "../call.css";
 
-/** 이어서 올릴 수 있는 통화 — 전화만 건(녹음 대기) 또는 정리 실패. */
+/** 이어서 올릴 수 있는 통화 — 전화만 건(녹음 필요) 또는 정리 실패. */
 const resumable = (c?: CallRecord) => c && (c.status === "dialed" || c.status === "failed") ? c : null;
 
 /** rows = DB관리시트 원본(revision·contact.ci 포함). onSaved = 확정 뒤 목록 다시 읽기. */
@@ -39,9 +39,9 @@ export function useCallUi(rows: DbSheetLead[], onSaved: () => void | Promise<voi
   const bar = (r: Row) => calls.enabled ? <div className="dbs-call-bar">
     <strong>통화</strong><CallChip call={calls.latest.get(r.id)} />
     <span className="dbs-call-actions">
-      {review(r.id) && <button type="button" className="dbs-button primary" onClick={() => setConfirm(r.id)}><ClipboardCheck size={15} aria-hidden="true" />통화 정리 확인</button>}
+      {review(r.id) && <button type="button" className="dbs-button primary" onClick={() => setConfirm(r.id)}><ClipboardCheck size={16} aria-hidden="true" />확인하기</button>}
       <CallButton row={r} label onDial={() => setDial(r)} />
-      <button type="button" className="dbs-button dbs-call-text" onClick={() => setUpload({ row: r, call: resumable(calls.latest.get(r.id)), asked: false })}><FileAudio size={15} aria-hidden="true" />통화 녹음 올리기</button>
+      <button type="button" className="dbs-button dbs-call-text" onClick={() => setUpload({ row: r, call: resumable(calls.latest.get(r.id)), asked: false })}><FileAudio size={16} aria-hidden="true" />녹음 올리기</button>
     </span>
   </div> : null;
 
@@ -51,7 +51,7 @@ export function useCallUi(rows: DbSheetLead[], onSaved: () => void | Promise<voi
     {asking && <CallUploadDialog row={asking.row} call={asking.call} asked onUploaded={id => calls.uploaded(id, asking.row.id)} onClose={calls.clearReturned} />}
     {confirming?.lead && confirming.call && <CallConfirmScreen lead={confirming.lead} call={confirming.call} onClose={() => setConfirm(null)} onSaved={async () => {
       const company = confirming.lead!.company || "이 업체";
-      setConfirm(null); await onSaved(); await calls.refresh(); calls.say(`${company} 통화 정리를 저장했어요.`);
+      setConfirm(null); await onSaved(); await calls.refresh(); calls.say(`${company} 저장했어요.`);
     }} />}
     {calls.toast && <div className="sheet-toast dbs-call-toast" role="status"><span>{calls.toast.text}</span>
       {calls.toast.open && <button type="button" onClick={() => { setConfirm(calls.toast!.open!); calls.clearToast(); }}>확인하기</button>}
