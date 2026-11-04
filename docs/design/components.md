@@ -1752,6 +1752,7 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - **DesktopNav**: 캘린더 바로 아래 「주간목표」(`/weekly-goals`, Target 아이콘).
 
 ### 업체정보 기본보기 / 확장보기 (2026-10-09 belie)
+- **SlotDeleteConfirmModal** (`app/(app)/payment/_components/SlotDeleteConfirmModal.tsx`): 진행건 ✕ 를 누르면 바로 지우지 않고 뜨는 확인 팝업(role=alertdialog). 「진행 N번을 지울까요?」 + 적힌 칸(기관·상품·진행률·승인/수납액·수납일·메모)만 회색 상자에, 빈 진행건이면 그렇게 안내. [취소](기본 포커스) · [진행 N 지우기](빨강).
 - **CompanyInfoLayoutToggle** (`components/company-info/CompanyInfoLayoutToggle.tsx`): 편집기 본문 위 [기본보기 | 확장보기] 두 칸 버튼(`aria-label="업체정보 보기 범위"`, 고른 칸 slate-800 채움). `useInfoLayout(defaultLayout)` — 화면이 정한 기본값으로 열고, 바꾸면 그 화면 종류(`salespt:company-info-layout:{basic|extended}`)에서만 기억. 팝업에서는 `onScript`·`scriptOn` 으로 세 번째 「대본」 칸이 붙는다(대본을 보는 동안 두 보기 칸은 눌리지 않은 모양, 모바일 select 에도 「대본」).
 - **ContactScriptPanel** (`components/company-info/ContactScriptPanel.tsx`): 업체정보 팝업 「대본」 — [컨택 대본]·[문자 양식] 두 흰 카드(빨간 막대 제목). 읽기 모드는 줄바꿈 그대로, 문자 양식 「복사」(slate-800). 「수정」 → 두 textarea + 저장·취소·「기본 대본으로 되돌리기」(고친 적 있을 때만). 데이터 `useContactScript`/`useSaveContactScript`(`/api/contact-script`, 로그인 계정 본인 것만).
 - **CompanyInfoEditor** `defaultLayout` prop(기본 `basic`): 컨택관리·일정계약 미팅카드 = 기본보기, 실무/수납(`CompanyInfoContractSection`) = `extended`. 기본보기 = `기본_대표자_ITEMS`(이름·신용점수 / 기대출 개인) + `기본_사업자_ITEMS`(개업일 · 사업자구분 · 업종·아이템 · 연매출 4칸 · 사업자 대출 · 4대보험|특허 · 소재지 · 기타메모) — 컨택가이드 순서 그대로(적은 것 위로 올리기·거르기 없음). 확장보기 = 기존 전체 화면 + 「전체/적은 것/안 적은 것」 거르기(확장보기 안에서만). 기본보기에서 안 보이는데 적힌 칸이 있으면 아래 점선 버튼 「▾ 확장보기에 적힌 항목 N개 더 있어요 · 보기」(`hiddenFilledCount` + 사용자 추가 필드).
