@@ -31,6 +31,20 @@ export function saveCallApp(id: CallAppId | null): void {
   try { if (id) localStorage.setItem(APP_KEY, id); else localStorage.removeItem(APP_KEY); } catch { /* 저장 못 해도 이번 통화는 건다 */ }
 }
 
+/**
+ * 익시오·에이닷은 폰의 「기본 통화 앱」으로 정하면 tel: 로 바로 열린다(아이폰 iOS 18.2+ · 안드로이드, belie 2026-11-05).
+ * 웹이 그 앱을 직접 여는 공개 주소는 없어서, 처음 한 번 기본 통화 앱으로 바꾸도록 안내하고 이 폰에 기록한다.
+ */
+export const dialsAsDefault = (app: CallAppId) => app === "ixio" || app === "adot";
+export const defaultAppPath = (ios: boolean) => ios ? "설정 › 앱 › 기본 앱 › 통화" : "설정 › 애플리케이션 › 기본 앱 › 전화 앱";
+const DEFAULT_KEY = "db-sheet-call-default";
+export function readDefaultReady(app: CallAppId): boolean {
+  try { return localStorage.getItem(DEFAULT_KEY) === app; } catch { return false; }
+}
+export function saveDefaultReady(app: CallAppId): void {
+  try { localStorage.setItem(DEFAULT_KEY, app); } catch { /* 못 하면 다음에 한 번 더 안내할 뿐 */ }
+}
+
 /** 첫 업로드 고지(D6)를 이 폰에서 확인했는지. 문구가 바뀌면 값을 올려 다시 보여 준다. */
 const NOTICE_KEY = "db-sheet-call-notice", NOTICE_VERSION = "1";
 export function readCallNotice(): boolean {

@@ -4,7 +4,7 @@ import React, { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { blank } from "@/app/(app)/db-sheet/_components/model";
-import { callChip, checkRecording, eul, euro, latestCallByLead, readCallApp, readCallNotice, saveCallApp, saveCallNotice } from "@/app/(app)/db-sheet/_components/call-client";
+import { callChip, checkRecording, eul, euro, latestCallByLead, readCallApp, readCallNotice, readDefaultReady, saveCallApp, saveCallNotice } from "@/app/(app)/db-sheet/_components/call-client";
 import { CallDialDialog } from "@/app/(app)/db-sheet/_components/CallDial";
 import { CallUploadDialog } from "@/app/(app)/db-sheet/_components/CallUploadDialog";
 
@@ -61,7 +61,13 @@ it("앱 고르기: 앱 이름만, 누르면 바로 — 「다음에도 이 앱�
   await act(async () => root.render(createElement(CallDialDialog, { row, onDialed: dialed, onClose: vi.fn() })));
   expect([...host.querySelectorAll(".dbs-call-apps button")].map(b => b.textContent)).toEqual(["익시오", "에이닷", "기본 전화 앱", "다른 녹음 앱"]);
   expect((host.querySelector("input[type=checkbox]") as HTMLInputElement).checked).toBe(true);
+  // 익시오는 기본 통화 앱으로 정하면 tel: 로 열린다 — 처음 한 번 바꾸는 길을 보여 주고, 아직이면 번호만 복사.
   await act(async () => button("익시오").click());
+  expect(host.textContent).toContain("처음 한 번만 바꿔 주세요");
+  expect(host.textContent).toContain("기본 앱 › 전화 앱 › 익시오");
+  expect(fetchMock).not.toHaveBeenCalled();
+  await act(async () => button("번호만 복사").click());
+  expect(readDefaultReady("ixio")).toBe(false);
   expect(write).toHaveBeenCalledWith("010-0000-1234");
   expect(fetchMock).toHaveBeenCalledWith("/api/calls", expect.objectContaining({ method: "POST" }));
   expect(dialed).toHaveBeenCalledWith(expect.objectContaining({ id: "call-1", leadId: row.id }));
@@ -69,6 +75,23 @@ it("앱 고르기: 앱 이름만, 누르면 바로 — 「다음에도 이 앱�
   expect(host.textContent).toContain("번호를 복사했어요");
   expect(host.textContent).toContain("익시오를 열고 붙여 넣어 거세요");
   expect(host.textContent).toContain("늘 익시오로 걸어요");
+});
+
+it("익시오를 기본 통화 앱으로 바꿨으면 tel: 로 바로 걸고, 그 뒤로는 묻지 않는다 (2026-11-05 belie)", async () => {
+  fetchMock.mockResolvedValue(ok({ id: "call-2" }));
+  Object.defineProperty(navigator, "clipboard", { value: { writeText: vi.fn(async () => {}) }, configurable: true });
+  const hrefs: string[] = [];
+  const loc = window.location;
+  Object.defineProperty(window, "location", { configurable: true, value: { ...loc, set href(v: string) { hrefs.push(v); } } });
+  const close = vi.fn();
+  await act(async () => root.render(createElement(CallDialDialog, { row, onDialed: vi.fn(), onClose: close })));
+  await act(async () => button("에이닷").click());
+  await act(async () => button("바꿨어요, 걸기").click());
+  expect(readDefaultReady("adot")).toBe(true);
+  expect(readCallApp()).toBe("adot");
+  expect(hrefs).toEqual(["tel:01000001234"]);
+  expect(close).toHaveBeenCalled();
+  Object.defineProperty(window, "location", { configurable: true, value: loc });
 });
 
 it("기록이 실패하면 안내하고 닫지 않는다", async () => {

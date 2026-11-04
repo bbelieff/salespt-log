@@ -1,4 +1,4 @@
-/** 통화 정리 화면 확인용(PR-5a·5b) — 가상 업체·번호, 서버 요청은 가짜 응답. ?s=list|pick|copied|upload|upload-ios|file-ok|file-warn|notice|bar|confirm|confirm-nomeet */
+/** 통화 정리 화면 확인용(PR-5a·5b) — 가상 업체·번호, 서버 요청은 가짜 응답. ?s=list|pick|pick-ios|copied|upload|upload-ios|file-ok|file-warn|notice|bar|confirm|confirm-nomeet */
 import React, { useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { Grid } from "@/app/(app)/db-sheet/_components/Grid";
@@ -11,7 +11,7 @@ import { CallExtraction } from "@/types/call";
 import { DbSheetContact, type DbSheetLead } from "@/types/db-sheet";
 
 const scene = new URLSearchParams(location.search).get("s") || "list";
-if (scene === "upload-ios") Object.defineProperty(navigator, "userAgent", { value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X)" });
+if (scene.endsWith("-ios")) Object.defineProperty(navigator, "userAgent", { value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X)" });
 const DIALED = Date.now() - 4 * 60_000;
 const lead = (i: number, company: string, phone: string, result = "미컨택"): Row => ({ ...blank(), id: `00000000-0000-4000-8000-00000000000${i}`, company, owner: "김가상", phone, result, date: "2026-11-03", supplier: "합성 공급처" });
 const rows = [
@@ -62,7 +62,7 @@ function Fixture() {
   const ui = useCallUi(rows as unknown as DbSheetLead[], () => {});
   const r = rows[0]!;
   const dialed = calls[0] as never;
-  if (scene === "pick" || scene === "copied") return <CallDialDialog row={r} onDialed={() => {}} onClose={() => {}} />;
+  if (scene.startsWith("pick") || scene === "copied") return <CallDialDialog row={r} onDialed={() => {}} onClose={() => {}} />;
   if (scene.startsWith("upload") || scene.startsWith("file") || scene === "notice") return <>
     <CallUploadDialog row={r} call={dialed} asked onUploaded={() => {}} onClose={() => {}} />
     {(scene === "file-ok" || scene === "notice") && <PickFile name="통화 녹음 010-0000-1234_261103_140211.m4a" then={scene === "notice" ? "올리기" : undefined} />}
