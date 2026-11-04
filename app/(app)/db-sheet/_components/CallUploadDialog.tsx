@@ -4,13 +4,14 @@
  * 파일 이름의 번호 = 📞 번호가 1차, 저장 시각이 📞 시각과 30분 넘게 어긋나면 2차로 한 번 묻는다.
  * 📞 없이 건 통화는 녹음 저장 시각을 통화 시각으로 쓴다(「다음 주 화요일」의 기준).
  * 이 폰에서 처음 보낼 때 외부 AI 고지(D6)를 한 번 보여 준다. 글자는 50대 기준 최소(belie 2026-11-04).
+ * 받아쓴 통화 내용 파일(.txt·.pdf)도 같은 자리에서 고른다 — 글만 뽑아 글자 경로로 보낸다(belie 2026-11-05).
  */
 import { useRef, useState } from "react";
-import { AlertTriangle, CheckCircle2, FileAudio } from "lucide-react";
+import { AlertTriangle, CheckCircle2, FileAudio, FileText } from "lucide-react";
 import type { CallRecord } from "@/types/call";
 import SheetDialog from "./SheetDialog";
 import type { Row } from "./model";
-import { CALL_AUDIO_ACCEPT, callAppName, checkRecording, isIos, readCallApp, readCallNotice, saveCallNotice, startCall, uploadCallAudio, uploadCallText } from "./call-client";
+import { CALL_AUDIO_ACCEPT, callAppName, checkRecording, isCallTextFile, isIos, readCallApp, readCallNotice, readCallTextFile, saveCallNotice, startCall, uploadCallAudio, uploadCallText } from "./call-client";
 
 const WEEK_MS = 7 * 86_400_000;
 const size = (n: number) => n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)}MB` : `${Math.max(1, Math.round(n / 1024))}KB`;
@@ -39,7 +40,8 @@ export function CallUploadDialog({ row, call, asked, onUploaded, onClose }: {
         const at = tab === "audio" && file && Date.now() - file.lastModified < WEEK_MS ? new Date(Math.min(file.lastModified, Date.now())).toISOString() : undefined;
         id = await startCall(row.id, at);
       }
-      if (tab === "audio" && file) await uploadCallAudio(id, file); else await uploadCallText(id, text);
+      if (tab === "audio" && file) await (isCallTextFile(file.name) ? uploadCallText(id, await readCallTextFile(file)) : uploadCallAudio(id, file));
+      else await uploadCallText(id, text);
       onUploaded(id);
       onClose();
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
@@ -65,21 +67,21 @@ export function CallUploadDialog({ row, call, asked, onUploaded, onClose }: {
     foot = <><button className="dbs-button" onClick={() => setNotice(false)}>취소</button>
       <button className="dbs-button primary" onClick={() => { saveCallNotice(); void send(); }}>확인하고 올리기</button></>;
   } else if (tab === "text") {
-    body = <textarea className="sheet-input dbs-call-paste" aria-label="통화 글자" placeholder={`${app}에서 복사한 통화 글자를 붙여 넣으세요`} value={text} onChange={e => setText(e.target.value)} />;
+    body = <textarea className="sheet-input dbs-call-paste" aria-label="받아쓴 통화 내용" placeholder={`${app}에서 받아쓴 통화 내용을 복사해 붙여 넣으세요`} value={text} onChange={e => setText(e.target.value)} />;
     foot = <><button className="dbs-button" disabled={busy} onClick={() => setTab("audio")}>녹음으로 올리기</button>
       <button className="dbs-button primary" disabled={busy || !text.trim()} onClick={() => void send()}>{busy ? "올리는 중…" : "올리기"}</button></>;
   } else if (!file) {
     body = <>
-      <p className="dbs-call-lead">{ios ? <>{app}에서 녹음을 <b>「파일에 저장」</b>한 뒤 골라 주세요.</> : <>녹음은 <b>내 파일 › Recordings › Call</b> 맨 위에 있어요.</>}</p>
-      {ios && <button type="button" className="dbs-text-button" onClick={() => setTab("text")}>녹음 대신 글자 붙여 넣기</button>}
+      <p className="dbs-call-lead">{ios ? <>{app}에서 녹음이나 통화 내용(.txt·.pdf)을 <b>「파일에 저장」</b>한 뒤 골라 주세요.</> : <>녹음은 <b>내 파일 › Recordings › Call</b> 맨 위에 있어요. 통화 내용(.txt·.pdf)도 돼요.</>}</p>
+      {ios && <button type="button" className="dbs-text-button" onClick={() => setTab("text")}>녹음 대신 받아쓴 글 붙여 넣기</button>}
     </>;
-    foot = <>{later}<button className="dbs-button primary" onClick={() => input.current?.click()}>녹음 고르기</button></>;
+    foot = <>{later}<button className="dbs-button primary" onClick={() => input.current?.click()}>파일 고르기</button></>;
   } else {
     const c = check!;
     const ok = !c.fileError && !c.warn;
     body = <>
       <div className={`dbs-file dbs-call-file is-${c.fileError ? "error" : c.warn ? "warn" : "ok"}`}>
-        {c.fileError || c.warn ? <AlertTriangle size={20} aria-hidden="true" /> : ok && c.phoneMatch ? <CheckCircle2 size={20} aria-hidden="true" /> : <FileAudio size={20} aria-hidden="true" />}
+        {c.fileError || c.warn ? <AlertTriangle size={20} aria-hidden="true" /> : ok && c.phoneMatch ? <CheckCircle2 size={20} aria-hidden="true" /> : isCallTextFile(file.name) ? <FileText size={20} aria-hidden="true" /> : <FileAudio size={20} aria-hidden="true" />}
         <span>
           <strong role="status">{c.fileError || (c.warn === "phone" ? "번호가 달라요" : c.warn === "time" ? `통화 시각과 ${c.minutesOff}분 차이 나요` : c.phoneMatch ? `${row.company} 통화가 맞아요` : `${row.company} 통화로 올려요`)}</strong>
           {c.warn === "phone"
@@ -88,7 +90,7 @@ export function CallUploadDialog({ row, call, asked, onUploaded, onClose }: {
         </span>
       </div>
     </>;
-    foot = <><button className="dbs-button" disabled={busy} onClick={() => input.current?.click()}>다른 녹음</button>
+    foot = <><button className="dbs-button" disabled={busy} onClick={() => input.current?.click()}>다른 파일</button>
       {!c.fileError && <button className="dbs-button primary" disabled={busy} onClick={() => void send()}>{busy ? "올리는 중…" : c.warn ? "그래도 올리기" : "올리기"}</button>}</>;
   }
 

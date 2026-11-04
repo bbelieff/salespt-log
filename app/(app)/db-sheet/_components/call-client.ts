@@ -46,15 +46,21 @@ export const isIos = (ua: string) => /iPhone|iPad|iPod/i.test(ua);
 /** 녹음으로 받는 확장자·크기 — 서버(lib/repo/call-audio · CALL_AUDIO_MAX_BYTES)와 같은 값. */
 export const CALL_AUDIO_EXTS = ["m4a", "mp3", "wav", "aac", "ogg", "flac"];
 export const CALL_AUDIO_MAX_MB = 14;
-export const CALL_AUDIO_ACCEPT = CALL_AUDIO_EXTS.map(e => `.${e}`).join(",");
+/** 받아쓴 통화 내용 파일(belie 2026-11-05: 익시오 등은 .txt·.pdf 로 저장된다) — 폰 안에서 글만 뽑아 글자 경로로 보낸다. */
+export const CALL_TEXT_EXTS = ["txt", "pdf"];
+export const CALL_TEXT_MAX_MB = 5;
+export const CALL_AUDIO_ACCEPT = [...CALL_AUDIO_EXTS, ...CALL_TEXT_EXTS].map(e => `.${e}`).join(",");
+export const isCallTextFile = (name: string) => CALL_TEXT_EXTS.includes(name.toLowerCase().split(".").pop() ?? "");
 
 /** 이 파일이 📞 로 건 그 통화인가 — 파일 이름의 번호(DB 번호는 연락처에 없어 이름에 붙는다)와 저장 시각. */
 export type RecordingCheck = { fileError: string; namePhone: string; phoneMatch: boolean | null; minutesOff: number | null; warn: "" | "phone" | "time" };
 export function checkRecording(file: { name: string; size: number; lastModified: number }, phone: string, dialedAt: number | null): RecordingCheck {
   const ext = file.name.toLowerCase().split(".").pop() ?? "";
-  const fileError = !CALL_AUDIO_EXTS.includes(ext) ? "통화 녹음 파일이 아니에요"
-    : file.size === 0 ? "녹음 파일이 비어 있어요"
-    : file.size > CALL_AUDIO_MAX_MB * 1024 * 1024 ? `녹음이 너무 길어요(${CALL_AUDIO_MAX_MB}MB 넘음)` : "";
+  const text = CALL_TEXT_EXTS.includes(ext);
+  const fileError = !text && !CALL_AUDIO_EXTS.includes(ext) ? "통화 녹음이나 통화 내용 파일이 아니에요"
+    : file.size === 0 ? "파일이 비어 있어요"
+    : text && file.size > CALL_TEXT_MAX_MB * 1024 * 1024 ? `파일이 너무 커요(${CALL_TEXT_MAX_MB}MB 넘음)`
+    : !text && file.size > CALL_AUDIO_MAX_MB * 1024 * 1024 ? `녹음이 너무 길어요(${CALL_AUDIO_MAX_MB}MB 넘음)` : "";
   const m = file.name.match(/0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{4}/);
   const namePhone = m ? m[0] : "";
   const want = phoneDigits(phone);
@@ -103,4 +109,19 @@ export function uploadCallAudio(id: string, file: File) {
   return call(`/api/calls/${id}/upload`, { method: "POST", body: form });
 }
 export const uploadCallText = (id: string, text: string) => call(`/api/calls/${id}/upload`, json({ text }));
+
+/**
+ * .txt·.pdf 에서 통화 내용 글을 뽑는다(폰 안에서, 서버로는 글만 간다). PDF 는 업체정보 서류 읽기와 같은 글자층 읽기 —
+ * 글자가 든 PDF 만, 앞 10쪽까지. 사진으로 찍은 PDF 는 읽지 못한다고 알린다.
+ */
+export async function readCallTextFile(file: File): Promise<string> {
+  if (!file.name.toLowerCase().endsWith(".pdf")) return (await file.text()).trim();
+  const [{ readPdfTextLayer }, { OCR_LIMITS, withTimeout }] = await Promise.all([import("@/lib/document-ocr/ocr-pdf"), import("@/lib/document-ocr/limits")]);
+  const guard = withTimeout(undefined, OCR_LIMITS.pdfTimeoutMs);
+  try {
+    const read = await readPdfTextLayer(file, guard.signal, undefined, `${OCR_LIMITS.assetBasePath}/pdf.worker.min.mjs`);
+    if (!read) throw new Error("이 PDF 에서 글을 읽지 못했어요. 통화 앱에서 .txt 로 저장해 보세요.");
+    return read.text;
+  } finally { guard.dispose(); }
+}
 export const confirmCall = (id: string, body: unknown) => call<{ lead?: unknown; already?: boolean }>(`/api/calls/${id}/confirm`, json(body));

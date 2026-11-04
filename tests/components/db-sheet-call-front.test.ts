@@ -31,7 +31,11 @@ it("파일 이름의 번호·저장 시각·형식으로 그 통화가 맞는지
   expect(checkRecording(f("010-0000-5678_261103_1402.m4a"), row.phone, DIALED)).toMatchObject({ namePhone: "010-0000-5678", phoneMatch: false, warn: "phone" });
   expect(checkRecording(f("녹음.m4a", DIALED + 45 * 60_000), row.phone, DIALED)).toMatchObject({ phoneMatch: null, minutesOff: 45, warn: "time" });
   expect(checkRecording(f("녹음.m4a"), row.phone, null)).toMatchObject({ warn: "", minutesOff: null });
-  expect(checkRecording(f("녹음.amr"), row.phone, DIALED).fileError).toBe("통화 녹음 파일이 아니에요");
+  expect(checkRecording(f("녹음.amr"), row.phone, DIALED).fileError).toBe("통화 녹음이나 통화 내용 파일이 아니에요");
+  // 받아쓴 통화 내용(.txt·.pdf)도 같은 확인 — 번호·시각은 그대로, 크기는 5MB 까지.
+  expect(checkRecording(f("통화 010-0000-1234.txt"), row.phone, DIALED)).toMatchObject({ fileError: "", phoneMatch: true, warn: "" });
+  expect(checkRecording(f("통화내용.pdf"), row.phone, DIALED).fileError).toBe("");
+  expect(checkRecording(f("통화내용.pdf", DIALED, 6 * 1024 * 1024), row.phone, DIALED).fileError).toContain("5MB");
   expect(checkRecording(f("녹음.m4a", DIALED, 15 * 1024 * 1024), row.phone, DIALED).fileError).toContain("14MB");
 });
 
@@ -144,6 +148,24 @@ it("첫 업로드 고지: 확인 전에는 아무것도 보내지 않고, [취�
   expect(fetchMock.mock.calls[0]![0]).toBe("/api/calls/call-1/upload");
   expect(uploaded).toHaveBeenCalledWith("call-1");
   localStorage.setItem("db-sheet-call-notice", "0"); expect(readCallNotice()).toBe(false);
+});
+
+it("받아쓴 통화 내용 .txt 를 고르면 글만 뽑아 글자로 올린다", async () => {
+  saveCallNotice();
+  fetchMock.mockResolvedValue(ok({ ok: true }));
+  const call = { id: "call-1", leadId: row.id, status: "dialed", calledAt: new Date(DIALED).toISOString() } as never;
+  await act(async () => root.render(createElement(CallUploadDialog, { row, call, asked: false, onUploaded: vi.fn(), onClose: vi.fn() })));
+  expect((host.querySelector("input[type=file]") as HTMLInputElement).accept).toContain(".txt");
+  const input = host.querySelector("input[type=file]") as HTMLInputElement;
+  act(() => {
+    Object.defineProperty(input, "files", { value: [new File(["나: 안녕하세요\n상대: 네"], "통화 010-0000-1234.txt", { lastModified: DIALED + 60_000 })], configurable: true });
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(host.textContent).toContain("가상기계 통화가 맞아요");
+  await act(async () => button("올리기").click());
+  const [url, init] = fetchMock.mock.calls[0]!;
+  expect(url).toBe("/api/calls/call-1/upload");
+  expect(JSON.parse(String(init.body))).toEqual({ text: "나: 안녕하세요\n상대: 네" });
 });
 
 it("통화 정리 확인: 결과를 골라야 확정, 체크한 칸만 보내고, 409 면 문구를 보여 주고 닫지 않는다", async () => {

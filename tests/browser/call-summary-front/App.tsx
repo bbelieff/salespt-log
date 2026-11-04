@@ -34,8 +34,14 @@ const extraction = CallExtraction.parse({
 });
 const calls = [call(1, "dialed"), call(2, "processing"), { ...call(3, "review"), extraction, transcript: "나: 대표님 안녕하세요.\n상대: 네, 말씀하세요.\n상대: 다음 주 화요일 두 시 어때요?" }, call(5, "failed")];
 const confirmLead = { ...rows[2]!, revision: 4, contact: DbSheetContact.parse({ note: "지난주 첫 통화 — 자료 요청함", ci: scene === "confirm-nomeet" ? { 소재지: "합성시 가상읍", 매출기준연도: "2025", 금년도매출: "3,100" } : { 소재지: "합성시 가상읍", 대표자이름: "김가상" } }) } as unknown as DbSheetLead;
+const realFetch = window.fetch.bind(window);
+/** 보낸 본문 기록 — 받아쓴 통화 내용 파일에서 뽑은 글이 그대로 가는지 본다. */
+(window as unknown as { __sent: unknown[] }).__sent = [];
 window.fetch = async (url: RequestInfo | URL, init?: RequestInit) => {
-  const u = String(url), body = u === "/api/calls" && init?.method !== "POST" ? { calls } : u === "/api/calls" ? { id: "call-new" } : { ok: true };
+  const u = String(url);
+  if (!u.startsWith("/api/")) return realFetch(url, init);
+  if (typeof init?.body === "string") (window as unknown as { __sent: unknown[] }).__sent.push({ u, body: JSON.parse(init.body) });
+  const body = u === "/api/calls" && init?.method !== "POST" ? { calls } : u === "/api/calls" ? { id: "call-new" } : { ok: true };
   await new Promise(r => setTimeout(r, 150));
   return new Response(JSON.stringify(body), { status: 200 });
 };

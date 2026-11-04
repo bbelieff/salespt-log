@@ -65,7 +65,7 @@ export async function uploadCall(who: Who, id: string, input: CallUploadInput): 
   if (input.kind === "text") {
     const text = input.text.trim();
     if (!text) throw new CallSummaryError("통화 글자가 비어 있어요", 400);
-    if (text.length > CALL_TEXT_MAX_CHARS) throw new CallSummaryError("통화 글자가 너무 길어요", 413);
+    if (text.length > CALL_TEXT_MAX_CHARS) throw new CallSummaryError("통화 내용이 너무 길어요", 413);
     upload = { source: "text", audioPath: null, transcript: text };
   } else {
     const ext = input.name.toLowerCase().split(".").pop() ?? "";
