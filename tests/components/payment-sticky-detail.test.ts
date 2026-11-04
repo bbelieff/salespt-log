@@ -22,17 +22,18 @@ const css = read("app/globals.css");
 
 describe("기존 noncompact inline 상태 줄과 compact 대체 표현", () => {
   it("기존 inline 줄을 보존하지만 compact에서는 감추고 흐름 밖 알림을 쓴다", () => {
-    expect(row).toContain("{inline && (\n            <div data-payment-sticky-bar data-payment-save-status");
+    expect(row).toContain("<div data-payment-sticky-bar data-payment-save-status");
     expect(row).toContain("sticky top-app-content z-20 -mx-2.5 -mt-2.5 flex min-h-6");
     expect(row).toContain('className="min-h-9 underline'); expect(row).toContain('className="min-h-9 text-slate-500');
     // 헤더(z-50)·배너(z-40)·검색(z-30) 아래, 섹션 제목(z-10) 위.
     expect(row).not.toMatch(/data-payment-sticky-bar[^>]*z-(30|40|50)/);
-    expect(read('app/(app)/payment/payment-company-compact.css')).toContain('[data-payment-inline-detail]>[data-payment-sticky-bar]{display:none}');
+    // 폰도 이 줄을 붙여 업체 이름을 보인다(2026-11-05 belie) — 줄 안 상태 글만 숨기고 상태는 흐름 밖 알림이 맡는다.
+    expect(read('app/(app)/payment/payment-company-compact.css')).toContain('[data-payment-inline-detail]>[data-payment-sticky-bar] [data-payment-bar-status]{display:none}');
     expect(row).toContain('<PaymentMobileSaveFeedback ownerId={dirtyEntryId} status={status}');
   });
   it("noncompact 상태/compact 지속 오류와 명시 retry를 모두 보존한다", () => {
     for (const word of ["저장됨", "저장 중…", "입력 중", "저장 실패", "다시 시도"]) expect(row).toContain(word);
-    expect(row).toContain('<span aria-live="polite" className="shrink-0 text-xs">{barStatus}</span>');
+    expect(row).toContain('<span data-payment-bar-status aria-live="polite" className="shrink-0 text-xs">{barStatus}</span>');
     // inline 에서는 예전 상태 블록을 그리지 않는다(두 번 보이지 않게).
     expect(row).toContain('const pcStatus = !inline && (status !== "idle" || canUndo || ciState.error || ciState.saving) ? (');
     expect(row).toContain('bare && statusTarget ? createPortal(pcStatus, statusTarget) : pcStatus');
@@ -51,11 +52,13 @@ describe("기존 noncompact inline 상태 줄과 compact 대체 표현", () => {
     expect(read("app/(app)/payment/_components/ContractListTable.tsx")).toContain("scroll-mt-app-content");
     expect(read("app/(app)/payment/_components/InstitutionWorkList.tsx")).toContain("scroll-mt-app-content");
   });
-  it("저장 줄에서 반복 업체명·날짜/수임비/서류 정보와 명시 접기를 제거한다", () => {
+  it("저장 줄은 업체명(+ 고치는 진행건)만 — 날짜/수임비/서류 정보와 명시 접기는 없다", () => {
     expect(page).not.toContain("border-b border-blue-100 px-2.5 py-2 text-px-11");
     expect(page).not.toContain("border-b border-red-100 px-2.5 py-2 text-px-11");
     const bar = row.slice(row.indexOf('<div data-payment-sticky-bar'), row.indexOf('{inline && (ciState.error'));
-    for (const duplicate of ['cp.업체명', 'fmtDate', 'fmtMoney', 'TOTAL_CHECKBOXES', '접기']) expect(bar).not.toContain(duplicate);
+    for (const duplicate of ['fmtDate', 'fmtMoney', 'TOTAL_CHECKBOXES', '접기']) expect(bar).not.toContain(duplicate);
+    // 어느 업체의 어느 진행건을 고치는지 늘 위에(2026-11-05 belie — 키보드가 열려 제목 고정이 풀려도 남는다).
+    expect(bar).toContain('{cp.업체명}{focusSlotLabel &&');
     expect(bar).toContain('{barStatus}');
     expect(row).not.toContain('variant="note"');
     expect(row).toContain('isCarryover && <CarryoverBadge 구분="이월" variant="badge"');
