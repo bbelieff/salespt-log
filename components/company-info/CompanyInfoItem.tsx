@@ -24,6 +24,7 @@ import { MoneyField, RatioField } from "./CompanyInfoFinanceFields";
 import CompanyInfoSalesFields from "./CompanyInfoSalesFields";
 import CompanyInfoSalesTotals from "./CompanyInfoSalesTotals";
 import { FeatureChips, IndustryLine, RegionAddress } from "./CompanyGrantFields";
+import { KsicLine } from "./KsicLine";
 
 type CI = CompanyInfo;
 
@@ -88,6 +89,7 @@ export default function CompanyInfoItem({ it, draft, inline, idBase, today, onFi
             {it.defs.map((d) => field(d, "block min-w-0"))}
           </div>
           {it.grant === "industry" && <IndustryLine draft={draft} className="" onPatch={onPatch} />}
+          {it.grant === "industry" && <KsicLine draft={draft} className="" />}
         </div>
       );
     case "bizType":
