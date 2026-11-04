@@ -5,6 +5,7 @@
  * 근거 문장(evidence) 없는 답은 버린다(묻지도 않은 칸을 AI 가 채우는 것을 막는다). 집 주소·주민번호는 받는 칸이 없다.
  */
 import { CallExtraction, type CallCompanyInfo } from "@/types/call";
+import { meetingPlace } from "@/util/call-place";
 import { wonToMillion } from "@/util/company-money";
 import { salesSlotOf } from "@/util/company-sales";
 
@@ -175,6 +176,9 @@ export function mapCallExtraction(rawIn: Obj, calledAt: string): CallExtraction 
     const kind = str(q1k.said);
     company.사업자구분 = kind.includes("법인") ? "법인" : kind.includes("개인") ? "개인" : "";
     if (company.사업자구분) cite("사업자구분", q1k);
+    // 과세유형도 들었으면 같이 — 업체정보는 「개인 · 일반과세」처럼 한 칸에서 고른다(belie 2026-11-05).
+    const tax = kind.includes("간이") ? "간이과세자" : kind.includes("면세") ? "면세사업자" : kind.includes("일반") ? "일반과세자" : "";
+    if (tax) { company.과세유형 = tax; cite("과세유형", q1k); }
   }
 
   // 2 업종·생산품목
@@ -274,8 +278,8 @@ export function mapCallExtraction(rawIn: Obj, calledAt: string): CallExtraction 
   const m = g("meeting");
   if (m && str(m.date_said)) {
     const d = resolveDate(`${str(m.date_said)} ${str(m.time_said)}`, call);
-    let place = stripEnd(str(m.place_said));
-    if (address && (!place || /(사무실|가게|공장|사업장|매장)/.test(place))) place = `${place || "사업장"}(${address})`;
+    // 「업장·사무실·가게」뿐이면 업체 주소로(belie 2026-11-05) — 실제 장소(역 출구·카페)는 그대로.
+    const place = meetingPlace(stripEnd(str(m.place_said)), address);
     meeting = { meetingDate: d ? iso(d) : "", time: resolveTime(str(m.time_said) || str(m.date_said)), place, reservationNote: "" };
     cite("meeting", m);
   }

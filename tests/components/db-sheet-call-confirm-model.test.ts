@@ -66,3 +66,17 @@ it("빠진 질문·메모 초안·15분 시간", () => {
   expect(timeOptions("")).toContain("14:45");
   expect(timeOptions("07:30")[0]).toBe("07:30");
 });
+
+it("사업자구분·과세유형은 업체정보와 같은 5개 선택지 한 줄 — 둘 다 들으면 그 선택지, 하나만이면 고르기 (2026-11-05 belie)", () => {
+  const both = CallExtraction.parse({ company: { 사업자구분: "개인", 과세유형: "일반과세자" }, evidence: { 과세유형: "상대: 개인 일반과세자요." } });
+  const row = buildCiRows(call, both, CompanyInfo.parse({})).rows.find(r => r.key === "사업자구분")!;
+  expect(row).toMatchObject({ label: "사업자구분 · 과세유형", value: "개인|일반과세자", status: "new", checked: true, evidence: "상대: 개인 일반과세자요." });
+  expect(row.options!.map(o => o.label)).toContain("개인 · 일반과세");
+  expect(buildCiRows(call, both, CompanyInfo.parse({})).rows.some(r => r.key === "과세유형")).toBe(false);
+  const s = { revision: 1, date: "2026-11-03", result: "재통화", note: "", rows: [row], baseYear: 2026, hasBaseYear: true, meetingOn: false, meeting: { meetingDate: "", time: "", place: "", reservationNote: "" }, lead: {} } as ConfirmState;
+  expect(confirmBody(s).company).toEqual({ 사업자구분: "개인", 과세유형: "일반과세자" });
+  const kindOnly = buildCiRows(call, CallExtraction.parse({ company: { 사업자구분: "개인" } }), CompanyInfo.parse({})).rows.find(r => r.key === "사업자구분")!;
+  expect(kindOnly).toMatchObject({ value: "", checked: false });
+  const same = buildCiRows(call, both, CompanyInfo.parse({ 사업자구분: "개인", 과세유형: "일반과세자" })).rows.find(r => r.key === "사업자구분")!;
+  expect(same.status).toBe("same");
+});
