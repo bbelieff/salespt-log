@@ -136,3 +136,16 @@ describe("진행기관 보기의 계약→진행건 투영", () => {
     const tied = [ {...items[0]!, company: "Z", product: "Z"}, {...items[0]!, company: "A", product: "A"} ];
     expect(groupInstitutionWorkItems(tied, "", "activity", "2026-10-10")[0]?.items.map(x => x.company)).toEqual(["Z", "A"]);
   });
+
+describe("목록 D-day 는 진행건 상세와 같은 기준으로 기록을 잇는다 (belie 2026-11-05 「진행2 todo 잡았는데 D?」)", () => {
+  it("진행건 번호가 있는 할 일은 기관 칸을 나중에 고쳐도 그 진행건 D-day 로 보인다", () => {
+    const rows = [contract(3, "가상식당", [slot({ 진행기관: "소진공" }), slot({ 진행기관: "신보 특례" })])];
+    const items = buildInstitutionWorkItems(rows, "", [todo("가상식당", "신보", "2026-11-07", { slot: 2 })], "2026-11-05");
+    expect(items.map((i) => [i.slot, i.activityLabel])).toEqual([[1, "D?"], [2, "D-02"]]);
+  });
+  it("같은 기관 진행건이 둘이어도 번호 있는 할 일은 자기 진행건에만", () => {
+    const rows = [contract(3, "가상식당", [slot({ 진행기관: "소진공" }), slot({ 진행기관: "소진공" })])];
+    const items = buildInstitutionWorkItems(rows, "", [todo("가상식당", "소진공", "2026-11-05", { slot: 2 })], "2026-11-05");
+    expect(items.map((i) => [i.slot, i.activityLabel])).toEqual([[1, "D?"], [2, "D0"]]);
+  });
+});

@@ -19,6 +19,8 @@ import { fmtDate, fmtMoney, renderNameWithHighlight } from "./nameHighlight";
 import { useDirtyEntry } from "@/components/DirtyGuard";
 import CheckboxList, { TOTAL_CHECKBOXES, checkedCount } from "./CheckboxList";
 import ContractSlots from "./ContractSlots";
+import SlotDeleteConfirmModal from "./SlotDeleteConfirmModal";
+import { useKeepFocusedInPlace } from "@/lib/hooks/useKeepFocusedInPlace";
 import GrantMatchBox, { grantMatchCount } from "./GrantMatchBox";
 import type { GrantMatchesResponse } from "@/lib/analytics/grant-match";
 import { useContractCompanyInfo } from "./useContractCompanyInfo";
@@ -225,6 +227,9 @@ export default function ContractRow({
   const contractRef = cp.계약일 && cp.업체명 ? contractRefOf(cp.계약일, cp.업체명) : "";
   const todosQuery = useTodosByContract(contractRef);
   const allTodos = useMemo(() => todosQuery.data?.todos ?? [], [todosQuery.data?.todos]);
+  // 자동저장·기록 추가로 다시 그려져도 적고 있는 칸은 화면에서 제자리(모바일 스크롤 튐 방지).
+  const rootRef = useRef<HTMLDivElement>(null);
+  useKeepFocusedInPlace(rootRef, [status, savedAt, cp, allTodos]);
 
   const hasFocusTodo =
     !!focusTodoId && allTodos.some((t) => t.id === focusTodoId);
@@ -276,8 +281,11 @@ export default function ContractRow({
 
   // 진행건 개수 제한 없음(2026-10-31 belie) — 4번부터는 추가진행(DB). 빈 진행건은 저장하지 않고 화면에만 연다.
   const handleAddSlot = () => setVisiblePayments((v) => v + 1);
+  // 진행건 지우기는 확인 팝업을 거친다(belie 2026-11-05 — 오타로 실수 삭제 방지).
+  const [removeAsk, setRemoveAsk] = useState<number | null>(null);
   const handleRemoveSlot = (slotIdx: number) => {
     if (slotIdx === 1) return;
+    setRemoveAsk(null);
     editDraft((d) => withoutSlot(d, slotIdx));
     if (slotIdx === visiblePayments)
       setVisiblePayments((v) => Math.max(1, v - 1));
@@ -297,6 +305,7 @@ export default function ContractRow({
 
   return (
     <div
+      ref={rootRef}
       className={
         bare
           ? "flex min-h-0 flex-1 flex-col bg-transparent transition-all duration-200"
@@ -456,7 +465,7 @@ export default function ContractRow({
               </details>
               <GrantMatchBox 계약일={cp.계약일} 업체명={cp.업체명} grants={grants} todos={allTodos}/>
               <section className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-                <ContractSlots desktopHeading draft={draft} cp={cp} contractRef={contractRef} slotInstitutionOptions={slotInstitutionOptions} todos={allTodos} focusTodoId={focusTodoId} focusedSlot={focusedSlot} focusRequestId={focusRequestId} visiblePayments={visiblePayments} totalApproved={totalApproved} totalReceived={totalReceived} onAddSlot={handleAddSlot} onRemoveSlot={handleRemoveSlot} onSlotChange={(index, next) => {
+                <ContractSlots desktopHeading draft={draft} cp={cp} contractRef={contractRef} slotInstitutionOptions={slotInstitutionOptions} todos={allTodos} focusTodoId={focusTodoId} focusedSlot={focusedSlot} focusRequestId={focusRequestId} visiblePayments={visiblePayments} totalApproved={totalApproved} totalReceived={totalReceived} onAddSlot={handleAddSlot} onRemoveSlot={setRemoveAsk} onSlotChange={(index, next) => {
                   const prev = slotOf(draft, index);
                   // 진행률·조건 대기 기간(칩)은 고르는 즉시 저장, 글자 칸은 칸을 떠날 때 저장.
                   const typing = next.진행률 === prev.진행률 && next.대기기간 === prev.대기기간;
@@ -467,6 +476,7 @@ export default function ContractRow({
             </div>
           </div>
           {!bare && actionButtons}
+          {removeAsk !== null && <SlotDeleteConfirmModal n={removeAsk} slot={slotOf(draft, removeAsk)} onCancel={() => setRemoveAsk(null)} onConfirm={() => handleRemoveSlot(removeAsk)} />}
         </div>
       )}
     </div>

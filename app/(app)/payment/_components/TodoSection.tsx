@@ -73,7 +73,7 @@ export default function TodoSection({ contractRef, institutionRef, draftInstitut
       const res = await create.mutateAsync({ contractRef, institutionRef: effective, slot: slot ?? null, 업체명: companyName, 기록종류: kind, type: "기타", 제목: title.trim(), 예정일자: date || defaultDate(kind), 예정시각: `${QUICK_TIME.hour}:${QUICK_TIME.minute}`, 장소: "", 상세: "", showOnCalendar: true, operationId: opId });
       setFreshId(res.todo.id);
       resetDraft();
-      titleRef.current?.focus();
+      titleRef.current?.focus({ preventScroll: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : "저장하지 못했어요. 다시 눌러 주세요.");
     }

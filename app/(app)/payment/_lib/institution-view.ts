@@ -1,7 +1,9 @@
 import { contractRef } from "@/util/contract-ref";
 import { isTerminatedContract, type ContractPayment, type PaymentSlot, type Todo } from "@/types";
 import { activityTodayISO, compareWorkActivity, progressPct } from "./payment-progress";
-import { buildSlotActivityIndex, slotActivityKey, slotHasData } from "@/lib/analytics/payment-work-status";
+import { buildSlotActivityIndex, slotHasData } from "@/lib/analytics/payment-work-status";
+import { todoSlotOf } from "@/lib/analytics/todo-slot";
+import { normalizeContractRef } from "@/util/contract-ref";
 import { slotOf, slotsOf, type SlotNo } from "@/lib/analytics/contract-slots";
 
 export type WorkActivityKind = "none" | "history" | "todo";
@@ -70,19 +72,26 @@ export function buildInstitutionWorkItems(
   todayISO = activityTodayISO(),
 ): InstitutionWorkItem[] {
   const out: InstitutionWorkItem[] = [];
-  // 슬롯의 저장된 기관명과 동일한 키로 Todo/History 를 연결한다(대시보드 「멈춘 업체」와 같은 색인).
-  const dates = buildSlotActivityIndex(todos);
+  // 기록은 진행건 상세와 같은 기준(todoSlotOf — 진행건 번호, 번호 없는 옛 기록은 기관 이름)으로 진행건에 잇는다.
+  // 기관 이름만으로 찾으면 기관 칸을 나중에 고친 진행건의 할 일이 상세에는 보이는데 목록은 「D?」였다(belie 2026-11-05).
+  const byContract = new Map<string, Todo[]>();
+  for (const t of todos) {
+    const k = normalizeContractRef(t.contractRef);
+    byContract.set(k, [...(byContract.get(k) ?? []), t]);
+  }
   for (const cp of rows) {
     const populated = slotsOf(cp).filter(([, s]) => slotHasData(s)).map(([n]) => n);
     // 기관을 아직 입력하지 않은 계약도 목록에서 사라지지 않도록 진행 1에 둔다.
     const visible = populated.length ? populated : [1];
+    const mine = byContract.get(normalizeContractRef(contractRef(cp.계약일, cp.업체명))) ?? [];
     for (const slot of visible) {
       const data: PaymentSlot = slotOf(cp, slot);
       const storedInstitution = data.진행기관.trim();
       // 예전 자유입력은 "소진공 신취"처럼 상품을 기관 칸에 함께 적었다.
       // 보기에서만 분리한다. 원본 기관 키는 Todo/캘린더 연결을 위해 그대로 둔다.
       const legacyProduct = /^소진공\s+(.+)$/u.exec(storedInstitution)?.[1]?.trim() ?? "";
-      const activity = dates.get(slotActivityKey(contractRef(cp.계약일, cp.업체명), storedInstitution));
+      // 같은 진행건 기록만 모아 하나의 키로 접는다(기관 이름이 달라도 같은 진행건이면 한 칸).
+      const activity = [...buildSlotActivityIndex(mine.filter((t) => todoSlotOf(cp, t).slot === slot).map((t) => ({ ...t, institutionRef: "" }))).values()][0];
       const kind: WorkActivityKind = activity?.todo ? "todo" : activity?.history ? "history" : "none";
       const date = kind === "todo" ? activity!.todo : kind === "history" ? activity!.history : "";
       out.push({
