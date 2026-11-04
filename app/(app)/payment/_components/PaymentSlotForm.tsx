@@ -162,7 +162,7 @@ export default function PaymentSlotForm({
   const nextTodo = slotTodos.filter((t) => (t.기록종류 ?? "todo") !== "history" && !t.완료여부 && isValidISODate(t.예정일자)).map((t) => t.예정일자).sort()[0];
 
   return (
-    <div id={slotId} className={`scroll-mt-28 rounded-lg border p-3 shadow-sm ${style.card}`}>
+    <div id={slotId} data-slot-label={`진행 ${index}${slot.진행기관 ? ` · ${slot.진행기관}` : ""}`} className={`scroll-mt-28 rounded-lg border p-3 shadow-sm ${style.card}`}>
       {/* 슬롯 헤더 — 클릭으로 접기/펼치기. 기본 접힘. 펼치면 「실무진행」 제목 아래에 붙는다(2026-10-31 belie). */}
       <div
         data-payment-slot-head={open ? "sticky" : undefined}

@@ -141,6 +141,8 @@ export default function ContractRow({
   });
   const cpKey = JSON.stringify(cp);
   const [feedbackResetEpoch, setFeedbackResetEpoch] = useState(0);
+  // 모바일 위 줄의 「진행 N · 기관」 — 진행건 안 입력칸에 들어가면 그 진행건, 진행건 밖이면 비움(2026-11-05 belie).
+  const [focusSlotLabel, setFocusSlotLabel] = useState("");
   // refetch 재기준은 clean 일 때만 — 편집 중 호출은 큐 예약분을 취소해
   // 미전송분이 고착된다(공유 syncServer 이슈, REPORT-C2).
   const dirtyRef = useRef(dirty);
@@ -414,6 +416,7 @@ export default function ContractRow({
         <div
           className={bare ? "card-open-anim flex min-h-0 flex-1 flex-col gap-3 p-3" : `card-open-anim space-y-3 ${inline ? "p-2.5" : "p-3"}`}
           data-payment-inline-detail={inline ? "" : undefined}
+          onFocus={inline ? (e) => setFocusSlotLabel((e.target as HTMLElement).closest("[data-slot-label]")?.getAttribute("data-slot-label") ?? "") : undefined}
           data-payment-status-action={inline && (status === "error" || ciState.error || canUndo) ? "" : undefined}
           onBlur={(e) => {
             if (isPaymentFeedbackTarget(e.relatedTarget, dirtyEntryId)) return;
@@ -425,8 +428,12 @@ export default function ContractRow({
         >
           {inline && <PaymentMobileSaveFeedback ownerId={dirtyEntryId} status={status} savedAt={savedAt} dirty={dirty} ciSaving={ciState.saving} ciDirty={ciDirty} ciError={ciState.error} resetEpoch={feedbackResetEpoch} canUndo={canUndo} onUndo={undo} />}
           {inline && (
-            <div data-payment-sticky-bar data-payment-save-status className="sticky top-app-content z-20 -mx-2.5 -mt-2.5 flex min-h-6 items-center justify-end gap-2 bg-white px-2.5">
-              <span aria-live="polite" className="shrink-0 text-xs">{barStatus}</span>
+            // 위에 붙는 한 줄 — 어느 업체의 어느 진행건을 고치는지(키보드가 열려 제목 고정이 풀려도 남는다, 2026-11-05 belie).
+            <div data-payment-sticky-bar data-payment-save-status className="sticky top-app-content z-20 -mx-2.5 -mt-2.5 flex min-h-6 items-center justify-between gap-2 bg-white px-2.5">
+              <span data-payment-context className="min-w-0 truncate text-xs font-semibold text-slate-800">
+                {cp.업체명}{focusSlotLabel && <span className="font-medium text-slate-500"> · {focusSlotLabel}</span>}
+              </span>
+              <span data-payment-bar-status aria-live="polite" className="shrink-0 text-xs">{barStatus}</span>
             </div>
           )}
           {inline && (ciState.error || (status === "error" && error)) && (

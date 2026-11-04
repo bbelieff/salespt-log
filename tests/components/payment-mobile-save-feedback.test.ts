@@ -131,9 +131,9 @@ it("preserves real focus/blur commits except when entering the exact owned porta
 });
 it("keeps controls out of title buttons, respects reduced motion, and removes compact flow reservations", () => {
   const css = readFileSync("app/(app)/payment/payment-company-compact.css", "utf8");
-  expect(css).toContain('[data-payment-inline-detail]>[data-payment-sticky-bar]{display:none}');
+  expect(css).toContain('[data-payment-inline-detail]>[data-payment-sticky-bar] [data-payment-bar-status]{display:none}');
   expect(css).toContain('[data-payment-mobile-compact] [data-payment-inline-detail]>[data-payment-main-content]{margin-top:0}');
-  expect(css).toContain('top:calc(var(--app-header-height) + 3rem)');
+  expect(css).toContain('top:calc(var(--app-header-height) + 4.5rem)'); // 폰도 업체 이름 줄(1.5rem) 아래에 제목이 붙는다
   expect(css).toContain('@media(prefers-reduced-motion:reduce)'); expect(css).toContain('.payment-mobile-save-notice,.payment-save-check{animation:none;transition:none}');
   expect(css).toContain('background:var(--liquid-glass-surface)');expect(css).toContain('backdrop-filter:var(--liquid-glass-filter)');
   expect(css).toContain('gap:6px;min-height:44px;max-width:calc(100vw - 140px)');expect(css).toContain('>button{order:-1;pointer-events:auto;flex:none}');
