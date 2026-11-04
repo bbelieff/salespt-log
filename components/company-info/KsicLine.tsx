@@ -2,7 +2,7 @@
  * KsicLine — 업종 줄 아래 「표준산업분류」 추천(belie 2026-11-04 「MSC 벤치마킹」).
  * 업태·업종(사업자등록증의 종목)을 읽어 KSIC 11차 세세분류 1순위를 보여 주고, 「후보」를 펴면 3순위까지 + 직접 찾기.
  * 코드 옆 「복사」로 지원사업 신청서 등에 바로 붙인다. 저장하지 않는다(대분류 자동처럼 읽을 때 계산) — 고른 코드 저장은 다음 단계.
- * 분류표(220KB)는 이 줄이 처음 그려질 때 한 번만 받는다(동적 import). 계산은 lib/util/ksic.ts.
+ * 분류표(lib/config/ksic11.ts, 220KB)는 이 줄이 처음 그려질 때 한 번만 받는다(동적 import). 계산은 lib/util/ksic.ts.
  */
 "use client";
 
@@ -14,7 +14,7 @@ let cache: KsicData | null = null;
 let loading: Promise<KsicData> | null = null;
 function loadKsic(): Promise<KsicData> {
   if (cache) return Promise.resolve(cache);
-  loading ??= import("@/config/ksic11.json").then((m) => (cache = (m.default ?? m) as unknown as KsicData));
+  loading ??= import("@/config/ksic11").then((m) => (cache = m.KSIC11));
   return loading;
 }
 

@@ -1,7 +1,7 @@
 > **📄 이 문서는 무엇인가요?**
 > - **한 줄 요약**: MSC report 의 「업태·종목 → 표준산업분류 코드」 추천을 경영일지 업체정보에 옮긴다(belie 2026-11-04 「배워올 만하니 벤치마킹」).
 > - **누가 읽나요**: 개발자
-> - **어떤 기능·작업과 연결?**: `lib/util/ksic.ts` · `lib/config/ksic11.json` · `components/company-info/KsicLine.tsx`
+> - **어떤 기능·작업과 연결?**: `lib/util/ksic.ts` · `lib/config/ksic11.ts` · `components/company-info/KsicLine.tsx`
 > - **읽고 나면 알 수 있는 것**: MSC 방식의 비결 · 옮긴 범위 · 다음 단계
 > - **관련 문서**: [components.md KsicLine](../../design/components.md)
 

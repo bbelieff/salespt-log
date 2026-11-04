@@ -1,9 +1,9 @@
 /** 표준산업분류(KSIC 11차) 추천 — MSC report 의 정답 사례를 그대로 옮겨 같은 결과인지 본다(2026-11-04). */
 import { describe, expect, it } from "vitest";
-import data from "@/config/ksic11.json";
+import { KSIC11 } from "@/config/ksic11";
 import { searchKsic, suggestKsic, type KsicData } from "@/util/ksic";
 
-const D = data as unknown as KsicData;
+const D: KsicData = KSIC11;
 const top = (u: string, i: string) => suggestKsic(u, i, D)[0]?.code;
 
 describe("suggestKsic — 업태·종목 → 세세분류", () => {
