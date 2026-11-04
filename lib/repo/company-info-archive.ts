@@ -4,11 +4,12 @@
  * 계약 액션 시 04 업체정보(T~AN) 스냅샷 1행 추가, 이후 04 변경 시 같은 키 행 동기화.
  * 키 = 계약ref(`${계약일}|${업체명}`, 05 contractRef 와 동일 포맷). 04 가 SSOT.
  *
- * 컬럼 (A~BQ, sheet-structure §5-3): A=업체명 B=계약일 C=계약ref D=갱신시각
+ * 컬럼 (A~BR, sheet-structure §5-3): A=업체명 B=계약일 C=계약ref D=갱신시각
  * E~X=COMPANY_FIELDS 20필드 미러 Y=커스텀 JSON Z~AB=확장 3필드 미러(04 AQ~AS)
  * AC~AV=확장2 20필드 미러(04 AU~BN, 2026-09-28) AW~BK=확장3 15필드 미러(04 BO~CC, 2026-09-28)
  * BL=확장4 매출기준연도 미러(04 CD, company-finance-won-grid 2026-09-28).
  * BM~BQ=확장5 맞춤공고 5필드 미러(04 CE~CI, company-grant-fields 2026-10-25).
+ * BR=확장6 표준산업분류 미러(04 CJ, company-ksic-save 2026-11-05).
  *
  * §2.5 가드: append 는 A열 빈 행 탐색 + 그 행 FORMULA pre-read 로 raw 값 있으면
  * 다음 빈 행 재탐색(타 데이터 덮어쓰기 방지). update 는 자기 키(계약ref) 행만 타격.
@@ -24,6 +25,7 @@ import {
   COMPANY_FIELDS_EXT3,
   COMPANY_FIELDS_EXT4,
   COMPANY_FIELDS_EXT5,
+  COMPANY_FIELDS_EXT6,
 } from "./meetings";
 import { headerBackfillPlan } from "./meetings-rows";
 import { colName } from "@/util/sheet-column";
@@ -49,15 +51,15 @@ const ID_COL_RANGE = `'${TAB}'!A2:A`; // 빈 행 탐색용
 
 // A~Y(기존 25) + Z~AB(확장 3 미러 — 04 AQ~AS, field-grid) + AC~AV(확장2 20 미러 — 04 AU~BN)
 // + AW~BK(확장3 15 미러 — 04 BO~CC) + BL(확장4 매출기준연도 — 04 CD)
-// + BM~BQ(확장5 맞춤공고 5 — 04 CE~CI). 커스텀(Y) 뒤 append — 기존 열 이동 금지.
+// + BM~BQ(확장5 맞춤공고 5 — 04 CE~CI) + BR(확장6 표준산업분류 — 04 CJ). 커스텀(Y) 뒤 append — 기존 열 이동 금지.
 const HEADER_LABELS = [
   "업체명", "계약일", "계약ref", "갱신시각",
   ...COMPANY_FIELDS, "업체정보_커스텀", ...COMPANY_FIELDS_EXT, ...COMPANY_FIELDS_EXT2,
-  ...COMPANY_FIELDS_EXT3, ...COMPANY_FIELDS_EXT4, ...COMPANY_FIELDS_EXT5,
+  ...COMPANY_FIELDS_EXT3, ...COMPANY_FIELDS_EXT4, ...COMPANY_FIELDS_EXT5, ...COMPANY_FIELDS_EXT6,
 ];
-/** 06 행 폭 = A~BQ (69열). grid 보장·쓰기/읽기 범위의 단일 기준. */
-export const ARCHIVE_ROW_WIDTH = HEADER_LABELS.length; // 69
-const LAST_COL = colName(ARCHIVE_ROW_WIDTH - 1); // BQ
+/** 06 행 폭 = A~BR (70열). grid 보장·쓰기/읽기 범위의 단일 기준. */
+export const ARCHIVE_ROW_WIDTH = HEADER_LABELS.length; // 70
+const LAST_COL = colName(ARCHIVE_ROW_WIDTH - 1); // BR
 /** 06 확장 라벨 시작 열(Z=25) — 이 뒤로는 빈 헤더 셀에만 라벨 보강. */
 const EXT_HEADER_START = 4 + COMPANY_FIELDS.length + 1; // 25 (Z)
 
@@ -66,7 +68,7 @@ export function companyContractRef(계약일: string, 업체명: string): string
   return contractRef(계약일, 업체명);
 }
 
-/** (업체명·계약일·업체정보) → 06 1행 배열 (A~BQ, 69컬럼). 순수 — 테스트 대상. */
+/** (업체명·계약일·업체정보) → 06 1행 배열 (A~BR, 70컬럼). 순수 — 테스트 대상. */
 export function companyInfoToArchiveRow(
   업체명: string,
   계약일: string,
@@ -93,6 +95,7 @@ export function companyInfoToArchiveRow(
     ...COMPANY_FIELDS_EXT3.map(toCell), // AW~BK (04 BO~CC 미러)
     ...COMPANY_FIELDS_EXT4.map(toCell), // BL (04 CD 미러 — 매출기준연도)
     ...COMPANY_FIELDS_EXT5.map(toCell), // BM~BQ (04 CE~CI 미러 — 맞춤공고 수동값)
+    ...COMPANY_FIELDS_EXT6.map(toCell), // BR (04 CJ 미러 — 고른 표준산업분류)
   ];
 }
 
@@ -127,7 +130,7 @@ async function doEnsure(spreadsheetId: string): Promise<void> {
       /* 동시 생성 — 이미 존재로 간주 */
     }
   }
-  // addSheet 기본 26열(Z) — BQ(69)까지 grid 보장 (field-grid · 확장2 · 확장3 · 확장4 · 확장5).
+  // addSheet 기본 26열(Z) — BR(70)까지 grid 보장 (field-grid · 확장2 · 확장3 · 확장4 · 확장5 · 확장6).
   await ensureGridColumns(spreadsheetId, TAB, ARCHIVE_ROW_WIDTH);
   const header = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
@@ -371,6 +374,10 @@ export async function readCompanyInfoArchiveRow(
     // BM~BQ = BL 다음 5열. 옛 행(셀 없음)은 "".
     ci[f] = String(r[ext5Off + i] ?? "").trim();
   });
+  COMPANY_FIELDS_EXT6.forEach((f, i) => {
+    // BR = BM~BQ 다음 1열. 옛 행(셀 없음)은 "".
+    ci[f] = String(r[ext5Off + COMPANY_FIELDS_EXT5.length + i] ?? "").trim();
+  });
   const raw = String(r[COMPANY_FIELDS.length] ?? "").trim();
   if (raw) {
     try {
@@ -416,7 +423,7 @@ export async function hasCompanyInfoArchiveRow(
 
 /**
  * 06 키 행 재키 — 계약 업체명·계약일 변경 시 A(업체명)/B(계약일)/C(계약ref)/D(갱신시각)만 갱신.
- * E~BQ 업체정보 스냅샷은 보존(중복 행 생성·고아 방지). old 키 행 없으면 no-op.
+ * E~BR 업체정보 스냅샷은 보존(중복 행 생성·고아 방지). old 키 행 없으면 no-op.
  */
 export async function renameCompanyInfoKey(
   spreadsheetId: string,
