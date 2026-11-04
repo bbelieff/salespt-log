@@ -1,8 +1,8 @@
 /**
  * 맞춤공고 수동값(확장5) 저장 좌표·경로 (company-grant-fields, 2026-10-25) — 04 CE~CI · 06 BM~BQ.
  *  ① 스키마 default "" · 04 코덱 CE~CI(82..86) · apostrophe 라운드트립 · 옛 폭(A~CD) 행은 ""
- *  ② 04 쓰기 grid 87열 · 행 AU:CI · 읽기 폴백 CI → CD(확장4 값 보존)
- *  ③ 06 BM~BQ(64..68) 미러 · 읽기 · 옛 64열(A~BL) 행은 ""
+ *  ② 04 쓰기 grid 88열(확장6 CJ 포함) · 행 AU:CJ · 읽기 폴백 CJ → CI → CD(확장4 값 보존)
+ *  ③ 06 BM~BQ(64..68) 미러 · 읽기(A~BR 70열) · 옛 64열(A~BL) 행은 ""
  *  ④ DB payload — 06 키 이름·열문자(BM..BQ), 04 이월 열문자(CE..CI)
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -86,7 +86,7 @@ beforeEach(() => {
 });
 
 describe("① 스키마 · 04 코덱 CE~CI", () => {
-  it("default '' · 확장4(CD) 바로 뒤 CE(82)~CI(86) · 전체 87열 · 읽기 폴백 순서", () => {
+  it("default '' · 확장4(CD) 바로 뒤 CE(82)~CI(86) · 전체 88열(확장6 CJ 포함) · 읽기 폴백 순서", () => {
     const empty = CompanyInfo.parse({});
     for (const k of COMPANY_FIELDS_EXT5) expect(empty[k]).toBe("");
     expect([...COMPANY_FIELDS_EXT5]).toEqual(["지역시도", "지역시군구", "대분류", "제외업종", "공고특성"]);
@@ -94,13 +94,13 @@ describe("① 스키마 · 04 코덱 CE~CI", () => {
     expect(COMPANY_EXT5_START).toBe(82);
     expect(colName(COMPANY_EXT5_START)).toBe("CE");
     expect(colName(COMPANY_EXT5_START + 4)).toBe("CI");
-    expect(MEETING_ROW_WIDTH).toBe(87);
-    expect(MEETING_READ_WIDTHS.map((w) => colName(w - 1))).toEqual(["CI", "CD", "CC", "BN", "AS"]);
+    expect(MEETING_ROW_WIDTH).toBe(88);
+    expect(MEETING_READ_WIDTHS.map((w) => colName(w - 1))).toEqual(["CJ", "CI", "CD", "CC", "BN", "AS"]);
   });
 
   it("apostrophe 텍스트 · 라운드트립", () => {
     const row = meetingToRow(BASE);
-    expect(row).toHaveLength(87);
+    expect(row).toHaveLength(88);
     expect(row.slice(82, 87)).toEqual(["'울산", "'남구", "'제조업", "'아니오", "'여성기업,수출(직접)"]);
     expect(stripUserEnteredEscapes(row).slice(82, 87)).toEqual(Object.values(GRANT));
     const back = rowToMeeting(userEntered(row))!;
@@ -121,28 +121,28 @@ describe("① 스키마 · 04 코덱 CE~CI", () => {
 });
 
 describe("② 04 쓰기·읽기", () => {
-  it("appendMeeting: grid 87열, 행은 AU:CI(41칸) — 끝 5칸이 확장5", async () => {
+  it("appendMeeting: grid 88열, 행은 AU:CJ(42칸) — 36~40번째 5칸이 확장5", async () => {
     valuesGet.mockImplementation(async ({ range }: { range: string }) => {
       if (range.endsWith("!A2:A")) return { data: { values: [["m-a"]] } };
-      if (range.endsWith("!AU1:CI1")) return { data: { values: [Array(41).fill("h")] } };
+      if (range.endsWith("!AU1:CJ1")) return { data: { values: [Array(42).fill("h")] } };
       throw new Error(`unexpected ${range}`);
     });
     await appendMeeting("sheet-gr-1", BASE, { mirror: false });
-    expect(ensureGridColumns).toHaveBeenCalledWith("sheet-gr-1", "04 업체관리(앱자동작성용)", 87);
+    expect(ensureGridColumns).toHaveBeenCalledWith("sheet-gr-1", "04 업체관리(앱자동작성용)", 88);
     const calls = valuesBatchUpdate.mock.calls.map(
       (c) => (c[0] as { requestBody: { data: { range: string; values: unknown[][] }[] } }).requestBody.data,
     );
     expect(calls).toHaveLength(1); // 헤더 다 차 있으면 헤더 쓰기 없음
-    const ext = calls[0]!.find((d) => d.range.endsWith("!AU3:CI3"))!;
-    expect(ext.values[0]).toHaveLength(41);
-    expect(ext.values[0]!.slice(36)).toEqual(["'울산", "'남구", "'제조업", "'아니오", "'여성기업,수출(직접)"]);
+    const ext = calls[0]!.find((d) => d.range.endsWith("!AU3:CJ3"))!;
+    expect(ext.values[0]).toHaveLength(42);
+    expect(ext.values[0]!.slice(36, 41)).toEqual(["'울산", "'남구", "'제조업", "'아니오", "'여성기업,수출(직접)"]);
   });
 
   it("빈 헤더 CE1~CI1 에만 라벨 보강", async () => {
-    const header = [...Array(36).fill("h"), "", "내 제목", "", "", ""];
+    const header = [...Array(36).fill("h"), "", "내 제목", "", "", "", "h"];
     valuesGet.mockImplementation(async ({ range }: { range: string }) => {
       if (range.endsWith("!A2:A")) return { data: { values: [["m-a"]] } };
-      if (range.endsWith("!AU1:CI1")) return { data: { values: [header] } };
+      if (range.endsWith("!AU1:CJ1")) return { data: { values: [header] } };
       throw new Error(`unexpected ${range}`);
     });
     await appendMeeting("sheet-gr-2", BASE, { mirror: false });
@@ -158,33 +158,33 @@ describe("② 04 쓰기·읽기", () => {
     ]);
   });
 
-  it("읽기: CI 범위 초과면 A:CD 로(확장4 값 보존) — grid 는 넓히지 않음", async () => {
-    valuesGet.mockRejectedValueOnce(gridError()).mockResolvedValueOnce({ data: { values: [["x"]] } });
+  it("읽기: CJ·CI 범위 초과면 A:CD 로(확장4 값 보존) — grid 는 넓히지 않음", async () => {
+    valuesGet.mockRejectedValueOnce(gridError()).mockRejectedValueOnce(gridError()).mockResolvedValueOnce({ data: { values: [["x"]] } });
     const rows = await readMeetingRows("sid", (last) => `R!A2:${last}`);
     expect(rows).toEqual([["x"]]);
-    expect(valuesGet.mock.calls.map((c) => (c[0] as { range: string }).range)).toEqual(["R!A2:CI", "R!A2:CD"]);
+    expect(valuesGet.mock.calls.map((c) => (c[0] as { range: string }).range)).toEqual(["R!A2:CJ", "R!A2:CI", "R!A2:CD"]);
     expect(ensureGridColumns).not.toHaveBeenCalled();
   });
 });
 
 describe("③ 06 BM~BQ", () => {
-  it("행 빌더: BM(64)~BQ(68), 69열", () => {
+  it("행 빌더: BM(64)~BQ(68), 전체 70열(확장6 BR 포함)", () => {
     const row = companyInfoToArchiveRow("예시상사", "2026-10-25", BASE.업체정보, "T");
-    expect(ARCHIVE_ROW_WIDTH).toBe(69);
-    expect(row).toHaveLength(69);
+    expect(ARCHIVE_ROW_WIDTH).toBe(70);
+    expect(row).toHaveLength(70);
     expect(colName(64)).toBe("BM");
     expect(colName(68)).toBe("BQ");
     expect(row[63]).toBe("'2026");
-    expect(row.slice(64)).toEqual(["'울산", "'남구", "'제조업", "'아니오", "'여성기업,수출(직접)"]);
+    expect(row.slice(64, 69)).toEqual(["'울산", "'남구", "'제조업", "'아니오", "'여성기업,수출(직접)"]);
   });
 
-  it("읽기: E~BQ 에서 복원, 옛 64열(A~BL) 행은 ''", async () => {
+  it("읽기: E~BR 에서 복원, 옛 64열(A~BL) 행은 ''", async () => {
     const full = userEntered(companyInfoToArchiveRow("예시상사", "2026-10-25", BASE.업체정보, "T"));
     const mock = (cells: unknown[]) =>
       valuesGet.mockImplementation(async ({ range }: { range: string }) => {
-        if (range.endsWith("!A1:BQ1")) return { data: { values: [Array(69).fill("h")] } };
+        if (range.endsWith("!A1:BR1")) return { data: { values: [Array(70).fill("h")] } };
         if (range.endsWith("!C2:C")) return { data: { values: [["2026-10-25|예시상사"]] } };
-        if (range.endsWith("!E2:BQ2")) return { data: { values: [cells] } };
+        if (range.endsWith("!E2:BR2")) return { data: { values: [cells] } };
         throw new Error(`unexpected ${range}`);
       });
     mock(full.slice(4));

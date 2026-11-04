@@ -28,9 +28,12 @@ function mount(el: React.ReactElement) {
   act(() => root!.render(h(QueryClientProvider, { client: qc }, el)));
   return host;
 }
+// fetch → Response.json() → react-query 반영이 여러 틱에 걸쳐 끝난다 — 한 틱만 기다리면 부하 때 「불러오는 중」에서 멈춰 보인다(2026-11-05 CI 간헐 실패).
 const flush = () => act(async () => {
-  for (let i = 0; i < 5; i++) await Promise.resolve();
-  await new Promise((r) => setTimeout(r, 0));
+  for (let t = 0; t < 5; t++) {
+    for (let i = 0; i < 5; i++) await Promise.resolve();
+    await new Promise((r) => setTimeout(r, 0));
+  }
 });
 const btn = (el: HTMLElement, text: string) => [...el.querySelectorAll("button")].find((b) => b.textContent === text);
 

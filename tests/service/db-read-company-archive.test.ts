@@ -11,6 +11,7 @@ import {
   COMPANY_FIELDS_EXT3,
   COMPANY_FIELDS_EXT4,
   COMPANY_FIELDS_EXT5,
+  COMPANY_FIELDS_EXT6,
 } from "@/repo/meetings";
 import { companyInfoFromDbPayload } from "@/repo/db/read-daily";
 
@@ -33,6 +34,7 @@ const FILLED: Record<string, string> = {
   매출기준연도: "2026", // EXT4(BL)
   지역시도: "울산", // EXT5 첫 칸(BM)
   공고특성: "여성기업,수출(직접)", // EXT5 마지막 칸(BQ)
+  표준산업분류: "47711 운송장비용 주유소 운영업", // EXT6(BR)
 };
 // CompanyInfo.커스텀 정식 스키마 = {업체:{라벨:값}, 대표자:{라벨:값}} (types/index.ts AN)
 const CUSTOM = { 업체: { 메모1: "커스텀 값" }, 대표자: {} };
@@ -46,6 +48,7 @@ function expected(): Record<string, unknown> {
   for (const f of COMPANY_FIELDS_EXT3) ci[f] = FILLED[f] ?? "";
   for (const f of COMPANY_FIELDS_EXT4) ci[f] = FILLED[f] ?? "";
   for (const f of COMPANY_FIELDS_EXT5) ci[f] = FILLED[f] ?? "";
+  for (const f of COMPANY_FIELDS_EXT6) ci[f] = FILLED[f] ?? "";
   ci.커스텀 = CUSTOM;
   return ci;
 }
@@ -84,9 +87,14 @@ describe("R2-4b company_archive: DB payload ↔ 시트 read 정합", () => {
     COMPANY_FIELDS_EXT5.forEach((f, i) => {
       if (FILLED[f]) p[colName(ext5 + i)] = FILLED[f]; // BM..BQ
     });
+    const ext6 = ext5 + COMPANY_FIELDS_EXT5.length;
+    COMPANY_FIELDS_EXT6.forEach((f, i) => {
+      if (FILLED[f]) p[colName(ext6 + i)] = FILLED[f]; // BR
+    });
     expect(colName(ext4)).toBe("BL");
     expect(colName(ext5)).toBe("BM");
     expect(colName(ext5 + COMPANY_FIELDS_EXT5.length - 1)).toBe("BQ");
+    expect(colName(ext6)).toBe("BR");
     expect(colName(4 + COMPANY_FIELDS.length + 1 + COMPANY_FIELDS_EXT.length)).toBe("AC");
     expect(colName(ext3)).toBe("AW");
     expect(colName(ext3 + COMPANY_FIELDS_EXT3.length - 1)).toBe("BK");
@@ -103,6 +111,7 @@ describe("R2-4b company_archive: DB payload ↔ 시트 read 정합", () => {
       ...COMPANY_FIELDS_EXT3,
       ...COMPANY_FIELDS_EXT4,
       ...COMPANY_FIELDS_EXT5,
+      ...COMPANY_FIELDS_EXT6,
     ]) {
       expect(ci[f as keyof typeof ci] ?? "").toBe("");
     }

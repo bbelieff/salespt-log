@@ -1,6 +1,6 @@
 /**
  * Layer: repo — 04 업체관리(앱자동작성용) 탭 I/O.
- * 1행 = 1미팅. 19컬럼 A~S (+업체정보 T~AN·AQ~AS·AU~CI, 이월깃발 AO/AP, gcal맵 AT).
+ * 1행 = 1미팅. 19컬럼 A~S (+업체정보 T~AN·AQ~AS·AU~CJ, 이월깃발 AO/AP, gcal맵 AT).
  *
  * 가드레일:
  *   • N/O/Q/S는 시트 수식 자동 — 쓰기 안 함 (split write 가 비접촉)
@@ -23,6 +23,7 @@ import {
   COMPANY_FIELDS_EXT3,
   COMPANY_FIELDS_EXT4,
   COMPANY_FIELDS_EXT5,
+  COMPANY_FIELDS_EXT6,
   COMPANY_FIELD_START,
   MEETING_READ_WIDTHS,
   MEETING_ROW_WIDTH,
@@ -47,6 +48,7 @@ export {
   COMPANY_EXT4_START,
   COMPANY_FIELDS_EXT5,
   COMPANY_EXT5_START,
+  COMPANY_FIELDS_EXT6,
   MEETING_ROW_WIDTH,
   rowToMeeting,
 } from "./meetings-rows";
@@ -59,14 +61,14 @@ function tabRef(tab: string): string {
 const TAB = SHEET_RANGES.meetings.tab;
 const ID_COL_RANGE = `${tabRef(TAB)}!A2:A`; // id 검색용
 const EXT2_FIRST = colName(COMPANY_EXT2_START); // AU
-const LAST_COL = colName(MEETING_ROW_WIDTH - 1); // CI
-/** AU~CI 확장 헤더 라벨(확장2 20 + 확장3 15 + 확장4 1 + 확장5 5) — 맞닿아 있어 한 범위로 다룬다. */
+const LAST_COL = colName(MEETING_ROW_WIDTH - 1); // CJ
+/** AU~CJ 확장 헤더 라벨(확장2 20 + 확장3 15 + 확장4 1 + 확장5 5 + 확장6 1) — 맞닿아 있어 한 범위로 다룬다. */
 const EXT23_LABELS = [
-  ...COMPANY_FIELDS_EXT2, ...COMPANY_FIELDS_EXT3, ...COMPANY_FIELDS_EXT4, ...COMPANY_FIELDS_EXT5,
+  ...COMPANY_FIELDS_EXT2, ...COMPANY_FIELDS_EXT3, ...COMPANY_FIELDS_EXT4, ...COMPANY_FIELDS_EXT5, ...COMPANY_FIELDS_EXT6,
 ];
 
 /**
- * 04 행 읽기(UNFORMATTED·SERIAL) — `rangeFor(lastCol)` 로 A:CI 를 먼저 읽고, grid 가 CI 까지
+ * 04 행 읽기(UNFORMATTED·SERIAL) — `rangeFor(lastCol)` 로 A:CJ 를 먼저 읽고, grid 가 CI 까지
  * 안 넓혀진 시트("exceeds grid limits" 400)면 한 단계씩 좁혀(A:CD → A:CC → A:BN → A:AS) 다시 읽는다
  * (없는 열 값 = 없음). CD·CC·BN 까지만 넓혀진 시트에서 더 좁게 바로 떨어지면 그 사이 값이 사라지므로
  * 단계를 건너뛰지 않는다. **읽기 경로는 grid 를 넓히지 않는다** — 확장은 쓰기 경로(split write·
@@ -98,7 +100,7 @@ export async function readMeetingRows(
 /** 04 전체 데이터 행(A2:<lastCol>) 범위. */
 const allRows = (lastCol: string) => `${tabRef(TAB)}!A2:${lastCol}`;
 
-// 확장2·3·4·5(AU~CI) 헤더 라벨 보강 — 시트당 프로세스 1회(promise 캐시, 실패 시 재시도 허용).
+// 확장2·3·4·5(AU~CJ) 헤더 라벨 보강 — 시트당 프로세스 1회(promise 캐시, 실패 시 재시도 허용).
 const ext2HeaderEnsured = new Map<string, Promise<void>>();
 
 /** AU1:CI1 중 **빈 셀에만** 필드 키를 라벨로 쓴다(§2.5 — 사용자가 바꾼 헤더 보존). */
@@ -198,7 +200,7 @@ async function writeMeetingRowSplit(
   const A_to_M = fullRow.slice(0, 13); // A=0 ~ M=12 (사용자 입력)
   const P_only = [fullRow[COL.계약조건]]; // P=15
   const R_only = [fullRow[COL.previousMeetingId]]; // R=17
-  // 업체정보 T~AN (T=19~AN=39) + 확장 AQ~AS (42~44) + 확장2·3·4·5 AU~CI (46~86, 맞닿은 한 범위).
+  // 업체정보 T~AN (T=19~AN=39) + 확장 AQ~AS (42~44) + 확장2·3·4·5 AU~CJ (46~86, 맞닿은 한 범위).
   // 미팅(A:M/P/R)·수식(N/O/Q/S)·이월깃발(AO/AP)·gcal맵(AT)과 전부 분리 — 서로 보존.
   const T_to_AN = fullRow.slice(COMPANY_FIELD_START, COMPANY_CUSTOM_COL + 1);
   const AQ_to_AS = fullRow.slice(COMPANY_EXT_START, COMPANY_EXT_START + 3);
@@ -259,7 +261,7 @@ export async function findById(
 ): Promise<Meeting | null> {
   const sheetRow = await findRowById(spreadsheetId, id);
   if (sheetRow === null) return null;
-  // A:CI — 업체정보(T~AN·AQ~AS·AU~CI)·이월(AO/AP) 포함. (구 A:S — 업체정보 누락으로
+  // A:CJ — 업체정보(T~AN·AQ~AS·AU~CJ)·이월(AO/AP) 포함. (구 A:S — 업체정보 누락으로
   // 계약 06 스냅샷 경로(re-findById)가 빈 업체정보를 받던 잠복 결함, field-grid fix)
   // grid 가 CI 미만인 시트는 A:CD → A:CC → A:BN → A:AS 폴백(readMeetingRows) — 읽기에서 grid 를 넓히지 않는다.
   const rows = await readMeetingRows(

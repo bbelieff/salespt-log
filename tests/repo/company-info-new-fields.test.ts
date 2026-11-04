@@ -87,10 +87,11 @@ describe("② 04 코덱 좌표 (AU~BN)", () => {
     expect(GCAL_MAP_COL).toBe(45);
     expect(colName(GCAL_MAP_COL)).toBe("AT");
     // 확장2 끝 = BN(65). 그 뒤 BO~CC 는 확장3(company-info-restructure), CD 는 확장4(매출기준연도,
-    // company-finance-won-grid), CE~CI 는 확장5(맞춤공고, company-grant-fields) — 전체 폭 87(CI).
+    // company-finance-won-grid), CE~CI 는 확장5(맞춤공고, company-grant-fields), CJ 는 확장6(표준산업분류, company-ksic-save)
+    // — 전체 폭 88(CJ).
     expect(colName(COMPANY_EXT2_START + COMPANY_FIELDS_EXT2.length - 1)).toBe("BN");
-    expect(MEETING_ROW_WIDTH).toBe(87);
-    expect(colName(MEETING_ROW_WIDTH - 1)).toBe("CI");
+    expect(MEETING_ROW_WIDTH).toBe(88);
+    expect(colName(MEETING_ROW_WIDTH - 1)).toBe("CJ");
   });
 
   it("기존 열 불변 — T(19)·AN 커스텀·AQ(42) 시작 그대로", () => {
@@ -101,7 +102,7 @@ describe("② 04 코덱 좌표 (AU~BN)", () => {
 
   it("새 필드가 정해진 순서로 AU~BN 에 apostrophe 텍스트로, AT 는 빈칸", () => {
     const row = meetingToRow(BASE);
-    expect(row).toHaveLength(87);
+    expect(row).toHaveLength(88);
     expect(row[GCAL_MAP_COL]).toBe("");
     COMPANY_FIELDS_EXT2.forEach((f, i) => {
       expect(row[COMPANY_EXT2_START + i]).toBe(`'${NEW_VALUES[f]}`);

@@ -104,6 +104,9 @@ export const CompanyInfo = z.object({
   대분류: z.string().default(""), // 빈값 = 업태에서 자동
   제외업종: z.string().default(""), // "" = 자동 · "예" · "아니오"
   공고특성: z.string().default(""), // 쉼표 구분 칩 이름("여성기업,수출(직접)")
+  // 확장6 1필드 (04 CJ · 06 BR — company-ksic-save 2026-11-05). 고른 표준산업분류("47711 운송장비용 주유소 운영업").
+  // 빈값 = 업태·업종에서 자동 추천(저장 안 함, lib/util/ksic.ts).
+  표준산업분류: z.string().default(""),
   // AN: "필드추가+" 커스텀(비정형) — {업체:{라벨:값}, 대표자:{라벨:값}}.
   커스텀: z
     .object({

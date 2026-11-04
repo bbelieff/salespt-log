@@ -1,7 +1,7 @@
 /**
  * Layer: repo — 아레나 재참가 이월 I/O (arena-carryover §2, 읽기=이전 기수 시트 / 쓰기=아레나).
  *
- * 04: 이전 시트의 상태=예약 미팅 raw(A~AN + 업체정보 확장 AQ~AS·AU~CI)를 아레나 04에 복사
+ * 04: 이전 시트의 상태=예약 미팅 raw(A~AN + 업체정보 확장 AQ~AS·AU~CJ)를 아레나 04에 복사
  *     — 새 id 발급, AO="이월"/AP=원본 미팅 id. N/O/Q/S(수식)·AT(gcal 맵)·기존 행 비접촉(split write).
  * 02: service 가 기존 contract-payment repo(appendFromContract+updateUserFields) 재사용.
  * 멱등: 아레나 04 AP / 02 AJ 컬럼의 원본키 집합으로 중복 삽입 방지.
@@ -33,16 +33,16 @@ const ref = `'${TAB}'`;
 
 export interface CarrySourceMeeting {
   원본id: string;
-  raw: unknown[]; // A~AN (0..39) + 확장 AQ~AS(42..44)·AU~CI(46..86) — 없으면 빈칸
+  raw: unknown[]; // A~AN (0..39) + 확장 AQ~AS(42..44)·AU~CJ(46..86) — 없으면 빈칸
 }
 
-/** 업체정보 확장 열 인덱스 — AQ~AS + AU~CI(확장2·3·4·5). AO/AP(이월 깃발)·AT(gcal 맵)는 이월 대상 아님. */
+/** 업체정보 확장 열 인덱스 — AQ~AS + AU~CJ(확장2·3·4·5). AO/AP(이월 깃발)·AT(gcal 맵)는 이월 대상 아님. */
 const EXT_INDICES: number[] = [
   ...Array.from({ length: COMPANY_FIELDS_EXT.length }, (_, i) => COMPANY_EXT_START + i),
   ...Array.from({ length: MEETING_ROW_WIDTH - COMPANY_EXT2_START }, (_, i) => COMPANY_EXT2_START + i),
 ];
 const EXT_FIRST = colName(COMPANY_EXT_START); // AQ
-const EXT_LAST = colName(MEETING_ROW_WIDTH - 1); // CI
+const EXT_LAST = colName(MEETING_ROW_WIDTH - 1); // CJ
 /** 확장 읽기 끝 열 후보(넓은 것부터) — CI → CD → CC → BN → AS. 안 넓혀진 이전 시트는 한 단계씩 좁혀 읽는다. */
 const EXT_READ_LASTS = MEETING_READ_WIDTHS.map((w) => colName(w - 1));
 /** 주민등록번호 열(BA) — 이월 쓰기 전 다른 저장 경로와 같은 모양(NNNNNN-NNNNNNN, 최대 13자리)으로 맞춘다(ADR-0035). */
@@ -112,7 +112,7 @@ export async function listCarrySourceMeetings(
   return out;
 }
 
-/** A~AN raw + (AQ 부터 읽은) 확장 행 → A~CI raw. 확장 행이 없으면 A~AN 그대로. 순수. */
+/** A~AN raw + (AQ 부터 읽은) 확장 행 → A~CJ raw. 확장 행이 없으면 A~AN 그대로. 순수. */
 export function withExtColumns(base: unknown[], ext: unknown[] | undefined): unknown[] {
   const raw = [...base];
   if (!ext) return raw;
@@ -179,7 +179,7 @@ export function carriedMeetingPayload(
   return p;
 }
 
-/** 이월 행 split write — append/스냅샷 공용 (A:M / P / T~AN / AO:AP / AQ:AS / AU:CI, R·수식·AT 비접촉). */
+/** 이월 행 split write — append/스냅샷 공용 (A:M / P / T~AN / AO:AP / AQ:AS / AU:CJ, R·수식·AT 비접촉). */
 async function writeCarriedRowAt(
   arenaSheetId: string,
   row: number,
@@ -200,7 +200,7 @@ async function writeCarriedRowAt(
     { length: MEETING_ROW_WIDTH - COMPANY_EXT2_START },
     (_, i) => extCell(extRaw[COMPANY_EXT2_START + i]),
   );
-  // 확장값이 실린 raw 만 AQ:AS·AU:CI 를 쓴다 — 레거시 A~AN raw(_carryRaw 등)로 기존 행을
+  // 확장값이 실린 raw 만 AQ:AS·AU:CJ 를 쓴다 — 레거시 A~AN raw(_carryRaw 등)로 기존 행을
   // 갱신할 때 확장 칸을 빈값으로 덮지 않기 위함(§2.5 취지).
   const hasExt = src.raw.length > COMPANY_EXT_START;
   const extData = hasExt
@@ -209,8 +209,8 @@ async function writeCarriedRowAt(
         { range: `${ref}!${colName(COMPANY_EXT2_START)}${row}:${EXT_LAST}${row}`, values: [au2ci] },
       ]
     : [];
-  // AO:AP·AQ:CI 쓰기 — 04 grid 가 AN(40)까지인 시트에서 grid limit 에러 (field-grid 실측,
-  // 잠복 버그: 라이브 이월 0건이라 미발현이었음) → CI(87열) 보장 후 쓰기.
+  // AO:AP·AQ:CJ 쓰기 — 04 grid 가 AN(40)까지인 시트에서 grid limit 에러 (field-grid 실측,
+  // 잠복 버그: 라이브 이월 0건이라 미발현이었음) → CJ(88열) 보장 후 쓰기.
   await ensureGridColumns(arenaSheetId, SHEET_RANGES.meetings.tab, MEETING_ROW_WIDTH);
   await sheetsClient().spreadsheets.values.batchUpdate({
     spreadsheetId: arenaSheetId,

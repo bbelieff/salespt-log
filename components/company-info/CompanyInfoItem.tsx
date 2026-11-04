@@ -89,7 +89,7 @@ export default function CompanyInfoItem({ it, draft, inline, idBase, today, onFi
             {it.defs.map((d) => field(d, "block min-w-0"))}
           </div>
           {it.grant === "industry" && <IndustryLine draft={draft} className="" onPatch={onPatch} />}
-          {it.grant === "industry" && <KsicLine draft={draft} className="" />}
+          {it.grant === "industry" && <KsicLine draft={draft} className="" onPatch={onPatch} />}
         </div>
       );
     case "bizType":

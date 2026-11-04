@@ -20,6 +20,7 @@ import {
   COMPANY_FIELDS_EXT3,
   COMPANY_FIELDS_EXT4,
   COMPANY_FIELDS_EXT5,
+  COMPANY_FIELDS_EXT6,
   MEETING_ROW_WIDTH,
   rowToMeeting,
 } from "../meetings";
@@ -49,7 +50,7 @@ export function meetingFromDbPayload(
   }
   // 2) backfill 열문자 형태 → 행 배열 복원 후 시트 파서(rowToMeeting) 그대로 재사용.
   const r: unknown[] = [];
-  // A~CI(87열) — 이월 payload(carriedMeetingPayload)가 확장 AQ~AS·AU~CI 도 열문자로 싣는다.
+  // A~CJ(88열) — 이월 payload(carriedMeetingPayload)가 확장 AQ~AS·AU~CJ 도 열문자로 싣는다.
   for (let i = 0; i < MEETING_ROW_WIDTH; i++) r.push(coerce(p[colName(i)]));
   return rowToMeeting(r);
 }
@@ -344,11 +345,11 @@ export async function readBannerOrderQtyFromDb(
 // ── R2-4b: company_archive(06 업체정보) read (db-read-company-archive) ────────
 // payload 형태: ① upsert 미러 = {업체명, 계약일, ...CompanyInfo 평탄화(커스텀 포함)}
 // ② backfill = 열문자 A..BQ(E..X=COMPANY_FIELDS, Y=커스텀 JSON 문자열, Z..AB=EXT, AC..AV=EXT2,
-//    AW..BK=EXT3, BL=EXT4, BM..BQ=EXT5)
+//    AW..BK=EXT3, BL=EXT4, BM..BQ=EXT5, BR=EXT6)
 // ③ rename 미러 = 키 필드만(스냅샷 없음) — 실질 빈 결과는 호출부가 시트 fallback
-//   (renameCompanyInfoKey 는 시트 E~BQ 을 보존하지만 DB 새 키엔 스냅샷이 없다).
+//   (renameCompanyInfoKey 는 시트 E~BR 을 보존하지만 DB 새 키엔 스냅샷이 없다).
 
-const COMPANY_LETTER_START = 4; // E — 06 탭 A~BQ 중 업체정보 시작 열
+const COMPANY_LETTER_START = 4; // E — 06 탭 A~BR 중 업체정보 시작 열
 
 /** payload(3형태 겸용) → CompanyInfo. 파싱 불가 시 null. */
 export function companyInfoFromDbPayload(
@@ -386,6 +387,12 @@ export function companyInfoFromDbPayload(
   COMPANY_FIELDS_EXT5.forEach((f, i) => {
     // BM..BQ = EXT4(BL) 다음 5열. 옛 행(키 없음)은 "".
     const v = p[f] ?? p[colName(ext5Letter + i)];
+    ci[f] = String(v ?? "").trim();
+  });
+  const ext6Letter = ext5Letter + COMPANY_FIELDS_EXT5.length;
+  COMPANY_FIELDS_EXT6.forEach((f, i) => {
+    // BR = EXT5(BM..BQ) 다음 1열. 옛 행(키 없음)은 "".
+    const v = p[f] ?? p[colName(ext6Letter + i)];
     ci[f] = String(v ?? "").trim();
   });
   const custom = p["커스텀"];
