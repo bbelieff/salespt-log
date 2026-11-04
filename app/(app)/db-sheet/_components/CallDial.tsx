@@ -19,7 +19,7 @@ export function CallChip({ call }: { call?: CallRecord }) {
 
 export function CallButton({ row, onDial, label = false }: { row: Row; onDial: () => void; label?: boolean }) {
   if (!phoneDigits(row.phone)) return null;
-  return <button type="button" className={label ? "dbs-button dbs-call-text" : "dbs-call-btn"} aria-label={`${row.company} 전화 걸기`} onClick={e => { e.stopPropagation(); onDial(); }}>
+  return <button type="button" className={label ? "dbs-button dbs-call-dial" : "dbs-call-btn"} aria-label={`${row.company} 전화 걸기`} onClick={e => { e.stopPropagation(); onDial(); }}>
     <Phone size={label ? 15 : 20} strokeWidth={1.9} aria-hidden="true" />{label && "전화 걸기"}
   </button>;
 }
