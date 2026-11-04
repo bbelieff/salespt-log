@@ -15,8 +15,15 @@ describe("업체정보 보기 — 전체 / 적은 것 / 안 적은 것", () => {
   it("전체는 적은 항목이 위, 안 적은 항목이 아래(원래 순서 유지)", () => {
     const d = ci({ 소재지: "서울", 사업자등록번호: "123-45-67890" });
     const order = keysOf(기업정보_ITEMS, visibleItems(기업정보_ITEMS, d, "all"));
-    expect(order.slice(0, 2)).toEqual(["사업자등록번호", "소재지"]);
+    expect(order.slice(0, 2)).toEqual(["bizRow", "소재지"]);
     expect(order).toHaveLength(visibleItems(기업정보_ITEMS, ci({}), "all").length);
+  });
+
+  it("기타메모는 적었어도 늘 맨 아래(추가한 칸 바로 위, belie 2026-11-04)", () => {
+    for (const [items, memo] of [[기업정보_ITEMS, "업체기타메모"], [대표자_ITEMS, "대표기타메모"]] as const) {
+      const order = keysOf(items, visibleItems(items, ci({ [memo]: "메모" }), "all"));
+      expect(order.at(-1)).toBe(memo);
+    }
   });
 
   it("적은 것·안 적은 것은 해당 항목만 보인다", () => {

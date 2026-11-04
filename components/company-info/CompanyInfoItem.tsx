@@ -7,7 +7,7 @@
  *   (설명에 "자동으로 채운 값"). 저장은 사용자가 무엇이든 고칠 때 apply() 가 한다 — 열기만 해선 안 함.
  *   그 값을 통째로 지우면 생년월일도 함께 지운다(비운 채로 남게).
  * - money: 백만원 금액 칸 + 옛 자유 글 「백만원으로 바꾸기」. ratio: 자동 계산 비율(읽기 전용).
- * - bizType·ownership: 선택형 칸. sales: 연도별 매출 표. hidden: 그리지 않는다.
+ * - bizType·ownership: 선택형 칸. bizRow: 개업일·사업자구분·등록번호 한 줄. sales: 연도별 매출 표. hidden: 그리지 않는다.
  * wide = 2열 그리드에서 전폭(sm:col-span-2). inline(PC 좁은 단)은 1열이라 전폭 개념 없음.
  */
 "use client";
@@ -92,6 +92,18 @@ export default function CompanyInfoItem({ it, draft, inline, idBase, today, onFi
       );
     case "bizType":
       return <BizTypeField draft={draft} onPatch={onPatch} id={idOf("사업자구분")} />;
+    case "bizRow":
+      // 개업일 · 사업자구분/과세유형 · 사업자등록번호 한 줄(가운데 선택 칸을 조금 넓게). 칸 묶음이 좁으면(330px 미만 —
+      // PC 상세 좁은 단·폰) [개업일 | 등록번호] 아래 사업자구분 — 세 칸이면 라벨이 세 줄로 꺾인다. globals.css .company-biz-row.
+      return (
+        <div className={`${wide} company-biz-row min-w-0`}>
+          <div className="company-biz-row-grid">
+            {field(it.open, "block min-w-0")}
+            <div className="min-w-0"><BizTypeField draft={draft} onPatch={onPatch} id={idOf("사업자구분")} /></div>
+            {field(it.regNo, "block min-w-0")}
+          </div>
+        </div>
+      );
     case "ownership":
       return <OwnershipField spec={it.spec} draft={draft} onPatch={onPatch} idBase={idBase} className={wide} />;
     case "money": {

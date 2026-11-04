@@ -3,6 +3,7 @@
  *
  * - 항목(EditorItem)마다 사람이 적는 칸 키를 모은다. 자동 계산 칸(비율·증가율·합계)과 숨은 칸은 세지 않는다.
  * - 전체: 묶음 안에서 적은 항목이 위, 안 적은 항목이 아래(원래 순서 유지).
+ *   기타메모는 적었든 안 적었든 늘 맨 아래 — 추가한 칸·「필드 추가」 바로 위(belie 2026-11-04).
  * - 적은 것 / 안 적은 것: 해당 항목만. 한 줄에 칸이 여럿이면(이름·주민번호 등) 하나라도 맞으면 보인다.
  * - 화면이 적는 도중에 움직이지 않도록, 호출하는 쪽이 편집기를 열 때의 값으로 한 번 계산해 고정한다.
  */
@@ -31,6 +32,8 @@ export function itemKeys(it: EditorItem, ci: CompanyInfo): Key[] {
       return it.defs.map((d) => d[0]);
     case "bizType":
       return ["사업자구분", "과세유형"];
+    case "bizRow":
+      return [it.open[0], "사업자구분", "과세유형", it.regNo[0]];
     case "grantAddress":
       return ["소재지"];
     case "ownership":
@@ -59,16 +62,22 @@ export function itemState(it: EditorItem, ci: CompanyInfo): ItemState {
 }
 
 /** 보기에 맞춰 보일 항목의 원래 번호 목록(순서 포함). 세지 않는 항목(자동 비율 등)은 전체에서만, 맨 끝에. */
+const MEMO_KEYS: readonly Key[] = ["업체기타메모", "대표기타메모"];
+const isMemo = (it: EditorItem) => it.kind === "field" && MEMO_KEYS.includes(it.def[0]);
+
 export function visibleItems(items: EditorItem[], ci: CompanyInfo, mode: ViewMode): number[] {
   const states = items.map((it) => itemState(it, ci));
-  const idx = items.map((_, i) => i);
-  if (mode === "filled") return idx.filter((i) => states[i]!.counted && states[i]!.anyFilled);
-  if (mode === "empty") return idx.filter((i) => states[i]!.counted && states[i]!.anyEmpty);
+  const all = items.map((_, i) => i);
+  const memo = all.filter((i) => isMemo(items[i]!));
+  const idx = all.filter((i) => !isMemo(items[i]!));
+  if (mode === "filled") return [...idx, ...memo].filter((i) => states[i]!.counted && states[i]!.anyFilled);
+  if (mode === "empty") return [...idx, ...memo].filter((i) => states[i]!.counted && states[i]!.anyEmpty);
   const counted = idx.filter((i) => states[i]!.counted);
   return [
     ...counted.filter((i) => states[i]!.anyFilled),
     ...counted.filter((i) => !states[i]!.anyFilled),
     ...idx.filter((i) => !states[i]!.counted),
+    ...memo,
   ];
 }
 

@@ -6,7 +6,8 @@
  *
  * 한 섹션 = EditorItem 목록. 보통 칸(field) 말고 선택형·묶음 칸이 있다:
  *  - bizType   : 사업자구분 · 과세유형 한 칸 선택(두 저장 키를 함께 쓴다)
- *  - ownership : 소유여부 자가/임차 선택 + 임차면 보증금·월세·면적 한 줄
+ *  - ownership : [면적 | 소유여부 드롭다운] + 임차면 [보증금 | 월세](천원)
+ *  - bizRow    : 개업일 · 사업자구분/과세유형 · 사업자등록번호 한 줄(belie 2026-11-04)
  *  - row       : 칸 셋을 한 줄에(업종·업태·주생산품목 — 360px 미만은 세로)
  *  - pair      : 칸 둘을 늘 한 줄에(이름·주민등록번호 / 신용점수·연락처 — 375px 폰에서도)
  *  - hidden    : 화면엔 없지만 저장값이 있는 칸(생년월일 — 문서 자동입력 비교표 라벨·순서용)
@@ -43,6 +44,8 @@ export type OwnershipSpec = {
 export type EditorItem =
   | { kind: "field"; def: FieldDef; onlyCorporation?: boolean }
   | { kind: "bizType" }
+  /** 개업일 · 사업자구분/과세유형 · 사업자등록번호 한 줄(belie 2026-11-04 — 세로 공간 절약). */
+  | { kind: "bizRow"; open: FieldDef; regNo: FieldDef }
   | { kind: "ownership"; spec: OwnershipSpec }
   /** grant = 맞춤공고 줄을 이 항목 아래에 붙인다(industry: 대분류·제외 업종 / features: 공고 특성 칩) — 보기 정렬에도 함께 움직인다. */
   | { kind: "row"; defs: FieldDef[]; grant?: "industry" }
@@ -61,7 +64,7 @@ const f = (def: FieldDef, onlyCorporation?: boolean): EditorItem =>
 
 export const 대표자_OWNERSHIP: OwnershipSpec = {
   key: "대표소유여부",
-  hint: "대표자 자택이 자가인지 임차인지 골라요. 임차면 보증금·월세·면적을 적어요",
+  hint: "대표자 자택이 자가인지 임차인지 골라요. 임차면 보증금·월세를 적어요",
   deposit: "대표임차보증금",
   rent: "대표임차월세",
   area: "대표임차면적",
@@ -70,7 +73,7 @@ export const 대표자_OWNERSHIP: OwnershipSpec = {
 
 export const 기업_OWNERSHIP: OwnershipSpec = {
   key: "소유여부",
-  hint: "사업장이 자가인지 임차인지 골라요. 임차면 보증금·월세·면적을 적어요",
+  hint: "사업장이 자가인지 임차인지 골라요. 임차면 보증금·월세를 적어요",
   deposit: "임차보증금",
   rent: "임차월세",
   area: "임차면적",
@@ -81,10 +84,10 @@ export const 기업_OWNERSHIP: OwnershipSpec = {
 export const BIZ_TYPE_LABEL = "사업자구분 · 과세유형";
 export const BIZ_TYPE_HINT = "개인/법인과 과세유형을 한 번에 골라요. 사업자등록증에 적힌 대로 고르면 돼요";
 
-/** 임차 한 줄 3칸의 [라벨, 단위, 설명]. */
+/** 면적·보증금·월세 칸의 [라벨, 단위, 설명]. 보증금·월세는 천원으로 보이고 저장은 원(belie 2026-11-04). */
 export const LEASE_PARTS = {
-  deposit: ["보증금", "원", "보증금을 원 단위 숫자로. 예: 10,000,000"],
-  rent: ["월세", "원", "월 차임을 원 단위 숫자로. 예: 500,000"],
+  deposit: ["보증금", "천원", "보증금을 천원 단위 숫자로. 예: 10,000 (= 1천만 원)"],
+  rent: ["월세", "천원", "월 차임을 천원 단위 숫자로. 예: 500 (= 50만 원)"],
   area: ["면적", "㎡", "빌린 면적을 ㎡ 숫자로. 예: 33 (1평 = 3.3058㎡)"],
 } as const;
 
@@ -119,9 +122,7 @@ export const 대표자_ITEMS: EditorItem[] = [
 
 // [기업정보] — 업종·업태·주생산품목 줄은 등록번호 바로 뒤, 4대보험 직원|특허 한 줄은 소유여부 뒤(belie 2026-09-28·10-09).
 export const 기업정보_ITEMS: EditorItem[] = [
-  f(["개업일", "개업일", "25.01.24", 1]),
-  { kind: "bizType" },
-  f(["사업자등록번호", "사업자등록번호", "000-00-00000", 1]),
+  { kind: "bizRow", open: ["개업일", "개업일", "25.01.24", 1], regNo: ["사업자등록번호", "사업자등록번호", "000-00-00000", 1] },
   f(["법인등록번호", "법인등록번호", "법인만 해당. 000000-0000000", 1], true),
   {
     kind: "row",
@@ -219,6 +220,7 @@ export function companyInfoFieldList(baseYear: number): [Key, string][] {
       else if (it.kind === "hidden") out.push([it.key, it.label]);
       else if (it.kind === "grantAddress") out.push(["소재지", "소재지"]);
       else if (it.kind === "bizType") out.push(["사업자구분", "사업자구분"], ["과세유형", "과세유형"]);
+      else if (it.kind === "bizRow") out.push([it.open[0], it.open[1]], ["사업자구분", "사업자구분"], ["과세유형", "과세유형"], [it.regNo[0], it.regNo[1]]);
       else if (it.kind === "ownership") {
         out.push(
           [it.spec.key, "소유여부"],

@@ -41,4 +41,12 @@ describe("4단계 — 맞는 공고 N", () => {
     expect(html(0)).toContain("공고필터");
     expect(html()).toContain("공고필터");
   });
+  it("세 조건이 다 맞으면 칩을 숨긴다(이미 맞춘 필터는 숨김, belie 2026-11-04)", async () => {
+    const React = await import("react");
+    const { renderToStaticMarkup } = await import("react-dom/server");
+    const { GrantReadyChip } = await import("@/components/company-info/GrantReadyChip");
+    const draft = { 소재지: "울산광역시 남구 삼산로 1", 업태: "제조", 사대보험직원: "4명" } as never;
+    expect(renderToStaticMarkup(React.createElement(GrantReadyChip, { draft, onFill: () => {} }))).toBe("");
+    expect(renderToStaticMarkup(React.createElement(GrantReadyChip, { draft, onFill: () => {}, matchCount: 1 }))).toContain("맞는 공고 1");
+  });
 });

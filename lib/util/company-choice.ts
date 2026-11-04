@@ -93,17 +93,44 @@ export function bizTypeChoose(
   return { 사업자구분: o.사업자구분, 과세유형: o.과세유형, lost };
 }
 
-export type OwnershipChoice = "자가" | "임차" | "";
+/** 소유여부 드롭다운 선택지(belie 2026-11-04 — 글칸+빠른 선택에서 다시 드롭다운으로). */
+export const OWNERSHIP_OPTIONS = ["자가", "임차", "임차(무상)", "기타"] as const;
+export type OwnershipChoice = (typeof OWNERSHIP_OPTIONS)[number] | "";
 
 /**
- * 저장된 소유여부 글 → 선택(자가/임차/모름) + 옛 글. 낱말 그대로("자가"/"임차")면 옛 글 없음.
- * 짐작 순서(belie 지시): 자가가 들어 있으면 자가, 아니면 임차(또는 월세·전세)면 임차.
+ * 저장된 소유여부 글 → 선택 + 옛 글. 선택지 그대로면 옛 글 없음.
+ * 짐작 순서(belie 지시): 무상이면 임차(무상), 자가가 들어 있으면 자가, 아니면 임차(또는 월세·전세)면 임차.
  */
 export function ownershipView(raw: string): { choice: OwnershipChoice; legacy: string } {
   const t = String(raw ?? "").trim();
-  if (t === "" || t === "자가" || t === "임차") return { choice: t as OwnershipChoice, legacy: "" };
-  const choice: OwnershipChoice = /자가/.test(t) ? "자가" : /임차|월세|전세/.test(t) ? "임차" : "";
+  if (t === "" || (OWNERSHIP_OPTIONS as readonly string[]).includes(t)) return { choice: t as OwnershipChoice, legacy: "" };
+  const choice: OwnershipChoice = /무상/.test(t) ? "임차(무상)" : /자가/.test(t) ? "자가" : /임차|월세|전세/.test(t) ? "임차" : "";
   return { choice, legacy: t };
+}
+
+const groupDigits = (int: string) => int.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+/**
+ * 저장된 원 금액 → 화면의 천원 값(belie 2026-11-04 「단위는 천원」). 저장은 계속 원 — 옛 값·TXT·서류 자동입력과 그대로 맞는다.
+ * 숫자가 아닌 옛 글("1,000만")은 null(그대로 보여 준다).
+ */
+export function wonToThousandView(stored: string): string | null {
+  const t = String(stored ?? "").trim();
+  if (t === "") return "";
+  if (!/^[\d,]+$/.test(t)) return null;
+  const won = Number(t.replace(/,/g, ""));
+  if (!Number.isFinite(won)) return null;
+  const [int, dec] = String(won / 1000).split(".");
+  return dec ? `${groupDigits(int!)}.${dec}` : groupDigits(int!);
+}
+
+/** 화면에 친 천원 값 → 저장할 원 금액(쉼표). 숫자가 아니면 친 글 그대로(옛 방식과 같이 보존). */
+export function thousandToWon(text: string): string {
+  const t = String(text ?? "").trim();
+  if (t === "") return "";
+  if (!/^[\d,]*\.?\d*$/.test(t) || !/\d/.test(t)) return text;
+  const won = Math.round(Number(t.replace(/,/g, "")) * 1000);
+  return Number.isFinite(won) ? groupDigits(String(won)) : text;
 }
 
 /** 기타메모 끝에 한 줄 덧붙인다(메모가 비었으면 그 줄만). */
