@@ -39,20 +39,29 @@ export function useInfoLayout(defaultLayout: InfoLayout) {
   return { layout, setLayout };
 }
 
-export default function CompanyInfoLayoutToggle({ layout, onChange, compactMobile = false }: { layout: InfoLayout; onChange: (l: InfoLayout) => void; compactMobile?: boolean }) {
+/** onScript 를 주면(업체정보 팝업) 세 번째 「대본」 칸이 붙는다 — 대본을 보는 동안 두 보기 칸은 눌리지 않은 모양. */
+export default function CompanyInfoLayoutToggle({ layout, onChange, compactMobile = false, scriptOn = false, onScript }: { layout: InfoLayout; onChange: (l: InfoLayout) => void; compactMobile?: boolean; scriptOn?: boolean; onScript?: (on: boolean) => void }) {
+  const pick = (v: InfoLayout | "script") => {
+    if (v === "script") return onScript?.(true);
+    onScript?.(false);
+    onChange(v);
+  };
+  const keys = onScript ? (["basic", "extended", "script"] as const) : (["basic", "extended"] as const);
+  const label = (k: (typeof keys)[number]) => (k === "script" ? "대본" : LAYOUT_LABEL[k]);
+  const current = scriptOn && onScript ? "script" : layout;
   return (
     <>
-    {compactMobile && <select className="payment-ci-native" aria-label="업체정보 보기 범위 선택" value={layout} onChange={(e) => onChange(e.target.value as InfoLayout)}>{(["basic", "extended"] as const).map(l => <option key={l} value={l}>{LAYOUT_LABEL[l]}</option>)}</select>}
+    {compactMobile && <select className="payment-ci-native" aria-label="업체정보 보기 범위 선택" value={current} onChange={(e) => pick(e.target.value as InfoLayout | "script")}>{keys.map(l => <option key={l} value={l}>{label(l)}</option>)}</select>}
     <div data-payment-ci-segmented className="inline-flex shrink-0 rounded-lg border border-gray-300 bg-white p-0.5" role="group" aria-label="업체정보 보기 범위">
-      {(["basic", "extended"] as const).map((l) => (
+      {keys.map((l) => (
         <button
           key={l}
           type="button"
-          aria-pressed={layout === l}
-          onClick={() => onChange(l)}
-          className={`whitespace-nowrap rounded-md px-3 py-1 text-xs font-semibold ${layout === l ? "bg-slate-800 text-white shadow-sm" : "text-gray-600 hover:bg-gray-50"}`}
+          aria-pressed={current === l}
+          onClick={() => pick(l)}
+          className={`whitespace-nowrap rounded-md px-3 py-1 text-xs font-semibold ${current === l ? "bg-slate-800 text-white shadow-sm" : "text-gray-600 hover:bg-gray-50"}`}
         >
-          {LAYOUT_LABEL[l]}
+          {label(l)}
         </button>
       ))}
     </div>

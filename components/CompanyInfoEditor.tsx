@@ -30,6 +30,7 @@ import CompanyDocAutofillButton from "./company-doc/CompanyDocAutofillButton";
 import CompanyVaultSection from "./company-info/CompanyVaultSection";
 import CompanyInfoViewToggle, { useInfoView } from "./company-info/CompanyInfoViewToggle";
 import { countFields, visibleItems } from "./company-info/view-filter";
+import ContactScriptPanel from "./company-info/ContactScriptPanel";
 import CompanyInfoLayoutToggle, { HiddenFilledNotice, useInfoLayout, type InfoLayout } from "./company-info/CompanyInfoLayoutToggle";
 import type { VaultItem, VaultTarget } from "@/types/company-vault";
 import FontScaleControl from "./FontScaleControl";
@@ -80,6 +81,7 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
 }: Props) {
   const [open, setOpen] = useState(defaultOpen ?? (hideSave === true));
   const [modal, setModal] = useState(false);
+  const [script, setScript] = useState(false); // 팝업 「대본」 — 팝업 안에서만.
   const [newLabel, setNewLabel] = useState<Record<Grp, string>>({
     업체: "",
     대표자: "",
@@ -264,10 +266,7 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
 
   const counts = countFields([대표자_ITEMS, 기업정보_ITEMS, 재무_ITEMS], draft);
 
-  const closeModal = () => {
-    if (auto) commit(true);
-    setModal(false);
-  };
+  const closeModal = () => { if (auto) commit(true); setModal(false); };
 
   // 한 항목 그리기 — components/company-info/CompanyInfoItem.tsx.
   const item = (it: EditorItem, i: number, inline: boolean, where: string) => (
@@ -362,11 +361,11 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
   const body = (inline: boolean, where: "panel" | "modal") => (
     <>
     <div data-company-info-views className="mb-2 flex flex-wrap items-center justify-between gap-2">
-      <CompanyInfoLayoutToggle layout={layout} onChange={setLayout} compactMobile={compactMobile} />
+      <CompanyInfoLayoutToggle layout={layout} onChange={setLayout} compactMobile={compactMobile} {...(where === "modal" ? { scriptOn: script, onScript: setScript } : {})} />
       {/* 「전체 / 적은 것 / 안 적은 것」 거르기는 확장보기 안에서만. */}
-      {!basic && <CompanyInfoViewToggle mode={view.mode} onChange={view.setMode} counts={counts} compactMobile={compactMobile} />}
+      {!basic && !(where === "modal" && script) && <CompanyInfoViewToggle mode={view.mode} onChange={view.setMode} counts={counts} compactMobile={compactMobile} />}
     </div>
-    {basic ? (
+    {where === "modal" && script ? <ContactScriptPanel /> : basic ? (
       <div className="space-y-2">
         <div className={desktopHeading ? inline ? "grid grid-cols-2 gap-3" : "grid grid-cols-1 gap-3" : "grid grid-cols-1 gap-3 2xl:grid-cols-2 2xl:gap-4"}>
           {group("대표자", null, 기본_대표자_ITEMS, inline, `${where}-basic`, true)}
@@ -481,7 +480,7 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
               </button>
             </div>
             {body(false, "modal")}
-            {vaultTarget && <div className="mt-3"><CompanyVaultSection target={vaultTarget} idBase={`${uid}-vault-modal`} incoming={vaultIncoming} onIncomingDone={() => setVaultIncoming([])} /></div>}
+            {vaultTarget && !script && <div className="mt-3"><CompanyVaultSection target={vaultTarget} idBase={`${uid}-vault-modal`} incoming={vaultIncoming} onIncomingDone={() => setVaultIncoming([])} /></div>}
             <div className="mt-3 flex gap-2">
               <button
                 type="button"

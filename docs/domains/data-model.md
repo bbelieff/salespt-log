@@ -71,6 +71,14 @@ last_review: 2026-04-27
 - 열림: PIN 한 번 → 그 수강생의 모든 업체 보관함 10분(쓸 때마다 연장). 서명된 httpOnly 쿠키 `salespt_vault`. 5번 틀리면 5분 잠금. 관리자는 PIN 초기화만(내용 유지).
 - 키는 `AUTH_SECRET` HKDF 파생(salt `salespt-company-vault.v1`) — AUTH_SECRET 교체 시 기존 보관 내용 열 수 없음.
 
+## 컨택 대본 (2026-11-05, DB 전용)
+
+업체정보 팝업 「대본」에서 읽고 고치는 통화 대본과 통화 뒤 보내는 문자 양식. **시트 미러에 보내지 않는다.**
+
+- `ContactScript`: script(최대 20,000자), sms(최대 5,000자). `ContactScriptView` = 그 위에 custom(고친 적 있으면 true).
+- 테이블 `contact_scripts`(email 소문자 PK, script, sms, updated_at) — 마이그레이션 `0015_contact_scripts.sql`. 줄이 없으면 기본 대본(`lib/config/contact-script.ts` 의 `DEFAULT_CONTACT_SCRIPT`·`DEFAULT_CONTACT_SMS`).
+- API `/api/contact-script` GET·PUT·DELETE(기본으로) — 대상은 늘 세션 이메일. 트레이너가 수강생 화면을 볼 때도 자기 대본이다.
+
 ## 비용 원장 (2026-07-23, DB 전용)
 
 ### Expense ledger exports
