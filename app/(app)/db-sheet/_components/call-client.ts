@@ -31,7 +31,16 @@ export function saveCallApp(id: CallAppId | null): void {
   try { if (id) localStorage.setItem(APP_KEY, id); else localStorage.removeItem(APP_KEY); } catch { /* 저장 못 해도 이번 통화는 건다 */ }
 }
 
-export const phoneDigits = (s: string) => s.replace(/\D/g, "");
+/** 첫 업로드 고지(D6)를 이 폰에서 확인했는지. 문구가 바뀌면 값을 올려 다시 보여 준다. */
+const NOTICE_KEY = "db-sheet-call-notice", NOTICE_VERSION = "1";
+export function readCallNotice(): boolean {
+  try { return localStorage.getItem(NOTICE_KEY) === NOTICE_VERSION; } catch { return false; }
+}
+export function saveCallNotice(): void {
+  try { localStorage.setItem(NOTICE_KEY, NOTICE_VERSION); } catch { /* 저장 못 하면 다음에 한 번 더 보여 줄 뿐 */ }
+}
+
+export const phoneDigits =(s: string) => s.replace(/\D/g, "");
 export const isIos = (ua: string) => /iPhone|iPad|iPod/i.test(ua);
 
 /** 녹음으로 받는 확장자·크기 — 서버(lib/repo/call-audio · CALL_AUDIO_MAX_BYTES)와 같은 값. */
@@ -43,9 +52,9 @@ export const CALL_AUDIO_ACCEPT = CALL_AUDIO_EXTS.map(e => `.${e}`).join(",");
 export type RecordingCheck = { fileError: string; namePhone: string; phoneMatch: boolean | null; minutesOff: number | null; warn: "" | "phone" | "time" };
 export function checkRecording(file: { name: string; size: number; lastModified: number }, phone: string, dialedAt: number | null): RecordingCheck {
   const ext = file.name.toLowerCase().split(".").pop() ?? "";
-  const fileError = !CALL_AUDIO_EXTS.includes(ext) ? `${CALL_AUDIO_EXTS.join("·")} 녹음만 올릴 수 있어요`
+  const fileError = !CALL_AUDIO_EXTS.includes(ext) ? "통화 녹음 파일이 아니에요"
     : file.size === 0 ? "녹음 파일이 비어 있어요"
-    : file.size > CALL_AUDIO_MAX_MB * 1024 * 1024 ? `녹음 파일이 ${CALL_AUDIO_MAX_MB}MB 보다 커요` : "";
+    : file.size > CALL_AUDIO_MAX_MB * 1024 * 1024 ? `녹음이 너무 길어요(${CALL_AUDIO_MAX_MB}MB 넘음)` : "";
   const m = file.name.match(/0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{4}/);
   const namePhone = m ? m[0] : "";
   const want = phoneDigits(phone);
@@ -58,9 +67,9 @@ export function checkRecording(file: { name: string; size: number; lastModified:
 /** 목록 상태 칩 — 확정·닫은 통화는 칩이 없다. */
 export function callChip(status: CallStatus): { label: string; tone: "wait" | "work" | "ready" | "fail" } | null {
   switch (status) {
-    case "dialed": return { label: "녹음 대기", tone: "wait" };
+    case "dialed": return { label: "녹음 필요", tone: "wait" };
     case "queued": case "processing": return { label: "정리 중", tone: "work" };
-    case "review": return { label: "확인 대기", tone: "ready" };
+    case "review": return { label: "확인 필요", tone: "ready" };
     case "failed": return { label: "정리 실패", tone: "fail" };
     default: return null;
   }

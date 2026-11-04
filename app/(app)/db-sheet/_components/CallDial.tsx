@@ -1,7 +1,8 @@
 "use client";
 /**
- * 📞 버튼 · 상태 칩 · 통화 앱 고르기(목업 v5 ①). 고른 앱은 이 폰에만 저장([항상 이 앱으로]), 앱 이름만 보여 준다(belie 2026-11-01).
- * 기본 전화 앱은 tel: 로 바로 건다. 익시오·에이닷·다른 녹음 앱은 번호를 복사하고 그 앱을 직접 열게 안내한다(웹에서 여는 주소 미확인).
+ * 📞 버튼 · 상태 칩 · 통화 앱 고르기(목업 v5 ①). 앱을 누르면 바로 건다 — 「다음에도 이 앱으로」(기본 켬)면 이 폰에 저장.
+ * 앱 이름만 보여 준다(belie 2026-11-01). 기본 전화 앱은 tel: 로 바로, 익시오·에이닷·다른 녹음 앱은 번호를 복사하고
+ * 그 앱을 직접 열게 안내한다(웹에서 여는 주소 미확인). 글자는 50대 기준 최소(belie 2026-11-04).
  */
 import { useEffect, useRef, useState } from "react";
 import { Phone } from "lucide-react";
@@ -32,20 +33,20 @@ type Step = { kind: "auto"; app: CallAppId } | { kind: "pick"; change: boolean }
 export function CallDialDialog({ row, onDialed, onClose }: { row: Row; onDialed: (p: DialedCall) => void; onClose: () => void }) {
   const saved = readCallApp();
   const [step, setStep] = useState<Step>(() => saved ? { kind: "auto", app: saved } : { kind: "pick", change: false });
-  const [app, setApp] = useState<CallAppId | "ask">(saved ?? "phone");
+  const [keep, setKeep] = useState(true);
   const [busy, setBusy] = useState(false), [error, setError] = useState(""), [copied, setCopied] = useState(true);
 
-  async function go(chosen: CallAppId, keep: boolean) {
+  async function go(chosen: CallAppId, remember: boolean) {
     setBusy(true); setError("");
     let ok = true;
     if (chosen !== "phone") ok = await navigator.clipboard.writeText(row.phone).then(() => true, () => false);
     try {
       const id = await startCall(row.id);
-      if (keep) saveCallApp(chosen);
+      if (remember) saveCallApp(chosen);
       onDialed({ id, leadId: row.id, at: Date.now() });
       if (chosen === "phone") { window.location.href = `tel:${phoneDigits(row.phone)}`; onClose(); return; }
       setCopied(ok);
-      setStep({ kind: "copied", app: chosen, saved: keep });
+      setStep({ kind: "copied", app: chosen, saved: remember });
     } catch (e) { setError((e as Error).message); } finally { setBusy(false); }
   }
 
@@ -54,42 +55,40 @@ export function CallDialDialog({ row, onDialed, onClose }: { row: Row; onDialed:
   useEffect(() => { if (step.kind === "auto" && !once.current) { once.current = true; void go(step.app, true); } });
 
   if (step.kind === "auto") {
-    return <SheetDialog title={`${row.company}에 전화 걸게요`} icon={<Phone size={20} />} onClose={() => { if (!busy) onClose(); }}>
+    return <SheetDialog title={`${row.company}에 전화 거는 중`} icon={<Phone size={20} />} onClose={() => { if (!busy) onClose(); }}>
       <div className="dbs-dialog-body">
-        {error ? <p className="dbs-call-note is-error" role="alert">{error}</p> : <p className="dbs-call-note is-info" role="status">전화 건 기록을 남기는 중…</p>}
+        {error ? <p className="dbs-call-note is-error" role="alert">{error}</p> : <p className="dbs-muted" role="status">잠시만요…</p>}
       </div>
-      <footer className="dbs-dialog-foot"><button className="dbs-button" disabled={busy} onClick={onClose}>닫기</button></footer>
+      {error && <footer className="dbs-dialog-foot"><button className="dbs-button" onClick={onClose}>닫기</button></footer>}
     </SheetDialog>;
   }
 
   if (step.kind === "copied") {
     const name = callAppName(step.app);
-    return <SheetDialog title={`${row.company}에 ${euro(name)} 걸게요`} icon={<Phone size={20} />} onClose={onClose}>
+    return <SheetDialog title={copied ? "번호를 복사했어요" : `${euro(name)} 걸어 주세요`} icon={<Phone size={20} />} onClose={onClose}>
       <div className="dbs-dialog-body">
-        <p className="dbs-call-meta">{row.owner && `${row.owner} · `}<span className="num">{row.phone}</span></p>
-        {busy ? <p className="dbs-call-note is-info" role="status">전화 건 기록을 남기는 중…</p>
+        {busy ? <p className="dbs-muted" role="status">잠시만요…</p>
           : error ? <p className="dbs-call-note is-error" role="alert">{error}</p>
-          : <p className="dbs-call-note is-ok" role="status">{copied ? `번호를 복사했어요. ${eul(name)} 열어 붙여 넣고 통화하세요.` : `${eul(name)} 열어 위 번호로 통화하세요.`} 통화가 끝나고 돌아오면 녹음을 올릴 수 있어요.</p>}
-        {step.saved && <p className="dbs-call-fixed">전화 버튼은 항상 {euro(name)} 걸어요 <button type="button" className="dbs-call-change" onClick={() => setStep({ kind: "pick", change: true })}>바꾸기</button></p>}
+          : <>
+            <p className="dbs-call-number num">{row.phone}</p>
+            <p className="dbs-call-lead" role="status">{copied ? `${eul(name)} 열고 붙여 넣어 거세요.` : `${eul(name)} 열고 이 번호로 거세요.`}</p>
+          </>}
+        {step.saved && <p className="dbs-call-fixed">늘 {euro(name)} 걸어요 <button type="button" className="dbs-call-change" onClick={() => setStep({ kind: "pick", change: true })}>바꾸기</button></p>}
       </div>
-      <footer className="dbs-dialog-foot"><button className="dbs-button primary" disabled={busy} onClick={onClose}>확인</button></footer>
+      <footer className="dbs-dialog-foot"><button className="dbs-button primary" disabled={busy} onClick={onClose}>알겠어요</button></footer>
     </SheetDialog>;
   }
 
-  return <SheetDialog title={step.change ? "통화 앱" : "어느 앱으로 걸까요?"} icon={<Phone size={20} />} onClose={() => { if (!busy) onClose(); }}>
+  // 앱을 누르면 바로 건다. 바꾸기 화면에는 「매번 묻기」가 하나 더 있다.
+  return <SheetDialog title={step.change ? "전화 걸 앱 바꾸기" : "어느 앱으로 걸까요?"} icon={<Phone size={20} />} onClose={() => { if (!busy) onClose(); }}>
     <div className="dbs-dialog-body">
-      <p className="dbs-call-meta">{row.company} · {row.owner && `${row.owner} `}<span className="num">{row.phone}</span></p>
-      <div className="dbs-call-apps" role="radiogroup" aria-label="통화 앱">
-        {CALL_APPS.map(a => <label key={a.id}><input type="radio" name="call-app" checked={app === a.id} onChange={() => setApp(a.id)} />{a.name}</label>)}
-        {step.change && <label><input type="radio" name="call-app" checked={app === "ask"} onChange={() => setApp("ask")} />매번 묻기</label>}
+      <p className="dbs-call-meta">{row.company} <span className="num">{row.phone}</span></p>
+      <div className="dbs-call-apps" role="group" aria-label="통화 앱">
+        {CALL_APPS.map(a => <button key={a.id} type="button" className="dbs-choice-link" disabled={busy} onClick={() => void go(a.id, step.change || keep)}><strong>{a.name}</strong><Phone size={16} aria-hidden="true" /></button>)}
+        {step.change && <button type="button" className="dbs-choice-link" disabled={busy} onClick={() => { saveCallApp(null); setStep({ kind: "pick", change: false }); }}><strong>매번 묻기</strong></button>}
       </div>
+      {!step.change && <label className="dbs-check"><input type="checkbox" checked={keep} onChange={e => setKeep(e.target.checked)} /><strong>다음에도 이 앱으로</strong></label>}
       {error && <p className="dbs-call-note is-error" role="alert">{error}</p>}
     </div>
-    <footer className="dbs-dialog-foot">
-      {step.change
-        ? <button className="dbs-button primary" disabled={busy} onClick={() => { saveCallApp(app === "ask" ? null : app); if (app === "ask") setStep({ kind: "pick", change: false }); else void go(app, true); }}>저장하고 걸기</button>
-        : <><button className="dbs-button" disabled={busy || app === "ask"} onClick={() => app !== "ask" && void go(app, false)}>이번만</button>
-          <button className="dbs-button primary" disabled={busy || app === "ask"} onClick={() => app !== "ask" && void go(app, true)}>항상 이 앱으로</button></>}
-    </footer>
   </SheetDialog>;
 }
