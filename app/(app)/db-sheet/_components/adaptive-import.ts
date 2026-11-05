@@ -1,6 +1,6 @@
 import {normalizeImportText,blankImportText,importTextFormat} from './import-text';
 import { domesticPhoneDigits } from "@/util/db-sheet-identity";
-import {blank,cleanCell,delimited,formatPhone,headerKey,parse,validDate,normalizeImportDate,normalizeImportArrears,isJunkImportRow,type Row,type Key} from './model';
+import {blank,cleanCell,delimited,formatPhone,headerKey,parse,validDate,normalizeImportDate,normalizeImportArrears,normalizeImportCredit,isJunkImportRow,type Row,type Key} from './model';
 
 export type ImportField = Exclude<Key,'inflow'|'stage'|'result'|'first'|'next'>;
 export type Rules = Record<number,ImportField|'keep'>;
@@ -52,6 +52,17 @@ export function skipImportPreamble(text:string):string {
  }
  return text;
 }
+/**
+ * 공급처 알림 글(belie 2026-11-05 「막 붙여넣어도」): 인사말·안내문 덩어리는 고객이 아니다.
+ * 「항목: 값」 줄이 하나도 없는 덩어리는 바로 다음 고객(뒤에 없으면 앞 고객)의 원문으로만 붙인다.
+ */
+const fieldLine=(s:string)=>{const m=s.match(/^\s*([^:：]+)[:：]/);return !!m&&importFields.some(f=>f.key===headerKey(m[1]!));};
+function groupLabeledBlocks(blocks:string[][]):{cells:string[][];before:string[][];after:string[][]}{
+ const cells:string[][]=[],before:string[][]=[],after:string[][]=[];let pending:string[]=[];
+ for(const b of blocks){if(b.some(fieldLine)){cells.push(b);before.push(pending);after.push([]);pending=[];}else pending.push(...b);}
+ if(pending.length){if(cells.length)after[after.length-1]=pending;else{cells.push(pending);before.push([]);after.push([]);}}
+ return {cells,before,after};
+}
 export function analyzeImport(text:string,mode:'auto'|'yes'|'no'='auto',rules:Rules={}):Analysis {
  // A tab is a column delimiter: trim() would shift only the first heading row.
  if(text.length>5*1024*1024)throw new Error('5MB 이하 내용을 가져와 주세요.');
@@ -68,7 +79,8 @@ export function analyzeImport(text:string,mode:'auto'|'yes'|'no'='auto',rules:Ru
  const tableFirst=separator==='\t'||separator===';'||commaTable;
  const labeled=labelStart.test(lines[0]!)||!tableFirst&&lines.some(s=>labelStart.test(s));
  const tabular=!labeled&&(tableFirst||lines.length>1&&lines.every(s=>s.includes(',')));
- let matrix=tabular?delimited(raw):labeled?raw.split(/\n[\s\u200B\u2060]*\n/).map(s=>s.split(/\r?\n/).filter(Boolean)):lines.map(tokens);
+ const grouped=labeled?groupLabeledBlocks(raw.split(/\n[\s\u200B\u2060]*\n/).map(s=>s.split(/\r?\n/).filter(Boolean))):null;
+ let matrix=tabular?delimited(raw):grouped?grouped.cells:lines.map(tokens);
  const first=matrix[0]||[];
  const recognized=first.filter(v=>headerKey(v)).length;
  const keysFirst=first.map(h=>headerKey(h));
@@ -100,6 +112,7 @@ export function analyzeImport(text:string,mode:'auto'|'yes'|'no'='auto',rules:Ru
    const label=labeled?v.match(/^\s*([^:：]+)[:：]\s*(.*)$/):null;
    const key=label?headerKey(label[1]!):undefined;if(label)v=label[2]!.trim();
    if(rules[c]){put(rules[c]!,v);return;}
+   if(key==='credit'&&label)v=normalizeImportCredit(label[1]!,v);
    if(key&&importFields.some(f=>f.key===key)){put(key as ImportField,v);return;}
    if(labeled){put('keep',cell);return;}
    const digits=v.replace(/[\s()-]/g,'');
@@ -115,7 +128,7 @@ export function analyzeImport(text:string,mode:'auto'|'yes'|'no'='auto',rules:Ru
    put('keep',v);
   });
   // Original content is retained, including values that were normalized or assigned.
-  item.lead.memo=[item.lead.memo,'[가져온 원문]',cells.join(tabular?' | ':'\n')].filter(Boolean).join('\n');
+  item.lead.memo=[item.lead.memo,'[가져온 원문]',[...(grouped?.before[index]??[]),...cells,...(grouped?.after[index]??[])].join(tabular?' | ':'\n')].filter(Boolean).join('\n');
   return item;
  }).filter(item=>item.raw.some(cell=>!/^[-—–－−\s\u200B\u2060]*$/.test(cleanCell(cell))));
  if(!items.length)throw new Error('가져올 고객 정보가 없어요. 공란 표시가 아닌 실제 업체 내용을 넣어 주세요.');
