@@ -904,6 +904,35 @@ body {
   }
   /* 11-05 belie 3차: 「업체명 배너와 목록 선택 칸의 채우기는 이전의 밝은 그라데이션으로」 — 배너·선택 칸·연결부는
      원래 클래스(모드색 → 흰색)로 되돌리고, 바닥 틴트는 본문(배너 아래)에만 남긴다. */
+  /* 11-05 belie 4차: 「선택 칸은 더 하얗고 투명하게, 그라데이션은 쨍한 파랑으로 시작해 상세 틀 바탕색으로 끝내 연결부 끊김을 막자」.
+     3차(모드색 → 흰색)로 되돌리자 선택 칸 끝(흰색)·연결부(흰색)와 상세 틀 안쪽(바닥 틴트)이 이음매에서 색이 갈렸다.
+     그래서 선택 칸 = 쨍한 모드색(왼쪽 띠) → 흰 반투명 유리(가운데) → 바닥색(오른쪽 끝), 연결부 채움 = 같은 바닥색.
+     선택 칸 끝 → 연결부 → 틀 안쪽이 한 색으로 이어진다. 두 칸 상세(PC)에서만 — 폰·한 칸은 원래 클래스 그대로. */
+  .desktop-shell .payment-workspace:has(.payment-detail-shell [data-split-focus]) {
+    --payment-bridge-fill: #e5edfc;
+    --payment-select-from: rgb(96 165 250 / 0.55);
+  }
+  .desktop-shell .payment-workspace:has(.payment-detail-shell[data-payment-mode="institution"] [data-split-focus]) {
+    --payment-bridge-fill: #fbeced;
+    --payment-select-from: rgb(248 113 113 / 0.5);
+  }
+  .desktop-shell .payment-workspace:has([data-split-focus]) .payment-list-scroll [aria-selected="true"] {
+    background-color: transparent;
+    background-image: linear-gradient(90deg,
+      var(--payment-select-from) 0%,
+      rgb(255 255 255 / 0.6) 30%,
+      rgb(255 255 255 / 0.6) 62%,
+      var(--payment-bridge-fill) 100%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    backdrop-filter: blur(14px) saturate(160%);
+  }
+  @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+    .desktop-shell .payment-workspace:has([data-split-focus]) .payment-list-scroll [aria-selected="true"] {
+      background-image: linear-gradient(90deg, #dbeafe 0%, #fff 30%, #fff 62%, var(--payment-bridge-fill) 100%);
+      -webkit-backdrop-filter: none;
+      backdrop-filter: none;
+    }
+  }
   .desktop-shell [data-split-focus] {
     transition: grid-template-columns 300ms cubic-bezier(.2, .8, .2, 1);
     padding: 4px 2px 16px;

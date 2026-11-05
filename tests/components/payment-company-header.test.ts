@@ -75,6 +75,15 @@ it('keeps narrow save status outside the tool list and always labels overflow ac
  expect(host.querySelector('[data-ci-tools-menu]')).toBeNull();expect(document.activeElement).toBe(more);
  expect(readFileSync('components/company-info/company-info-header.css','utf8')).toContain('[data-payment-ci-responsive] [data-ci-tools-menu] [data-font-scale-control]{height:44px;');
 });
+it('middle width shows the font size control inline instead of a 더보기 holding only it (2026-11-05 belie)',()=>{
+ headerWidth=420;
+ const tools=[h('button',{key:'document'},'문서'),h('button',{key:'txt'},'TXT'),h('button',{key:'popup'},'팝업')];
+ act(()=>root.render(h('div',{'data-payment-company-header':''},h(CompanyInfoHeader,{open:true,onToggle:vi.fn(),controlsId:'mid-body',payment:true,summary:'',tools,fontControl:h('div',{'data-font-scale-control':''},h('button',null,'가+'))}))));
+ expect(host.querySelector('[data-ci-header-tools]')?.getAttribute('data-mode')).toBe('icons');
+ expect(host.querySelector('[data-ci-more]')).toBeNull();
+ const primary=host.querySelector('[data-ci-tools-primary]')!;expect(primary.textContent).toBe('문서TXT팝업가+');
+ expect(primary.lastElementChild?.hasAttribute('data-font-scale-control')).toBe(true);
+});
 it('preserves failure status at the same semantic boundary and hides all payment tools when closed',()=>{
  headerWidth=280;const props={onToggle:vi.fn(),controlsId:'error-body',payment:true,summary:'',status:h('span',{'aria-live':'polite'},'저장 실패'),tools:h('button',null,'문서'),fontControl:h('div',{'data-font-scale-control':''},'글자 크기')};
  act(()=>root.render(h('div',{'data-payment-company-header':''},h(CompanyInfoHeader,{...props,open:true}))));
