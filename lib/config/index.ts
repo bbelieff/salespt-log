@@ -69,10 +69,14 @@ export const adminEmails = (): string[] => {
 /**
  * 통화 정리 기능 스위치(call-summary). env CALL_SUMMARY_EMAILS="a@x.com,b@y.com" 에 든 사람에게만 📞·녹음 올리기를 보인다.
  * 미설정 = 아무에게도 안 보임. 화면(PR-5)보다 먼저 들어가 운영에 나가도 꺼진 채로 조립한다.
+ * "*" = 로그인한 모두(belie 2026-11-05 전체 공개). 되돌리기 = 이메일 목록이나 빈 값으로 바꾸고 재시작.
  */
 export const callSummaryEmails = (): string[] =>
   (process.env.CALL_SUMMARY_EMAILS ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
-export const isCallSummaryUser = (email: string): boolean => callSummaryEmails().includes(email.trim().toLowerCase());
+export const isCallSummaryUser = (email: string): boolean => {
+  const on = callSummaryEmails();
+  return on.includes("*") || on.includes(email.trim().toLowerCase());
+};
 
 /**
  * 관리자(소유자) Google Drive refresh token (ADR-0015).
