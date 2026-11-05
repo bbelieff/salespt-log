@@ -131,6 +131,19 @@ it("녹음 올리기: 고른 파일을 확인하고, 다른 번호면 한 번 �
   expect(close).toHaveBeenCalled();
 });
 
+it("안드로이드: 기본 전화 앱은 Recordings › Call, 익시오·에이닷은 앱에서 저장하라고 안내한다", async () => {
+  // jsdom 기본 userAgent 는 아이폰이 아님 = 안드로이드 쪽 안내.
+  await act(async () => root.render(createElement(CallUploadDialog, { row, call: null, asked: false, onUploaded: vi.fn(), onClose: vi.fn() })));
+  expect(host.textContent).toContain("내 파일 › Recordings › Call");
+  expect(host.textContent).not.toContain("받아쓴 글 붙여 넣기");
+  act(() => root.unmount()); root = createRoot(host);
+  saveCallApp("ixio");
+  await act(async () => root.render(createElement(CallUploadDialog, { row, call: null, asked: false, onUploaded: vi.fn(), onClose: vi.fn() })));
+  expect(host.textContent).toContain("익시오에서 녹음이나 통화 내용(.txt·.pdf)을 폰에 저장한 뒤 골라 주세요");
+  expect(host.textContent).not.toContain("Recordings");
+  expect(button("녹음 대신 받아쓴 글 붙여 넣기")).toBeDefined();
+});
+
 it("📞 없이 올리면 녹음 저장 시각으로 통화를 먼저 기록한다", async () => {
   saveCallNotice();
   fetchMock.mockResolvedValueOnce(ok({ id: "new-call" })).mockResolvedValueOnce(ok({ ok: true }));

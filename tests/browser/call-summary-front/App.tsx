@@ -47,6 +47,7 @@ window.fetch = async (url: RequestInfo | URL, init?: RequestInit) => {
 };
 localStorage.clear();
 if (scene === "copied") localStorage.setItem("db-sheet-call-app", "adot");
+if (scene === "upload-ixio") localStorage.setItem("db-sheet-call-app", "ixio"); // 갤럭시 + 익시오 사용자
 
 function PickFile({ name, then }: { name: string; then?: string }) {
   useEffect(() => { const t = setTimeout(() => {

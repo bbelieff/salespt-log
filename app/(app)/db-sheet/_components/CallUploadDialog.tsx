@@ -5,6 +5,7 @@
  * 📞 없이 건 통화는 녹음 저장 시각을 통화 시각으로 쓴다(「다음 주 화요일」의 기준).
  * 이 폰에서 처음 보낼 때 외부 AI 고지(D6)를 한 번 보여 준다. 글자는 50대 기준 최소(belie 2026-11-04).
  * 받아쓴 통화 내용 파일(.txt·.pdf)도 같은 자리에서 고른다 — 글만 뽑아 글자 경로로 보낸다(belie 2026-11-05).
+ * 「내 파일 › Recordings › Call」은 갤럭시 기본 전화 앱의 녹음 자리 — 익시오·에이닷은 녹음을 앱 안에 두므로 아이폰처럼 앱에서 저장하게 안내한다.
  */
 import { useRef, useState } from "react";
 import { AlertTriangle, CheckCircle2, FileAudio, FileText } from "lucide-react";
@@ -22,7 +23,8 @@ export function CallUploadDialog({ row, call, asked, onUploaded, onClose }: {
 }) {
   const ios = typeof navigator !== "undefined" && isIos(navigator.userAgent);
   const saved = readCallApp();
-  const app = saved === "ixio" || saved === "adot" ? callAppName(saved) : "녹음 앱";
+  const inApp = saved === "ixio" || saved === "adot";
+  const app = inApp ? callAppName(saved) : "녹음 앱";
   const [tab, setTab] = useState<"audio" | "text">("audio");
   const [file, setFile] = useState<File | null>(null), [text, setText] = useState("");
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
@@ -72,8 +74,10 @@ export function CallUploadDialog({ row, call, asked, onUploaded, onClose }: {
       <button className="dbs-button primary" disabled={busy || !text.trim()} onClick={() => void send()}>{busy ? "올리는 중…" : "올리기"}</button></>;
   } else if (!file) {
     body = <>
-      <p className="dbs-call-lead">{ios ? <>{app}에서 녹음이나 통화 내용(.txt·.pdf)을 <b>「파일에 저장」</b>한 뒤 골라 주세요.</> : <>녹음은 <b>내 파일 › Recordings › Call</b> 맨 위에 있어요. 통화 내용(.txt·.pdf)도 돼요.</>}</p>
-      {ios && <button type="button" className="dbs-text-button" onClick={() => setTab("text")}>녹음 대신 받아쓴 글 붙여 넣기</button>}
+      <p className="dbs-call-lead">{ios ? <>{app}에서 녹음이나 통화 내용(.txt·.pdf)을 <b>「파일에 저장」</b>한 뒤 골라 주세요.</>
+        : inApp ? <>{app}에서 녹음이나 통화 내용(.txt·.pdf)을 <b>폰에 저장</b>한 뒤 골라 주세요.</>
+        : <>녹음은 <b>내 파일 › Recordings › Call</b> 맨 위에 있어요. 통화 내용(.txt·.pdf)도 돼요.</>}</p>
+      {(ios || inApp) && <button type="button" className="dbs-text-button" onClick={() => setTab("text")}>녹음 대신 받아쓴 글 붙여 넣기</button>}
     </>;
     foot = <>{later}<button className="dbs-button primary" onClick={() => input.current?.click()}>파일 고르기</button></>;
   } else {
