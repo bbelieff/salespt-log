@@ -875,19 +875,17 @@ body {
   .desktop-shell .payment-detail-scroll::-webkit-scrollbar-track { background: transparent; }
   .desktop-shell .payment-detail-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
   .desktop-shell .payment-detail-scroll::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
-  /* 상세 두 칸 넓히기 강조 — 넓힌 칸이 유리판으로 떠오른다(2026-11-05 belie 「음영 대신 유리판」).
+  /* 상세 두 칸 넓히기 강조 — 넓힌 칸이 「연회색 책상 위로 든 흰 종이」처럼 떠오른다(2026-11-05 belie 「유리판 별로」).
      거쳐 온 판: 11-01 바탕색만(구분 약함) → 11-03 좁힌 칸 회색·눌림(입력 칸만 흰색이라 필드가 튐) → 11-04 흰 판 + 진한 그림자
-     (그림자가 퍼져 연결부가 어색, 박스 선이 겹겹이 반복돼 눈이 피곤) → 그래서 유리판: 반투명 흰 판 + 뒤 흐림 + 윗변 빛줄 +
-     밝은 테두리로 「떠 있음」을 보이고, 그림자는 작게 아래로만. 유리가 비칠 거리가 있게 두 칸 뒤 바탕에 아주 옅은 색 번짐을 깐다.
-     떠오른 칸은 프레임 끝까지 넓힌다(바깥쪽 음수 여백). 안의 카드는 테두리를 흐리게 해 선 반복을 줄인다.
-     좁힌 칸은 그대로. scale 은 쓰지 않는다(1px 선·둥근 모서리 뭉개짐). 투명도 줄이기·고대비 설정이면 흰 판으로. */
+     (그림자가 퍼져 연결부가 어색) → 11-05 반투명 유리판(뒤가 흰 바탕이라 비칠 것이 없어 뿌연 막처럼 보였고, 유리가 비치라고 깐
+     파란·보라 번짐이 오른쪽 칸 아래 얼룩으로 남음) → 그래서 유리·흐림·색 번짐을 모두 빼고, 구분을 「바탕 대비」로 만든다:
+     상세 바탕은 연회색, 넓힌 칸만 불투명 흰 판 + 머리카락 테두리 + 짧은 그림자. 좁힌 칸의 카드는 그대로 흰 카드라 입력 칸이 튀지 않는다.
+     떠오른 칸은 프레임 끝까지 넓힌다(바깥쪽 음수 여백). 흰 판 안 카드 테두리는 옅게 해 선 반복을 줄인다.
+     scale 은 쓰지 않는다(1px 선·둥근 모서리 뭉개짐). */
+  .desktop-shell .payment-detail-shell:has([data-split-focus]) { background-color: #f1f5f9; }
   .desktop-shell [data-split-focus] {
     transition: grid-template-columns 300ms cubic-bezier(.2, .8, .2, 1);
     padding: 12px 0 16px;
-    border-radius: 1rem;
-    background:
-      radial-gradient(65% 60% at 15% 0%, rgb(191 219 254 / 0.62), transparent 72%),
-      radial-gradient(60% 55% at 90% 100%, rgb(221 214 254 / 0.5), transparent 72%);
   }
   .desktop-shell [data-split-focus][data-split-dragging] { transition: none; }
   .desktop-shell [data-split-col] {
@@ -895,20 +893,17 @@ body {
   }
   .desktop-shell [data-split-focus="info"] > [data-split-col="info"],
   .desktop-shell [data-split-focus="work"] > [data-split-col="work"] {
-    background: linear-gradient(160deg, rgb(255 255 255 / 0.8) 0%, rgb(255 255 255 / 0.55) 55%, rgb(248 250 252 / 0.66) 100%);
-    -webkit-backdrop-filter: blur(20px) saturate(170%);
-    backdrop-filter: blur(20px) saturate(170%);
+    background-color: #fff;
     /* 둥근 모서리는 떠오른 칸에만 — 칸 자체가 스크롤 상자라 가라앉은 칸에 주면 안 카드 모서리가 잘린다(11-04). */
-    border-radius: 1rem;
-    transform: translateY(-10px);
-    /* 안쪽 여백 — 유리판 테두리가 안의 카드 테두리와 겹치지 않게(11-04). */
+    border-radius: 0.875rem;
+    transform: translateY(-8px);
+    /* 안쪽 여백 — 판 테두리가 안의 카드 테두리와 겹치지 않게(11-04). */
     padding: 10px 12px 12px 10px;
-    /* 유리판: 윗변 빛줄 · 밝은 테두리 · 옅은 바깥 선 + 작고 아래로만 떨어지는 그림자. */
+    /* 머리카락 테두리 + 붙은 그림자 + 짧게 아래로 떨어지는 그림자(퍼지지 않게 음수 퍼짐). */
     box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.95),
-      inset 0 0 0 1px rgb(255 255 255 / 0.65),
-      0 0 0 1px rgb(148 163 184 / 0.24),
-      0 14px 28px -16px rgb(15 23 42 / 0.32);
+      0 0 0 1px rgb(15 23 42 / 0.07),
+      0 1px 2px rgb(15 23 42 / 0.06),
+      0 10px 20px -12px rgb(15 23 42 / 0.28);
     /* 옆 칸의 스티키 제목(z-index 10)보다 위(11-04). */
     position: relative;
     z-index: 11;
@@ -916,21 +911,17 @@ body {
   /* 프레임 끝까지 — 바깥쪽(왼쪽 칸은 왼쪽, 오른쪽 칸은 오른쪽)으로 상세 안쪽 여백만큼 넓힌다. */
   .desktop-shell [data-split-focus="info"] > [data-split-col="info"] { margin-left: -10px; }
   .desktop-shell [data-split-focus="work"] > [data-split-col="work"] { margin-right: -10px; }
-  /* 유리판 안 카드는 테두리를 흐리게 — 박스 선이 겹겹이 반복되지 않게. */
+  /* 흰 판 안 카드는 테두리를 옅게 — 박스 선이 겹겹이 반복되지 않게. 색 카드(로드맵·실무진행의 노랑)는 제 테두리색을 옅게만. */
   .desktop-shell [data-split-focus="info"] > [data-split-col="info"] > *,
   .desktop-shell [data-split-focus="info"] > [data-split-col="info"] [data-company-info-group],
   .desktop-shell [data-split-focus="work"] > [data-split-col="work"] > :is(details, section) {
-    border-color: rgb(255 255 255 / 0.7);
-    box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+    border-color: rgb(226 232 240 / 0.7);
+    box-shadow: none;
   }
-  @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-    .desktop-shell [data-split-focus] { background: none; }
+  @media (prefers-contrast: more) {
     .desktop-shell [data-split-focus="info"] > [data-split-col="info"],
     .desktop-shell [data-split-focus="work"] > [data-split-col="work"] {
-      background: #fff;
-      -webkit-backdrop-filter: none;
-      backdrop-filter: none;
-      box-shadow: 0 0 0 1px rgb(15 23 42 / 0.16), 0 14px 28px -16px rgb(15 23 42 / 0.32);
+      box-shadow: 0 0 0 1px rgb(15 23 42 / 0.4), 0 10px 20px -12px rgb(15 23 42 / 0.28);
     }
   }
   /* 떠오른 칸은 위 여백 10px 이 생겨 스티키 제목이 그만큼 아래에 붙었고, 그 틈으로 내용이 비쳤다 → 여백만큼 끌어올린다. */
