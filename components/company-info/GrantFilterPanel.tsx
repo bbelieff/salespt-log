@@ -19,12 +19,15 @@ type CI = CompanyInfo;
 
 export function GrantFilterButton({ draft, open, onToggle, controlsId }: { draft: CI; open: boolean; onToggle: () => void; controlsId: string }) {
   const n = grantProfile(draft).ready;
-  const tone = n < 3 ? "bg-amber-50 text-amber-800 ring-amber-200 hover:bg-amber-100" : "bg-blue-50 text-blue-800 ring-blue-200 hover:bg-blue-100";
+  const tone = n < 3 ? "border-amber-200 bg-amber-50 text-amber-800 hover:bg-amber-100" : "border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100";
+  // 높이는 옆 보기 토글(테두리 + p-0.5 + py-1 text-xs)과 같은 상자로 — 화살표도 글자 줄보다 작게(h-3) 맞춘다(2026-11-05 belie 「높이도 맞춰」).
   return (
     <button type="button" aria-expanded={open} aria-controls={controlsId} onClick={onToggle} data-grant-filter-button
-      className={`inline-flex min-h-8 shrink-0 items-center gap-1 rounded-full px-2.5 text-px-11 font-bold ring-1 ${tone}`}>
-      공고필터 <span className="font-semibold">{n < 3 ? `${n}/3` : "✓"}</span>
-      <DisclosureChevron open={open} />
+      className={`inline-flex shrink-0 rounded-lg border p-0.5 ${tone}`}>
+      <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-bold">
+        공고필터 <span className="font-semibold">{n < 3 ? `${n}/3` : "✓"}</span>
+        <DisclosureChevron open={open} className="h-3 w-3" />
+      </span>
     </button>
   );
 }
