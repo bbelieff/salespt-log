@@ -9,10 +9,10 @@ const PaymentSelectionBridge = forwardRef<SVGSVGElement, { mode?: "company" | "i
     <svg ref={ref} aria-hidden="true" preserveAspectRatio="none" className="payment-selection-link pointer-events-none absolute z-20 overflow-hidden opacity-0 transition-opacity duration-150">
       <defs>
         <linearGradient id="payment-selection-gradient" x1="0" y1="0" x2="1" y2="0">
-          {/* 선택 박스는 오른쪽 끝이 흰색으로 끝나고(목록 컴포넌트의 to-white) 상세 패널도 흰색이라
-              연결부도 흰색 한 가지 — 사이에 바래는 띠가 생기지 않아 박스가 패널까지 한 덩어리로 보인다. */}
-          <stop offset="0%" stopColor="#ffffff" />
-          <stop offset="100%" stopColor="#ffffff" />
+          {/* 선택 박스는 오른쪽 끝이 상세 바탕색으로 끝나고(목록 컴포넌트의 to-white, 두 칸 상세에서는 회청색 — globals.css
+              --payment-bridge-fill) 연결부도 같은 한 가지 색 — 사이에 바래는 띠가 생기지 않아 박스가 패널까지 한 덩어리로 보인다. */}
+          <stop offset="0%" style={{ stopColor: "var(--payment-bridge-fill, #ffffff)" }} />
+          <stop offset="100%" style={{ stopColor: "var(--payment-bridge-fill, #ffffff)" }} />
         </linearGradient>
         <linearGradient id="payment-selection-edge-gradient" x1="0" y1="0" x2="1" y2="0">
           <stop offset="0%" stopColor={institution ? "#f87171" : "#60a5fa"} />
