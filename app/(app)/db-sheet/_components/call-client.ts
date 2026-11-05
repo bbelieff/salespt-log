@@ -36,7 +36,7 @@ export function saveCallApp(id: CallAppId | null): void {
  * 웹이 그 앱을 직접 여는 공개 주소는 없어서, 처음 한 번 기본 통화 앱으로 바꾸도록 안내하고 이 폰에 기록한다.
  */
 export const dialsAsDefault = (app: CallAppId) => app === "ixio" || app === "adot";
-export const defaultAppPath = (ios: boolean) => ios ? "설정 › 앱 › 기본 앱 › 통화" : "설정 › 애플리케이션 › 기본 앱 › 전화 앱";
+export const defaultAppPath = (ios: boolean) => ios ? "설정 › 앱 › 기본 앱 › 통화" : "설정 › 애플리케이션 › 기본 앱 선택 › 전화 앱";
 const DEFAULT_KEY = "db-sheet-call-default";
 export function readDefaultReady(app: CallAppId): boolean {
   try { return localStorage.getItem(DEFAULT_KEY) === app; } catch { return false; }

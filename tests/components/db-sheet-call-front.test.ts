@@ -64,7 +64,7 @@ it("앱 고르기: 앱 이름만, 누르면 바로 — 「다음에도 이 앱�
   // 익시오는 기본 통화 앱으로 정하면 tel: 로 열린다 — 처음 한 번 바꾸는 길을 보여 주고, 아직이면 번호만 복사.
   await act(async () => button("익시오").click());
   expect(host.textContent).toContain("처음 한 번만 바꿔 주세요");
-  expect(host.textContent).toContain("기본 앱 › 전화 앱 › 익시오");
+  expect(host.textContent).toContain("기본 앱 선택 › 전화 앱 › 익시오");
   expect(fetchMock).not.toHaveBeenCalled();
   await act(async () => button("번호만 복사").click());
   expect(readDefaultReady("ixio")).toBe(false);
