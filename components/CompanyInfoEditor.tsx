@@ -363,8 +363,11 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
   const body = (inline: boolean, where: "panel" | "modal") => (
     <>
     <div data-company-info-views className="mb-2 flex flex-wrap items-center justify-between gap-2">
-      <CompanyInfoLayoutToggle layout={layout} onChange={setLayout} compactMobile={compactMobile} {...(where === "modal" ? { scriptOn: script, onScript: setScript } : {})} />
-      {!(where === "modal" && script) && <GrantFilterButton draft={draft} open={grantOpen} onToggle={() => setGrantOpen((v) => !v)} controlsId={`${uid}-${where}-grant`} />}
+      {/* 공고필터는 보기 범위 토글 바로 옆에 붙인다(가운데 따로 떠 보였다, 2026-11-05 belie). */}
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <CompanyInfoLayoutToggle layout={layout} onChange={setLayout} compactMobile={compactMobile} {...(where === "modal" ? { scriptOn: script, onScript: setScript } : {})} />
+        {!(where === "modal" && script) && <GrantFilterButton draft={draft} open={grantOpen} onToggle={() => setGrantOpen((v) => !v)} controlsId={`${uid}-${where}-grant`} />}
+      </div>
       {/* 「전체 / 적은 것 / 안 적은 것」 거르기는 확장보기 안에서만. */}
       {!basic && !(where === "modal" && script) && <CompanyInfoViewToggle mode={view.mode} onChange={view.setMode} counts={counts} compactMobile={compactMobile} />}
     </div>

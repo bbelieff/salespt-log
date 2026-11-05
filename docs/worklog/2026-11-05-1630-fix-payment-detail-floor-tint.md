@@ -1,7 +1,7 @@
 > **📄 이 문서는 무엇인가요?**
 > - **한 줄 요약**: 실무/수납 상세 바닥 틴트·배너 색·섹션 유리 타일 작업 기록.
 > - **누가 읽나요**: 개발자
-> - **어떤 기능·작업과 연결?**: [plan](../plans/active/payment-detail-floor-tint.md)
+> - **어떤 기능·작업과 연결?**: [plan](../plans/completed/payment-detail-floor-tint.md)
 > - **읽고 나면 알 수 있는 것**: 바꾼 것 · 검증 · 되돌리기
 > - **관련 문서**: [한 장 유리](../plans/completed/payment-split-one-glass.md)
 
