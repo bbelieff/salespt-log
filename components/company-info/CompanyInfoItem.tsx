@@ -23,7 +23,6 @@ import { BizTypeField, OwnershipField } from "./CompanyInfoChoiceFields";
 import { MoneyField, RatioField } from "./CompanyInfoFinanceFields";
 import CompanyInfoSalesFields from "./CompanyInfoSalesFields";
 import CompanyInfoSalesTotals from "./CompanyInfoSalesTotals";
-import { FeatureChips, IndustryLine, RegionAddress } from "./CompanyGrantFields";
 import { KsicLine } from "./KsicLine";
 
 type CI = CompanyInfo;
@@ -78,7 +77,6 @@ export default function CompanyInfoItem({ it, draft, inline, idBase, today, onFi
             {field(it.defs[0], it.wideSecond ? "col-span-2 min-w-0" : "block min-w-0")}
             {field(it.defs[1], it.wideSecond ? "col-span-3 min-w-0" : "block min-w-0")}
           </div>
-          {it.grant === "features" && <FeatureChips draft={draft} className="" onPatch={onPatch} />}
         </div>
       );
     case "row":
@@ -88,7 +86,6 @@ export default function CompanyInfoItem({ it, draft, inline, idBase, today, onFi
           <div className="grid min-w-0 grid-cols-1 gap-1.5 xs:grid-cols-3">
             {it.defs.map((d) => field(d, "block min-w-0"))}
           </div>
-          {it.grant === "industry" && <IndustryLine draft={draft} className="" onPatch={onPatch} />}
           {it.grant === "industry" && <KsicLine draft={draft} className="" onPatch={onPatch} />}
         </div>
       );
@@ -143,7 +140,7 @@ export default function CompanyInfoItem({ it, draft, inline, idBase, today, onFi
     case "salesTotals":
       return <CompanyInfoSalesTotals draft={draft} onField={onField} idBase={idBase} today={today} className={wide} />;
     case "grantAddress":
-      return <RegionAddress draft={draft} id={idOf("소재지")} className={wide} onField={onField} onPatch={onPatch} />;
+      return field(["소재지", "소재지", "주소지", 2], wide);
 
   }
 }

@@ -37,6 +37,7 @@ import FontScaleControl from "./FontScaleControl";
 import { useFontStep } from "./font-scale/useFontStep";
 import { fontScaleOf } from "@/util/font-scale";
 import { GrantReadyChip } from "./company-info/GrantReadyChip";
+import { GrantFilterButton, GrantFilterPanel } from "./company-info/GrantFilterPanel";
 import { useFillField } from "./company-info/useFillField";
 import CompanyInfoHeader from "./company-info/CompanyInfoHeader";
 
@@ -82,6 +83,7 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
   const [open, setOpen] = useState(defaultOpen ?? (hideSave === true));
   const [modal, setModal] = useState(false);
   const [script, setScript] = useState(false); // 팝업 「대본」 — 팝업 안에서만.
+  const [grantOpen, setGrantOpen] = useState(false); // 「공고필터」 펼침(2026-11-05).
   const [newLabel, setNewLabel] = useState<Record<Grp, string>>({
     업체: "",
     대표자: "",
@@ -362,9 +364,11 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
     <>
     <div data-company-info-views className="mb-2 flex flex-wrap items-center justify-between gap-2">
       <CompanyInfoLayoutToggle layout={layout} onChange={setLayout} compactMobile={compactMobile} {...(where === "modal" ? { scriptOn: script, onScript: setScript } : {})} />
+      {!(where === "modal" && script) && <GrantFilterButton draft={draft} open={grantOpen} onToggle={() => setGrantOpen((v) => !v)} controlsId={`${uid}-${where}-grant`} />}
       {/* 「전체 / 적은 것 / 안 적은 것」 거르기는 확장보기 안에서만. */}
       {!basic && !(where === "modal" && script) && <CompanyInfoViewToggle mode={view.mode} onChange={view.setMode} counts={counts} compactMobile={compactMobile} />}
     </div>
+    {grantOpen && !(where === "modal" && script) && <div className="mb-2"><GrantFilterPanel draft={draft} id={`${uid}-${where}-grant`} onPatch={patch} onFill={fillField} /></div>}
     {where === "modal" && script ? <ContactScriptPanel /> : basic ? (
       <div className="space-y-2">
         <div className={desktopHeading ? inline ? "grid grid-cols-2 gap-3" : "grid grid-cols-1 gap-3" : "grid grid-cols-1 gap-3 2xl:grid-cols-2 2xl:gap-4"}>
@@ -394,7 +398,7 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
   return (
     <div data-payment-company-header={paymentHeading ? "" : undefined} data-payment-company-compact={compactMobile ? "" : undefined} data-payment-ci-expanded={paymentHeading ? String(open) : undefined} className="rounded-lg border border-gray-200 bg-white" style={{ ["--font-scale" as string]: String(fontScaleOf(fontStep)) }}>
       <CompanyInfoHeader open={open} onToggle={() => setOpen(value => !value)} controlsId={`${uid}-body`}
-        desktopHeading={desktopHeading} payment={paymentHeading} summary={summary} fontControl={fontControl} badge={<GrantReadyChip draft={draft} onFill={fillField} matchCount={grantMatchCount} />}
+        desktopHeading={desktopHeading} payment={paymentHeading} summary={summary} fontControl={fontControl} badge={<GrantReadyChip matchCount={grantMatchCount} />}
         status={auto && ciSaving ? <span className="text-px-11 text-gray-400" aria-live="polite">저장 중…</span> : auto && status === "error" ? <span className="text-px-11 font-medium text-red-500" aria-live="polite">저장 실패</span> : null}
         tools={[
               <CompanyDocAutofillButton key="document"
@@ -470,26 +474,11 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
           <div className="mt-8 mb-8 w-full max-w-md rounded-2xl bg-white p-4 shadow-xl 2xl:max-w-3xl">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-black text-gray-900">업체정보 편집</h3>
-              <button
-                type="button"
-                onClick={closeModal}
-                aria-label="닫기"
-                className="rounded-full px-2 text-gray-400 hover:bg-gray-100"
-              >
-                ✕
-              </button>
+              <button type="button" onClick={closeModal} aria-label="닫기" className="rounded-full px-2 text-gray-400 hover:bg-gray-100">✕</button>
             </div>
             {body(false, "modal")}
             {vaultTarget && !script && <div className="mt-3"><CompanyVaultSection target={vaultTarget} idBase={`${uid}-vault-modal`} incoming={vaultIncoming} onIncomingDone={() => setVaultIncoming([])} /></div>}
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={closeModal}
-                className="flex-1 rounded-lg bg-gray-900 py-2 text-sm font-bold text-white hover:bg-black"
-              >
-                닫기
-              </button>
-            </div>
+            <div className="mt-3 flex gap-2"><button type="button" onClick={closeModal} className="flex-1 rounded-lg bg-gray-900 py-2 text-sm font-bold text-white hover:bg-black">닫기</button></div>
           </div>
           </div>,
           document.body,
