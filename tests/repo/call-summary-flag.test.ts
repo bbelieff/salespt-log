@@ -10,6 +10,11 @@ it("CALL_SUMMARY_EMAILS 에 든 사람만 켜진다(대소문자·공백 무시)
   expect(isCallSummaryUser("other@example.test")).toBe(false);
 });
 
+it("\"*\" 면 모두 켜진다", () => {
+  vi.stubEnv("CALL_SUMMARY_EMAILS", "*");
+  expect(isCallSummaryUser("anyone@example.test")).toBe(true);
+});
+
 it("미설정이면 아무도 안 켜진다", () => {
   vi.stubEnv("CALL_SUMMARY_EMAILS", "");
   expect(isCallSummaryUser("pilot@example.test")).toBe(false);
