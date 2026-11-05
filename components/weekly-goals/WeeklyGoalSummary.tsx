@@ -2,7 +2,7 @@
 import "./weekly-goals-flow.css";
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Target, ChevronRight, ChevronLeft } from "lucide-react";
+import { Target, ChevronRight, ChevronLeft, ChevronUp } from "lucide-react";
 import { useGuardedRouter } from "@/components/DirtyGuard";
 import { GOAL_KEYS, type GoalKey } from "@/types/weekly-goals";
 import { addDays, fmtISO, friOf, parseISO, todayKST } from "@/util/week";
@@ -14,6 +14,8 @@ import { splitTaskRows } from "@/util/weekly-goal-tasks";
 
 interface Props {
   date?: string; metrics?: readonly GoalKey[]; student?: string; className?: string; compact?: boolean;
+  /** 있으면 제목 줄에 「접기」 버튼(수료생 대시보드 — CollapsibleGoalCard). */
+  onCollapse?: () => void;
 }
 
 function TaskSummaryCopy({ task, refreshKey }: { task?: string; refreshKey: string }) {
@@ -62,7 +64,7 @@ export default function WeeklyGoalSummary(props: Props) {
   // Reset navigation when the business date/student changes.
   return <Summary key={`${props.student ?? "self"}:${props.date ?? todayKST()}`} {...props} />;
 }
-function Summary({ date, metrics, student, className = "m-4", compact = false }: Props) {
+function Summary({ date, metrics, student, className = "m-4", compact = false, onCollapse }: Props) {
   const router = useGuardedRouter();
   const pathname = usePathname();
   const [selectedDate, setSelectedDate] = useState<string>();
@@ -106,6 +108,8 @@ function Summary({ date, metrics, student, className = "m-4", compact = false }:
       {current && <p className="weekly-goals-dates">{current.start} ~ {current.end}</p>}
       </div>
       {navigation}
+      {onCollapse && <button type="button" aria-expanded="true" aria-label="주간 목표 접기" onClick={onCollapse}
+        className="relative z-20 flex min-h-11 shrink-0 items-center gap-0.5 rounded-lg px-2 text-xs font-semibold text-gray-600 hover:bg-gray-100">접기<ChevronUp className="h-4 w-4" aria-hidden /></button>}
     </div>
     {status ?? (current && <div className="weekly-goals-split">
       <div className="weekly-goals-qualitative">

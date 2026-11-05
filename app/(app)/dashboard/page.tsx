@@ -2,6 +2,7 @@
 "use client";
 import PageContainer from "@/components/PageContainer";
 import DashboardActionOverview from "@/components/dashboard/DashboardActionOverview";
+import CollapsibleGoalCard from "@/components/dashboard/CollapsibleGoalCard";
 import "@/components/dashboard/dashboard-action-overview.css";
 
 import { useMemo, useState } from "react";
@@ -52,6 +53,8 @@ export default function DashboardPage() {
     });
     if (!b.hasDates) return b;
     return { ...b, startDate: fmtMD(me.data?.courseStartISO ?? ""), graduationDate: fmtMD(b.endISO) };  }, [me.data, today, weeks]);
+
+  const graduated = banner.hasDates && banner.graduated;
 
   // pc:min-h-0: short content must not force viewport height — the (app)
   // shell reserves no desktop tabbar space and page bottom padding stays small.
@@ -113,7 +116,7 @@ export default function DashboardPage() {
         {dash.data && (
           <>
             <DashboardActionOverview matrix={dash.data.channelMatrix} weeks={weeks}
-              todayISO={today} courseStartISO={me.data?.courseStartISO} />
+              todayISO={today} courseStartISO={me.data?.courseStartISO} graduated={graduated} />
             {/* [3] 매출·비용·영업이익 3열 1행 + 기간 선택(전체·이번 달·이번 주·직접 설정).
                 아레나 포함 여부와 상관없이 기간으로 집계한다(ADR-0034, 2026-10-08 belie).
                 상세는 컬럼 클릭 시 행 아래 공용 패널(SSOT: docs/design/components.md §9-2). */}
@@ -137,6 +140,8 @@ export default function DashboardPage() {
                 </div>
               </MobileChartCarousel>
             </div> : <section className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" aria-label="영업 분석 시작하기"><div><h2 className="text-sm font-bold text-slate-900">{dash.data.weeklyTrendPeriod?.kind === 'recent' ? '최근 8주간 분석할 영업 기록이 없어요' : '아직 분석할 영업 기록이 없어요'}</h2><p className="mt-1 text-xs text-slate-600">DB를 등록하고 활동을 기록하면 퍼널·추이·채널별 성과가 표시됩니다.</p></div><Link href="/db-sheet" className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">DB 등록하기</Link></section>}
+            {/* 수료생 모바일: 주간 목표는 맨 아래, 기본 접힘(belie 2026-11-05). PC 는 위 개요 자리. */}
+            {graduated && <div className="dashboard-goals-bottom"><CollapsibleGoalCard layout="mobile" /></div>}
           </>
         )}
       </div>

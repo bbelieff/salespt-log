@@ -1,6 +1,6 @@
 ---
 slug: contact-script
-status: active
+status: completed
 created: 2026-11-05
 worktree: .claude/worktrees/gyeongnyeong-ilji-dc-c5a230 (branch feat/contact-script-popup)
 ---
@@ -19,7 +19,7 @@ worktree: .claude/worktrees/gyeongnyeong-ilji-dc-c5a230 (branch feat/contact-scr
 - [x] 문자 양식 「복사」
 - [x] 마이그레이션 `0015_contact_scripts.sql`(새 테이블만, RLS on·anon/authenticated 권한 없음)
 - [x] 시험: pglite 저장·되돌리기·계정 분리 / API 401·본인만·400·503 / 화면 보기 칸·저장·복사
-- [ ] 운영 DB 적용 — DB Migrate 는 운영 서버에 설치된 코드(installed, master)로 돈다: 병합·배포 → dry-run(대기 = 0015 하나) → 적용. belie 승인 후
+- [x] 운영 DB 적용 — DB Migrate 는 운영 서버에 설치된 코드(installed, master)로 돈다: 병합·배포 → dry-run(대기 = 0015 하나) → 적용. belie 승인(「DB적용진행」) 후 run 41878939084 적용, contact_scripts 생성·RLS 확인
 - [x] `bash scripts/check.sh` · production build · 합성 화면 확인(PC 팝업 대본·수정·저장 후 새로고침 유지, 375px 가로 넘침 없음)
 
 ## Log

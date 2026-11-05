@@ -37,3 +37,12 @@
   .dashboard-work-status-slot { order: 4; }
   .dashboard-action-productivity { order: 5; }
 }
+
+/* 수료생: 모바일은 목표 카드를 대시보드 맨 아래(page 의 .dashboard-goals-bottom)로 옮긴다(belie 2026-11-05). */
+@media (max-width: 1023.98px) {
+  .dashboard-action-goals--graduated { display: none; }
+}
+@media (min-width: 1024px) {
+  .dashboard-goals-bottom { display: none; }
+  .dashboard-action-goals--graduated:has(> section > button[aria-expanded="false"]) { align-self: start; }
+}
