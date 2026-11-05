@@ -36,7 +36,7 @@ export default function CompanyInfoHeader({open, onToggle, controlsId, desktopHe
     observer.observe(box);
     return () => observer.disconnect();
   }, [payment]);
-  useEffect(() => { if (!open || mode === 'text') setMore(false); }, [open, mode]);
+  useEffect(() => { if (!open || mode !== 'more') setMore(false); }, [open, mode]);
   useEffect(() => {
     if (!more) return;
     const outside = (event: PointerEvent) => {
@@ -60,11 +60,13 @@ export default function CompanyInfoHeader({open, onToggle, controlsId, desktopHe
     <div data-company-info-header-actions className={`flex min-w-0 flex-wrap items-center gap-1.5 ${desktopHeading ? 'basis-full justify-end sm:basis-auto sm:flex-1' : 'shrink-0'}`}>
       {!payment ? <>{open && status}{open && actions}{fontControl}</> : open && <div data-ci-header-tools data-mode={mode}>
         {status && <span data-ci-header-status>{status}</span>}
-        <div data-ci-tools-primary>{mode === 'more' ? actions.slice(0, 1) : actions}{mode === 'text' && fontControl}</div>
-        {mode !== 'text' && <button ref={moreButton} type="button" data-ci-more aria-label="업체정보 더보기" title="업체정보 더보기" aria-expanded={more} aria-controls={`${controlsId}-tools`} aria-haspopup="dialog" onClick={() => setMore(value => !value)}>더보기</button>}
-        {more && mode !== 'text' && <div id={`${controlsId}-tools`} role="dialog" aria-label="업체정보 도구" data-ci-tools-menu onClick={event => event.stopPropagation()}>
+        {/* 글자 크기는 더보기에 넣지 않고 바로 보인다 — 중간 폭에서 더보기 안이 글자 크기뿐이라 한 번 더 누르게 했다(2026-11-05 belie).
+            더보기는 도구가 실제로 숨는 가장 좁은 폭(more)에서만. */}
+        <div data-ci-tools-primary>{mode === 'more' ? actions.slice(0, 1) : actions}{mode !== 'more' && fontControl}</div>
+        {mode === 'more' && <button ref={moreButton} type="button" data-ci-more aria-label="업체정보 더보기" title="업체정보 더보기" aria-expanded={more} aria-controls={`${controlsId}-tools`} aria-haspopup="dialog" onClick={() => setMore(value => !value)}>더보기</button>}
+        {more && mode === 'more' && <div id={`${controlsId}-tools`} role="dialog" aria-label="업체정보 도구" data-ci-tools-menu onClick={event => event.stopPropagation()}>
           <div className="text-xs font-semibold text-slate-600">업체정보 도구</div>
-          {mode === 'more' && actions.slice(1)}
+          {actions.slice(1)}
           <div className="text-xs text-slate-500">글자 크기</div>{fontControl}
           <button type="button" onClick={closeMore}>닫기</button>
         </div>}
