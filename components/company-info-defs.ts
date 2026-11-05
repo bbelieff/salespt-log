@@ -47,16 +47,16 @@ export type EditorItem =
   /** 개업일 · 사업자구분/과세유형 · 사업자등록번호 한 줄(belie 2026-11-04 — 세로 공간 절약). */
   | { kind: "bizRow"; open: FieldDef; regNo: FieldDef }
   | { kind: "ownership"; spec: OwnershipSpec }
-  /** grant = 맞춤공고 줄을 이 항목 아래에 붙인다(industry: 대분류·제외 업종 / features: 공고 특성 칩) — 보기 정렬에도 함께 움직인다. */
+  /** grant = 업종 줄 아래 표준산업분류(KsicLine)를 붙인다 — 보기 정렬에도 함께 움직인다. 대분류·공고 특성은 「공고필터」 펼침(2026-11-05). */
   | { kind: "row"; defs: FieldDef[]; grant?: "industry" }
-  | { kind: "pair"; defs: [FieldDef, FieldDef]; wideSecond?: boolean; grant?: "features" }
+  | { kind: "pair"; defs: [FieldDef, FieldDef]; wideSecond?: boolean }
   | { kind: "hidden"; key: Key; label: string }
   | { kind: "money"; def: FieldDef; signed?: boolean }
   | { kind: "ratio"; def: FieldDef }
   | { kind: "sales" }
   /** 기본보기의 연도별 연매출 한 줄(올해·Y-1·Y-2·Y-3 합계만) — 상·하반기는 확장보기. */
   | { kind: "salesTotals" }
-  /** 맞춤공고(2026-10-25): 소재지 + 같은 줄 시·도/시·군·구 · 업종 아래 대분류·제외 업종 · 공고 특성 칩. */
+  /** 소재지 칸(맞춤공고 지역의 바탕). 시·도/시·군·구 고르기는 「공고필터」 펼침(GrantFilterPanel, 2026-11-05). */
   | { kind: "grantAddress" };
 
 const f = (def: FieldDef, onlyCorporation?: boolean): EditorItem =>
@@ -142,7 +142,6 @@ export const 기업정보_ITEMS: EditorItem[] = [
       ["사대보험직원", "4대보험 직원", "0명 + 프리0명", 1],
       ["특허및인증", "특허 및 인증", "특허, ISO, 연구소, 벤처, 메인/이노비즈 등", 1],
     ],
-    grant: "features",
   },
   f(["업체기타메모", "기타메모", "자유 메모", 2, true]),
 ];

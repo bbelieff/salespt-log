@@ -1,7 +1,8 @@
 /**
- * 맞춤공고 칸(2026-10-25 belie 승인 목업 — 경영일지_맞춤공고 핸드오프 §4-A). [기업정보] 원래 칸 밑·옆에 붙는다(새 구간 없음).
+ * 맞춤공고 칸(2026-10-25 belie 승인 목업 — 경영일지_맞춤공고 핸드오프 §4-A).
+ * 2026-11-05 belie 「앞에 나올 필요 없다」: [기업정보] 칸 밑에서 빼서 「공고필터」 펼침(GrantFilterPanel)으로 옮겼다.
  *
- * - RegionAddress: 소재지 입력 + 같은 줄 시·도 / 시·군·구(넓으면 한 줄, 좁으면 줄바꿈). 소재지에서 계산한 값이면 「자동」.
+ * - RegionSelects: 시·도 / 시·군·구. 소재지에서 계산한 값이면 「자동」.
  *   손으로 고르면 지역시도·지역시군구에 저장되고 「자동」이 사라진다. 「자동으로」를 고르면 저장값을 비워 다시 계산.
  * - IndustryLine: 업종 줄 아래 「대분류」(자동) + 「제외 업종」 켜기.
  * - FeatureChips: 「공고 특성」 칩. 특허 및 인증 글에서 읽은 벤처·이노비즈·메인비즈는 자동으로 켜져 있다(그 글을 고치면 바뀐다).
@@ -10,10 +11,8 @@
 "use client";
 
 import type { CompanyInfo } from "@/types";
-import type { FieldDef } from "@/components/company-info-defs";
 import { SIDO, SIGUNGU, type Sido } from "@/util/admin-regions";
 import { grantProfile, 대분류_목록, 공고특성_목록, splitFeatures } from "@/lib/analytics/company-grant";
-import CompanyInfoField from "./CompanyInfoField";
 
 type CI = CompanyInfo;
 /** 고르기 칸은 글자 길이만큼(좁은 칸에서도 늘어나거나 잘리지 않게, 너무 길면 칸 안에서 줄임). */
@@ -24,36 +23,32 @@ export function AutoTag() {
   return <span className="shrink-0 whitespace-nowrap rounded bg-blue-50 px-1 text-px-10 font-bold text-blue-700">자동</span>;
 }
 
-export function RegionAddress({ draft, id, className, onField, onPatch }: { draft: CI; id: string; className: string; onField: (k: keyof CI, v: string) => void; onPatch: (p: Partial<CI>) => void }) {
+export function RegionSelects({ draft, onPatch }: { draft: CI; onPatch: (p: Partial<CI>) => void }) {
   const p = grantProfile(draft);
   const sido = p.region.시도;
   const list = sido ? SIGUNGU[sido as Sido] : [];
-  const def: FieldDef = ["소재지", "소재지", "주소지", 2];
   return (
-    <div className={`${className} flex min-w-0 flex-wrap items-end gap-1.5`}>
-      <CompanyInfoField def={def} value={String(draft.소재지 ?? "")} onChange={onField} id={id} className="block min-w-48 flex-1" />
-      <span className="cg-inline flex min-w-0 max-w-full items-center gap-1 pb-0.5">
-        <select aria-label="시·도" className={selCls} value={sido} onChange={(e) => {
+    <span className="cg-inline flex min-w-0 max-w-full items-center gap-1">
+      <select aria-label="시·도" className={selCls} value={sido} onChange={(e) => {
+        const v = e.target.value;
+        onPatch(v === AUTO ? { 지역시도: "", 지역시군구: "" } : { 지역시도: v, 지역시군구: v === sido ? p.region.시군구 : "" });
+      }}>
+        {!sido && <option value="">시·도</option>}
+        {!p.regionAuto && <option value={AUTO}>{AUTO}</option>}
+        {SIDO.map((s) => <option key={s} value={s}>{s}</option>)}
+      </select>
+      {list.length > 0 && (
+        <select aria-label="시·군·구" className={selCls} value={p.region.시군구} onChange={(e) => {
           const v = e.target.value;
-          onPatch(v === AUTO ? { 지역시도: "", 지역시군구: "" } : { 지역시도: v, 지역시군구: v === sido ? p.region.시군구 : "" });
+          onPatch(v === AUTO ? { 지역시도: "", 지역시군구: "" } : { 지역시도: sido, 지역시군구: v });
         }}>
-          {!sido && <option value="">시·도</option>}
+          {!p.region.시군구 && <option value="">시·군·구</option>}
           {!p.regionAuto && <option value={AUTO}>{AUTO}</option>}
-          {SIDO.map((s) => <option key={s} value={s}>{s}</option>)}
+          {list.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
-        {list.length > 0 && (
-          <select aria-label="시·군·구" className={selCls} value={p.region.시군구} onChange={(e) => {
-            const v = e.target.value;
-            onPatch(v === AUTO ? { 지역시도: "", 지역시군구: "" } : { 지역시도: sido, 지역시군구: v });
-          }}>
-            {!p.region.시군구 && <option value="">시·군·구</option>}
-            {!p.regionAuto && <option value={AUTO}>{AUTO}</option>}
-            {list.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-        )}
-        {p.regionAuto && sido && <AutoTag />}
-      </span>
-    </div>
+      )}
+      {p.regionAuto && sido && <AutoTag />}
+    </span>
   );
 }
 
@@ -61,7 +56,6 @@ export function IndustryLine({ draft, className, onPatch }: { draft: CI; classNa
   const p = grantProfile(draft);
   return (
     <div className={`${className} cg-inline flex flex-wrap items-center gap-x-1.5 gap-y-1`}>
-      <span className="shrink-0 whitespace-nowrap text-px-11 text-gray-500">대분류</span>
       <select aria-label="대분류" className={selCls} value={p.industry} onChange={(e) => onPatch({ 대분류: e.target.value === AUTO ? "" : e.target.value })}>
         {!p.industry && <option value="">대분류</option>}
         {!p.industryAuto && <option value={AUTO}>{AUTO}</option>}
@@ -85,7 +79,6 @@ export function FeatureChips({ draft, className, onPatch }: { draft: CI; classNa
   };
   return (
     <div className={`${className} flex flex-wrap items-center gap-1`} role="group" aria-label="공고 특성">
-      <span className="mr-0.5 whitespace-nowrap text-px-11 text-gray-500">공고 특성</span>
       {공고특성_목록.map((f) => {
         const on = p.features.includes(f);
         const auto = p.autoFeatures.includes(f);

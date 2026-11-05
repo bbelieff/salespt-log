@@ -21,32 +21,21 @@ describe("grantReadyLines", () => {
   it("못 읽은 소재지는 따로 알린다", () => {
     expect(grantReadyLines({ 소재지: "중구 을지로 1" } as never)[0]!.text).toBe("지역: 소재지에서 시·도를 못 읽었어요");
   });
-  it("칩은 접기 버튼 밖(버튼 안 버튼 금지) · Esc·바깥 누르기로 닫힘", () => {
+  it("칩은 접기 버튼 밖(버튼 안 버튼 금지)", () => {
     const header = readFileSync("components/company-info/CompanyInfoHeader.tsx", "utf8");
     expect(header.indexOf("{badge &&")).toBeGreaterThan(header.indexOf("</button>"));
-    const chip = readFileSync("components/company-info/GrantReadyChip.tsx", "utf8");
-    expect(chip).toContain('"Escape"');
-    expect(chip).toContain('"pointerdown"');
   });
 });
 
-describe("4단계 — 맞는 공고 N", () => {
-  it("실무/수납에서 맞는 공고가 있으면 「맞는 공고 N」 버튼, 없으면 「공고필터 n/3」", async () => {
+describe("헤더 칩 — 맞는 공고 N만(공고필터는 업체정보 맨 위 버튼으로, 2026-11-05)", () => {
+  it("맞는 공고가 있으면 「맞는 공고 N」, 없으면 아무것도 그리지 않는다", async () => {
     const React = await import("react");
     const { renderToStaticMarkup } = await import("react-dom/server");
     const { GrantReadyChip } = await import("@/components/company-info/GrantReadyChip");
     (globalThis as { React?: unknown }).React = React;
-    const html = (n?: number) => renderToStaticMarkup(React.createElement(GrantReadyChip, { draft: {} as never, onFill: () => {}, matchCount: n }));
+    const html = (n?: number) => renderToStaticMarkup(React.createElement(GrantReadyChip, { matchCount: n }));
     expect(html(2).replace(/<!-- -->/g, "")).toContain(">맞는 공고 2</button>");
-    expect(html(0)).toContain("공고필터");
-    expect(html()).toContain("공고필터");
-  });
-  it("세 조건이 다 맞으면 칩을 숨긴다(이미 맞춘 필터는 숨김, belie 2026-11-04)", async () => {
-    const React = await import("react");
-    const { renderToStaticMarkup } = await import("react-dom/server");
-    const { GrantReadyChip } = await import("@/components/company-info/GrantReadyChip");
-    const draft = { 소재지: "울산광역시 남구 삼산로 1", 업태: "제조", 사대보험직원: "4명" } as never;
-    expect(renderToStaticMarkup(React.createElement(GrantReadyChip, { draft, onFill: () => {} }))).toBe("");
-    expect(renderToStaticMarkup(React.createElement(GrantReadyChip, { draft, onFill: () => {}, matchCount: 1 }))).toContain("맞는 공고 1");
+    expect(html(0)).toBe("");
+    expect(html()).toBe("");
   });
 });
