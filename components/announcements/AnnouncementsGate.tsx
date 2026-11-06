@@ -16,6 +16,7 @@ import { useEffect, useState } from "react";
 import { useAnnouncements } from "@/query/announcements-hook";
 import type { AnnouncementsView } from "@/service";
 import NoticePopup from "./NoticePopup";
+import { CALL_FOCUS_END, callFocusHeld } from "./call-focus";
 
 export const OPEN_ANNOUNCEMENTS_EVENT = "salespt:open-announcements";
 /** [확인] 후 발신 — TopHeader 점 뱃지 즉시 갱신용. */
@@ -51,13 +52,25 @@ export default function AnnouncementsGate() {
   const q = useAnnouncements();
   const [open, setOpen] = useState(false);
   const [autoChecked, setAutoChecked] = useState(false);
+  const [deferred, setDeferred] = useState(false);
 
   // 데이터 도착 시 1회 자동 판정 (localStorage 는 클라 전용 → effect 안에서만).
   useEffect(() => {
     if (!q.data || autoChecked) return;
     setAutoChecked(true);
-    if (shouldAutoShow(q.data)) setOpen(true);
+    if (!shouldAutoShow(q.data)) return;
+    // 통화 중(거는 창·대본·녹음 올리기·정리 확인)이면 끝난 뒤에 띄운다(2026-11-07 belie). 헤더 「새소식」은 바로.
+    if (callFocusHeld()) setDeferred(true);
+    else setOpen(true);
   }, [q.data, autoChecked]);
+
+  useEffect(() => {
+    if (!deferred) return;
+    const later = () => { setDeferred(false); setOpen(true); };
+    if (!callFocusHeld()) { later(); return; }
+    window.addEventListener(CALL_FOCUS_END, later, { once: true });
+    return () => window.removeEventListener(CALL_FOCUS_END, later);
+  }, [deferred]);
 
   // 헤더 "새소식" 수동 재열람.
   useEffect(() => {

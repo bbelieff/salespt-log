@@ -14,6 +14,7 @@ import { CallScriptSheet } from "./CallScriptSheet";
 import { CallUploadDialog } from "./CallUploadDialog";
 import { useCalls } from "./use-calls";
 import { phoneDigits } from "./call-client";
+import { useCallFocus } from "@/components/announcements/call-focus";
 import "../call.css";
 
 /** 이어서 올릴 수 있는 통화 — 전화만 건(녹음 필요) 또는 정리 실패. */
@@ -59,6 +60,9 @@ export function useCallUi(rows: DbSheetLead[], onSaved: () => void | Promise<voi
   const strip = (on: boolean, toggle: () => void) => calls.enabled && (pending.length > 0 || on) ? <button type="button" className={`dbs-pending-strip${on ? " is-on" : ""}`} aria-pressed={on} onClick={toggle}>
     <FileAudio size={16} aria-hidden="true" /><span>정리 기다리는 통화 <b className="num">{pending.length}</b>건</span><em>{on ? "전체 보기" : "모아 보기 ›"}</em>
   </button> : null;
+
+  // 통화 창이 하나라도 열려 있으면 새소식 팝업을 미룬다(2026-11-07 PR4).
+  useCallFocus(!!(dial || upload || asking || confirming || script));
 
   const layer = <>
     {dial && <CallDialDialog row={dial} onDialed={p => { dialedRow.current = dial; calls.dialed(p); }} onClose={closeDial} />}

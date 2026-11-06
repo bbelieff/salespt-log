@@ -2,7 +2,7 @@
 > - **한 줄 요약**: DB정보 통화 줄에 「대본 보기」를 더하고, 📞 로 건 뒤 대본 창이 열려 있게 한 기록.
 > - **누가 읽나요**: 개발자
 > - **어떤 기능·작업과 연결?**: DB관리시트 통화 정리 앞단(CallUi) · 업체정보 대본(ContactScriptPanel)
-> - **관련 문서**: [계획](../plans/active/mobile-call-assist.md)
+> - **관련 문서**: [계획](../plans/completed/mobile-call-assist.md)
 
 # 2026-11-07 feat(db-sheet): 통화 줄 「대본 보기」 · 📞 뒤 대본 창
 
