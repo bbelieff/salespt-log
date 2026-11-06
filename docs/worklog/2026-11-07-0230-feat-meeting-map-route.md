@@ -2,7 +2,7 @@
 > - **한 줄 요약**: 일정 미팅 카드에 카카오맵·네이버지도·티맵 길찾기를 더한 기록.
 > - **누가 읽나요**: 개발자
 > - **어떤 기능·작업과 연결?**: 일정·계약 MeetingResultCard · 지도 앱 연결(map-links)
-> - **관련 문서**: [계획](../plans/active/mobile-call-assist.md)
+> - **관련 문서**: [계획](../plans/completed/mobile-call-assist.md)
 
 # 2026-11-07 feat(schedule): 미팅 카드 🧭 길찾기
 
