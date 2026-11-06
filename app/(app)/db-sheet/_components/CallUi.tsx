@@ -53,6 +53,13 @@ export function useCallUi(rows: DbSheetLead[], onSaved: () => void | Promise<voi
     <button type="button" className="dbs-button dbs-call-script" onClick={() => setScript(r)}><ScrollText size={16} aria-hidden="true" />대본 보기</button>
   </div> : null;
 
+  // 「정리 기다리는 통화 N건」(2026-11-07 belie 모바일 기획 2판 ③) — 최근 7일, 내가 할 일이 남은 통화
+  // (녹음 필요·정리 실패·확인 필요). 0건이면 줄이 없다. 누르면 그 업체만 걸러 보고, 다시 누르면 전체.
+  const pending = rows.filter(r => { const s = calls.latest.get(r.id)?.status; return s === "dialed" || s === "failed" || s === "review"; }).map(r => r.id);
+  const strip = (on: boolean, toggle: () => void) => calls.enabled && (pending.length > 0 || on) ? <button type="button" className={`dbs-pending-strip${on ? " is-on" : ""}`} aria-pressed={on} onClick={toggle}>
+    <FileAudio size={16} aria-hidden="true" /><span>정리 기다리는 통화 <b className="num">{pending.length}</b>건</span><em>{on ? "전체 보기" : "모아 보기 ›"}</em>
+  </button> : null;
+
   const layer = <>
     {dial && <CallDialDialog row={dial} onDialed={p => { dialedRow.current = dial; calls.dialed(p); }} onClose={closeDial} />}
     {script && <CallScriptSheet company={script.company || "이 업체"} onClose={() => setScript(null)} />}
@@ -66,5 +73,5 @@ export function useCallUi(rows: DbSheetLead[], onSaved: () => void | Promise<voi
       {calls.toast.open && <button type="button" onClick={() => { setConfirm(calls.toast!.open!); calls.clearToast(); }}>확인하기</button>}
       <button type="button" aria-label="알림 닫기" onClick={calls.clearToast}><X size={16} aria-hidden="true" /></button></div>}
   </>;
-  return { enabled: calls.enabled, slot, bar, layer };
+  return { enabled: calls.enabled, slot, bar, layer, pending, strip };
 }
