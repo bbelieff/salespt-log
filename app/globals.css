@@ -183,6 +183,8 @@ body {
   html,
   body {
     overscroll-behavior-y: none;
+    /* 가로로 끝까지 밀 때 브라우저가 「뒤로 가기」로 넘기지 않게 — 그 밀기는 메뉴 서랍이 쓴다(2026-11-07, ADR-0036). */
+    overscroll-behavior-x: none;
   }
 }
 

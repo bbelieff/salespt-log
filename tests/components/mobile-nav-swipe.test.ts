@@ -3,7 +3,7 @@
 import React, { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { getMobileNavOpen, setMobileNavOpen, swipeBlocked, swipeIntent } from "@/components/desktop/mobile-nav";
+import { claimEdgeTouch, getMobileNavOpen, setMobileNavOpen, swipeBlocked, swipeIntent } from "@/components/desktop/mobile-nav";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 vi.mock("next/navigation", () => ({ usePathname: () => "/dashboard", useRouter: () => ({ push: vi.fn() }) }));
@@ -40,23 +40,36 @@ describe("swipeBlocked — 입력 칸·손잡이·왼쪽으로 밀린 가로 스
   });
 });
 
+describe("claimEdgeTouch — 왼쪽 끝 밀기는 브라우저 뒤로 가기 대신 서랍이 받는다(2026-11-07)", () => {
+  it("왼쪽 24px 안, 누를 수 있는 것 위가 아니면 true", () => {
+    document.body.innerHTML = '<p id="p"></p><button id="b"><span id="bi"></span></button><a id="a" href="#"></a>';
+    expect(claimEdgeTouch(10, document.getElementById("p"))).toBe(true);
+    expect(claimEdgeTouch(40, document.getElementById("p"))).toBe(false);
+    for (const id of ["b", "bi", "a"]) expect(claimEdgeTouch(10, document.getElementById(id))).toBe(false);
+  });
+});
+
 describe("DesktopNav — 문서 어디서든 밀어서 열고 닫기", () => {
   let host: HTMLDivElement, root: Root;
   beforeEach(() => { document.body.innerHTML = ""; host = document.createElement("div"); document.body.append(host); root = createRoot(host); });
   afterEach(() => { act(() => root.unmount()); host.remove(); setMobileNavOpen(false); });
   const touch = (type: string, x: number, y: number, target: EventTarget = document.body) => {
-    const ev = new Event(type, { bubbles: true });
+    const ev = new Event(type, { bubbles: true, cancelable: true });
     Object.defineProperty(ev, "touches", { value: type === "touchend" ? [] : [{ clientX: x, clientY: y }] });
     act(() => { target.dispatchEvent(ev); });
+    return ev;
   };
   it("오른쪽으로 밀면 열리고, 왼쪽으로 밀면 닫힌다 · 다른 팝업이 떠 있으면 열지 않는다", async () => {
     const { default: DesktopNav } = await import("@/components/desktop/DesktopNav");
     act(() => root.render(createElement(DesktopNav)));
-    touch("touchstart", 10, 300); touch("touchmove", 100, 310); touch("touchend", 0, 0);
+    expect(touch("touchstart", 10, 300).defaultPrevented).toBe(true); // 왼쪽 끝 → 브라우저 뒤로 가기 막음
+    touch("touchmove", 100, 310); touch("touchend", 0, 0);
     expect(getMobileNavOpen()).toBe(true);
     expect(host.querySelector("nav")!.getAttribute("data-open")).toBe("true");
     touch("touchstart", 250, 300); touch("touchmove", 150, 305); touch("touchend", 0, 0);
     expect(getMobileNavOpen()).toBe(false);
+    expect(touch("touchstart", 120, 300).defaultPrevented).toBe(false); // 가운데에서 시작한 터치는 그대로(스크롤·탭)
+    touch("touchend", 0, 0);
     const modal = document.createElement("div"); modal.setAttribute("aria-modal", "true"); document.body.append(modal);
     touch("touchstart", 10, 300); touch("touchmove", 120, 300);
     expect(getMobileNavOpen()).toBe(false);

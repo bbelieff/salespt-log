@@ -23,7 +23,7 @@ import { useGuardedRouter } from "@/components/DirtyGuard";
 import { SALESPT_CAFE_URL, WORK_MANUAL_URL } from "@/config/links";
 import { useMe } from "@/query/me-hook";
 import StepBadge, { type StepId } from "@/components/ui/StepBadge";
-import { MOBILE_NAV_ID, getMobileNavOpen, setMobileNavOpen, swipeBlocked, swipeIntent, useMobileNavOpen } from "./mobile-nav";
+import { MOBILE_NAV_ID, claimEdgeTouch, getMobileNavOpen, setMobileNavOpen, swipeBlocked, swipeIntent, useMobileNavOpen } from "./mobile-nav";
 
 /** 단계 번호 배지 — 단계색 연한 배경 + 진한 글자 (표준 팔레트). */
 const STEP_BADGE: Record<string, string> = {
@@ -195,7 +195,9 @@ export default function DesktopNav() {
   const closeRef = useRef<HTMLButtonElement>(null);
   const navRef = useRef<HTMLElement>(null);
   // 손가락으로 오른쪽으로 밀면 열고, 열린 채 왼쪽으로 밀면 닫는다. PC(붙은 사이드탭 = sticky)는 무시 — 폭은 CSS 가 정한다.
-  // 리스너는 전부 passive(스크롤을 막지 않음). 다른 팝업(aria-modal)이 떠 있으면 열지 않는다.
+  // touchmove 는 passive(스크롤을 막지 않음). 다른 팝업(aria-modal)이 떠 있으면 열지 않는다.
+  // ★왼쪽 끝(EDGE_ZONE)에서 시작한 밀기는 브라우저 「뒤로 가기」 제스처가 가져가므로(2026-11-07 belie
+  // 「밀면 뒤로가기가 더 많이 됨」) touchstart 에서 기본 동작을 막아 서랍이 받는다 — 버튼·링크·입력 칸 위 터치는 그대로.
   useEffect(() => {
     let start: { x: number; y: number } | null = null;
     const onStart = (e: TouchEvent) => {
@@ -204,6 +206,7 @@ export default function DesktopNav() {
       if (!nav || e.touches.length !== 1 || getComputedStyle(nav).position === "sticky" || swipeBlocked(e.target)) return;
       if (!getMobileNavOpen() && document.querySelector('[aria-modal="true"]')) return;
       start = { x: e.touches[0]!.clientX, y: e.touches[0]!.clientY };
+      if (!getMobileNavOpen() && claimEdgeTouch(start.x, e.target) && e.cancelable) e.preventDefault();
     };
     const onMove = (e: TouchEvent) => {
       if (!start) return;
@@ -211,7 +214,7 @@ export default function DesktopNav() {
       if (intent) { setMobileNavOpen(intent === "open"); start = null; }
     };
     const onEnd = () => { start = null; };
-    document.addEventListener("touchstart", onStart, { passive: true });
+    document.addEventListener("touchstart", onStart, { passive: false });
     document.addEventListener("touchmove", onMove, { passive: true });
     document.addEventListener("touchend", onEnd, { passive: true });
     document.addEventListener("touchcancel", onEnd, { passive: true });

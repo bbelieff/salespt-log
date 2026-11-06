@@ -545,6 +545,7 @@ function getTimeValue(hourId, minuteId) {
 - **여는 곳**: 페이지 배너(TopHeader, 로고 아래 줄) 맨 왼쪽 메뉴 버튼 `PanelLeftOpen` 44×44 — 학생 셸(`.desktop-shell`)의 1024px 미만에서만 보이고 그 자리의 회색 막대는 숨긴다. 관리자·트레이너·PC 는 막대 그대로.
 - **닫기**: 서랍 위 「메뉴 닫기」(X, 44×44), 덮개 누르기, Esc, 다른 화면 이동. 열면 닫기 버튼으로 초점, 닫으면 연 버튼으로 돌아간다. 열린 동안 뒤 화면 스크롤 잠금(CSS `body:has(...)`).
 - **손가락 밀기**: 화면 어디서든 오른쪽으로 밀면 열림, 열린 채 왼쪽으로 밀면 닫힘(가로 60px+·세로의 2배 초과, 리스너 passive). 입력 칸·`role=separator/slider`·`data-no-nav-swipe`·왼쪽으로 밀린 가로 스크롤 안·다른 `aria-modal` 팝업이 떠 있으면 무시. PC(sticky)는 무시.
+- **왼쪽 끝 밀기(2026-11-07 보완)**: 왼쪽 24px 안에서 시작한 터치는 touchstart 기본 동작을 막아 브라우저 「뒤로 가기」 대신 서랍이 받는다(버튼·링크·입력 칸 위는 제외 — 탭 유지). 모바일 터치 화면 `html,body{overscroll-behavior-x:none}` 으로 가로 끝 밀기 뒤로 가기(크롬)도 끔. iPhone 사파리·인앱 브라우저의 시스템 가장자리 제스처는 완전히 막히지 않을 수 있다 — 홈 화면 앱(PWA)은 해당 없음.
 - **서랍은 늘 펼친 모양**(아이콘만 접힘은 PC 전용). 열림 상태: `components/desktop/mobile-nav.ts`.
 - **아래 여백**: `--app-tabbar-height` = 아래 안전 영역만(토스트·「오늘 챙길 일」·새 버전 알림이 따른다).
 
