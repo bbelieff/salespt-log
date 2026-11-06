@@ -72,6 +72,7 @@ vi.mock("@/components/weekly-goals/WeeklyGoalEditor", () => ({
 }));
 
 import DesktopNav from "@/components/desktop/DesktopNav";
+import { setMobileNavOpen } from "@/components/desktop/mobile-nav";
 import WeeklyGoalPage from "@/components/weekly-goals/WeeklyGoalPage";
 import { SALESPT_CAFE_URL, WORK_MANUAL_URL } from "@/config/links";
 
@@ -108,8 +109,31 @@ describe("① sidebar root — glass scope class, CSS-split display", () => {
     expect(nav).not.toBeNull();
     const tokens = (nav!.getAttribute("class") ?? "").split(/\s+/);
     expect(tokens).toContain("desktop-nav");
-    expect(tokens).toContain("hidden");
-    expect(tokens).toContain("pc:flex");
+    // 1024px 미만: 닫힌 서랍은 화면 밖·안 보임(2026-11-07 ADR-0036). PC: 붙은 사이드탭.
+    expect(tokens).toEqual(expect.arrayContaining(["fixed", "invisible", "-translate-x-full", "pc:sticky", "pc:translate-x-0", "pc:visible"]));
+    expect(nav!.getAttribute("data-open")).toBe("false");
+  });
+
+  it("서랍: 열면 덮개와 함께 보이고, 덮개·Esc·닫기 버튼으로 닫힌다", async () => {
+    state.me = { feedbackFolderId: "abc", driveLinkStatus: "ok" };
+    render(createElement(DesktopNav));
+    const nav = () => host.querySelector('nav[aria-label="주 메뉴"]')!;
+    act(() => setMobileNavOpen(true));
+    expect(nav().getAttribute("data-open")).toBe("true");
+    expect(nav().getAttribute("class")).toContain("translate-x-0");
+    expect(nav().getAttribute("class")).not.toContain("invisible");
+    expect(nav().getAttribute("data-collapsed")).toBe("false");
+    await act(async () => { await new Promise((r) => requestAnimationFrame(() => r(null))); });
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("메뉴 닫기");
+    act(() => (host.querySelector(".app-nav-scrim") as HTMLElement).click());
+    expect(nav().getAttribute("data-open")).toBe("false");
+    act(() => setMobileNavOpen(true));
+    act(() => { window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })); });
+    expect(nav().getAttribute("data-open")).toBe("false");
+    act(() => setMobileNavOpen(true));
+    act(() => (host.querySelector('button[aria-label="메뉴 닫기"]') as HTMLElement).click());
+    expect(nav().getAttribute("data-open")).toBe("false");
+    expect(host.querySelector(".app-nav-scrim")).toBeNull();
   });
 });
 

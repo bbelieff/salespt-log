@@ -31,10 +31,22 @@ function navTokens(src: string): string[] {
 }
 
 describe("① DesktopNav 루트 표시 규칙 — 둘 다 렌더하고 CSS 로 가른다", () => {
-  it("폰에서는 hidden, pc(1024px+)에서만 flex", () => {
-    const tokens = navTokens(desktopNav);
-    expect(tokens).toContain("hidden");
-    expect(tokens).toContain("pc:flex");
+  it("1024px 미만은 덮는 서랍(닫히면 화면 밖·안 보임), pc 는 붙은 사이드탭 (ADR-0036)", () => {
+    const m = desktopNav.match(/<nav[\s\S]*?className=\{`([^`]*)`/);
+    expect(m).not.toBeNull();
+    const tokens = (m?.[1] ?? "").split(/\s+/);
+    expect(tokens).toEqual(expect.arrayContaining(["fixed", "z-[61]", "pc:sticky", "pc:translate-x-0", "pc:visible", "pc:shadow-none"]));
+    expect(desktopNav).toContain('"invisible -translate-x-full transition-[transform,visibility]"');
+    // 덮개·닫기 버튼은 폰 전용, 접기 버튼은 PC 전용
+    expect(desktopNav).toMatch(/app-nav-scrim[^"]*pc:hidden/);
+    expect(desktopNav).toMatch(/aria-label="메뉴 닫기"[^>]*pc:hidden/);
+  });
+
+  it("배너 메뉴 버튼은 학생 셸의 1024px 미만에서만 보인다 (관리자·트레이너·PC 는 막대)", () => {
+    const header = readFileSync("components/TopHeader.tsx", "utf8");
+    const css = readFileSync("app/globals.css", "utf8");
+    expect(header).toMatch(/aria-label="메뉴 열기"[^>]*className="app-nav-open[^"]*hidden/);
+    expect(css).toMatch(/@media \(max-width: 1023px\) \{\s*\.desktop-shell \.page-banner \.app-nav-open \{ display: flex; \}\s*\.desktop-shell \.page-banner \.app-banner-bar \{ display: none; \}/);
   });
 
   it("주 메뉴 landmark 가 있다", () => {
@@ -131,18 +143,19 @@ describe("⑦ (app) layout — 구조만 바뀌고 가드·게이트는 그대�
     const dirtyClose = layout.indexOf("</DirtyProvider>");
     expect(dirtyOpen).toBeGreaterThan(-1);
     // 이동을 일으키는 둘(사이드바·탭바)이 같은 컨텍스트 안에 있어야 미저장 가드가 걸린다.
-    for (const el of ["<DesktopNav />", "<TabBar />"]) {
-      expect(dirtyOpen).toBeLessThan(layout.indexOf(el));
-      expect(dirtyClose).toBeGreaterThan(layout.indexOf(el));
-    }
+    expect(dirtyOpen).toBeLessThan(layout.indexOf("<DesktopNav />"));
+    expect(dirtyClose).toBeGreaterThan(layout.indexOf("<DesktopNav />"));
+    // 하단 TabBar 는 메뉴 서랍으로 바뀌어 셸에 없다(ADR-0036).
+    expect(layout).not.toContain("<TabBar />");
     // 게이트 3종은 master 그대로 DirtyProvider **밖**이다 — 여기로 끌어들이지 않는다.
     expect(dirtyClose).toBeLessThan(layout.indexOf("<IdentityGuard />"));
   });
 
-  it("★모바일 탭바 공간은 유지하고 데스크탑의 불필요한 예약 공간은 제거한다", () => {
+  it("★하단 탭이 없으니 아래 여백은 안전 영역만, 데스크탑 예약 공간도 없다", () => {
     const css = readFileSync("app/globals.css", "utf8");
     expect(layout).toContain('<main className="app-shell-main">');
     expect(css).toMatch(/\.app-shell-main\s*\{\s*padding-bottom:\s*var\(--app-tabbar-height\)/);
+    expect(css).toContain("--app-tabbar-height: var(--app-safe-bottom, 0px);");
     expect(css).toMatch(/\.desktop-shell \.app-shell-main\s*\{\s*padding-bottom:\s*0/);
     expect(layout).not.toContain("pc:[--app-tabbar-height:");
     expect(layout).toContain("pc:flex");

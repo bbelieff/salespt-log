@@ -18,6 +18,8 @@ import { BADGES_SEEN_EVENT, newBadgeIds, readSeen } from "./badges/badge-seen";
 import { BADGES } from "@/lib/analytics/badge-catalog";
 import { todayKST } from "@/util/week";
 import PageContainer from "./PageContainer";
+import { PanelLeftOpen } from "lucide-react";
+import { MOBILE_NAV_ID, setMobileNavOpen, useMobileNavOpen } from "./desktop/mobile-nav";
 import { identifyUser, resetUser, markInternal, clearInternal } from "@/analytics";
 import {
   ANNOUNCEMENTS_SEEN_EVENT,
@@ -163,6 +165,7 @@ export default function TopHeader({
     window.addEventListener(BADGES_SEEN_EVENT, recompute);
     return () => window.removeEventListener(BADGES_SEEN_EVENT, recompute);
   }, [badgeList, badgeOwner]);
+  const navOpen = useMobileNavOpen();
   const badgeCount = badgeList ? badgeList.filter(b => b.earned).length : null;
 
   return (
@@ -403,7 +406,11 @@ export default function TopHeader({
           width="wide"
           className="flex h-full items-center gap-2 px-3 sm:gap-3 sm:px-4"
         >
-          <div className="h-5 w-1 shrink-0 rounded-sm bg-slate-500" />
+          {/* 1024px 미만 학생 화면(.desktop-shell)은 하단 탭 대신 이 버튼으로 메뉴 서랍을 연다(2026-11-07 belie). 다른 화면·PC는 막대 그대로. */}
+          <button type="button" onClick={() => setMobileNavOpen(true)} aria-label="메뉴 열기" aria-controls={MOBILE_NAV_ID} aria-expanded={navOpen} className="app-nav-open -ml-2 hidden h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-blue-500">
+            <PanelLeftOpen className="h-5 w-5" aria-hidden="true" />
+          </button>
+          <div className="app-banner-bar h-5 w-1 shrink-0 rounded-sm bg-slate-500" />
           <h1 className={pageNavigation ? "sr-only" : "flex min-w-0 items-center gap-1.5 text-sm font-semibold text-slate-700 sm:gap-2"}>
             <span className="shrink-0 text-base leading-none">{pageEmoji}</span>
             <span className="truncate">{pageTitle}</span>
