@@ -55,7 +55,7 @@ describe('애드프로 가져오기 창', () => {
     const apply = vi.fn(async () => {});
     await act(async () => root.render(createElement(ImportDialog, { rows: [], onApply: apply, onClose: vi.fn(), onExisting: vi.fn() })));
     act(() => setValue(host.querySelector<HTMLTextAreaElement>('#ai-source')!, ADPRO_CSV));
-    await act(async () => [...host.querySelectorAll('button')].find((b) => /배치/.test(b.textContent ?? '') && !b.disabled && b.closest('.ai-paste'))!.click());
+    await act(async () => [...host.querySelectorAll('button')].find((b) => /배치/.test(b.textContent ?? '') && !b.disabled)!.click());
     expect(host.querySelector<HTMLSelectElement>('select[aria-label="가져오기 유형"]')!.value).toBe('매입DB');
     expect(host.querySelector<HTMLInputElement>('input[aria-label="가져오기 공급처"]')!.value).toBe('애드프로');
     const add = [...host.querySelectorAll('button')].find((b) => /선택한 4건 추가/.test(b.textContent ?? ''))!;

@@ -34,7 +34,7 @@ describe('메타 광고 양식', () => {
     const apply = vi.fn(async () => {});
     await act(async () => root.render(createElement(ImportDialog, { rows: [], onApply: apply, onClose: vi.fn(), onExisting: vi.fn() })));
     act(() => setValue(host.querySelector<HTMLTextAreaElement>('#ai-source')!, META_CSV));
-    await act(async () => [...host.querySelectorAll('button')].find((b) => /가져오기|배치/.test(b.textContent ?? '') && !b.disabled && b.closest('.ai-paste'))!.click());
+    await act(async () => [...host.querySelectorAll('button')].find((b) => /가져오기|배치/.test(b.textContent ?? '') && !b.disabled)!.click());
     const channel = host.querySelector<HTMLSelectElement>('select[aria-label="가져오기 유형"]')!;
     const supplier = host.querySelector<HTMLInputElement>('input[aria-label="가져오기 공급처"]')!;
     expect(channel.value).toBe('직접생산');
