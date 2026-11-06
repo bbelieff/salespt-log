@@ -161,3 +161,17 @@ it("최초상담일 has a 지우기 button only while a date is set, and it clea
   render("");
   expect(host.querySelector('button[aria-label="최초상담일 지우기"]')).toBeNull();
 });
+
+it("on phones 컨택내용 scrolls only to the start of 업체정보, not to the bottom; PC side-by-side does not scroll",async()=>{
+ const noop=vi.fn(),props={row,draft:contactDraft(row),onChange:noop,onEdit:noop,onResult:noop,onRegister:noop,onOpen:noop,onClose:noop,onDelete:noop,onAsInfo:noop,onInflowChange:async()=>{}};
+ const scroll=vi.fn();Object.defineProperty(HTMLElement.prototype,'scrollIntoView',{configurable:true,value:scroll});
+ vi.stubGlobal('matchMedia',()=>({matches:false}));vi.stubGlobal('requestAnimationFrame',(f:FrameRequestCallback)=>{f(0);return 1;});
+ Object.defineProperty(window,'innerWidth',{configurable:true,value:375});
+ act(()=>root.render(React.createElement(DbDetail,props)));click(host.querySelector('.db-contact-open')!);
+ expect(scroll).toHaveBeenCalledOnce();expect(scroll.mock.instances[0]).toBe(host.querySelector('#db-contact-pane'));expect(scroll).toHaveBeenCalledWith({block:'start',behavior:'smooth'});
+ click(host.querySelector('.db-contact-open')!);expect(scroll).toHaveBeenCalledOnce();
+ act(()=>root.unmount());root=createRoot(host);scroll.mockClear();
+ Object.defineProperty(window,'innerWidth',{configurable:true,value:1280});
+ act(()=>root.render(React.createElement(DbDetail,props)));click(host.querySelector('.db-contact-open')!);expect(scroll).not.toHaveBeenCalled();
+ vi.unstubAllGlobals();
+});
