@@ -57,6 +57,11 @@
  :is([data-payment-company-compact],[data-payment-company-compact-modal]) [data-company-info-views]{display:flex;flex-wrap:nowrap;gap:6px}
  :is([data-payment-company-compact],[data-payment-company-compact-modal]) [data-payment-ci-segmented]{display:none}
  :is([data-payment-company-compact],[data-payment-company-compact-modal]) .payment-ci-native{display:block;flex:1;min-width:0;width:0;height:34px;border:1px solid #cbd5e1;border-radius:9px;padding:0 6px;background:#fff;color:#475569;font-size:12px}
+ /* 보기 선택은 공고필터와 한 묶음(#1330) 안에 있어 width:0 이면 14px 로 눌려 폰에서 못 눌렀다(2026-11-06 belie 「팝업 눌리지도 않음」).
+    묶음이 남은 폭을 나눠 갖고, 두 선택 칸 모두 글자가 보이는 최소 폭을 둔다. 자리가 모자라면 겹치지 않고 다음 줄로. */
+ :is([data-payment-company-compact],[data-payment-company-compact-modal]) [data-company-info-views]{flex-wrap:wrap;row-gap:6px}
+ :is([data-payment-company-compact],[data-payment-company-compact-modal]) [data-company-info-views]>div:first-child{flex:1 1 auto;flex-wrap:nowrap;min-width:auto}
+ :is([data-payment-company-compact],[data-payment-company-compact-modal]) [data-company-info-views] .payment-ci-native{flex:1 1 0;min-width:5rem}
  :is([data-payment-company-compact],[data-payment-company-compact-modal]) [data-company-info-group] :is(input,textarea,select){min-width:0;font-size:calc(13px * var(--font-scale,1))}
  :is([data-payment-company-compact],[data-payment-company-compact-modal]) :is(button,select):focus-visible{outline:2px solid #64748b;outline-offset:2px}
  [data-payment-company-compact-modal]{padding-left:8px;padding-right:8px}
