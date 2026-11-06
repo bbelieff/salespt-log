@@ -80,8 +80,12 @@ export default function DbPage() {
     <TopHeader pageEmoji="📊" pageTitle="DB생산" />
     <section className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6"><PageContainer width="fluid">
 <nav aria-label="DB 메뉴" className="mb-3 flex gap-5 border-b text-sm font-semibold"><span className="border-b-2 border-blue-500 py-3 text-blue-600">DB생산</span><Link className="py-3 text-slate-600" href={"/db-sheet" as Route}>DB관리시트</Link></nav>
+      {/* 폰·태블릿(1024px 미만)은 채널 고르기 → 바로 밑 입력 → 요약 순(2026-11-06 belie 「4채널 클릭을 우선, 생산 내용을 바로 밑에」). PC 는 원래 순서. */}
+      <div className="flex flex-col pc:block">
+      <div className="order-1 pc:order-none">
       <OverallCard items={overall.items} totalCost={overall.totalCost} totalCount={overall.totalCount}
         activeCh={activeCh} goalSummary={<WeeklyGoalSummary compact metrics={["production", "inflow"]} />} />
+      </div>
       <section aria-label="입력할 채널" className="mb-3 rounded-xl border border-slate-200 bg-white p-4">
         <h2 className="text-sm font-bold text-slate-900">어떤 DB를 기록할까요?</h2>
         <p className="mb-3 mt-1 text-xs text-slate-500">채널을 누르면 바로 입력할 수 있어요.</p>
@@ -93,8 +97,9 @@ export default function DbPage() {
       {visited.map((channel) => <div key={channel} hidden={channel !== activeCh}>
         <DbChannelWorkspace activeCh={channel} />
       </div>)}
-      <div className="mt-3">
+      <div className="order-2 mt-3 pc:order-none">
         <DbNudgeBanner onGoDirect={() => switchChannel("direct")} />
+      </div>
       </div>
     </PageContainer></section>
   </>;
