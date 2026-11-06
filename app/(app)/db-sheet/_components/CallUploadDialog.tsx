@@ -78,6 +78,8 @@ export function CallUploadDialog({ row, call, asked, onUploaded, onClose }: {
         : inApp ? <>{app}에서 녹음이나 통화 내용(.txt·.pdf)을 <b>폰에 저장</b>한 뒤 골라 주세요.</>
         : <>녹음은 <b>내 파일 › Recordings › Call</b> 맨 위에 있어요. 통화 내용(.txt·.pdf)도 돼요.</>}</p>
       {(ios || inApp) && <button type="button" className="dbs-text-button" onClick={() => setTab("text")}>녹음 대신 받아쓴 글 붙여 넣기</button>}
+      {/* 안드로이드 Chrome 은 녹음 파일 고르기 전에 「오디오 녹음 허용?」을 묻는다(코드로 못 없앰, 실기기 2026-11-05) — 거절해도 고르기는 열린다. */}
+      {!ios && <p className="dbs-muted">녹음 허용을 물으면 「허용 안 함」도 괜찮아요.</p>}
     </>;
     foot = <>{later}<button className="dbs-button primary" onClick={() => input.current?.click()}>파일 고르기</button></>;
   } else {

@@ -135,6 +135,7 @@ it("안드로이드: 기본 전화 앱은 Recordings › Call, 익시오·에이
   // jsdom 기본 userAgent 는 아이폰이 아님 = 안드로이드 쪽 안내.
   await act(async () => root.render(createElement(CallUploadDialog, { row, call: null, asked: false, onUploaded: vi.fn(), onClose: vi.fn() })));
   expect(host.textContent).toContain("내 파일 › Recordings › Call");
+  expect(host.textContent).toContain("녹음 허용을 물으면 「허용 안 함」도 괜찮아요."); // 안드로이드 Chrome 마이크 질문
   expect(host.textContent).not.toContain("받아쓴 글 붙여 넣기");
   act(() => root.unmount()); root = createRoot(host);
   saveCallApp("ixio");
@@ -142,6 +143,13 @@ it("안드로이드: 기본 전화 앱은 Recordings › Call, 익시오·에이
   expect(host.textContent).toContain("익시오에서 녹음이나 통화 내용(.txt·.pdf)을 폰에 저장한 뒤 골라 주세요");
   expect(host.textContent).not.toContain("Recordings");
   expect(button("녹음 대신 받아쓴 글 붙여 넣기")).toBeDefined();
+  // 아이폰은 이 질문이 없다 — 안내도 없다.
+  act(() => root.unmount()); root = createRoot(host);
+  const ua = vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X)");
+  await act(async () => root.render(createElement(CallUploadDialog, { row, call: null, asked: false, onUploaded: vi.fn(), onClose: vi.fn() })));
+  expect(host.textContent).toContain("파일에 저장");
+  expect(host.textContent).not.toContain("허용 안 함");
+  ua.mockRestore();
 });
 
 it("📞 없이 올리면 녹음 저장 시각으로 통화를 먼저 기록한다", async () => {
