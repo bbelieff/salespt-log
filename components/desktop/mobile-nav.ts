@@ -53,3 +53,11 @@ export function swipeBlocked(target: EventTarget | null): boolean {
   }
   return false;
 }
+
+/** 화면 왼쪽 끝 이 폭 안에서 시작한 터치는 브라우저 뒤로 가기 대신 서랍이 받는다. */
+export const EDGE_ZONE = 24;
+const TAPPABLE = 'a,button,input,select,textarea,label,summary,[role="button"],[role="link"],[tabindex]:not([tabindex="-1"])';
+/** 왼쪽 끝에서 시작했고 누를 수 있는 것 위가 아니면 true — touchstart 기본 동작(뒤로 가기)을 막는다. 탭은 버튼 위에서 그대로 동작. */
+export function claimEdgeTouch(x: number, target: EventTarget | null): boolean {
+  return x <= EDGE_ZONE && !(target instanceof Element && target.closest(TAPPABLE));
+}
