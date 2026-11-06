@@ -47,8 +47,8 @@ export type EditorItem =
   /** 개업일 · 사업자구분/과세유형 · 사업자등록번호 한 줄(belie 2026-11-04 — 세로 공간 절약). */
   | { kind: "bizRow"; open: FieldDef; regNo: FieldDef }
   | { kind: "ownership"; spec: OwnershipSpec }
-  /** grant = 업종 줄 아래 표준산업분류(KsicLine)를 붙인다 — 보기 정렬에도 함께 움직인다. 대분류·공고 특성은 「공고필터」 펼침(2026-11-05). */
-  | { kind: "row"; defs: FieldDef[]; grant?: "industry" }
+  /** 업종·업태·아이템 한 줄. 대분류·표준산업분류·공고 특성은 「공고필터」 펼침(GrantFilterPanel, 2026-11-05·06). */
+  | { kind: "row"; defs: FieldDef[] }
   | { kind: "pair"; defs: [FieldDef, FieldDef]; wideSecond?: boolean }
   | { kind: "hidden"; key: Key; label: string }
   | { kind: "money"; def: FieldDef; signed?: boolean }
@@ -131,7 +131,6 @@ export const 기업정보_ITEMS: EditorItem[] = [
       ["업태", "업태", "사업자등록증의 업태. 예: 도소매, 제조", 1],
       ["주생산품목", "아이템", "주로 만들거나 파는 물건. 예: 포장용 필름", 1],
     ],
-    grant: "industry",
   },
   { kind: "grantAddress" },
   { kind: "ownership", spec: 기업_OWNERSHIP },
