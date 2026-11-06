@@ -104,7 +104,7 @@ export async function listCandidates(emails: string[] | null): Promise<PushCandi
 }
 
 /** 정기 슬롯 + 미팅 끝 결과 알림(0011). */
-export type DeliverySlot = PushSlot | "meeting";
+export type DeliverySlot = PushSlot | "meeting" | "dbfeed";
 /** Claims the (email, date, slot) send once. Null = already claimed by an earlier run. */
 export async function claimDelivery(idempotencyKey: string, email: string, slot: DeliverySlot, localDate: string): Promise<string | null> {
   const r = await pool().query<{ id: string }>(

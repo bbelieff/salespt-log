@@ -22,7 +22,7 @@ import { dueReminders, REMINDER_DAILY_LIMIT, type ReminderSources } from "./push
 import { purgeOldReports, reportDueSlots, reportPushMessage, reportsMadeOn, saveDailyReport } from "./push-inbox";
 import { addDaysISO, dueSlots, kstNow, nextNotification, onWeekday, WEEKDAY_LABELS, type KstNow } from "./push-schedule";
 
-const TTL_SECONDS: Record<store.DeliverySlot, number> = { morning: 4 * 3600, evening: 3 * 3600, test: 600, meeting: 3 * 3600, reminder: 30 * 60 };
+const TTL_SECONDS: Record<store.DeliverySlot, number> = { morning: 4 * 3600, evening: 3 * 3600, test: 600, meeting: 3 * 3600, reminder: 30 * 60, dbfeed: 3 * 3600 };
 export const TEST_PUSH_DAILY_LIMIT = 3;
 
 export function pilotEmails(): string[] {
@@ -137,6 +137,22 @@ export async function sendTestPush(email: string, now = new Date()): Promise<Tes
   const r = await fanout(email, { title: "경영일지", body, url: withDeliveryTag("/settings/notifications", id), d: id }, "test");
   await store.finishDelivery(id, { status: r.sent ? "sent" : "failed", messageId: "test.v1", itemCount: 0, devicesSent: r.sent, devicesFailed: r.failed });
   return r.sent ? { ok: true, devices: r.sent } : { ok: false, reason: "send_failed" };
+}
+
+/**
+ * DB 시트 자동 확인이 새 DB를 넣었을 때(belie 2026-11-06) — 알림을 켠 기기로 「새 DB N건」 한 번.
+ * 같은 사람·같은 시각 칸은 한 번만(여러 시트에서 들어와도 묶음). 업체명은 넣지 않는다.
+ */
+export async function sendDbFeedPush(email: string, added: number, slot: string, now = new Date()): Promise<boolean> {
+  if (added <= 0 || !sendingOn() || !(await isPushEligible(email))) return false;
+  const prefs = await store.getPreferences(email);
+  if (!prefs.enabled) return false;
+  const kst = kstNow(now);
+  const id = await store.claimDelivery(`${email.toLowerCase()}:${slot}:dbfeed`, email, "dbfeed", kst.date);
+  if (!id) return false;
+  const r = await fanout(email, { title: "경영일지", body: `연결한 DB 시트에서 새 DB ${added}건이 들어왔어요.`, url: withDeliveryTag("/db-sheet", id), d: id }, "dbfeed");
+  await store.finishDelivery(id, { status: r.sent ? "sent" : "failed", messageId: "dbfeed.v1", itemCount: added, devicesSent: r.sent, devicesFailed: r.failed });
+  return r.sent > 0;
 }
 
 export interface DispatchStats {
