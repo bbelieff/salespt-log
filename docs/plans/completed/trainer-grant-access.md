@@ -20,3 +20,5 @@
 
 ## 후속 (2026-11-06): 수강생 토글
 - 같은 메일에 수강생 행(0기 코스텝)이 생기면 `findUserByEmail` 이 수강생 행을 골라 `loadMe` 의 `ownArenaSheetId`(토글 노출 조건)가 비었다 → 활성 트레이너 자격이 있으면 그 수강생 시트를 `ownArenaSheetId` 로. 시험 `tests/service/me-trainer-own-page.test.ts`(4).
+
+- 클레임 라우트가 대리 보기 대상(getActiveUserEmail)으로 클레임하던 것 → 로그인한 본인(getSessionEmail). 박수혁 트레이너가 [웹앱]으로 수강생을 연 뒤 /claim 해서 0기 코스텝 행이 비어 남은 원인. 시험 `tests/api/claim-session-email.test.ts`(2).
