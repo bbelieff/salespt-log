@@ -20,9 +20,9 @@
 
 import Link from "next/link";
 import DisclosureChevron from "@/components/ui/DisclosureChevron";
-import { useEffect, useState, type CSSProperties, type HTMLAttributes } from "react";
+import { useContext, useEffect, useState, type CSSProperties, type HTMLAttributes } from "react";
 import { courseWeeksForCohort } from "@/config/cohort-dates";
-import { parseAssigned, type Trainee, type Trainer } from "./AdminUserPickerTypes";
+import { parseAssigned, TrainerOpenContext, type Trainee, type Trainer } from "./AdminUserPickerTypes";
 
 /** dnd-kit useSortable() 의 listeners 타입을 단순화한 alias.
  *  unknown 으로 받아 TraineeCard 가 dnd-kit 에 직접 의존 안 하게 차단. */
@@ -163,9 +163,10 @@ export default function TraineeCard({
   // /weekly-goals?student=... 로 이동 (spreadsheetId 무관).
   // admin(!viewOnly): returnTo=/admin/users, 트레이너 담당: returnTo=/trainer.
   // 웹앱 노출 게이트(showSheetWebBtns)는 그대로 — read-only 는 둘 다 없음.
+  const canOpenAsTrainer = useContext(TrainerOpenContext);
   const isAssignedToTrainer =
     !!trainerEmailLc &&
-    parseAssigned(u.assignedTrainer).includes(trainerEmailLc.toLowerCase());
+    (parseAssigned(u.assignedTrainer).includes(trainerEmailLc.toLowerCase()) || canOpenAsTrainer(u));
   const showSheetWebBtns = !viewOnly || isAssignedToTrainer;
   const isTrainerGoalView = !!viewOnly && !!trainerEmailLc && isAssignedToTrainer;
   const isAdminGoalView = !viewOnly;

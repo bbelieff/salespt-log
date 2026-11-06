@@ -2,7 +2,8 @@ import { z } from "zod";
 import { readTrainerStudentAccessFacts } from "@/repo/db/trainer-student-access";
 import { TrainerAccessValue, TrainerAccountKey } from "@/types/trainer-access";
 import type { TrainerAccessOperation, TrainerStudentTarget } from "@/types/trainer-access";
-import { canTrainerAccessStudent } from "@/util/trainer-access-policy";
+import { canTrainerAccessStudent, defaultTrainerGrants } from "@/util/trainer-access-policy";
+import { listTrainerAccessRows } from "@/repo/db/trainer-access-settings";
 import { arenaCohortLabelParts, parseCohortToken } from "@/service/cohort-token";
 
 const Facts = z.object({
@@ -64,4 +65,17 @@ export async function canAccessManagedStudent(actor: string, target: string | Tr
       cohortMetadataTrusted: rows.length > 0, isArenaLabel: arena, isReserved: false,
     }, operation);
   } catch { return false; }
+}
+
+/**
+ * 트레이너관리 「활성 수강생」 권한(2026-11-06 belie) — 등급 기본값 ∧ 저장된 설정. 트레이너 페이지가
+ * 담당 아닌 활성 수강생에게도 [웹앱]·[주간목표]를 보일지 정한다(실제 열기는 canImpersonate 가 매번 다시 확인).
+ */
+export async function trainerActiveGrant(actor: string): Promise<{ read: boolean; write: boolean }> {
+  try {
+    const row = (await listTrainerAccessRows()).find(r => r.qualification.email === actor.toLowerCase());
+    if (!row?.setting || row.qualification.status !== "active") return { read: false, write: false };
+    const base = defaultTrainerGrants(row.setting.grade).active, set = row.setting.grants.active;
+    return { read: base.read && set.read, write: base.write && set.write };
+  } catch { return { read: false, write: false }; }
 }

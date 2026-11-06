@@ -92,7 +92,16 @@ describe("claimAccount admin trainee claim", () => {
     expect(claimRegistry).toHaveBeenCalled();
   });
 
-  it("② 일반 사용자 + 기존 트레이너 행 + cohort 0 → 기존 행 반환", async () => {
+  it("②-0 트레이너 + 기존 트레이너 행 + cohort 0(트레이너 본인 페이지 0기 코스텝, 2026-11-06) → 일반 흐름 진행", async () => {
+    const email = "trainer@example.com";
+    findUserByEmail.mockReset();
+    findUserByEmail.mockResolvedValueOnce({ email, cohort: "T", name: "가상트레이너", spreadsheetId: "", role: "trainer", status: "active" });
+    findUserByEmail.mockResolvedValue({ email, cohort: "0", name: "코스텝", spreadsheetId: "sheet-456", role: "trainee", status: "active" });
+    await claimAccount(email, "0", "코스텝", { isAdmin: false });
+    expect(claimRegistry).toHaveBeenCalled();
+  });
+
+  it("② 트레이너 + 기존 트레이너 행 + cohort 0 아닌 수강생 기수 → 기존 행 반환", async () => {
     const email = "user@example.com";
     const trainerRow = {
       email,
@@ -104,7 +113,7 @@ describe("claimAccount admin trainee claim", () => {
     };
     findUserByEmail.mockReset().mockResolvedValue(trainerRow);
 
-    const result = await claimAccount(email, "0", "홍길동", { isAdmin: false });
+    const result = await claimAccount(email, "5", "홍길동", { isAdmin: false });
 
     expect(claimRegistry).not.toHaveBeenCalled();
     expect(result).toMatchObject({

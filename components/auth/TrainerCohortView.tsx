@@ -17,7 +17,7 @@ import DisclosureChevron from "@/components/ui/DisclosureChevron";
 import PageContainer from "@/components/PageContainer";
 import { useMe } from "@/query/me-hook";
 import { useQueryClient } from "@tanstack/react-query";
-import { cohortGroupKey, cohortGroupCompare } from "@/types";
+import { cohortGroupKey, cohortGroupCompare, cohortCategory } from "@/types";
 import { apiErrorMessage } from "@/lib/util/api-error-message";
 import {
   CohortSection,
@@ -25,12 +25,14 @@ import {
   type Trainee,
   type Trainer,
 } from "./AdminUserPickerSections";
+import { TrainerOpenContext } from "./AdminUserPickerTypes";
 
 export default function TrainerCohortView({
   sessionEmail,
   trainees,
   activeTrainers,
   archivedCohorts = [],
+  openActive = false,
 }: {
   sessionEmail: string;
   trainerName: string;
@@ -41,6 +43,8 @@ export default function TrainerCohortView({
   /** admin OR 관리부서 일 때 "← 마스터 메뉴" 노출. */
   canBackToAdmin: boolean;
   archivedCohorts?: string[];
+  /** 트레이너관리 「활성 수강생 조회」 권한 — 담당 아닌 활성 수강생에게도 [웹앱]·[주간목표](2026-11-06). */
+  openActive?: boolean;
 }) {
   const me = useMe();
   const queryClient = useQueryClient();
@@ -50,6 +54,13 @@ export default function TrainerCohortView({
   const [showOnlyMine, setShowOnlyMine] = useState(true);
 
   const trainerEmailLc = sessionEmail.toLowerCase();
+  /** 활성 기수(아레나·테스트·보관 기수 제외) 수강생 중 관리자·트레이너 본인 페이지(0기 GM·0기 코스텝)가 아닌 사람. */
+  const canOpen = useMemo(() => {
+    const staff = new Set(activeTrainers.map((t) => t.email.toLowerCase()));
+    const archived = new Set(archivedCohorts.map((c) => c.trim()));
+    return (u: Trainee) => openActive && !staff.has(u.email.toLowerCase()) &&
+      !archived.has(cohortGroupKey(u.cohort, u.captainOf)) && cohortCategory(cohortGroupKey(u.cohort, u.captainOf)) === "수강생";
+  }, [openActive, activeTrainers, archivedCohorts]);
 
   /** 본인 담당 수강생 수 — 토글 라벨에 표시. */
   const myCount = useMemo(
@@ -155,6 +166,7 @@ export default function TrainerCohortView({
   }, [visibleTrainees, archivedSet]);
 
   return (
+    <TrainerOpenContext.Provider value={canOpen}>
     <main className="min-h-dvh bg-gray-50">
       <PageContainer width="wide" className="space-y-4 px-4 py-4">
         <section>
@@ -274,5 +286,6 @@ export default function TrainerCohortView({
         )}
       </PageContainer>
     </main>
+    </TrainerOpenContext.Provider>
   );
 }

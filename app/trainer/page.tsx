@@ -18,10 +18,12 @@ import {
 import { adminEmails, adminNames } from "@/config";
 import {
   findUserByEmail,
+  findTrainerByEmail,
   listDistinctUsers,
   isReservedTrainee,
 } from "@/repo/users";
 import { getArchivedCohortSet } from "@/repo/cohorts";
+import { trainerActiveGrant } from "@/service/trainer-student-access";
 import { enrichUsersWithDates, enrichUsersWithStats } from "@/service";
 import TrainerCohortView from "@/components/auth/TrainerCohortView";
 
@@ -39,7 +41,10 @@ export default async function TrainerPage() {
   if (!isAdmin && status === "pending") redirect("/trainer/apply");
   if (!isAdmin && status !== "active") redirect("/");
 
-  const trainer = await findUserByEmail(sessionEmail);
+  // 트레이너 본인 수강생 페이지(0기 코스텝)가 있어도 이름은 트레이너 행에서.
+  const trainer = (await findTrainerByEmail(sessionEmail)) ?? (await findUserByEmail(sessionEmail));
+  // 트레이너관리 「활성 수강생 조회」 권한이면 담당 아닌 활성 수강생에게도 [웹앱]·[주간목표](2026-11-06 belie).
+  const openActive = !isAdmin && (await trainerActiveGrant(sessionEmail)).read;
 
   // 전체 수강생 명단 — admin/users 와 동일한 활성/보관 분리.
   // 유보(reserved) 와 pending 은 트레이너에게 안 보임 (admin 영역).
@@ -121,6 +126,7 @@ export default async function TrainerPage() {
       activeTrainers={activeTrainers}
       canBackToAdmin={canBackToAdmin}
       archivedCohorts={archivedLabels}
+      openActive={openActive}
     />
   );
 }

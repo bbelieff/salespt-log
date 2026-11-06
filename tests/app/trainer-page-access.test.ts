@@ -32,8 +32,12 @@ vi.mock("@/config", () => ({
 }));
 vi.mock("@/repo/users", () => ({
   findUserByEmail: m.findUser,
+  findTrainerByEmail: m.findUser,
   listDistinctUsers: m.listUsers,
   isReservedTrainee: () => false,
+}));
+vi.mock("@/service/trainer-student-access", () => ({
+  trainerActiveGrant: async () => ({ read: false, write: false }),
 }));
 vi.mock("@/repo/cohorts", () => ({
   getArchivedCohortSet: m.archivedCohorts,

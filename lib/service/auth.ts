@@ -135,8 +135,10 @@ export async function claimAccount(
   if (existing && !existingArchived) {
     // 관리자 본인 시험 계정(0기 GM, 2026-10-06 belie) — 트레이너 행이 있는 관리자도 사전등록 수강생 행을 클레임할 수 있게. 일반 사용자는 영향 없음.
     const claimCohortUpper = String(cohort).trim().toUpperCase();
+    // 트레이너 본인 페이지(0기 코스텝, 2026-11-06 belie): 트레이너도 0기 사전등록 행만은 클레임할 수 있다.
     const isAdminTraineeClaim =
-      opts.isAdmin === true && existing.role !== "trainee" && claimCohortUpper !== "T";
+      (opts.isAdmin === true || (existing.role === "trainer" && claimCohortUpper === "0")) &&
+      existing.role !== "trainee" && claimCohortUpper !== "T";
     if (!isAdminTraineeClaim) {
       return {
         email: existing.email,
