@@ -1,8 +1,8 @@
 /**
  * (app) route group — 로그인 후 5탭 셸.
  *
- * 모든 (app)/* 페이지는 자동으로 하단 TabBar 를 갖는다.
- * content-area 여백은 TabBar 공통 높이와 iOS 안전 영역을 함께 따른다.
+ * 메뉴는 좌측 사이드탭(DesktopNav) 하나 — PC 는 본문을 밀고, 1024px 미만은 페이지 배너 메뉴 버튼으로 여는 덮는 서랍
+ * (2026-11-07 belie, ADR-0036 — 하단 TabBar 대체). content-area 아래 여백은 iOS 안전 영역만.
  *
  * 권한 가드 (server component):
  *   - 미로그인 → /
@@ -16,7 +16,6 @@
  * 페이지 배경: bg-slate-100 (#f1f5f9)
  */
 import { redirect } from "next/navigation";
-import TabBar from "@/components/TabBar";
 import DesktopNav from "@/components/desktop/DesktopNav";
 import DirtyProvider from "@/components/DirtyGuard";
 import {
@@ -107,7 +106,6 @@ export default async function AppLayout({
             </main>
           </div>
         </div>
-        <TabBar />
         {/* 우하단 오늘 챙길 일 빠른 보기 — 대시보드는 카드가 있어 컴포넌트가 스스로 숨는다. */}
         {showFollowUpsLauncher && <FollowUpsLauncher />}
       </DirtyProvider>

@@ -76,7 +76,9 @@
   --app-safe-bottom: env(safe-area-inset-bottom);
   --app-tabbar-safe: max(var(--app-safe-bottom, 0px), 8px);
   --app-tabbar-row: max(4.375rem, 68px);
-  --app-tabbar-height: calc(var(--app-tabbar-row) + 5px + var(--app-tabbar-safe));
+  /* 하단 탭은 2026-11-07 메뉴 서랍으로 바뀌어 없다(ADR-0036) — 이름은 그대로 두고 아래 안전 영역만 비운다.
+     토스트·「오늘 챙길 일」·새 버전 알림·DB관리시트 높이가 이 값을 따른다. */
+  --app-tabbar-height: var(--app-safe-bottom, 0px);
 }
 
 /* ── App shell main bottom padding ─────────────────────
@@ -88,6 +90,14 @@
   padding-bottom: var(--app-tabbar-height);
 }
 
+
+/* 메뉴 서랍(1024px 미만, 2026-11-07) — 학생 셸(.desktop-shell) 페이지 배너는 왼쪽 막대 대신 메뉴 버튼.
+   관리자·트레이너 화면(셸 없음)과 PC 는 막대 그대로. */
+@media (max-width: 1023px) {
+  .desktop-shell .page-banner .app-nav-open { display: flex; }
+  .desktop-shell .page-banner .app-banner-bar { display: none; }
+  body:has(.desktop-nav[data-open="true"]) { overflow: hidden; }
+}
 
 /* Shared with the app shell so the last content row clears the glass bar. */
 .app-header-pill {

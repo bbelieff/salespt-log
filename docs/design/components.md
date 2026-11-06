@@ -536,7 +536,19 @@ function getTimeValue(hourId, minuteId) {
 
 ## 5. Navigation
 
-### Bottom Navigation (모바일) — 4+1 (ADR-0019)
+### 메뉴 서랍 (1024px 미만) — 사이드탭 하나 (ADR-0036, 2026-11-07)
+
+> 결정: [ADR-0036](../decisions/0036-mobile-nav-drawer.md). 하단 TabBar 는 (app) 셸에서 렌더하지 않는다 — 아래 「Bottom Navigation」은 4단계 정의(`NAV_STEPS`)·아이콘의 정본으로만 남는다.
+
+- **같은 컴포넌트**: `components/desktop/DesktopNav.tsx`. PC(1024px+)는 본문을 밀고 붙어 있음(접기·펼치기, 224px/68px). 1024px 미만은 `fixed` 서랍 `w-72 max-w-[85vw]`, **본문을 덮는다**(`z-[61]`, 덮개 `bg-slate-900/40 z-[60]`).
+- **닫힘 = 안 보임**: `invisible -translate-x-full`(초점도 안 감). 열림 200ms ease-out 미끄러짐, 움직임 줄이기 설정이면 바로.
+- **여는 곳**: 페이지 배너(TopHeader, 로고 아래 줄) 맨 왼쪽 메뉴 버튼 `PanelLeftOpen` 44×44 — 학생 셸(`.desktop-shell`)의 1024px 미만에서만 보이고 그 자리의 회색 막대는 숨긴다. 관리자·트레이너·PC 는 막대 그대로.
+- **닫기**: 서랍 위 「메뉴 닫기」(X, 44×44), 덮개 누르기, Esc, 다른 화면 이동. 열면 닫기 버튼으로 초점, 닫으면 연 버튼으로 돌아간다. 열린 동안 뒤 화면 스크롤 잠금(CSS `body:has(...)`).
+- **손가락 밀기**: 화면 어디서든 오른쪽으로 밀면 열림, 열린 채 왼쪽으로 밀면 닫힘(가로 60px+·세로의 2배 초과, 리스너 passive). 입력 칸·`role=separator/slider`·`data-no-nav-swipe`·왼쪽으로 밀린 가로 스크롤 안·다른 `aria-modal` 팝업이 떠 있으면 무시. PC(sticky)는 무시.
+- **서랍은 늘 펼친 모양**(아이콘만 접힘은 PC 전용). 열림 상태: `components/desktop/mobile-nav.ts`.
+- **아래 여백**: `--app-tabbar-height` = 아래 안전 영역만(토스트·「오늘 챙길 일」·새 버전 알림이 따른다).
+
+### Bottom Navigation (모바일) — 4+1 (ADR-0019) — ⚠️ ADR-0036 으로 셸에서 제외, 4단계 정의·아이콘 정본으로만 유지
 
 > 정본: `docs/design/prototypes/bottom-nav-4plus1.html`. 결정: [ADR-0019](../decisions/0019-bottom-nav-4plus1.md)(4+1 구조) + [ADR-0027](../decisions/0027-bottom-nav-step-indicator.md)(STEP 배지·탭별 컬러). 변경 시 새 ADR 필요.
 
