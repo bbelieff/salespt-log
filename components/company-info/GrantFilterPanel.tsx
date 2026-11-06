@@ -3,7 +3,7 @@
  * 자동 적용된 현황을 그쪽으로 옮기자 · PC 실무/수납에도 버튼이 보여야」).
  *
  * 버튼은 업체정보 펼침 맨 위(기본보기/확장보기 줄)에 늘 있다 — 세 조건이 다 맞아도 숨기지 않는다.
- * 펼치면 지역(시·도/시·군·구) · 업종(대분류·제외 업종) · 규모 · 공고 특성을 한곳에서 보고 고친다.
+ * 펼치면 지역(시·도/시·군·구) · 업종(대분류·제외 업종·표준산업분류) · 규모 · 공고 특성을 한곳에서 보고 고친다.
  * 빈 조건은 「채우기 →」로 그 입력 칸까지 데려간다. 값 계산·저장 규칙은 lib/analytics/company-grant.ts.
  */
 "use client";
@@ -14,6 +14,7 @@ import DisclosureChevron from "@/components/ui/DisclosureChevron";
 import { grantProfile } from "@/lib/analytics/company-grant";
 import { FeatureChips, IndustryLine, RegionSelects } from "./CompanyGrantFields";
 import { grantReadyLines } from "./GrantReadyChip";
+import { KsicLine } from "./KsicLine";
 
 type CI = CompanyInfo;
 
@@ -35,7 +36,8 @@ export function GrantFilterButton({ draft, open, onToggle, controlsId }: { draft
 function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-      <span className="w-10 shrink-0 text-px-11 font-semibold text-gray-500">{label}</span>
+      {/* 줄이 여러 겹(업종 + 산업분류 목록·특성 칩)이어도 라벨은 첫 줄 높이(select 한 칸)에 맞춰 위에 붙는다. */}
+      <span className="w-10 shrink-0 self-start text-px-11 font-semibold leading-7 text-gray-500">{label}</span>
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">{children}</div>
     </div>
   );
@@ -57,7 +59,11 @@ export function GrantFilterPanel({ draft, id, onPatch, onFill }: { draft: CI; id
   return (
     <section id={id} aria-label="공고필터" data-grant-filter-panel className="space-y-2 rounded-md border border-gray-100 bg-white p-2.5 shadow-sm">
       <Row label="지역"><RegionSelects draft={draft} onPatch={onPatch} />{missing(0)}</Row>
-      <Row label="업종"><IndustryLine draft={draft} className="" onPatch={onPatch} />{missing(1)}</Row>
+      <Row label="업종">
+        <IndustryLine draft={draft} className="" onPatch={onPatch} />
+        {missing(1)}
+        <KsicLine draft={draft} onPatch={onPatch} />
+      </Row>
       <Row label="규모">
         {p.smallBusiness !== null && <span className="text-xs text-gray-800">{p.smallBusiness ? "소상공인" : "소상공인 아님"}</span>}
         {missing(2)}
