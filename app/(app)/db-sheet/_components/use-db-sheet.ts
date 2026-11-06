@@ -23,14 +23,16 @@ export function useDbSheet() {
     contactDraft,
   }));
   const state = useSyncExternalStore(store.subscribe, store.getState, store.getState);
+  // DB 목록이 없는 기수(unsupported)는 지킬 변경이 없다 — 일별 기록으로 보낼 때 미저장 확인을 띄우지 않는다.
+  const blocking = !!state.error && state.errorCode !== "unsupported";
   useEffect(() => store.load(), [store]);
   useEffect(() => {
-    const prevent = (event: BeforeUnloadEvent) => { if (state.pending || state.error) event.preventDefault(); };
+    const prevent = (event: BeforeUnloadEvent) => { if (state.pending || blocking) event.preventDefault(); };
     window.addEventListener("beforeunload", prevent);
     return () => window.removeEventListener("beforeunload", prevent);
-  }, [state.pending, state.error]);
+  }, [state.pending, blocking]);
   // 삭제는 바로 휴지통으로 확정되므로(2026-10-26) 더 이상 「변경사항」이 아니다.
-  useDirtyEntry("db-sheet", state.pending > 0 || !!state.error, store.flushAll, store.discard, "DB관리시트 변경사항");
+  useDirtyEntry("db-sheet", state.pending > 0 || blocking, store.flushAll, store.discard, "DB 목록 변경사항");
   return {
     ...state,
     clearAddition: store.clearAddition, clearNotice: store.clearNotice,

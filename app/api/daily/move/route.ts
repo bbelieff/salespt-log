@@ -59,7 +59,7 @@ async function POST_handler(req: NextRequest) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
     if (msg.startsWith("[db-sheet-metrics-conflict]")) {
-      return NextResponse.json({ error: "DB관리시트 자동 집계가 있는 기록은 DB관리시트에서 변경해 주세요", code: "db_sheet_metrics_conflict" }, { status: 409 });
+      return NextResponse.json({ error: "DB 목록에서 잡힌 숫자가 있는 기록은 DB 목록에서 바꿔 주세요", code: "db_sheet_metrics_conflict" }, { status: 409 });
     }
     if (msg.startsWith("[no-sheet]")) {
       return NextResponse.json({ error: "no_sheet" }, { status: 404 });

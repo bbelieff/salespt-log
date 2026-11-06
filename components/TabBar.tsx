@@ -20,7 +20,7 @@ import { useAnnouncements } from "@/query/announcements-hook";
 type TabColor = "blue" | "emerald" | "violet" | "rose";
 const COLOR: Record<TabColor, { fill: string; text: string }> = {
   blue: { fill: "bg-blue-700", text: "text-blue-700" }, // DB생산 #1d4ed8
-  emerald: { fill: "bg-emerald-600", text: "text-emerald-600" }, // 컨택관리 #059669
+  emerald: { fill: "bg-emerald-600", text: "text-emerald-600" }, // DB관리 #059669
   violet: { fill: "bg-violet-600", text: "text-violet-600" }, // 일정·계약 #7c3aed
   rose: { fill: "bg-rose-600", text: "text-rose-600" }, // 실무/수납 #e11d48
 };
@@ -36,8 +36,9 @@ type Tab = {
 
 // 좌 2단계 · [중앙 캘린더 FAB] · 우 2단계 (4+1, ADR-0019). 순서가 활성화 퍼널 의미를 전달.
 const LEFT: Tab[] = [
-  { href: "/db" as Route, label: "DB생산", step: 1, color: "blue", match: (p) => p.startsWith("/db"), Icon: DbIcon },
-  { href: "/contact" as Route, label: "컨택관리", step: 2, color: "emerald", match: (p) => p.startsWith("/contact"), Icon: ContactIcon },
+  { href: "/db" as Route, label: "DB생산", step: 1, color: "blue", match: (p) => p === "/db" || p.startsWith("/db/"), Icon: DbIcon },
+  // STEP 2 DB관리 = DB 목록(/db-sheet) + 일별 기록(/contact)(2026-11-07 belie 「1.5·2 통합」). 주소는 그대로.
+  { href: "/db-sheet" as Route, label: "DB관리", step: 2, color: "emerald", match: (p) => p.startsWith("/db-sheet") || p.startsWith("/contact"), Icon: ContactIcon },
 ];
 const RIGHT: Tab[] = [
   { href: "/schedule" as Route, label: "일정·계약", step: 3, color: "violet", match: (p) => p.startsWith("/schedule"), Icon: ScheduleIcon },

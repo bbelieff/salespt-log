@@ -69,7 +69,7 @@ async function runFeed(ctx: DbSheetContext, feed: feeds.DbSheetFeedRow, now: Dat
 
 function failureMessage(error: unknown): string {
   if (error instanceof GoogleSheetImportError) return error.message;
-  if (error instanceof DbSheetUnavailable) return "DB관리시트를 쓸 수 없는 계정이에요.";
+  if (error instanceof DbSheetUnavailable) return "DB 목록을 쓸 수 없는 계정이에요.";
   return "확인하지 못했어요. 다음 시각에 다시 확인해요.";
 }
 

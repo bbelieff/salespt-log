@@ -30,7 +30,7 @@ it('reports a missing projection as an error and preserves both authoritative in
  }
  expect(open).toHaveBeenCalledTimes(2);expect(persist).toHaveBeenCalledTimes(2);
 });
-it('영구삭제 창에는 STEP 2 기록 설정 스위치가 없다(2026-10-25 belie: 상담·미팅 반영 설정 제거)',async()=>{
+it('영구삭제 창에는 일별 기록 설정 스위치가 없다(2026-10-25 belie: 상담·미팅 반영 설정 제거)',async()=>{
  await act(async()=>root.render(createElement(RecordingDialog,{row:blank(),deleting:true,onPreview:async()=>({inflow:0,contacts:0,meetings:0,rows:[]}),onConfirm:vi.fn(async()=>{}),onClose:vi.fn()})));
  expect(host.querySelector('input[type=checkbox]')).toBeNull();expect(host.textContent).toContain('휴지통에서 되돌릴 수 있어요');
 });
@@ -62,11 +62,11 @@ it('explains contact counting without changing saved outcome values, including r
  expect([...select().options].map(o=>o.value)).toEqual(outcomes);
  expect([...select().options].find(o=>o.value==='AS예정')?.textContent).toContain('집계 제외');
  expect([...select().options].slice(0,4).every(o=>o.textContent?.endsWith('집계 제외'))).toBe(true);
- expect([...select().options].filter(o=>['컨택진행','상담 후 거절'].includes(o.value)).every(o=>o.textContent?.endsWith('STEP 2 컨택진행 +1'))).toBe(true);
+ expect([...select().options].filter(o=>['컨택진행','상담 후 거절'].includes(o.value)).every(o=>o.textContent?.endsWith('일별 기록 컨택진행 +1'))).toBe(true);
  act(()=>{select().value='컨택진행';select().dispatchEvent(new Event('change',{bubbles:true}));});
  expect(onResult).toHaveBeenCalledWith('컨택진행',contactDraft(row).date);
  expect(host.textContent).toContain('업체별 하루 1건');
  await render(false);
- expect([...select().options].filter(o=>['컨택진행','상담 후 거절'].includes(o.value)).every(o=>o.textContent?.endsWith('STEP 2 기록 꺼짐'))).toBe(true);
+ expect([...select().options].filter(o=>['컨택진행','상담 후 거절'].includes(o.value)).every(o=>o.textContent?.endsWith('일별 기록 꺼짐'))).toBe(true);
  expect(host.textContent).not.toContain('+1');
 });

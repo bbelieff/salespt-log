@@ -15,7 +15,8 @@ export const UPCOMING_DAYS = 7;
 export const UNRESULTED_LOOKBACK_DAYS = 30;
 export type FollowUpKind = "initial" | "overdue" | "today" | "meeting" | "recontact" | "stalled" | "upcoming";
 export const FOLLOW_UP_KINDS: readonly FollowUpKind[] = ["initial", "overdue", "today", "meeting", "recontact", "stalled", "upcoming"];
-export type FollowUpStep = "1.5" | "2" | "3" | "4";
+/** 1.5·2 는 STEP 2 DB관리로 합쳤다(2026-11-07) — 첫 연락·재연락은 kind 로 나뉜다. */
+export type FollowUpStep = "2" | "3" | "4";
 export type FollowUpGroup = "today" | "overdue" | "long-overdue" | "upcoming" | "unknown";
 export interface FollowUpItem {
   key: string; kind: FollowUpKind; step: FollowUpStep; group: FollowUpGroup;
@@ -125,7 +126,7 @@ export function buildUnresultedMeetings(meetings: Meeting[], today: string, nowH
 /** 미팅이 연결됐거나(STEP 3 가 챙김) 계약·해지·장기관리·진행종료인 DB 는 다시 연락할 대상이 아니다. */
 function leadIsActive(lead: DbSheetLead) { return !lead.meetingId && lead.funnel !== "계약" && lead.stage !== "계약해지" && !isDbSheetParkedStage(lead.stage); }
 function leadItem(lead: DbSheetLead, today: string, initial: boolean, due: string | null, reason: string): FollowUpItem {
-  return item({ key: `lead:${lead.id}`, kind: initial ? "initial" : "recontact", step: initial ? "1.5" : "2",
+  return item({ key: `lead:${lead.id}`, kind: initial ? "initial" : "recontact", step: "2",
     title: lead.company.trim() || "이름 없는 업체", detail: `${dbSheetResultLabel(lead.result)} · ${lead.channel}`,
     action: initial ? "첫 연락하기" : reason.endsWith("다음 연락일 없음") ? "다음 연락일 정하기" : "다시 연락하기",
     reasons: [reason], facts: [{ label: "유입일", value: lead.date }, { label: "연락 결과", value: dbSheetResultLabel(lead.result) }, ...(lead.first ? [{ label: "최초상담일", value: lead.first }] : []), { label: "다음 연락일", value: lead.next || "미정" }],
@@ -202,7 +203,7 @@ export function summarizeFollowUps(src: FollowUpSources, today: string, nowHHMM?
   const urgent = items.filter(i => i.group !== "upcoming");
   const groups = Object.fromEntries(FOLLOW_UP_KINDS.map(k => [k, items.filter(i => k === "upcoming" ? i.group === "upcoming" : i.kind === k && i.group !== "upcoming")])) as Record<FollowUpKind, FollowUpItem[]>;
   const counts = Object.fromEntries(FOLLOW_UP_KINDS.map(k => [k, groups[k].length])) as FollowUpCounts;
-  const stepCounts = Object.fromEntries((["1.5", "2", "3", "4"] as const).map(step => [step, urgent.filter(i => i.step === step).length])) as Record<FollowUpStep, number>;
+  const stepCounts = Object.fromEntries((["2", "3", "4"] as const).map(step => [step, urgent.filter(i => i.step === step).length])) as Record<FollowUpStep, number>;
   const groupCounts = Object.fromEntries((["today", "overdue", "long-overdue", "upcoming", "unknown"] as const).map(group => [group, items.filter(i => i.group === group).length])) as Record<FollowUpGroup, number>;
   return { groups, counts, total: urgent.length, headline: followUpHeadline(counts), unlinkedTodos: todo.unlinked, items, urgent, stepCounts, groupCounts };
 }

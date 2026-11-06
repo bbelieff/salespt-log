@@ -50,7 +50,7 @@ function render(tree: React.ReactElement = h(DashboardFollowUps, { todayISO: TOD
   act(() => root.render(h(QueryClientProvider, { client }, tree)));
 }
 const card = () => host.querySelector("[data-dashboard-follow-ups]") as HTMLElement;
-const labels: Record<string,string> = {overdue:"STEP 4 실무/수납 경과 1건", today:"STEP 4 실무/수납 오늘 1건", meeting:"STEP 3 일정·계약 경과 1건", recontact:"STEP 2 컨택관리 경과 1건", stalled:"STEP 4 실무/수납 장기누락 1건"};
+const labels: Record<string,string> = {overdue:"STEP 4 실무/수납 경과 1건", today:"STEP 4 실무/수납 오늘 1건", meeting:"STEP 3 일정·계약 경과 1건", recontact:"STEP 2 DB관리 경과 1건", stalled:"STEP 4 실무/수납 장기누락 1건"};
 const chip = (kind: string) => host.querySelector(kind === "upcoming" ? ".follow-ups-upcoming" : `[aria-label="${labels[kind]}"]`) as HTMLButtonElement | null;
 const links = () => [...document.querySelectorAll("[role=dialog] a")].map((a) => a.getAttribute("href"));
 
@@ -69,13 +69,13 @@ const rich: Seed = {
 };
 
 describe("DashboardFollowUps 카드", () => {
-  it("STEP 4개와 0건을 항상 표시하고 총건수는 미래 제외한다", () => {
+  it("STEP 3개(DB관리·일정·계약·실무/수납)와 0건을 항상 표시하고 총건수는 미래 제외한다", () => {
     seed(rich);
     render();
     expect(card().textContent).toContain("오늘 챙길 일");
     expect(card().textContent).toContain("5건"); // 밀림1 + 오늘1 + 미팅1 + 재연락1 + 멈춤1(푸른제작 계약 후 10일)
     expect(card().textContent).not.toContain("부터 정리");
-    expect(card().querySelectorAll(".ft-summary-row")).toHaveLength(4);
+    expect(card().querySelectorAll(".ft-summary-row")).toHaveLength(3);
     expect(["overdue", "today", "meeting", "recontact", "stalled", "upcoming"].map((k) => chip(k) !== null)).toEqual([true, true, true, true, true, true]);
     expect(card().textContent).not.toContain("지금 챙길 일이 없습니다.");
   });
@@ -110,7 +110,7 @@ describe("DashboardFollowUps 카드", () => {
     render();
     expect(card().textContent).toContain("0건");
     expect(chip("upcoming")).not.toBeNull();
-    expect(host.querySelectorAll(".ft-summary-row")).toHaveLength(4);
+    expect(host.querySelectorAll(".ft-summary-row")).toHaveLength(3);
   });
 
   it("계약을 못 찾은 할 일은 셈에서 빼고 안내 한 줄만 남긴다", () => {
@@ -183,7 +183,7 @@ describe("STEP summary detail boundaries", () => {
   it("unknown contact dates have their own count and are never invented as long overdue", () => {
     seed({leads:[lead({next:"",result:"부재"})]}); render();
     expect(card().textContent).toContain("날짜 확인 1");
-    expect([...card().querySelectorAll('.ft-count[data-tone="long-overdue"]')].map(node => node.textContent)).toEqual(["0", "0", "0", "0"]);
+    expect([...card().querySelectorAll('.ft-count[data-tone="long-overdue"]')].map(node => node.textContent)).toEqual(["0", "0", "0"]);
     act(() => (card().querySelector('[data-tone="unknown"]') as HTMLButtonElement).click());
     act(() => (document.querySelector(".ft-action") as HTMLButtonElement).click());
     expect(document.querySelector("[role=dialog]")!.textContent).toContain("다음 연락일 없음");

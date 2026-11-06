@@ -430,7 +430,7 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
         open={productionHint !== null}
         title={
           hintMetricLabel
-            ? `📞 컨택관리에서 ${hintMetricLabel}${eulReul(hintMetricLabel)} 입력하세요`
+            ? `📞 일별 기록에서 ${hintMetricLabel}${eulReul(hintMetricLabel)} 입력하세요`
             : "✅ 추가됐어요 — 더 하실 일은 없어요"
         }
         body={
@@ -438,7 +438,7 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
             // 입력형 — 학생이 컨택탭에서 손으로 넣어야 지표가 생긴다.
             <>
               <b>{hintKey ? KEY_TO_BACKEND[hintKey] : ""}</b> {hintRecordsLabel}
-              {iGa(hintRecordsLabel)} 추가됐어요. 이제 <b>컨택관리</b>에서{" "}
+              {iGa(hintRecordsLabel)} 추가됐어요. 이제 <b>일별 기록</b>에서{" "}
               <b>{hintMetricLabel}</b>
               {eulReul(hintMetricLabel)} 입력하면 <b>대시보드에 바로 보여요.</b>
             </>
@@ -447,11 +447,11 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
             <>
               <b>{hintKey ? KEY_TO_BACKEND[hintKey] : ""}</b> {hintRecordsLabel}
               {iGa(hintRecordsLabel)} 추가됐어요. <b>따로 입력하지 않으셔도 돼요</b> —
-              컨택관리에 자동으로 반영돼요.
+              일별 기록에 자동으로 반영돼요.
             </>
           )
         }
-        navLabel={hintMetricLabel ? "📞 컨택관리로 이동" : "📞 확인하러 가기"}
+        navLabel={hintMetricLabel ? "📞 일별 기록으로 이동" : "📞 확인하러 가기"}
         onNavigate={() => {
           const hint = productionHint;
           const focus = hintFocus;

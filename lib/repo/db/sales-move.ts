@@ -17,7 +17,7 @@ export async function moveDailyRowsInDb(ctx:{spreadsheetId:string;cohort:string;
     for (const place of [input.from,input.to]) {
       const result=await c.query("select payload from sheet_rows where spreadsheet_id=$1 and tab='sales' and row_key=$2 for update",[ctx.spreadsheetId,`${place.date}:${place.channel}`]);
       const p=result.rows[0]?.payload ?? {};
-      if (Number(p._dbSheetInflow ?? 0)>0 || Number(p._dbSheetContacts ?? 0)>0) throw new Error("[db-sheet-metrics-conflict] DB관리시트에서 변경해 주세요");
+      if (Number(p._dbSheetInflow ?? 0)>0 || Number(p._dbSheetContacts ?? 0)>0) throw new Error("[db-sheet-metrics-conflict] DB 목록에서 바꿔 주세요");
       values.push(place.metrics ?? {production:Number(p.production??0),inflow:Number(p.inflow??0),contactProgress:Number(p.contactProgress??0),meetingReservation:Number(p.meetingReservation??0)});
     }
     const from:Metrics={...values[0]!};

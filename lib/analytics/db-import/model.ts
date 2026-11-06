@@ -89,14 +89,17 @@ export function stepShortcut(row:Pick<Row,'stage'|'meetingId'|'effectiveMeetingI
 /**
  * 「도달 STEP」 칸 분류(2026-10-26 belie 「재통화 이하는 1.5, 미팅예약·컨택 후 거절은 2」 → 같은 날 「도달 STEP · 사이드탭과 같은 배지」) — 가장 멀리 간 단계 하나.
  * 계약 연결 = STEP 4 · 미팅 연결 = STEP 3 · 컨택결과 미팅예약/컨택 후 거절 = STEP 2 · 그 밖(미컨택·부재·단순거절·재통화·AS신청) = STEP 1.5.
- * name = 사이드 탭 이름. href 는 다른 화면으로 이어 갈 때만(1.5 는 지금 이 화면이라 없음). rank = 정렬 순서(단계 → 단계 안 진행 순서).
+ * name = 단계 이름(1.5·2 는 STEP 2 DB관리 안의 「컨택 전·컨택 완료」, 2026-11-07). href 는 다른 화면으로 이어 갈 때만(1.5·2 는 지금 이 화면이라 없음). rank = 정렬 순서(단계 → 단계 안 진행 순서).
  */
 const STEP_STATE_ORDER=['미팅예약','미팅변경','미팅완료','계약','실무진행','수납대기','완료','장기관리','진행종료'];
-export const STEP_NAMES={'1.5':'DB관리시트','2':'컨택관리','3':'일정·계약','4':'실무/수납'} as const;
+// 1.5·2 는 STEP 2 DB관리 안의 두 상태(2026-11-07 belie 「컨택 전/컨택 완료」). 키는 정렬·저장 호환으로 그대로 둔다.
+export const STEP_NAMES={'1.5':'컨택 전','2':'컨택 완료','3':'일정·계약','4':'실무/수납'} as const;
+/** 배지에 보일 STEP 숫자 — 1.5(컨택 전)도 STEP 2 로 보인다. */
+export const stepBadgeOf=(step:keyof typeof STEP_NAMES):'2'|'3'|'4'=>step==='1.5'?'2':step;
 /** 도달 STEP 배지를 누르면 보이는 한 줄 설명(효과 ④, 2026-10-28). */
 export const STEP_HINTS={'1.5':'아직 컨택 전이거나 재통화를 기다리는 업체예요.','2':'통화가 닿아 미팅을 잡았거나 컨택을 진행한 업체예요.','3':'미팅이 잡혀 일정·계약 단계에 있는 업체예요.','4':'계약해서 실무·수납을 진행하는 업체예요.'} as const;
 type ReachedStep=keyof typeof STEP_NAMES;
-const reached=(step:ReachedStep,href:string|null,state:string,rank:number)=>({step,name:STEP_NAMES[step],label:`STEP ${step} ${STEP_NAMES[step]}`,href,state,rank});
+const reached=(step:ReachedStep,href:string|null,state:string,rank:number)=>({step,name:STEP_NAMES[step],label:`STEP ${stepBadgeOf(step)} ${STEP_NAMES[step]}`,href,state,rank});
 export function stepStage(row:Pick<Row,'result'|'stage'|'meetingId'|'effectiveMeetingId'|'contact'|'contractRow'>):{step:ReachedStep;name:string;label:string;href:string|null;state:string;rank:number}{
  const link=stepShortcut(row);
  if(link){
@@ -104,14 +107,14 @@ export function stepStage(row:Pick<Row,'result'|'stage'|'meetingId'|'effectiveMe
   const i=STEP_STATE_ORDER.indexOf(link.state);
   return reached(four?'4':'3',link.href,link.state,(four?400:300)+(i<0?STEP_STATE_ORDER.length:i));
  }
- if(isQualifiedDbSheetContact(row.result))return reached('2','/contact',outcomeDisplayLabel(row.result),200+(row.result==='컨택진행'?0:1));
+ if(isQualifiedDbSheetContact(row.result))return reached('2',null,outcomeDisplayLabel(row.result),200+(row.result==='컨택진행'?0:1));
  const i=outcomes.indexOf(row.result);
  return reached('1.5',null,'',100+(i<0?outcomes.length:i));
 }
-/** 저장값은 그대로 두고 선택지에 STEP 2 집계 기준만 안내한다. */
+/** 저장값은 그대로 두고 선택지에 일별 기록 집계 기준만 안내한다. */
 export function outcomeLabel(result:string,activities=true):string {
  const qualified=isQualifiedDbSheetContact(result);
- return `${outcomeDisplayLabel(result)} · ${qualified?(activities?'STEP 2 컨택진행 +1':'STEP 2 기록 꺼짐'):'집계 제외'}`;
+ return `${outcomeDisplayLabel(result)} · ${qualified?(activities?'일별 기록 컨택진행 +1':'일별 기록 꺼짐'):'집계 제외'}`;
 }
 
 export function recordContact(row:Row,result:string,date:string):Row {

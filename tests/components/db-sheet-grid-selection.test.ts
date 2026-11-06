@@ -85,7 +85,7 @@ it('renders the bulk bar above the table and disables actions until something is
 it('trash notice shows the STEP 2 cleanup and opens the trash (2026-10-26)',()=>{
  const onOpen=vi.fn(),onClose=vi.fn();
  act(()=>root.render(createElement(TrashNoticeBar,{deleting:{count:3,inflow:2,contacts:1,meetings:0},onOpen,onClose})));
- expect(host.textContent).toContain('3건을 휴지통으로 옮겼어요 · STEP 2 유입 2건·상담 1건도 함께 정리돼요');
+ expect(host.textContent).toContain('3건을 휴지통으로 옮겼어요 · 일별 기록 유입 2건·상담 1건도 함께 정리돼요');
  act(()=>[...host.querySelectorAll('button')].find(x=>x.textContent==='휴지통 열기')!.click());expect(onOpen).toHaveBeenCalledOnce();
 });
 it('stage controls: two end buttons, a return button when parked, nothing for meeting-linked rows',async()=>{
@@ -126,11 +126,11 @@ it('컨택결과 꼬리표는 장기관리·진행종료만, 미팅 뒤는 진�
  expect(stepShortcut({stage:'수납대기',meetingId:'m1',contractRow:7})).toEqual({label:'STEP 4 실무/수납',href:'/payment?row=7',state:'수납대기'});
  expect(stepShortcut({stage:'미팅 삭제됨',meetingId:'m1'})).toBeNull();
 });
-it('진행 단계 분류 — 재통화 이하 STEP 1.5 · 미팅예약/컨택 후 거절 STEP 2 · 미팅 STEP 3 · 계약 STEP 4, 정렬은 그 순서', async () => {
+it('진행 단계 분류 — 재통화 이하 「STEP 2 컨택 전」 · 미팅예약/컨택 후 거절 「STEP 2 컨택 완료」 · 미팅 STEP 3 · 계약 STEP 4, 정렬은 그 순서(2026-11-07 1.5·2 통합)', async () => {
  const {stepStage}=await import('@/app/(app)/db-sheet/_components/model');
  const base={stage:'',meetingId:null as string|null};
- for(const result of ['미컨택','부재','단순거절','재통화','AS예정'])expect(stepStage({...base,result})).toMatchObject({step:'1.5',label:'STEP 1.5 DB관리시트',href:null});
- expect(stepStage({...base,result:'컨택진행'})).toMatchObject({step:'2',name:'컨택관리',label:'STEP 2 컨택관리',href:'/contact',state:'미팅예약'});
+ for(const result of ['미컨택','부재','단순거절','재통화','AS예정'])expect(stepStage({...base,result})).toMatchObject({step:'1.5',name:'컨택 전',label:'STEP 2 컨택 전',href:null});
+ expect(stepStage({...base,result:'컨택진행'})).toMatchObject({step:'2',name:'컨택 완료',label:'STEP 2 컨택 완료',href:null,state:'미팅예약'});
  expect(stepStage({...base,result:'상담 후 거절'})).toMatchObject({step:'2',state:'컨택 후 거절'});
  expect(stepStage({result:'컨택진행',stage:'미팅예약',meetingId:'m1'})).toMatchObject({step:'3',name:'일정·계약',label:'STEP 3 일정·계약'});
  expect(stepStage({result:'컨택진행',stage:'수납대기',meetingId:'m1',contractRow:7})).toMatchObject({step:'4'});

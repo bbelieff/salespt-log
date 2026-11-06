@@ -553,7 +553,7 @@ function getTimeValue(hourId, minuteId) {
 
 > 정본: `docs/design/prototypes/bottom-nav-4plus1.html`. 결정: [ADR-0019](../decisions/0019-bottom-nav-4plus1.md)(4+1 구조) + [ADR-0027](../decisions/0027-bottom-nav-step-indicator.md)(STEP 배지·탭별 컬러). 변경 시 새 ADR 필요.
 
-**탭 순서 (좌→우)**: DB생산(STEP1) `›` 컨택관리(STEP2) / **[캘린더 중앙 FAB]** / 일정·계약(STEP3) `›` 실무/수납(STEP4) — 순서·라벨·아이콘 불변(ADR-0019).
+**탭 순서 (좌→우)**: DB생산(STEP1) `›` DB관리(STEP2) / **[캘린더 중앙 FAB]** / 일정·계약(STEP3) `›` 실무/수납(STEP4) — 2026-11-07 [ADR-0037](../decisions/0037-step2-db-management.md): STEP 2 라벨 컨택관리 → DB관리(누르면 DB 목록, DB 목록·일별 기록 어디서든 켜짐). 아이콘·순서 그대로.
 - **단계 인디케이터(ADR-0027)**: 아이콘 칩 **위 STEP 배지**("STEP 1~4", `text-[9px]`). 점(dots) 폐기. 캘린더는 단계 없음(도구).
 - **흐름 화살표**: STEP1·2 사이, STEP3·4 사이에만 `›`(chevron, `text-slate-300`, 좁은 고정폭, 행 높이 중앙). **캘린더 양옆엔 없음**.
 - **아이콘 칩**: `h-8 w-9 rounded-lg`. 비활성=`bg-slate-200`+`text-slate-600`, 활성=탭색 채움(`bg-{tab}`)+흰 글리프+`shadow`. STEP 배지·라벨도 같은 탭색(라벨 `font-bold`). **탭색 5종 = tokens.md "탭 단계 색상"**(blue-700/emerald-600/amber-500/violet-600/rose-600).
@@ -1036,7 +1036,7 @@ PageBanner: 페이지 이모지·제목 | 선택적 부제
 **API**:
 
 ```tsx
-<TopHeader pageEmoji="📞" pageTitle="컨택관리" />
+<TopHeader pageEmoji="📞" pageTitle="일별 기록" pageNavigation={<DbManagementTabs current="/contact" />} />
 <TopHeader pageEmoji="📊" pageTitle="대시보드" pageSubtitle={`${STATS_WEEKS}주 누적`} />
 ```
 
@@ -1614,7 +1614,7 @@ button:focus, input:focus, select:focus {
 - 분기는 **CSS 로만** 한다: 사이드바 `hidden pc:flex`, `TabBar` 루트 `pc:hidden`.
   둘 다 렌더되고 하나만 보인다. `window.innerWidth`·`matchMedia` 로 가르면 서버/클라이언트
   렌더가 갈려 hydration 이 깨지고 첫 화면이 깜빡인다 — **금지**.
-- 4단계(DB생산·컨택관리·일정·계약·실무/수납)는 `TabBar` 가 export 하는 **`NAV_STEPS` 단일 원천**을
+- 4단계(DB생산·DB관리·일정·계약·실무/수납)는 `TabBar` 가 export 하는 **`NAV_STEPS` 단일 원천**을
   돌려 그린다. 사이드바가 라벨·색·`match` 를 따로 정의하면 두 벌이 되어 어긋난다.
 - 이동은 `useGuardedRouter` 경유 — 사이드바도 미저장 이탈 가드를 받는다.
   그래서 `(app)/layout.tsx` 의 **`DirtyProvider` 안**에 있어야 한다.
@@ -1785,11 +1785,12 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - `ImportDialog`: XLSX/XLS(첫 시트, 최대 5MB) 파일선택·끌어놓기, CSV/TSV·엑셀 블록·카카오톡·메타 CSV 미리보기와 검증 후 가져오기. XLSX는 필요한 첫 시트/메타 항목만 압축 해제하며 총 20MiB·10,000 데이터행/200열·변환 결과 5MiB를 제한한다(공유문자열 반복 참조도 출력량에 포함). 표시 서식 문자열은 formatter 호출 전 1,024자로 제한한다. ZIP 크기 불일치·중복 경로·손상된 XML은 저장 전에 차단하고, 한도 초과는 필요한 범위를 새 파일로 저장하도록 안내한다. 실제 등록은 기존 500건 한도를 유지한다. 맨 위 10줄 안의 시트 제목·요약 줄은 건너뛰고 전화번호+(이름·업체·사업자번호) 머리글부터 읽는다. 목록·휴지통에 이미 있는 업체(사업자번호·이름·전화 일치, `isSameLead`)는 「새 DB N건 · 이미 있는 N건 제외」로 접고 표·확인 칸 개수에서 뺀다(「보기」로 펼쳐 「중복 확인 → 따로 추가」 가능, 휴지통은 창을 열 때 1회 조회).
 - `DbDetail`: 원본 DB정보와 확인된 업체정보를 구분하는 크기 조절 패널.
 - `ContactPanel`: 기존 CompanyInfoEditor 재사용, 날짜별 상담 기록 및 미팅 생성. 등록 후 연결 정보는 기존 미팅 편집 경로가 정본.
-- `ContactDbLeads`: 컨택관리의 날짜·채널별 DB관리시트 바로가기. 유입일 이후부터 표시.
+- `ContactDbLeads`: 일별 기록의 날짜·채널별 DB 목록 바로가기(「DB 목록 업체 N」). 유입일 이후부터 표시.
 
 
 ## DB관리시트 상단·SupplierSummary (2026-10-13)
 - TopHeader의 선택적 pageNavigation에 DB생산/DB관리시트 탭 배치. 기존 호출 화면은 그대로 유지.
+  - 2026-11-07(ADR-0037): 이 자리는 **`DbManagementTabs`**(`components/DbManagementTabs.tsx`) — [DB 목록 | 일별 기록] 두 탭, DB 목록(/db-sheet)·일별 기록(/contact) 위 띠에 같이 쓴다. 현재 탭 = 파란 밑줄·`aria-current=page`, 이동은 `useGuardedRouter`(미저장 확인). DB생산 화면 위 「DB생산 · DB관리시트」 탭은 없앴다.
 - 목록 우선: 첫 행 검색·공급처별 보기·보여줄 항목·입력·가져오기. 좁은 폭에서는 필터를 다음 행으로 줄바꿈. 버튼은 공통 app-header-pill, SVG 펼침 아이콘 사용.
 - 공급처 패널은 기본 접힘, 명시적인 ?view=suppliers 진입만 펼침. 사용자 펼침 상태를 영구 저장하지 않음.
 - SupplierSummary는 유입일 기간 안의 리드를 공급처별로 DB/상담/미팅/계약/계약률로 비교. 검색·공급처 선택으로 비교 모수가 바뀌지 않음. 행 선택은 기존 공급처 필터와 연결.
@@ -1801,7 +1802,7 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 ### DashboardFollowUps STEP별 표 · 2026-10-14 사용자 승인
 
 - **DashboardActionOverview**: PC 왼쪽 진행건→오늘 챙길 일, 오른쪽 생산성→주간목표. 두 열 하단을 stretch/flex로 맞추며 내용이 넘치면 함께 늘어난다. 모바일 실제 교육주차별 순서 유지, 모든 카드 처음부터 표시.
-- **DashboardFollowUpsView**: STEP1.5/2/3/4 행과 장기누락(7일~)·경과(1~6일)·오늘 열. 정상 0건은 회색 0으로 항상 표시. 데이터 조회·재시도·집계는 기존 DashboardFollowUps 책임.
+- **DashboardFollowUpsView**: STEP 2(DB관리)/3/4 행(2026-11-07 1.5 행을 STEP 2 로 합침 — 첫 연락·재연락은 kind 로 구분)과 장기누락(7일~)·경과(1~6일)·오늘 열. 정상 0건은 회색 0으로 항상 표시. 데이터 조회·재시도·집계는 기존 DashboardFollowUps 책임.
 - STEP 호버/클릭으로 긴급순 표, 숫자는 해당 구간, 전체 숫자는 전체 미처리. 긴급도/업체·진행건/해야 할 일/기준일·기관/바로가기. 행 상세에 이유와 전체 facts. PC 7행 스크롤 없이 표시, 더 많거나 작은 높이는 팝업 내부 스크롤.
 - 모바일은 기준일·기관을 행 상세로 옮겨 가로 넘침 방지. click/tap/키보드로 조작 가능. 바깥 클릭·Escape·닫기 및 hover 영역 이탈 닫기. 빈 상세는 “지금 처리할 일이 없어요”.
 - 부분 조회 실패는 확인된 건수·재시도, 미확인 0 대신 —. 날짜 확인 항목 및 미래 7일 별도 표시. 기존 DB 미지원·5분 조회·저장 무효화 유지.
@@ -1813,7 +1814,7 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - **BugReportDialog** / **AnnotateCanvas** (2026-10-25, `components/bug-report/`): 오류신고 창(body 포털, z 60). 그림 = PC 실제 탭 한 장(「이 탭 공유」 허락, 찍는 순간 개인정보 회색 가림) · 휴대폰·거절이면 「📷 화면 캡처하러 가기」(창 숨김 + 아래 「캡처했어요 · 신고로 돌아가기」 알약 버튼 `.br-return`) / 「🖼 사진 붙이기」(file input)·Ctrl+V. 미리보기(누르면 그림판, 바꾸기·빼기) · 문제 종류 칩 6개(radiogroup, 필수) · 설명 textarea · 보내기 → 「접수했어요」. AnnotateCanvas = 빨간(#dc2626) 박스·펜·글자 + 가리기(진회색 #334155 채움) + 되돌리기·전체 지우기·취소·완료(합친 JPEG 반환). 찍기·가림 `capture.ts`, 최근 오류 `error-log.ts`, 스타일 `bug-report.css`. 터치 화면 누름 영역 44px.
 - **FollowUpsLauncher** / **FollowUpsLauncherView** (2026-10-23): 대시보드 밖 로그인 화면 우하단(2026-10-24 이동) 56px 원형 버튼(indigo→purple, 달력+체크) + 빨간 건수 배지(0이면 숨김). 누르면 버튼에서 원형으로 퍼지는 창(clip-path 0.48s) — 긴급순 5건(배지·업체·할 일·STEP, 「열기」=표와 같은 목적지)·나머지 N건·대시보드에서 전체 보기. ×·Esc 닫기 후 초점 버튼 복귀, 바깥 누르기 닫기, `aria-expanded`/`aria-controls`. 대시보드·관리자 본인 화면은 숨김. 모바일은 탭바 위 오른쪽, PC는 화면 오른쪽 아래(24px). 스타일 `components/dashboard/followups-launcher.css`.
 - **VersionUpdateBanner** (2026-10-26, `components/app-version/`): 로그인 후 화면 공통 새 버전 알림. 서버 `/api/version` ≠ 화면 버전이면 아래 가운데 남색 알약 「● 새 버전이 나왔어요 · 버전명 · [새로고침] ×」(role=status). 모바일은 탭바·빠른 보기 버튼 위, PC 는 아래 20px. z 50. 좁은 화면(<480px)은 버전명을 둘째 줄로. 스타일 `version-banner.css`.
-- **StepBadge** (2026-10-26, `components/ui/StepBadge.tsx`): 「STEP n」 둥근 배지 — 사이드 탭(DesktopNav)과 DB관리시트 「도달 STEP」 칸이 같이 쓴다. 1 blue-100/800 · 1.5 blue-100→emerald-100 그라데이션 teal-800 · 2 emerald · 3 violet · 4 rose. text-xs bold, px-1.5 py-0.5.
+- **StepBadge** (2026-10-26, `components/ui/StepBadge.tsx`): 「STEP n」 둥근 배지 — 사이드 탭(DesktopNav)과 DB관리시트 「도달 STEP」 칸이 같이 쓴다. 1 blue-100/800 · 2 emerald · 3 violet · 4 rose(1.5 배지는 2026-11-07 ADR-0037 로 없앰 — 「컨택 전」 DB도 STEP 2 배지에 이름 「컨택 전」). text-xs bold, px-1.5 py-0.5.
 
 ## DB관리시트 통화 정리 앞단 (2026-11-03, plan call-summary PR-5a)
 - 묶음 `CallUi.tsx`(`useCallUi(rows)` → `slot`·`bar`·`layer`) — 페이지는 Grid `callSlot`·DbDetail `callBar` 와 대화상자 층만 꽂는다. `GET /api/calls` 404(스위치 밖)면 아무것도 그리지 않아 카드 모양이 그대로.

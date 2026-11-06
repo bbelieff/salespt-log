@@ -60,7 +60,7 @@ it("shows accounting guidance on each option while keeping AS storage and date p
  const options=[...host.querySelectorAll('option')];
  for(const option of options)expect(option.textContent).toBe(outcomeLabel(option.value,true));
  const as=options.find(option=>option.value==='AS예정')!;expect(as.textContent).toContain('AS신청');expect(as.textContent).toContain('집계 제외');
- expect(options.find(option=>option.value==='컨택진행')!.textContent).toContain('STEP 2');
+ expect(options.find(option=>option.value==='컨택진행')!.textContent).toContain('일별 기록');
  act(()=>root.render(React.createElement(DbContactActions,{...props,row:{...row,recording:{inflow:true,activities:false}}})));
  expect([...host.querySelectorAll('option')].every(option=>option.textContent===outcomeLabel(option.value,false))).toBe(true);
  expect(recordsDbSheetFirstContact('AS예정')).toBe(false);

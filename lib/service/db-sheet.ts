@@ -34,7 +34,10 @@ export const DbSheetCommand = z.discriminatedUnion("action", [
   z.object({action:z.literal("trash-restore"),ids:z.array(z.string().uuid()).min(1).max(500),allowDuplicate:z.boolean().optional()}),
   z.object({action:z.literal("trash-empty"),ids:z.array(z.string().uuid()).max(500).optional()}),
 ]);
-export class DbSheetUnavailable extends Error {}
+/** code "unsupported" = DB 전환 전 기수(DB 목록 없음) — 화면은 일별 기록으로 보낸다(2026-11-07). */
+export class DbSheetUnavailable extends Error {
+  constructor(message: string, public code?: "unsupported") { super(message); }
+}
 
 export async function resolveDbSheetContext(email: string, sheetOverride?: string): Promise<DbSheetContext> {
   const user = await findUserByEmail(email, { fresh: true });
@@ -43,7 +46,7 @@ export async function resolveDbSheetContext(email: string, sheetOverride?: strin
   }
   const cohort = sourceCohort(user);
   if (!usesDbStorage(cohort)) {
-    throw new DbSheetUnavailable("이 계정은 아직 DB관리시트를 지원하지 않습니다.");
+    throw new DbSheetUnavailable("이 계정은 DB 목록을 쓰지 않아요. 일별 기록에서 기록해 주세요.", "unsupported");
   }
   return { spreadsheetId: user.spreadsheetId, cohort, email };
 }

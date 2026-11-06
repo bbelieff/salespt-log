@@ -11,6 +11,7 @@ describe("DB관리시트 읽기 훅", () => {
   it("「이 계정은 지원 안 함」 503 은 숨김 대상, 일시 장애 503·다른 상태는 오류로 둔다", () => {
     expect(isDbSheetUnsupported(new DbSheetLoadError("이 계정은 아직 DB관리시트를 지원하지 않습니다.", 503))).toBe(true);
     expect(isDbSheetUnsupported(new DbSheetLoadError("개인 DB 연결을 확인할 수 없습니다.", 503))).toBe(true);
+    expect(isDbSheetUnsupported(new DbSheetLoadError("이 계정은 DB 목록을 쓰지 않아요. 일별 기록에서 기록해 주세요.", 503))).toBe(true); // 2026-11-07 문구
     expect(isDbSheetUnsupported(new DbSheetLoadError("저장소에 연결하지 못했습니다. 입력 내용을 유지하고 다시 시도해 주세요.", 503))).toBe(false);
     expect(isDbSheetUnsupported(new DbSheetLoadError("이 계정은 아직 DB관리시트를 지원하지 않습니다.", 500))).toBe(false);
     expect(isDbSheetUnsupported(new Error("이 계정은 아직 DB관리시트를 지원하지 않습니다."))).toBe(false);

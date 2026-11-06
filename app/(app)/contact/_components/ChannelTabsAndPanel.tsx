@@ -427,7 +427,7 @@ export default function ChannelTabsAndPanel({
                     type="button"
                     className="stepper-btn bg-gray-100 text-gray-600 hover:bg-gray-200"
                     disabled={cell[m.key] <= minimum}
-                    title={minimum > 0 ? "DB관리시트 자동 집계는 DB관리시트에서 변경" : undefined}
+                    title={minimum > 0 ? "DB 목록에서 잡힌 숫자는 DB 목록에서 바꿔 주세요" : undefined}
                     onClick={() => onStep(m.key, -1)}
                     aria-label={`${m.label} 감소`}
                   >

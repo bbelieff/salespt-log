@@ -72,7 +72,7 @@ describe("approved follow-up rules", () => {
   });
   it("all counts derive from the same unique items, future contacts are separate; failed source contributes nothing", () => {
     const summary=summarizeFollowUps({leads:[lead({id:"future",next:"2026-10-19"}),lead({id:"first",result:"미컨택",date:TODAY})],meetings:undefined},TODAY);
-    expect(summary.total).toBe(1);expect(summary.counts.upcoming).toBe(1);expect(summary.stepCounts["1.5"]).toBe(1);
+    expect(summary.total).toBe(1);expect(summary.counts.upcoming).toBe(1);expect(summary.stepCounts["2"]).toBe(1);
     expect(Object.values(summary.groupCounts).reduce((a,b)=>a+b,0)).toBe(summary.items.length);
     expect(Object.values(summary.stepCounts).reduce((a,b)=>a+b,0)).toBe(summary.total);
     expect(JSON.stringify(summary.items)).not.toContain("phone");

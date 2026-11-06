@@ -60,7 +60,7 @@ const reasonOf = (e: unknown) => {
   const code = e instanceof Error ? e.message : "";
   if (code === "MEETING_ARCHIVE_COMPLEX") return "계약·연결된 미팅이라 되살릴 수 없어요";
   if (code === "MEETING_ARCHIVE_PURGED") return "영구삭제한 DB의 미팅이에요";
-  if (e instanceof DbSheetDuplicate) return "같은 업체가 DB관리시트에 이미 있어요";
+  if (e instanceof DbSheetDuplicate) return "같은 업체가 DB 목록에 이미 있어요";
   return "되살리지 못했어요";
 };
 

@@ -17,7 +17,7 @@ beforeEach(() => { vi.useFakeTimers(); host = document.createElement("div"); doc
 afterEach(() => { act(() => root.unmount()); host.remove(); vi.useRealTimers(); });
 const render = (items = records, incomplete = false) => act(() => root.render(React.createElement(DashboardFollowUpsView, { items, incomplete })));
 const dialog = () => document.querySelector<HTMLElement>("[role=dialog]");
-function row(index = 3): HTMLElement {
+function row(index = 2): HTMLElement { // 0 STEP 2 · 1 STEP 3 · 2 STEP 4 (1.5·2 통합, 2026-11-07)
   const element = host.querySelectorAll<HTMLElement>(".ft-summary-row")[index];
   if (!element) throw new Error(`Expected STEP row at index ${index}`);
   return element;
@@ -64,7 +64,7 @@ describe("follow-up table interactions", () => {
     expect(dialog()!.textContent).toContain("합성 기관");
   });
   it("keeps zero stages visible and distinguishes incomplete data from an empty list", () => {
-    render([]); expect(host.querySelectorAll(".ft-summary-row")).toHaveLength(4);
+    render([]); expect(host.querySelectorAll(".ft-summary-row")).toHaveLength(3);
     expect([...host.querySelectorAll(".ft-count")].every(e => e.textContent === "0")).toBe(true);
     click(row(0).querySelector("button")!); expect(dialog()!.textContent).toContain("지금 처리할 일이 없어요");
     render([], true); expect([...host.querySelectorAll(".ft-count")].every(e => e.textContent === "—")).toBe(true);
@@ -86,7 +86,7 @@ describe("follow-up table interactions", () => {
   it("can hover another step and use keyboard activation without focus being stolen by hover", () => {
     render(); const first = row().querySelector("button")! as HTMLButtonElement;
     act(() => first.focus()); pointer(row(), "pointerover"); tick(151); expect(document.activeElement).toBe(first);
-    pointer(row(), "pointerout", row(1)); pointer(row(1), "pointerover", row()); pointer(row(1), "pointermove"); tick(151);
+    pointer(row(), "pointerout", row(0)); pointer(row(0), "pointerover", row()); pointer(row(0), "pointermove"); tick(151);
     expect(dialog()!.getAttribute("aria-label")).toContain("STEP 2");
     click(first); expect(document.activeElement).toBe(dialog());
     act(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })));

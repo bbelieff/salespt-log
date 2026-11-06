@@ -25,12 +25,13 @@ export class DbSheetLoadError extends Error {
 }
 
 /**
- * GET /api/db-sheet 가 503 으로 「이 계정은 DB관리시트를 쓸 수 없다」고 답한 경우.
+ * GET /api/db-sheet 가 503 으로 「이 계정은 DB 목록을 쓸 수 없다」고 답한 경우.
  * lib/service/db-sheet.ts resolveDbSheetContext 의 DbSheetUnavailable 문구 2종과 짝이다
  * (tests/components/db-sheet-hooks.test.ts 가 두 문구가 여기에 걸리는지 지킨다).
  * 일시 장애(「저장소에 연결하지 못했습니다」)는 여기에 걸리지 않아 오류로 보인다.
  */
-const UNSUPPORTED_MESSAGE = /지원하지 않습니다|연결을 확인할 수 없습니다/;
+// 「DB 목록을 쓰지 않아요」 = 2026-11-07 바뀐 문구(DB 전환 전 기수). 옛 문구도 배포 사이 응답을 위해 남긴다.
+const UNSUPPORTED_MESSAGE = /DB 목록을 쓰지 않아요|지원하지 않습니다|연결을 확인할 수 없습니다/;
 export function isDbSheetUnsupported(error: unknown): boolean {
   return error instanceof DbSheetLoadError && error.status === 503 && UNSUPPORTED_MESSAGE.test(error.message);
 }
