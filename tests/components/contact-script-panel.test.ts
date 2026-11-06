@@ -83,6 +83,29 @@ describe("ContactScriptPanel", () => {
     expect(el.querySelector("textarea")).toBeNull();
     expect(el.textContent).toContain("고친 대본");
   });
+  it("문자 양식도 자기 「수정」으로 고쳐 저장한다 — 대본은 그대로 함께 보낸다 (2026-11-06 belie)", async () => {
+    const fetchMock = vi.fn(async (_u: string, init?: RequestInit) => {
+      if (init?.method === "PUT") return new Response(JSON.stringify({ ...JSON.parse(String(init.body)), custom: true }));
+      return new Response(JSON.stringify({ script: "가상 대본", sms: "가상 문자", custom: false }));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const el = mount(h(ContactScriptPanel));
+    await settle(() => !!el.querySelector('[aria-label="문자 양식 수정"]'));
+    act(() => (el.querySelector('[aria-label="문자 양식 수정"]') as HTMLButtonElement).click());
+    expect(el.querySelector('textarea[aria-label="컨택 대본"]')).toBeNull();
+    expect(el.textContent).toContain("가상 대본");
+    const area = el.querySelector('textarea[aria-label="문자 양식"]') as HTMLTextAreaElement;
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
+    act(() => {
+      setter.call(area, "고친 문자");
+      area.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    act(() => btn(el, "저장")!.click());
+    await settle(() => !el.querySelector("textarea"));
+    const putCall = fetchMock.mock.calls.find((c) => c[1]?.method === "PUT")!;
+    expect(JSON.parse(String(putCall[1]!.body))).toEqual({ script: "가상 대본", sms: "고친 문자" });
+    expect(el.textContent).toContain("고친 문자");
+  });
   it("「복사」 는 문자 양식을 클립보드에 넣는다", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ script: "s", sms: "가상 문자", custom: true }))));
     const writeText = vi.fn(async () => {});
