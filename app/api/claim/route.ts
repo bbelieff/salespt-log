@@ -11,18 +11,17 @@
  */
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { getCurrentUserEmail } from "@/auth/stub";
 import { claimAccount, ClaimError } from "@/service/auth";
 import { isClaimableCohort } from "@/service/cohort-token";
 import { revalidateAdminPages } from "@/auth/revalidate-admin";
 import { withApiTiming } from "@/lib/analytics/api-timing";
-import { isAdminEmail } from "@/auth/identity";
+import { getSessionEmail, isAdminEmail } from "@/auth/identity";
 
 async function POST_handler(req: Request) {
-  let email: string;
-  try {
-    email = await getCurrentUserEmail();
-  } catch {
+  // 클레임은 항상 로그인한 본인 계정으로 — 대리 보기 쿠키(salespt_as)를 따르면 트레이너가 [웹앱]으로
+  // 수강생 화면을 연 뒤 /claim 할 때 그 수강생 계정으로 처리돼 아무것도 등록되지 않는다(2026-11-06 0기 코스텝).
+  const email = await getSessionEmail().catch(() => null);
+  if (!email) {
     return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   }
 
