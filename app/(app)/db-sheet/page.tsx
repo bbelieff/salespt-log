@@ -33,10 +33,18 @@ import './recording.css';
 import './compact.css';
 import './bulk.css';
 import './absence-link.css';
+import './feed.css';
+import {FeedBar} from './_components/FeedBar';
+import {FeedInflowDialog} from './_components/FeedInflowDialog';
+import {useDbSheetFeeds,type FeedAction} from './_components/feed-client';
 /** DB 목록이 먼저 보이도록 기본은 접힘. 공급처 바로가기 진입에서만 펼친다. */
 export default function DbSheetPage(){
  const router=useGuardedRouter(),data=useDbSheet(),rows=data.leads,me=useMe();
  const callUi=useCallUi(rows,data.reload);
+ // 연결한 DB 시트(2026-11-06): 07~21시 매시간 새 DB가 유입 「반영 안 함」으로 들어오고, 열 때 팝업으로 반영할지 묻는다.
+ const feedState=useDbSheetFeeds(),[importUrl,setImportUrl]=useState(''),[inflowLater,setInflowLater]=useState(false);
+ const pendingFeedIds=new Set(feedState.feeds.flatMap(f=>f.pendingInflow)),pendingFeedRows=rows.filter(r=>pendingFeedIds.has(r.id));
+ async function feedAct(body:FeedAction){const out=await feedState.act(body);if(body.action==='check')await data.reload();return out;}
  const sizingRows=useMemo(()=>rows.map(r=>({...r,memo:r.contact.note.split(/\r?\n/)[0]||''})),[rows]);
  const accountKey=me.isSuccess&&me.data.email?JSON.stringify([me.data.email,me.data.cohort,me.data.spreadsheetId]):'';
  const [period,setPeriod]=useState<InflowPeriodId>('all');
@@ -105,6 +113,7 @@ export default function DbSheetPage(){
  {mobile&&mobileFilter&&(mobileFilter==='date'?dateTrigger.current:statusTrigger.current)&&<MobileFilterMenu key={mobileFilter} title={mobileFilter==='date'?'유입일':'상태'} anchor={(mobileFilter==='date'?dateTrigger.current:statusTrigger.current)!} onClose={()=>setMobileFilter(null)}>{mobileFilter==='date'?dateFilter:statusFilter}</MobileFilterMenu>}
 
  <span ref={listTop} aria-hidden="true" className="block scroll-mt-app-content"/>
+ <FeedBar feeds={feedState.feeds} message={feedState.message} readOnly={!feedState.editable} onDismiss={()=>feedState.setMessage(null)} onAct={feedAct} onReview={f=>{setImportUrl(f.sheetUrl);setImporting(true);}}/>
  {data.deleting&&<TrashNoticeBar key={JSON.stringify(data.deleting)} deleting={data.deleting} onOpen={()=>setTrashOpen(true)} onClose={data.undoDelete}/>}
  {data.notice&&<p role="alert" className="sheet-error">{data.notice} <button type="button" className="sheet-text-btn" onClick={data.clearNotice}>닫기</button></p>}
  {data.addition&&<ImportResultNotice key={JSON.stringify(data.addition)} result={data.addition} onClose={data.clearAddition}/>}
@@ -112,7 +121,8 @@ export default function DbSheetPage(){
  </section></PageContainer></div>
  {selected&&<DbDetail key={selected.id} row={selected} callBar={callUi.bar(selected)} onStage={v=>data.stage(selected.id,v)} onAbsence={(entry,remove)=>data.absence(selected.id,entry,remove)} onLink={id=>data.linkMeeting(selected.id,id)} draft={selected.contact} onRestored={data.reload} onAsInfo={v=>data.asInfo(selected.id,v)} onInflowChange={value=>changeInflow(selected.id,value)} onDelete={()=>setRecording({id:selected.id,deleting:true})} onChange={v=>data.contact(selected.id,v)} onEdit={(k,v)=>data.edit(selected.id,k,v)} onResult={(v,date)=>{void data.record(selected.id,v,date).catch(()=>{});}} onRegister={()=>{void data.register(selected.id).catch(()=>{});}} onOpen={()=>{void data.flush(selected.id).then(()=>router.push(`/contact?date=${selected.contact.date}&channel=${encodeURIComponent(selected.channel)}`)).catch(()=>{});}} onClose={()=>{void data.flush(selected.id).catch(()=>{});setDetail('');}}/>}
  {draft&&<DirectInputDialog initial={draft} rows={rows} onClose={()=>setDraft(null)} onExisting={id=>{setDraft(null);setDetail(id);}} onSave={async(row,allow)=>{await data.add([row],row.id,allow?[row.id]:[]);setDraft(null);}}/>}
- {importing&&<ImportDialog accountKey={accountKey} rows={rows} onListTrash={data.listTrash} onExisting={id=>{setImporting(false);setDetail(id);}} onClose={()=>setImporting(false)} onApply={async(added,allow)=>{await data.add(added,added[0]!.id,allow);setImporting(false);}}/>}
+ {importing&&<ImportDialog key={importUrl||'new'} accountKey={accountKey} rows={rows} initialUrl={importUrl} connected={!!importUrl} onListTrash={data.listTrash} onExisting={id=>{setImporting(false);setImportUrl('');setDetail(id);}} onClose={()=>{setImporting(false);setImportUrl('');}} onApply={async(added,allow)=>{await data.add(added,added[0]!.id,allow);setImporting(false);setImportUrl('');}}/>}
+ {feedState.editable&&!inflowLater&&!importing&&!data.loading&&pendingFeedRows.length>0&&<FeedInflowDialog key={pendingFeedRows.map(r=>r.id).join()} rows={pendingFeedRows} onReflect={async ids=>{const out=await data.bulkInflow(ids,true);if(out.blocked.length)throw new Error(`${out.blocked.length}건은 반영하지 못했어요: ${out.blocked[0]!.reason}`);}} onAnswer={async ids=>{await feedState.act({action:'answer',ids});}} onLater={()=>setInflowLater(true)}/>}
  {recording&&rows.find(r=>r.id===recording.id)&&<RecordingDialog row={rows.find(r=>r.id===recording.id)!} deleting={recording.deleting} onClose={()=>setRecording(null)} onPreview={v=>data.recordingPreview(recording.id,v,recording.deleting)} onConfirm={async v=>{await data.configure(recording.id,v,recording.deleting);if(recording.deleting)setDetail('');}}/>}
  {trashOpen&&<TrashDialog onList={data.listTrash} onRestore={data.restoreTrash} onEmpty={data.emptyTrash} onClose={()=>setTrashOpen(false)}/>}
  {callUi.layer}

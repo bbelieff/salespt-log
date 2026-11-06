@@ -1,0 +1,25 @@
+/* DB관리시트 — 연결한 DB 시트 줄 · 새로 들어온 DB 유입 반영 팝업(2026-11-06). 기존 sheet-btn·bulk 줄 색을 그대로 쓴다. */
+body.db-sheet-route .sheet-feed-bar{display:flex;flex-direction:column;gap:4px;margin:0 0 8px}
+body.db-sheet-route .sheet-feed-row{display:flex;align-items:center;flex-wrap:wrap;gap:6px 10px;padding:4px 4px 4px 12px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc;font-size:12px;color:#64748b}
+body.db-sheet-route .sheet-feed-row[data-off]{background:#fff;border-style:dashed}
+body.db-sheet-route .sheet-feed-name{display:inline-flex;align-items:center;gap:4px;font-weight:600;color:#1e293b}
+body.db-sheet-route .sheet-feed-name a{color:inherit;text-decoration:none}
+body.db-sheet-route .sheet-feed-name a:hover{text-decoration:underline}
+body.db-sheet-route .sheet-feed-state{font-variant-numeric:tabular-nums;min-width:0}
+body.db-sheet-route .sheet-feed-warn{color:#b45309}
+body.db-sheet-route .sheet-feed-review{border:0;border-radius:999px;padding:2px 10px;background:#fef3c7;color:#92400e;font-size:12px;font-weight:600;cursor:pointer}
+body.db-sheet-route .sheet-feed-review:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
+body.db-sheet-route .sheet-feed-actions{display:flex;gap:6px;margin-left:auto}
+body.db-sheet-route .sheet-feed-message{display:flex;align-items:center;gap:8px;margin:0;padding:4px 4px 4px 12px;border-radius:8px;background:#eff6ff;color:#1e40af;font-size:12px}
+body.db-sheet-route .sheet-feed-message.is-error{background:#fff1f2;color:#be123c}
+body.db-sheet-route .sheet-feed-message .sheet-text-btn{margin-left:auto}
+.sheet-feed-inflow{display:flex;flex-direction:column;gap:10px;padding:4px 16px 16px;min-width:0;font-size:13px;color:#334155}
+.sheet-feed-inflow ul{list-style:none;margin:0;padding:0;max-height:min(50vh,360px);overflow:auto;border:1px solid #e2e8f0;border-radius:8px}
+.sheet-feed-inflow li+li{border-top:1px solid #f1f5f9}
+.sheet-feed-pick{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer}
+.sheet-feed-pick input{width:15px;height:15px;margin:0;accent-color:#2563eb}
+.sheet-feed-pick-all{padding:0 10px;font-weight:600}
+.sheet-feed-pick-name{flex:1 1 auto;min-width:0;overflow-wrap:anywhere;color:#0f172a}
+.sheet-feed-pick-meta{flex:none;color:#64748b;font-variant-numeric:tabular-nums}
+.sheet-feed-inflow-actions{display:flex;justify-content:flex-end;align-items:center;gap:8px;flex-wrap:wrap}
+@media (max-width:640px){body.db-sheet-route .sheet-feed-actions{margin-left:0;width:100%}}

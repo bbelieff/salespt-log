@@ -6,8 +6,10 @@
  * sets itself and does not take from the client (2026-10-22 운영 실측).
  */
 import { timingSafeEqual } from "node:crypto";
+import * as Sentry from "@sentry/nextjs";
 import { NextRequest, NextResponse } from "next/server";
 import { dispatchDuePush } from "@/service/push";
+import { dispatchDbSheetFeeds } from "@/service/db-sheet-feed";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,5 +31,7 @@ function authorized(req: NextRequest): boolean {
 
 export async function POST(req: NextRequest) {
   if (!authorized(req)) return NextResponse.json({ error: "not_found" }, { status: 404 });
-  return NextResponse.json(await dispatchDuePush(), { headers: { "Cache-Control": "no-store" } });
+  // DB 시트 자동 확인(2026-11-06)도 같은 시계에 붙는다 — 먼저 짧게(25초) 돌고, 남은 연결은 다음 15분에 이어서.
+  const feeds = await dispatchDbSheetFeeds().catch((error) => { Sentry.captureException(error, { tags: { where: "db-sheet-feed-dispatch" } }); return null; });
+  return NextResponse.json({ ...(await dispatchDuePush()), feeds }, { headers: { "Cache-Control": "no-store" } });
 }

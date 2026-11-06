@@ -1,13 +1,13 @@
 > **📄 이 문서는 무엇인가요?**
-> - **한 줄 요약**: DB 업체가 준 구글시트 주소를 등록해 두면 하루 세 번 새 DB만 DB관리시트에 자동 추가하는 기능 기획(코드 전).
+> - **한 줄 요약**: DB 업체가 준 구글시트 주소를 연결해 두면 07~21시 매시간 새 DB만 DB관리시트에 자동 추가하는 기능(설계·구현 기록).
 > - **누가 읽나요**: belie · 개발자
 > - **어떤 기능·작업과 연결?**: DB관리시트 가져오기(`ImportDialog`·`adaptive-import`·`model.ts`), 시트 내려받기(`lib/repo/google-sheet-export.ts`), 서버 시계(`app/api/internal/push/dispatch`), 중복 검사(`lib/repo/db/db-sheet-safety.ts`)
 > - **읽고 나면 알 수 있는 것**: 수강생이 겪는 흐름 · 「새 DB」 판단법 · 안전장치 · belie 결정 4개
 > - **관련 문서**: [애드프로 인식](../completed/db-import-adpro.md)
 
-# DB 시트 자동 확인 (하루 3번 새 DB만)
+# DB 시트 자동 확인 (07~21시 매시간 새 DB만)
 
-status: draft — belie 결정 완료(2026-11-06, 아래 §6). 구현 대기
+status: verified — 구현(2026-11-06, §8). 운영: 0016·0017 마이그레이션 적용 후 동작.
 
 ## 1. 왜
 애드프로 같은 DB 업체는 수강생마다 구글시트를 하나 주고, 새 고객을 그 시트 아래에 계속 붙인다. 지금은 수강생이 주소를 붙여넣어 「가져오기」를 매번 눌러야 하고, 잊으면 DB가 늦게 들어와 첫 통화가 늦어진다.
@@ -39,7 +39,7 @@ status: draft — belie 결정 완료(2026-11-06, 아래 §6). 구현 대기
 - 로그에는 건수만, 고객 값 없음.
 
 ## 6. belie 결정 (2026-11-06)
-1. 확인 시각: **09:00 · 13:00 · 18:00**.
+1. 확인 시각: ~~09·13·18시~~ → **07~21시 매시간 한 번, 고르는 칸 없음**(belie 정정 「시간까지 선택하는 건 의미 없음」). 서버 시계가 07~21시만 돌아 밤에 들어온 DB는 다음 날 07시.
 2. STEP 2 유입 기록: **자동으로 목록에 넣은 뒤, 수강생이 팝업에서 반영할지 고른다.** 들어온 DB는 「유입 확인 전」 상태로 두고, DB관리시트를 열면 「새로 들어온 DB 3건 · 유입으로 반영할까요?」 팝업(줄마다 체크, 기본 전체 체크 · 「반영」「반영 안 함」). 고르기 전에는 유입 실적에 넣지 않는다.
 3. 애매한 줄: **확인 대기로 모으기**.
 4. 새 DB 알림(웹푸시): **보내기**.
@@ -48,3 +48,18 @@ status: draft — belie 결정 완료(2026-11-06, 아래 §6). 구현 대기
 - PR 1: 분석기 lib 이동(동작 무변경).
 - PR 2: 표·서비스·서버 시계 연결·연결 관리 화면·확인 대기·알림.
 - 운영: 마이그레이션 적용 → 애드프로 시트 1개로 시범 → 전체.
+
+## 8. 구현 (2026-11-06, feat/db-sheet-feed)
+| 영역 | 파일 |
+|---|---|
+| 판단(순수) | `lib/analytics/db-import/feed.ts` — 시각 칸·줄 지문·새 줄 고르기(한 번 최대 200건)·저장 입력. 분석기(`model`·`adaptive-import`·`import-text`)는 서버도 쓰도록 `lib/analytics/db-import/` 로 옮기고 화면 쪽 옛 경로는 다시 내보내기만 |
+| 저장 | `lib/repo/db/migrations/0016_db_sheet_feeds.sql`(표 1개 추가) · `0017_push_dbfeed_slot.sql`(알림 칸 'dbfeed') · `lib/repo/db/db-sheet-feeds.ts` |
+| 서비스 | `lib/service/db-sheet-feed.ts` — 연결(한 사람 3개), 매시간 실행(15분 시계마다 25초씩, 3개 동시, 같은 시각 칸 한 번), 3번 연속 실패면 멈춤, `DB_FEED_ENABLED=0` 끄기 · `push.sendDbFeedPush`(사람·시각 칸마다 한 번, 업체명 없음) |
+| API | `app/api/db-sheet/feeds`(GET 목록·editable, POST connect·check·enable·remove·answer) · `app/api/internal/push/dispatch` 가 먼저 `dispatchDbSheetFeeds` |
+| 화면 | 가져오기 창 체크칸 · `FeedBar` · `FeedInflowDialog` · `feed.css` |
+
+- 새로 들어온 DB는 유입 「반영 안 함」 + `pending_inflow` 에 id → 팝업에서 반영/반영 안 함 둘 다 답으로 지움.
+- 애매한 줄은 넣지도 기억하지도 않고 `review_count` 로만 센다 → 「확인 대기」 누르면 가져오기 창이 그 시트를 다시 읽어(이미 있는 업체는 제외) 남은 줄만 보여 준다.
+- 시험: `tests/analytics/db-sheet-feed.test.ts`(8) · `tests/service/db-sheet-feed.pglite.test.ts`(6) · `tests/components/db-sheet-feed-ui.test.ts`(6). 모두 합성 데이터.
+- 운영 순서: 병합·배포 → DB Migrate dry-run(대기 0016·0017) → 적용. 적용 전에는 연결 목록이 비어 보이고 가져오기 연결만 실패 안내(다른 화면 영향 없음).
+- 되돌리기: squash revert(표는 남겨도 무해) · 급하면 `.env` `DB_FEED_ENABLED=0`.
