@@ -265,25 +265,6 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
     <>
       <div className="min-[1440px]:grid min-[1440px]:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] min-[1440px]:items-start min-[1440px]:gap-4">
         <div className="min-w-0">
-          {/* 합계 카드 (선택 채널) */}
-          <div
-            className="mb-4 rounded-xl border-l-4 bg-white p-4 shadow-sm"
-            style={{ borderLeftColor: ch.color }}
-          >
-            {ch.isCost && summary ? (
-              <CostSummary
-                channel={ch}
-                rowCount={rows.length}
-                totalCost={summary.totalCost}
-                avgUnit={summary.avgUnit}
-                totalQty={summary.totalCount}
-                unitLabel={summary.unitLabel}
-              />
-            ) : (
-              <LeadSummary count={rows.length} />
-            )}
-          </div>
-
           {/* 목록을 접어도 채널별 건수를 확인할 수 있다. */}
           <h3 className="mb-2 text-sm font-semibold text-gray-700">
             <button
@@ -402,6 +383,24 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
             + {ch.recordsLabel} 추가
           </button>
         )}
+          {/* 합계 카드 (선택 채널) — 구매목록 추가 아래(2026-11-07 belie 「채널합계가 구매목록추가 밑으로」). 1440px 이상은 오른쪽 칸 추가 폼 밑. */}
+          <div
+            className="mb-3 mt-3 rounded-xl border-l-4 bg-white p-4 shadow-sm"
+            style={{ borderLeftColor: ch.color }}
+          >
+            {ch.isCost && summary ? (
+              <CostSummary
+                channel={ch}
+                rowCount={rows.length}
+                totalCost={summary.totalCost}
+                avgUnit={summary.avgUnit}
+                totalQty={summary.totalCount}
+                unitLabel={summary.unitLabel}
+              />
+            ) : (
+              <LeadSummary count={rows.length} />
+            )}
+          </div>
         </div>
       </div>
       {/* 토스트 */}

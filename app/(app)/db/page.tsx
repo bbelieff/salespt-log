@@ -79,9 +79,9 @@ export default function DbPage() {
   return <>
     <TopHeader pageEmoji="📊" pageTitle="DB생산" />
     <section className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6"><PageContainer width="fluid">
-      {/* 폰·태블릿(1024px 미만)은 채널 고르기 → 바로 밑 입력 → 요약 순(2026-11-06 belie 「4채널 클릭을 우선, 생산 내용을 바로 밑에」). PC 는 원래 순서. */}
-      <div className="flex flex-col pc:block">
-      <div className="order-1 pc:order-none">
+      {/* 채널 고르기 → 바로 밑 입력 → 전체 종합 순(2026-11-06 belie 「4채널 클릭을 우선, 생산 내용을 바로 밑에」 · 11-07 「PC 에서도 채널합계는 아래로」). */}
+      <div className="flex flex-col">
+      <div className="order-1">
       <OverallCard items={overall.items} totalCost={overall.totalCost} totalCount={overall.totalCount}
         activeCh={activeCh} goalSummary={<WeeklyGoalSummary compact metrics={["production", "inflow"]} />} />
       </div>
@@ -96,7 +96,7 @@ export default function DbPage() {
       {visited.map((channel) => <div key={channel} hidden={channel !== activeCh}>
         <DbChannelWorkspace activeCh={channel} />
       </div>)}
-      <div className="order-2 mt-3 pc:order-none">
+      <div className="order-2 mt-3">
         <DbNudgeBanner onGoDirect={() => switchChannel("direct")} />
       </div>
       </div>
