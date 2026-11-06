@@ -3,13 +3,14 @@
  * DB관리시트에 붙는 통화 정리 앞단 묶음 — 페이지는 slot(모바일 카드)·bar(DB정보)·layer(대화상자·알림)만 꽂는다.
  * 꺼진 사람(GET /api/calls 404)에게는 아무것도 그리지 않는다.
  */
-import { useState } from "react";
-import { ClipboardCheck, FileAudio, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { ClipboardCheck, FileAudio, ScrollText, X } from "lucide-react";
 import type { CallRecord } from "@/types/call";
 import type { DbSheetLead } from "@/types/db-sheet";
 import { CallConfirmScreen } from "./CallConfirmScreen";
 import type { Row } from "./model";
 import { CallButton, CallChip, CallDialDialog } from "./CallDial";
+import { CallScriptSheet } from "./CallScriptSheet";
 import { CallUploadDialog } from "./CallUploadDialog";
 import { useCalls } from "./use-calls";
 import { phoneDigits } from "./call-client";
@@ -25,11 +26,17 @@ export function useCallUi(rows: DbSheetLead[], onSaved: () => void | Promise<voi
   const [dial, setDial] = useState<Row | null>(null);
   const [upload, setUpload] = useState<{ row: Row; call: CallRecord | null; asked: boolean } | null>(null);
   const [confirm, setConfirm] = useState<string | null>(null);
+  // 📜 대본 창(2026-11-07 belie 모바일 기획 2판). 📞 로 실제로 건 뒤 거는 창이 닫히면 대본이 열려 있게 —
+  // 전화 앱에서 돌아오면 대본이 먼저 보인다. 「번호를 복사했어요」 안내는 가리지 않는다(닫힐 때 연다).
+  const [script, setScript] = useState<Row | null>(null);
+  const dialedRow = useRef<Row | null>(null);
+  const closeDial = () => { const r = dialedRow.current; dialedRow.current = null; setDial(null); if (r) setScript(r); };
   const review = (leadId: string) => { const c = calls.latest.get(leadId); return c?.status === "review" && c.extraction ? c : null; };
   const confirming = confirm ? { lead: rows.find(r => r.id === confirm), call: review(confirm) } : null;
 
   const returnedRow = calls.returned && rows.find(r => r.id === calls.returned!.leadId);
-  const asking = !upload && !dial && returnedRow ? {
+  // 대본을 보는 동안은 「방금 통화하셨나요?」를 미룬다 — 대본을 닫으면 묻는다.
+  const asking = !upload && !dial && !script && returnedRow ? {
     row: returnedRow,
     call: calls.calls.find(c => c.id === calls.returned!.id && (c.status === "dialed" || c.status === "failed")) ?? null,
   } : null;
@@ -43,10 +50,12 @@ export function useCallUi(rows: DbSheetLead[], onSaved: () => void | Promise<voi
       <CallButton row={r} label onDial={() => setDial(r)} />
       <button type="button" className="dbs-button dbs-call-text" onClick={() => setUpload({ row: r, call: resumable(calls.latest.get(r.id)), asked: false })}><FileAudio size={16} aria-hidden="true" />녹음 올리기</button>
     </span>
+    <button type="button" className="dbs-button dbs-call-script" onClick={() => setScript(r)}><ScrollText size={16} aria-hidden="true" />대본 보기</button>
   </div> : null;
 
   const layer = <>
-    {dial && <CallDialDialog row={dial} onDialed={calls.dialed} onClose={() => setDial(null)} />}
+    {dial && <CallDialDialog row={dial} onDialed={p => { dialedRow.current = dial; calls.dialed(p); }} onClose={closeDial} />}
+    {script && <CallScriptSheet company={script.company || "이 업체"} onClose={() => setScript(null)} />}
     {upload && <CallUploadDialog row={upload.row} call={upload.call} asked={upload.asked} onUploaded={id => calls.uploaded(id, upload.row.id)} onClose={() => setUpload(null)} />}
     {asking && <CallUploadDialog row={asking.row} call={asking.call} asked onUploaded={id => calls.uploaded(id, asking.row.id)} onClose={calls.clearReturned} />}
     {confirming?.lead && confirming.call && <CallConfirmScreen lead={confirming.lead} call={confirming.call} onClose={() => setConfirm(null)} onSaved={async () => {
