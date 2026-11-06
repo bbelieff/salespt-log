@@ -64,3 +64,26 @@ describe('애드프로 가져오기 창', () => {
     expect(apply).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ channel: '매입DB', supplier: '애드프로', company: '가상금속' })]), []);
   });
 });
+
+/** 2026-11-06 belie: 디비스트 시트(빈 created_time 열 + 접수시간·신용700·국세체납·연매출액·사업자번호·이름·전화번호×2·비고·메모). 합성 데이터만. */
+const DBIST_CSV = [
+  'created_time,접수시간,신용700,국세체납,연매출액,사업자번호,이름,전화번호,전화번호,비고,메모',
+  '#REF!,접수시간,#REF!,,,,,,전화번호,,',
+  ',2026. 9. 8 오후 4:55:43,예,아니오,5천미만,1000000001,김가상,p:+821000001001,01000001001,연습용,서울송파구(가상상회)/ 부재중1',
+  ',2026. 9. 9 오전 10:01:02,예,예,1억~2억,1000000002,이가상,p:+821000001002,01000001002,,',
+].join('\n');
+
+describe('디비스트 시트', () => {
+  it('제목 반복 줄은 빼고, 빈 created_time 이 있어도 메타 광고가 아니라 「디비스트 · 매입DB」로 추정', () => {
+    const a = analyzeImport(DBIST_CSV);
+    expect(a.items).toHaveLength(2);
+    expect(a.items.every((i) => i.lead.supplier === '디비스트' && i.lead.channel === '매입DB')).toBe(true);
+    const [first] = a.items;
+    expect(first!.lead).toMatchObject({ owner: '김가상', phone: '010-0000-1001', date: '2026-09-08', biz: '1000000001', credit: '700점 이상', arrears: '없음', sales: '5천미만', company: '가상상회', address: '서울 송파구' });
+    expect(a.items.every((i) => !i.questions.length && !issues(i.lead))).toBe(true);
+  });
+  it('lead_id 가 있는 진짜 메타 양식은 그대로 메타 광고', () => {
+    const a = analyzeImport('created_time,lead_id,full_name,phone_number\n2026-10-20,l1,김가상,010-0000-1111');
+    expect(a.items[0]!.lead.supplier).toBe('메타 광고');
+  });
+});
