@@ -48,3 +48,11 @@ it('retains linked-field inputs/status/undo and explicit payment actions while o
  expect(linked).toContain('data-payment-linked-note');expect(linked).toContain('useEditContractLinkedFields({ silent: compactMobile })');
  const page=readFileSync('app/(app)/payment/page.tsx','utf8');expect(page).toContain('usePatchContractPayment({ silent: !isPc })');
 });
+it('keeps the compact view select tappable beside 공고필터 (no width:0 crush inside the group)',()=>{
+ act(()=>root.render(h(CompanyInfoEditor,{compactMobile:true,desktopHeading:true,defaultOpen:true,hideSave:true,onSave:vi.fn()})));
+ const native=host.querySelector('[data-company-info-views] select.payment-ci-native')!;
+ expect(native.parentElement!.querySelector('[data-grant-filter-button]')).not.toBeNull();
+ const css=readFileSync('app/(app)/payment/payment-company-compact.css','utf8');const media=css.indexOf('@media(max-width:767px)');
+ const group=css.indexOf('[data-company-info-views]>div:first-child{flex:1 1 auto');const min=css.indexOf('[data-company-info-views] .payment-ci-native{flex:1 1 0;min-width:5rem}');
+ expect(group).toBeGreaterThan(media);expect(min).toBeGreaterThan(media);expect(css.indexOf('[data-company-info-views]{flex-wrap:wrap')).toBeGreaterThan(media);
+});
