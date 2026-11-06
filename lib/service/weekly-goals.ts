@@ -10,6 +10,8 @@ import { weeklyGoalActuals } from "./weekly-goals-actuals";
 import { addDays, fmtISO, goalWeekOf, goalWeekWindow, isValidISODate, parseISO, todayKST } from "@/util/week";
 import { WeeklyGoalInput, WeeklyGoalPrivateInput, type WeeklyGoalKey, type WeeklyGoalView, type GoalStudent } from "@/types/weekly-goals";
 import { canAccessManagedStudent } from "./trainer-student-access";
+import { activeAssigned, activeTrainerEmails } from "./trainer-pool";
+import { adminEmails, adminNames } from "@/config";
 import type { TrainerAccessOperation, TrainerStudentTarget } from "@/types/trainer-access";
 import type { User } from "@/types";
 
@@ -150,8 +152,11 @@ export async function loadWeeklyGoals(params: URLSearchParams): Promise<WeeklyGo
     readSalesRowsFromDb(u.spreadsheetId), readMeetingsFromDb(u.spreadsheetId),
   ]);
   const all = await listDistinctUsers();
-  const trainers = parseAssignedTrainers(u.assignedTrainer).map(email =>
-    all.find(t => t.email.toLowerCase() === email)?.name || email);
+  // 담당T = 수강생관리 「담당」과 같은 활성 트레이너만 — 퇴출 트레이너 잔재가 저장 칸에 남아 있어도 빼고 보인다(2026-11-06 belie).
+  const pool = activeTrainerEmails(all, adminEmails());
+  const names = adminNames();
+  const trainers = activeAssigned(parseAssignedTrainers(u.assignedTrainer), pool).map(email =>
+    all.find(t => t.email.toLowerCase() === email)?.name || names[email] || email);
   const weekData = (start: string, number: number, saved: typeof record) => {
     const end = fmtISO(addDays(parseISO(start), 6));
     return { week: number, start, end, record: saved, actuals: weeklyGoalActuals(sales, meetings, [], start, end) };
