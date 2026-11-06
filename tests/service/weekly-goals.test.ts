@@ -63,7 +63,7 @@ beforeEach(() => {
   m.findActiveArenaRowByEmail.mockResolvedValue(null);
   m.findUserByEmail.mockResolvedValue({ ...student });
   m.listAllUsers.mockResolvedValue([{ ...student }]);
-  m.listDistinctUsers.mockResolvedValue([{ ...student }, { email: "trainer@example.test", name: "Test Trainer", role: "trainer" }]);
+  m.listDistinctUsers.mockResolvedValue([{ ...student }, { email: "trainer@example.test", name: "Test Trainer", role: "trainer", status: "active", cohort: "" }]);
   m.dbEnabled.mockReturnValue(true);
   m.chooseDailySource.mockReturnValue("db");
   m.readSalesRowsFromDb.mockResolvedValue([]);
@@ -105,6 +105,13 @@ describe("weekly goals server access and public projection", () => {
     expect(view.canReadInternal).toBe(false);
     expect(JSON.stringify(view)).not.toMatch(/PRIVATE|refreshToken|specialNotes|priorOutcome|spreadsheetId/);
     expect(m.readWeeklyGoalPrivate).not.toHaveBeenCalled();
+  });
+  it("담당T 는 수강생관리처럼 활성 트레이너만 — 저장 칸에 남은 퇴출 트레이너는 빠진다 (2026-11-06 belie)", async () => {
+    m.findUserByEmail.mockResolvedValue({ ...student, assignedTrainer: "gone@example.test,trainer@example.test" });
+    m.listDistinctUsers.mockResolvedValue([{ ...student }, { email: "trainer@example.test", name: "Test Trainer", role: "trainer", status: "active", cohort: "" },
+      { email: "gone@example.test", name: "Gone Trainer", role: "trainer", status: "inactive", cohort: "" }]);
+    const view = await loadWeeklyGoals(params());
+    expect(view.student.trainers).toEqual(["Test Trainer"]);
   });
   it("denies direct private reads and writes for students", async () => {
     await expect(loadWeeklyGoalInternal(params())).rejects.toMatchObject({ status: 403 });
