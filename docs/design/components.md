@@ -1338,6 +1338,7 @@ app/(app)/dashboard/page.tsx
 | **WeekFallback** | 일정·계약 주간 로딩/에러 상태 (schedule/page.tsx 500줄 분리). Props: `state:"loading"\|"error"`, `onRetry`, `retrying`. 에러 시 "다시 시도"(refetch) 버튼 — 네트워크 단절 새로고침 없이 재요청 (2026-06 PostHog P2). |
 | **DaySection** | 일별 미팅 섹션. 오늘 강조 좌측바 (`border-l-blue-500`). 토요일 좌측바 빨강 |
 | **MeetingResultCard** | Full 미팅 카드 (4종 액션 버튼 — 계약/완료/변경/취소 + 기본편집). Props: `meeting` / 액션 콜백 |
+| **MapRouteButton** | 🧭 길찾기(2026-11-07 belie, `app/(app)/schedule/_components/MapRouteButton.tsx`). MeetingResultCard 펼침의 예약일 줄 아래 「📍 검색어 · [🧭 길찾기]」. 검색어 = 장소가 주소꼴이면 장소, 아니면 업체정보 소재지(`@/util/map-links` `mapQuery`), 없으면 안 그림. 처음엔 아래에서 올라오는 「어느 지도로 갈까요?」(카카오맵·네이버지도·티맵 + 「다음에도 이 앱으로」 기본 켬, localStorage `map-route-app`), 저장되면 바로 열고 「지도 바꾸기」. 안드로이드 intent(앱 없으면 웹 지도/설치), 아이폰 앱 주소 → 1.5초 뒤 웹 지도/설치. 호박색 amber-50 버튼. Props: `place?`, `address?` |
 | **BasicEditDetails** | 기본 정보 편집 폼 (액션 폼 5종 중 하나). 미팅 데이터 patch |
 | **CancelForm** | 취소 액션 폼 — 취소 사유 입력 (`업체명, 이유` 형식) |
 | **ContractForm** | 계약 액션 폼 — 수임비 + 계약조건 입력. 02 계약수납관리 row 자동 생성 트리거 |

@@ -22,6 +22,7 @@ import CompanyInfoEditor from "@/components/CompanyInfoEditor";
 import CarryoverBadge from "@/components/CarryoverBadge";
 import { formatMoney } from "@/lib/format/money";
 import { todayKST } from "@/util/week";
+import MapRouteButton from "./MapRouteButton";
 
 type Action = "contract" | "done" | "reschedule" | "cancel" | null;
 
@@ -167,13 +168,11 @@ export default function MeetingResultCard({
       {open && (
         <div className="space-y-3 border-t border-gray-200/60 px-3 py-3">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-500">
-              📅 예약일 <b className="text-gray-800">{meeting.예약일 || "—"}</b>
-            </span>
-            <span className="text-gray-400">
-              현재상태: <b className="text-gray-700">{CARD_LABEL[state]}</b>
-            </span>
+            <span className="text-gray-500">📅 예약일 <b className="text-gray-800">{meeting.예약일 || "—"}</b></span>
+            <span className="text-gray-400">현재상태: <b className="text-gray-700">{CARD_LABEL[state]}</b></span>
           </div>
+          {/* 🧭 길찾기(2026-11-07 belie) — 장소가 주소가 아니면 업체 소재지로. 검색어가 없으면 안 보임. */}
+          <MapRouteButton place={meeting.장소} address={meeting.업체정보?.소재지} />
 
           <CarryoverBadge 구분={meeting.구분} variant="note" />
           <CompanyInfoEditor key={meeting.id} value={meeting.업체정보} busy={pending} txtCompanyName={meeting.업체명} identityKey={meeting.id} vaultTarget={{ meetingId: meeting.id }} hideSave onChange={(ci) => { setCiDraft(ci); setCiTouched(true); }} onSave={(ci) => onPatch({ 업체정보: ci })} />
