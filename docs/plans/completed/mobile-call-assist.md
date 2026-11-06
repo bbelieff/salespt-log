@@ -1,6 +1,6 @@
 ---
 slug: mobile-call-assist
-status: active
+status: completed
 created: 2026-11-07
 worktree: ../_wt/salespt-log/call-script-btn
 ---
@@ -21,8 +21,8 @@ worktree: ../_wt/salespt-log/call-script-btn
 ## PR
 - [x] PR1 📜 대본 보기 버튼 + 📞 로 건 뒤 대본 창이 열려 있기 (`CallUi`·`CallScriptSheet`)
 - [x] PR2 DB관리시트 맨 위 「정리 기다리는 통화 N건」 한 줄 + 걸러 보기(0건이면 숨김)
-- [ ] PR3 일정 미팅 카드 🧭 길찾기 — 카카오맵·네이버지도·티맵 고르기(「다음에도 이 앱으로」), 주소가 검색된 화면으로
-- [ ] PR4 대본 창·통화 정리 확인 중 새소식 팝업 미루기
+- [x] PR3 일정 미팅 카드 🧭 길찾기 — 카카오맵·네이버지도·티맵 고르기(「다음에도 이 앱으로」), 주소가 검색된 화면으로
+- [x] PR4 대본 창·통화 정리 확인 중 새소식 팝업 미루기
 
 ## 수용 기준
 - 기존 버튼·칸·순서·첫 화면 변화 없음(PC 포함). 새 요소는 해당 조건일 때만 보임.
