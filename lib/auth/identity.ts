@@ -18,6 +18,7 @@ import { isDevStubAuthed } from "@/auth/dev-stub";
 import { adminEmails } from "@/config";
 import { findUserByEmail, findTrainerByEmail, parseAssignedTrainers } from "@/repo/users";
 import { resolveOwnArenaIdentity } from "@/repo/users-arena";
+import { canAccessManagedStudent } from "@/service/trainer-student-access";
 
 const AS_COOKIE = "salespt_as";
 const ARENA_SELF_COOKIE = "salespt_arena_self";
@@ -213,13 +214,17 @@ export async function requireStudentViewContext(): Promise<
  * impersonation 권한 게이트.
  *   - 본인 (self): OK
  *   - admin: 누구든
- *   - active trainer: 자기가 (다중) 담당 매핑에 포함된 trainee 만
+ *   - active trainer: 자기가 (다중) 담당 매핑에 포함된 trainee
+ *     + 트레이너관리 권한(등급·활성 수강생 조회/수정)이 허락하는 trainee (2026-11-06 belie
+ *       「활성수강생 전부 조회·수정 권한인데 담당만 열린다」). 쓰기는 operation="write" 권한.
+ *     단 관리자·트레이너 본인 수강생 페이지(0기 GM·0기 코스텝)는 담당이 아니면 열지 않는다.
  *
  * 2026-05-11: 단일 매칭 (===) → parseAssignedTrainers().includes() 로 수정.
  */
 export async function canImpersonate(
   sessionEmail: string,
   targetEmail: string,
+  operation: "read" | "write" = "read",
 ): Promise<boolean> {
   if (sessionEmail.toLowerCase() === targetEmail.toLowerCase()) return true;
   if (isAdminEmail(sessionEmail)) return true;
@@ -227,13 +232,13 @@ export async function canImpersonate(
   if (!session || session.role !== "trainer" || session.status !== "active") return false;
   const target = await findUserByEmail(targetEmail, { fresh: true });
   if (!target || target.role !== "trainee") return false;
-  return parseAssignedTrainers(target.assignedTrainer).includes(
-    sessionEmail.toLowerCase(),
-  );
+  if (parseAssignedTrainers(target.assignedTrainer).includes(sessionEmail.toLowerCase())) return true;
+  if (isAdminEmail(targetEmail) || (await findTrainerByEmail(targetEmail))) return false;
+  return canAccessManagedStudent(sessionEmail, targetEmail, operation);
 }
 
 /** 현재 작업 대상 — impersonation 적용. 미인증 시 throw. */
-export async function getActiveUserEmail(): Promise<string> {
+export async function getActiveUserEmail(operation: "read" | "write" = "read"): Promise<string> {
   const sessionEmail = await getSessionEmail();
   if (!sessionEmail) throw new Error("[auth] 로그인이 필요합니다.");
 
@@ -241,7 +246,7 @@ export async function getActiveUserEmail(): Promise<string> {
   const as = jar.get(AS_COOKIE)?.value;
   if (!as || !as.includes("@")) return sessionEmail;
 
-  const allowed = await canImpersonate(sessionEmail, as);
+  const allowed = await canImpersonate(sessionEmail, as, operation);
   if (!allowed) return sessionEmail;
   return as.toLowerCase();
 }
@@ -264,7 +269,7 @@ export async function getActiveUserEmail(): Promise<string> {
 export async function getWritableUserEmail(): Promise<string> {
   const context = await resolveStudentViewContext();
   if (context.ok && context.mode === "arena") return context.email;
-  return getActiveUserEmail();
+  return getActiveUserEmail("write");
 }
 
 /** admin/trainer 만 impersonation 설정 가능. 권한 위반 시 throw. */

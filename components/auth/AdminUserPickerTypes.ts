@@ -6,6 +6,7 @@
  *   의존 → 빌드 시 일부 모듈이 undefined 로 평가됨 → 페이지 unstyled 사고.
  *   타입·순수 함수만 별도 모듈로 빼서 사이클 차단.
  */
+import { createContext } from "react";
 
 export interface Trainee {
   email: string;
@@ -68,3 +69,9 @@ export function cohortProgress(
   const dday = Math.ceil((end - now) / 86_400_000);
   return { pct, dday };
 }
+
+/**
+ * 트레이너 페이지에서 담당이 아니어도 [웹앱]·[주간목표]를 보일 수강생인가(2026-11-06 belie —
+ * 트레이너관리 「활성 수강생 조회」 권한). 기본은 아무도 아님. 실제 열기 권한은 서버가 다시 확인한다.
+ */
+export const TrainerOpenContext = createContext<(u: Trainee) => boolean>(() => false);
