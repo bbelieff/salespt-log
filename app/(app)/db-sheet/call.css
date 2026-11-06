@@ -107,3 +107,7 @@ body.db-sheet-route .sheet-mobile-row>.sheet-mobile-card{flex:1;min-width:0;bord
 .dbs-cc button:focus-visible,.dbs-cc input:focus-visible,.dbs-cc select:focus-visible,.dbs-cc textarea:focus-visible,.dbs-cc summary:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
 .dbs-cc .num{font-variant-numeric:tabular-nums}
 @media(max-width:640px){.dbs-cc-foot-in{flex-wrap:wrap}.dbs-cc-foot-in p{flex-basis:100%}.dbs-cc-foot-in .dbs-button{flex:1}.dbs-cc-field .sheet-input,.dbs-cc-row .sheet-input,.dbs-cc-panel>select.sheet-input{font-size:16px}}
+/* 📜 대본 보기(2026-11-07) — 통화 줄 끝. 폰에서는 한 줄을 다 쓴다. 대본 글은 읽기 쉽게 조금 크게. */
+.dbs-call-bar>.dbs-call-script{min-height:34px}
+.dbs-call-script-body{font-size:14px}
+@media(max-width:430px){.dbs-call-bar>.dbs-call-script{width:100%;justify-content:center}}
