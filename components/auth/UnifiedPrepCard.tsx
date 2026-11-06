@@ -7,13 +7,16 @@
  * 모드:
  *   - "single" — 한 명씩: 기수 + 이름 + 시트 URL → POST /api/admin/add-trainee-prep
  *   - "bulk"   — paste: 여러 줄 텍스트 자동 파싱 → POST /api/admin/bulk-add-trainee-prep
+ *   - "link"   — 이메일 연결(2026-11-06): 사전등록 줄(기수·이름)에 이메일을 바로 묶는다
+ *                → POST /api/admin/link-prep-email (본인 /claim 과 같은 결과, 0기 코스텝 등)
  */
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { type PrepItem, parsePrepText } from "./TraineePrepBulkForm";
 
-type Mode = "single" | "bulk";
+type Mode = "single" | "bulk" | "link";
 
 export default function UnifiedPrepCard({
   busy,
@@ -60,12 +63,25 @@ export default function UnifiedPrepCard({
           >
             여러 명 paste
           </button>
+          <button
+            type="button"
+            onClick={() => setMode("link")}
+            className={`rounded-full px-3 py-1 font-bold transition-colors ${
+              mode === "link"
+                ? "bg-sky-600 text-white"
+                : "text-sky-700 hover:bg-sky-50"
+            }`}
+          >
+            이메일 연결
+          </button>
         </div>
 
         {mode === "single" ? (
           <SingleForm busy={busy} onSubmit={onSubmitSingle} />
-        ) : (
+        ) : mode === "bulk" ? (
           <BulkForm busy={busy} onSubmit={onSubmitBulk} />
+        ) : (
+          <LinkForm />
         )}
       </div>
     </details>
@@ -187,6 +203,91 @@ https://docs.google.com/spreadsheets/d/.../edit`;
         className="rounded-full bg-sky-600 px-4 py-2 text-xs font-bold text-white hover:bg-sky-700 disabled:opacity-50"
       >
         {busy ? "등록 중..." : "일괄 등록"}
+      </button>
+    </form>
+  );
+}
+
+/** 사전등록 줄에 이메일 바로 연결 — 본인이 /claim 하지 않아도 그 메일로 로그인하면 바로 그 화면. */
+function LinkForm() {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<{ text: string; error?: boolean } | null>(null);
+  return (
+    <form
+      className="space-y-2"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const fd = new FormData(form);
+        const cohort = String(fd.get("cohort") ?? "").trim();
+        const name = String(fd.get("name") ?? "").trim();
+        const email = String(fd.get("email") ?? "").trim();
+        if (!cohort || !name || !email) return;
+        setBusy(true);
+        setMessage(null);
+        try {
+          const res = await fetch("/api/admin/link-prep-email", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ cohort, name, email }),
+          });
+          const data = (await res.json().catch(() => ({}))) as { error?: string };
+          if (!res.ok) {
+            setMessage({ text: data.error || "연결하지 못했어요.", error: true });
+            return;
+          }
+          setMessage({ text: `${cohort}기 ${name} 에 ${email} 을 연결했어요. 그 메일로 로그인하면 바로 열려요.` });
+          form.reset();
+          router.refresh();
+        } catch {
+          setMessage({ text: "네트워크 오류로 연결하지 못했어요.", error: true });
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <p className="text-px-11 text-gray-500">
+        이미 사전등록한 줄(기수·이름)에 이메일을 바로 연결해요. 본인이 /claim 하지 않아도 돼요.
+      </p>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[80px_1fr]">
+        <input
+          name="cohort"
+          type="text"
+          inputMode="numeric"
+          aria-label="연결할 기수"
+          placeholder="기수"
+          required
+          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
+        />
+        <input
+          name="name"
+          type="text"
+          aria-label="연결할 이름"
+          placeholder="이름 (사전등록과 같게)"
+          required
+          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
+        />
+      </div>
+      <input
+        name="email"
+        type="email"
+        aria-label="연결할 이메일"
+        placeholder="로그인 이메일 (예: name@gmail.com)"
+        required
+        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
+      />
+      {message && (
+        <p role="status" className={`text-px-11 ${message.error ? "text-rose-600" : "text-sky-700"}`}>
+          {message.text}
+        </p>
+      )}
+      <button
+        type="submit"
+        disabled={busy}
+        className="rounded-full bg-sky-600 px-4 py-2 text-xs font-bold text-white hover:bg-sky-700 disabled:opacity-50"
+      >
+        {busy ? "연결 중..." : "이메일 연결"}
       </button>
     </form>
   );
