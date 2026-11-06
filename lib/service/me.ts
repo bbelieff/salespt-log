@@ -12,7 +12,7 @@
  *  - TopHeader 컴포넌트 — 모든 탭 상단 "{기수} {이름} 대표님" 표시
  *  - DDayBadge — 종강총회일(O2)까지 남은 일수 카운트다운 (D-N = O2 − today)
  */
-import { findUserByEmail } from "@/repo/users";
+import { findUserByEmail, findTrainerByEmail } from "@/repo/users";
 import {
   findActiveArenaRowByEmail,
   findArchivedRowByEmail,
@@ -383,7 +383,13 @@ export async function loadMe(
   // 수강생출신 트레이너 — 본인 아레나 시트 "내 아레나 일지" 토글용(P14).
   // 본인 이메일의 활성 아레나 행 우선(중복/동명이인 안전), 없으면 이름 매칭 폴백.
   let ownArenaSheetId: string | undefined;
-  if (user.role === "trainer") {
+  // 트레이너 본인 수강생 페이지(0기 코스텝, 2026-11-06 belie): 같은 메일에 수강생 행이 생기면
+  // findUserByEmail 이 수강생 행을 고르므로 role 이 trainee 로 보인다 → 활성 트레이너 자격이 있으면
+  // 그 수강생 시트로 토글을 띄운다(실제 열기는 resolveStudentViewContext own 경로).
+  if (user.role === "trainee" && user.status !== "pending" && user.spreadsheetId) {
+    const trainer = await findTrainerByEmail(email).catch(() => null);
+    if (trainer?.role === "trainer" && trainer.status === "active") ownArenaSheetId = user.spreadsheetId;
+  } else if (user.role === "trainer") {
     try {
       // dashboard resolveArenaOverride 와 동일 resolver(divergence 방지).
       ownArenaSheetId =
