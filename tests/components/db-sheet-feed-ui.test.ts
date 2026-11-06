@@ -59,6 +59,54 @@ describe('가져오기 창 — 시트 주소면 매시간 확인 연결', () => 
   });
 });
 
+describe('가져오기 창 — 「구글시트 연동」 칸·연결 중 표시·자동 확인만 연결(2026-11-07 belie)', () => {
+  const setInput = (el: HTMLInputElement, value: string) => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(el, value); el.dispatchEvent(new Event('input', { bubbles: true })); };
+  it('연동 칸에 주소를 넣고 아래 「자동 배치」 → 추가하면 연결', async () => {
+    await act(async () => root.render(createElement(ImportDialog, { rows: [], onApply: vi.fn(async () => {}), onClose: vi.fn(), onExisting: vi.fn() })));
+    expect(button(/자동 배치/).closest('footer')).not.toBeNull();
+    act(() => setInput(host.querySelector<HTMLInputElement>('#ai-sheet')!, URL_A));
+    await act(async () => button(/자동 배치/).click());
+    await flush();
+    await act(async () => button(/선택한 1건 추가/).click());
+    await flush();
+    expect(calls.find(c => c.url === '/api/db-sheet/feeds')?.body).toMatchObject({ action: 'connect', url: URL_A });
+  });
+  it('이미 연결한 시트면 칸 옆·체크칸 자리에 「자동 확인 연결 중」, 다시 연결하지 않는다', async () => {
+    const other = 'https://docs.google.com/spreadsheets/d/AAAAAAAAAAAAAAAAAAAAAAAAAAAA/edit#gid=0';
+    await act(async () => root.render(createElement(ImportDialog, { rows: [], feeds: [{ sheetUrl: other }], onApply: vi.fn(async () => {}), onClose: vi.fn(), onExisting: vi.fn() })));
+    act(() => setInput(host.querySelector<HTMLInputElement>('#ai-sheet')!, URL_A));
+    expect(host.querySelector('.ai-paste .ai-linked')?.textContent).toContain('자동 확인 연결 중');
+    await act(async () => button(/자동 배치/).click());
+    await flush();
+    expect(followLabel()).toBeUndefined();
+    expect(host.querySelector('.ai-options .ai-linked')?.textContent).toContain('자동 확인 연결 중');
+    await act(async () => button(/선택한 1건 추가/).click());
+    await flush();
+    expect(calls.some(c => c.url === '/api/db-sheet/feeds')).toBe(false);
+  });
+  it('시트의 DB가 전부 이미 있으면 「자동 확인만 연결」 — DB 추가 없이 연결하고 닫는다', async () => {
+    const apply = vi.fn(async () => {}), close = vi.fn();
+    const rows = [{ ...blank(), company: '가상상회', owner: '김가상', phone: '010-0000-1001', supplier: '애드프로' }];
+    await act(async () => root.render(createElement(ImportDialog, { rows, onApply: apply, onClose: close, onExisting: vi.fn() })));
+    act(() => setInput(host.querySelector<HTMLInputElement>('#ai-sheet')!, URL_A));
+    await act(async () => button(/자동 배치/).click());
+    await flush();
+    expect(button(/선택한 \d+건 추가/)).toBeUndefined();
+    await act(async () => button(/자동 확인만 연결/).click());
+    await flush();
+    expect(apply).not.toHaveBeenCalled();
+    expect(calls.find(c => c.url === '/api/db-sheet/feeds')?.body).toMatchObject({ action: 'connect', url: URL_A, supplier: '애드프로' });
+    expect(close).toHaveBeenCalled();
+  });
+  it('연동 칸에 시트 주소가 아닌 글이면 안내만 하고 가져오지 않는다', async () => {
+    await act(async () => root.render(createElement(ImportDialog, { rows: [], onApply: vi.fn(async () => {}), onClose: vi.fn(), onExisting: vi.fn() })));
+    act(() => setInput(host.querySelector<HTMLInputElement>('#ai-sheet')!, 'https://example.invalid/sheet'));
+    await act(async () => button(/자동 배치/).click());
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain('구글시트 공유 주소');
+    expect(calls.length).toBe(0);
+  });
+});
+
 describe('새로 들어온 DB 유입 반영 팝업', () => {
   const rows = [{ ...blank(), company: '가상상회', supplier: '애드프로', date: '2026-11-06' }, { ...blank(), company: '가상꽃집', supplier: '애드프로', date: '2026-11-06' }];
   it('기본 전체 선택, 한 건 빼고 반영하면 고른 것만 반영하고 둘 다 답한 것으로', async () => {
