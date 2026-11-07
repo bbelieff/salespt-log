@@ -89,6 +89,9 @@
 .app-shell-main {
   padding-bottom: var(--app-tabbar-height);
 }
+/* 폰·태블릿: 카드 장식(빛 번짐·그림자)이 화면 밖으로 삐져 가로 스크롤이 생기지 않게 자른다(2026-11-07).
+   clip 은 스크롤 상자를 만들지 않아 sticky 머리·서랍 밀기에 영향 없음. */
+@media (max-width: 1023.98px) { .app-shell-main { overflow-x: clip; } }
 
 
 /* 메뉴 서랍(1024px 미만, 2026-11-07) — 학생 셸(.desktop-shell) 페이지 배너는 왼쪽 막대 대신 메뉴 버튼.
@@ -106,7 +109,7 @@
 .app-role-toggle { position: relative; display: flex; align-items: stretch; }
 .app-role-toggle::before { content: ""; position: absolute; inset: 50% 0 auto; height: 26px; transform: translateY(-50%); background: #fef2f2; border: 1px solid #fecaca; border-radius: 999px; pointer-events: none; }
 .app-role-option { position: relative; z-index: 1; display: flex; align-items: center; justify-content: center; min-width: 44px; height: 44px; padding: 0; border-radius: 999px; }
-.app-role-label { display: flex; align-items: center; justify-content: center; height: 26px; width: 100%; padding: 0 8px; border-radius: 999px; font-size: calc(12px * var(--font-scale, 1)); font-weight: 700; line-height: 1; white-space: nowrap; color: #b91c1c; transition: background-color 150ms, color 150ms; }
+.app-role-label { display: flex; align-items: center; justify-content: center; height: 26px; width: 100%; padding: 0 8px; border-radius: 999px; font-size: calc(12 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight: 700; line-height: 1; white-space: nowrap; color: #b91c1c; transition: background-color 150ms, color 150ms; }
 .app-role-option[aria-pressed="true"] .app-role-label { background: #b91c1c; color: white; }
 .app-role-option:focus-visible { outline: 2px solid #b91c1c; outline-offset: 2px; }
 .app-tabbar {
@@ -168,6 +171,14 @@
     font-size: calc(13.5px * var(--font-scale, 1));
   }
 }
+/* ── 좁은 화면 비례 축소 (tokens.md §좁은 화면 비례 축소, 2026-11-07) ──
+ * 설계 최소 폭 360px(xs)보다 좁은 화면(갤럭시 폴드 커버 화면 280~344px, 시스템 글자 크게로
+ * 폭이 줄어든 폰)에서는 360px 화면을 그대로 비율대로 줄여 보여 준다 — 잘림·세로 글자 쪼개짐 방지.
+ * rem(글자·간격) = 루트 font-size, px 글자 토큰(text-px-*·아래 px 글자) = --app-px. 360px 이상 무변경. */
+@media (max-width: 359.98px) {
+  :root { --app-px: calc(100vw / 360); }
+  html { font-size: calc(100vw / 22.5); }
+}
 
 html,
 body {
@@ -213,7 +224,7 @@ body {
 
 /* ── 채널 배지 (docs/design/components.md §4) ─────────────── */
 .badge {
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11 * var(--app-px, 1px) * var(--font-scale, 1));
   padding: 2px 6px;
   border-radius: 4px;
   font-weight: 500;
@@ -246,7 +257,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: calc(16px * var(--font-scale, 1));
+  font-size: calc(16 * var(--app-px, 1px) * var(--font-scale, 1));
   font-weight: 700;
   cursor: pointer;
   user-select: none;
@@ -260,7 +271,7 @@ body {
 .stepper-val {
   width: 32px;
   text-align: center;
-  font-size: calc(16px * var(--font-scale, 1));
+  font-size: calc(16 * var(--app-px, 1px) * var(--font-scale, 1));
   font-weight: 700;
   border: none;
   background: transparent;
@@ -300,7 +311,7 @@ body {
   outline: 2px solid #dbeafe;
 }
 .custom-date-display {
-  font-size: calc(14px * var(--font-scale, 1));
+  font-size: calc(14 * var(--app-px, 1px) * var(--font-scale, 1));
   font-weight: 500;
   color: #111827;
   flex: 1;
@@ -327,7 +338,7 @@ body {
   margin-bottom: 6px;
 }
 .date-pop-title {
-  font-size: calc(14px * var(--font-scale, 1));
+  font-size: calc(14 * var(--app-px, 1px) * var(--font-scale, 1));
   font-weight: 700;
   color: #111827;
 }
@@ -335,7 +346,7 @@ body {
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  font-size: calc(18px * var(--font-scale, 1));
+  font-size: calc(18 * var(--app-px, 1px) * var(--font-scale, 1));
   line-height: 1;
   color: #374151;
   background: #f3f4f6;
@@ -352,7 +363,7 @@ body {
 .date-pop-dow {
   margin-bottom: 2px;
   text-align: center;
-  font-size: calc(11px * var(--font-scale, 1));
+  font-size: calc(11 * var(--app-px, 1px) * var(--font-scale, 1));
   font-weight: 600;
   color: #9ca3af;
 }
@@ -360,7 +371,7 @@ body {
 .date-pop-day {
   height: 36px;
   border-radius: 8px;
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13 * var(--app-px, 1px) * var(--font-scale, 1));
   color: #111827;
   background: transparent;
 }
@@ -393,7 +404,7 @@ body {
   flex: 1;
   height: 34px;
   border-radius: 8px;
-  font-size: calc(13px * var(--font-scale, 1));
+  font-size: calc(13 * var(--app-px, 1px) * var(--font-scale, 1));
   font-weight: 600;
 }
 .date-pop-today {
@@ -427,7 +438,7 @@ body {
 .time-minute {
   border: none;
   background: transparent;
-  font-size: calc(14px * var(--font-scale, 1));
+  font-size: calc(14 * var(--app-px, 1px) * var(--font-scale, 1));
   font-weight: 500;
   cursor: pointer;
   appearance: none;
@@ -638,8 +649,8 @@ body {
 
 /* One compact account row, including qualified role switch at 320px. */
 @media (max-width: 639px) {
-  .app-header-pill { padding-inline: 6px; font-size: calc(11px * var(--font-scale, 1)); gap: 3px; }
-  .app-role-label { padding-inline: 5px; font-size: calc(11px * var(--font-scale, 1)); }
+  .app-header-pill { padding-inline: 6px; font-size: calc(11 * var(--app-px, 1px) * var(--font-scale, 1)); gap: 3px; }
+  .app-role-label { padding-inline: 5px; font-size: calc(11 * var(--app-px, 1px) * var(--font-scale, 1)); }
 }
 
 /* ── 업체정보 개업일 · 사업자구분 · 사업자등록번호 한 줄 (belie 2026-11-04) ──

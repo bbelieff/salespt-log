@@ -130,8 +130,8 @@ export default function WeekHeader({
               {/* 2026-05-18: TODAY 라벨을 두꺼운 위 테두리 영역 내부에 — 검은 strip + 흰 글자. */}
               {isToday && (
                 /* 2026-05-18 fix: 뱃지에 안 가리도록 텍스트 왼쪽 정렬 + 우측 padding 으로 뱃지 영역 회피. */
-                <span className="absolute inset-x-0 top-0 overflow-hidden rounded-t-[10px] bg-black pl-1.5 pr-5 text-left text-px-9 font-extrabold leading-[14px] tracking-wider text-white">
-                  TODAY
+                <span className={`absolute inset-x-0 top-0 overflow-hidden whitespace-nowrap rounded-t-[10px] bg-black text-px-9 font-extrabold leading-[14px] text-white ${count > 0 ? "pl-1 pr-3.5 text-left" : "px-0.5 text-center"}`}>
+                  오늘
                 </span>
               )}
               <span

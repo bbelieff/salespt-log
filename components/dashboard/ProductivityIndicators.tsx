@@ -166,7 +166,8 @@ function Row({
   return (
     <div className="min-w-0">
       <div className="mb-1 flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-baseline gap-1.5">
+        {/* 좁은 화면에서는 흐름 설명이 이름 아래로 내려간다(잘림 방지, 2026-11-07). */}
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
           <span className="shrink-0 whitespace-nowrap text-px-12 font-semibold text-gray-700">{label}</span>
           <span className="min-w-0 truncate text-px-11 text-slate-500" title={formula}>{formula}</span>
         </div>

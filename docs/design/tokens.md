@@ -147,6 +147,21 @@ PC(`pc` 1024px+)에서 **html 루트 font-size 16px → 13.5px (≈84%)** — �
   텍스트가 상대적으로 약간 커 보이는 정도로 가독에 유리, 의도된 예외.
 - 아래 폰트 크기 표의 px 값은 **루트 16px(모바일) 기준**. PC 에서는 ×0.84.
 
+### 좁은 화면 비례 축소 (2026-11-07, fix/narrow-screen-fold-cover)
+
+설계 최소 폭은 **360px(`xs`)**. 그보다 좁은 화면(갤럭시 폴드 커버 화면 280~344px, 시스템 글자 크게로 폭이
+줄어든 폰)에서는 **360px 화면을 비율대로 줄여** 보여 준다 — 칸마다 따로 줄이지 않는다.
+
+- 구현 = `app/globals.css` 의 `@media (max-width: 359.98px)` 한 곳: 루트 `font-size: calc(100vw / 22.5)`(360px 에서
+  16px) + `--app-px: calc(100vw / 360)`. **360px 이상·PC 무변경.**
+- rem 유틸(글자·간격·카드)은 루트로, 픽셀 글자(`text-px-N` 토큰·globals.css 픽셀 글자)는
+  `calc(N × var(--app-px, 1px) × var(--font-scale, 1))` 로 함께 줄어든다.
+- 새 픽셀 글자는 `--app-px` 를 곱한다(`tests/structural/narrow-screen-scale.test.ts`). 인라인/임의 px 너비·여백은
+  줄지 않으니 좁은 줄은 `flex-wrap`·`min-w-0`·`max-w-full` 로 아랫줄로 내려가게 만든다.
+- 폰·태블릿(<1024px) 본문 `.app-shell-main` 은 `overflow-x: clip` — 카드 빛 번짐 등 장식이 가로 스크롤을 만들지 않게.
+- 확인 폭: 280 · 300 · 344 · 360px(합성 화면 `tests/browser/dashboard-followups-server.mjs` 의 /contact · /schedule ·
+  /payment · /dashboard · /db-sheet · /calendar · /db).
+
 ### 폰트 크기
 **글자 크기 단계(2026-09-29 belie)** — 모든 글자 토큰은 `calc(크기 × var(--font-scale, 1))` 이다
 (`tailwind.config.ts` fontSize). 박스에 `--font-scale` 을 걸면 그 안의 글자만 커지고 여백·너비는 그대로다.

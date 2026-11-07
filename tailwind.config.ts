@@ -31,7 +31,8 @@ export default {
         [`calc(${size}rem * var(--font-scale, 1))`, { lineHeight: lh ? `calc(${lh}rem * var(--font-scale, 1))` : "1" }],
       ]).concat(
         // 고정 픽셀 글자(예전 text-[11px] 임의값 → 토큰 text-px-11, 2026-09-29) — 같은 배율을 곱한다.
-        [9, 10, 11, 12, 13, 14, 15, 22].map((px) => [`px-${px}`, `calc(${px}px * var(--font-scale, 1))`]),
+        // --app-px: 평소 1px, 360px 미만 화면에서만 비례 축소(globals.css 좁은 화면 비례 축소).
+        [9, 10, 11, 12, 13, 14, 15, 22].map((px) => [`px-${px}`, `calc(${px} * var(--app-px, 1px) * var(--font-scale, 1))`]),
       ),
     ),
     // 모바일 우선 브레이크포인트 — display-reference-v2.html 매핑

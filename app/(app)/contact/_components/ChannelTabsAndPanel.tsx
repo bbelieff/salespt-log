@@ -349,9 +349,9 @@ export default function ChannelTabsAndPanel({
             ) : (
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0 pr-1">
-                  <div className="flex items-center gap-1 text-sm font-medium text-gray-800">
-                    {active === "매입DB" ? "유입대기" : "생산"}
-                    <span className="rounded bg-gray-100 px-1 py-px text-px-11 font-bold text-gray-500">
+                  <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-sm font-medium text-gray-800">
+                    <span className="whitespace-nowrap">{active === "매입DB" ? "유입대기" : "생산"}</span>
+                    <span className="whitespace-nowrap rounded bg-gray-100 px-1 py-px text-px-11 font-bold text-gray-500">
                       🔒 DB자동
                     </span>
                   </div>
@@ -401,17 +401,17 @@ export default function ChannelTabsAndPanel({
             }`}
           >
             <div className="flex min-w-0 flex-1 items-center gap-2 px-3 py-3">
-              {/* 라벨 + 보조 도움말(1줄 truncate — 공간은 합계·스테퍼 우선) */}
+              {/* 라벨 + 보조 도움말(최대 2줄 — 공간은 합계·스테퍼 우선, 좁은 화면에서 잘리지 않게 2026-11-07) */}
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1 text-sm font-medium text-gray-800">
-                  {m.label}
+                <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-sm font-medium text-gray-800">
+                  <span className="whitespace-nowrap">{m.label}</span>
                   {isLeadInflow && (
-                    <span className="rounded bg-gray-100 px-1 py-px text-px-11 font-bold text-gray-500">
+                    <span className="whitespace-nowrap rounded bg-gray-100 px-1 py-px text-px-11 font-bold text-gray-500">
                       🔒 DB자동
                     </span>
                   )}
                 </div>
-                <div className="truncate text-xs text-gray-400">
+                <div className="line-clamp-2 break-keep text-xs text-gray-400">
                   {isLeadInflow ? "생산과 동일 · 자동" : help}
                 </div>
               </div>

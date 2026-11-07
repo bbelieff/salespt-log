@@ -57,7 +57,7 @@ export default function CompanyInfoHeader({open, onToggle, controlsId, desktopHe
       <span data-payment-ci-fold={payment ? '' : undefined} aria-hidden="true" className="shrink-0 text-gray-400"><DisclosureChevron open={open} /></span>
     </button>
     {badge && <span data-company-info-badge className="shrink-0">{badge}</span>}
-    <div data-company-info-header-actions className={`flex min-w-0 flex-wrap items-center gap-1.5 ${desktopHeading ? 'basis-full justify-end sm:basis-auto sm:flex-1' : 'shrink-0'}`}>
+    <div data-company-info-header-actions className={`flex min-w-0 flex-wrap items-center gap-1.5 ${desktopHeading ? 'basis-full justify-end sm:basis-auto sm:flex-1' : 'max-w-full shrink-0'}`}>
       {!payment ? <>{open && status}{open && actions}{fontControl}</> : open && <div data-ci-header-tools data-mode={mode}>
         {status && <span data-ci-header-status>{status}</span>}
         {/* 글자 크기는 더보기에 넣지 않고 바로 보인다 — 중간 폭에서 더보기 안이 글자 크기뿐이라 한 번 더 누르게 했다(2026-11-05 belie).

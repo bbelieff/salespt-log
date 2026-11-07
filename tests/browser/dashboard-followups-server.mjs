@@ -334,6 +334,13 @@ const server = createServer(async (req, res) => {
       daysByMeetingDate: days.map((date) => ({ date, meetings: data.meetings.filter((m) => m.미팅날짜 === date) })),
       daysByTodoDate: days.map((date) => ({ date, todos: data.todos.filter((x) => x.showOnCalendar && x.예정일자 === date) })) });
   }
+  if (path.startsWith("/api/daily/")) {
+    const date = path.slice("/api/daily/".length);
+    const m = (p, i, c, r) => ({ production: p, inflow: i, contactProgress: c, meetingReservation: r });
+    return reply({ date, weekIndex: Math.max(1, Math.floor((Date.parse(date) - Date.parse(courseStart)) / (7 * 86_400_000)) + 1), courseStart,
+      channels: { 매입DB: m(120, 48, 12, 3), 직접생산: m(1234, 999, 88, 12), 현수막: m(0, 7, 2, 1), "콜·지·기·소": m(0, 0, 0, 0) },
+      meetings: data.meetings.filter((x) => x.예약일 === date || (date === todayKST() && x.상태 === "예약")), inflowWaitBase: 12345, bannerStockBase: 40 });
+  }
   if (path.startsWith("/api/meetings/week/")) {
     const weekStart = path.slice("/api/meetings/week/".length);
     const days = Array.from({ length: 7 }, (_, i) => shift(weekStart, i));

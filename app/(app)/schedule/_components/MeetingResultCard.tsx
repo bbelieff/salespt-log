@@ -155,11 +155,10 @@ export default function MeetingResultCard({
         <span className={`shrink-0 ${CHANNEL_BADGE[meeting.channel]}`}>
           {meeting.channel}
         </span>
-        <span className={`flex-1 truncate text-sm font-semibold ${titleCls}`}>
-          {meeting.업체명}
-        </span>
-        <span className={`max-w-20 shrink-0 truncate text-xs ${placeCls}`}>
-          {meeting.장소}
+        {/* 업체명 먼저 — 좁은 화면(폴드 커버)에서는 장소가 아랫줄로(2026-11-07). */}
+        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2">
+          <span className={`line-clamp-2 min-w-0 max-w-full break-keep text-sm font-semibold ${titleCls}`}>{meeting.업체명}</span>
+          {meeting.장소 && <span className={`ml-auto min-w-0 max-w-full truncate text-xs ${placeCls}`}>{meeting.장소}</span>}
         </span>
         {feeSummary}
         <DisclosureChevron open={open} />

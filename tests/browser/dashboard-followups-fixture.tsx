@@ -1,6 +1,7 @@
 /**
  * 대시보드 「오늘 챙길 일」 목업 — 실제 화면 컴포넌트 + 합성 API(dashboard-followups-server.mjs).
  * 주소(pathname)로 실제 페이지를 고른다: / · /dashboard → DashboardPage, /payment → PaymentPage,
+ * (/contact · /calendar · /db 도 — 좁은 화면 잘림 점검용, 2026-11-07)
  * /schedule → SchedulePage, /db-sheet → DbSheetPage. 링크·router.push 는 history.pushState 로 옮겨
  * Next 의 클라이언트 이동처럼 QueryClient 캐시를 유지한다(대시보드 → 도착 화면 → 뒤로).
  * 시나리오는 쿠키 followups_scenario 로 서버에 전한다(이동해도 유지): ?scenario=some|many|empty|error|unsupported,
@@ -13,9 +14,11 @@ import DashboardPage from "../../app/(app)/dashboard/page";
 import PaymentPage from "../../app/(app)/payment/page";
 import SchedulePage from "../../app/(app)/schedule/page";
 import DbSheetPage from "../../app/(app)/db-sheet/page";
+import ContactPage from "../../app/(app)/contact/page";
+import CalendarPage from "../../app/(app)/calendar/page";
+import DbPage from "../../app/(app)/db/page";
 import WeeklyGoalSummary from "../../components/weekly-goals/WeeklyGoalSummary";
 import DesktopNav from "../../components/desktop/DesktopNav";
-import TabBar from "../../components/TabBar";
 import FollowUpsLauncher from "../../components/dashboard/FollowUpsLauncher";
 import DirtyProvider from "../../components/DirtyGuard";
 import { LoadingProvider } from "../../components/ui/LoadingProvider";
@@ -67,6 +70,9 @@ const PAGES: Record<string, React.ComponentType> = {
   "/payment": PaymentPage,
   "/schedule": SchedulePage,
   "/db-sheet": DbSheetPage,
+  "/contact": ContactPage,
+  "/calendar": CalendarPage,
+  "/db": DbPage,
 
 };
 
@@ -114,7 +120,6 @@ function Fixture() {
         <DirtyProvider>
           <div className="desktop-shell pc:flex"><DesktopNav />
             <div className="min-w-0 pc:flex-1"><main className="app-shell-main"><Page key={key} /></main></div>
-            <TabBar />
           </div>
           <FollowUpsLauncher />
         </DirtyProvider>
