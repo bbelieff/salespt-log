@@ -12,7 +12,7 @@ worktree: .claude/worktrees/gyeongnyeong-ilji-dc-c5a230 (branch feat/step2-db-ma
 - 분석·목록: 보고서 「영업 단계 구조 개편」(artifact) ③ 29곳.
 
 ## Acceptance Criteria (수용 기준)
-- [x] 폰 하단 탭·PC 메뉴: STEP 1 DB생산 · STEP 2 DB관리(→ DB 목록, DB 목록·일별 기록에서 켜짐) · 3 · 4. STEP 1.5 메뉴·배지 없음
+- [x] 사이드탭(PC 왼쪽·폰 서랍): STEP 1 DB생산 · STEP 2 DB관리(→ DB 목록, DB 목록·일별 기록에서 켜짐) · 3 · 4. STEP 1.5 메뉴·배지 없음
 - [x] DB 목록·일별 기록 위 띠에 [DB 목록 | 일별 기록] 탭(미저장 확인 거침). DB생산 위 「DB관리시트」 탭 없음
 - [x] DB 단계 칸: 「STEP 2 컨택 전」 / 「STEP 2 컨택 완료」(내부 키·정렬 그대로)
 - [x] 화면 문구 「STEP 2 …」 → 「일별 기록 …」, 「DB관리시트」 → 「DB 목록」/「DB관리」, 「컨택관리에서 …」 → 「일별 기록에서 …」

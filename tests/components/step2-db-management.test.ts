@@ -30,7 +30,7 @@ describe("STEP 2 DB관리 탭", () => {
     expect(push).toHaveBeenCalledTimes(1); // 지금 화면은 다시 이동하지 않는다
   });
 
-  it("메뉴(폰 하단·PC 왼쪽 공용) — STEP 2 는 DB관리, DB 목록·일별 기록 어디서든 켜지고 STEP 1 은 DB생산에서만", () => {
+  it("메뉴(PC 왼쪽·폰 서랍 공용) — STEP 2 는 DB관리, DB 목록·일별 기록 어디서든 켜지고 STEP 1 은 DB생산에서만", () => {
     expect(NAV_STEPS.map((t) => `${t.step} ${t.label}`)).toEqual(["1 DB생산", "2 DB관리", "3 일정·계약", "4 실무/수납"]);
     const [one, two] = NAV_STEPS;
     expect(two!.href).toBe("/db-sheet");
