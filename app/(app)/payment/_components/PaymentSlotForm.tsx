@@ -175,7 +175,7 @@ export default function PaymentSlotForm({
         aria-expanded={open}
         onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); setOpen(value => !value); } }}
       >
-        <div className="flex min-w-0 items-center gap-1.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">{/* 좁은 화면에선 요약이 아랫줄로(2026-11-07) */}
           <div
             className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold leading-none ${chipClass}`}
           >
@@ -274,9 +274,9 @@ export default function PaymentSlotForm({
       </div>
 
       {/* 입력 필드 — 2026-05-17 재구성:
-          진행기관 → 메모 → (진행률 + 진행내용) → (승인금액 + 수납일 + 수납액) */}
+          진행기관 → 메모 → (진행률 + 진행내용) → (승인금액 + 수납일 + 수납액). 430px 미만은 두 칸씩(잘림 방지 2026-11-07). */}
       <div className="space-y-1.5">
-        <div className="grid grid-cols-[minmax(0,3.5fr)_minmax(0,6.5fr)] gap-2">
+        <div className="grid grid-cols-2 gap-2 lg:grid-cols-[minmax(0,3.5fr)_minmax(0,6.5fr)]">
           <FieldCombo label="진행기관" value={slot.진행기관} placeholder="예: 소진공" options={institutionOptions ?? []} onChange={(v) => set("진행기관", v)}/>
           <FieldText label="진행상품" value={slot.진행상품} placeholder="예: 혁신성장촉진자금 일반형" onChange={(v) => set("진행상품", v)}/>
         </div>
@@ -323,7 +323,7 @@ export default function PaymentSlotForm({
           />
         </div>
         {waiting && <ProgressWaitFields slot={slot} onChange={(patch) => onChange({ ...slot, ...patch })} />}
-        <div className="grid grid-cols-3 gap-2 border-t border-gray-100 pt-2">
+        <div className="grid grid-cols-2 gap-2 border-t border-gray-100 pt-2 lg:grid-cols-3">
           <FieldMoney
             label="승인금액 (원)"
             value={slot.승인금액}
