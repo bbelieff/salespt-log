@@ -41,7 +41,7 @@ export function recordedAt(file: { name: string; lastModified: number }, now = D
 
 /** 「오늘 14:12」·「11월 5일 14:12」 — 고른 파일 아래 한 줄. */
 export function recordedLabel(ms: number, now = Date.now()): string {
-  const time = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(ms));
+  const time = new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(ms));
   if (kstDay(ms) === kstDay(now)) return `오늘 ${time}`;
   if (kstDay(ms) === kstDay(now - 86_400_000)) return `어제 ${time}`;
   return `${new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", month: "long", day: "numeric" }).format(new Date(ms))} ${time}`;
