@@ -1,7 +1,7 @@
 const destinations = {
   "/dashboard": "대시보드",
   "/db": "DB생산",
-  "/contact": "컨택관리",
+  "/contact": "일별 기록",
   "/schedule": "일정·계약",
   "/trainer/weekly-goals": "담당 수강생",
 } as const;

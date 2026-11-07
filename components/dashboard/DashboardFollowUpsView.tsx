@@ -10,7 +10,7 @@ import { compareFollowUpUrgency, followUpBadgeLabel, hasOverdueFollowUps, type F
 import "@/components/dashboard/dashboard-follow-ups.css";
 import "./followups-table.css";
 import { useFollowUpsPopover } from "./useFollowUpsPopover";
-const steps = [{ id: "1.5", label: "DB관리시트" }, { id: "2", label: "컨택관리" }, { id: "3", label: "일정·계약" }, { id: "4", label: "실무/수납" }];
+const steps = [{ id: "2", label: "DB관리" }, { id: "3", label: "일정·계약" }, { id: "4", label: "실무/수납" }];
 const groups = [{ id: "long-overdue", label: "장기누락" }, { id: "overdue", label: "경과" }, { id: "today", label: "오늘" }] as const;
 type Selection = {
     step: string;

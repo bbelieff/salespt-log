@@ -58,7 +58,7 @@ describe("daily PostgreSQL payload round trip", () => {
     const {upsertSheetRow}=await import("@/repo/db/client");
     await upsertSheetRow({...ctx,tab:"sales",rowKey:"2026-10-11:직접생산",payload:{...row,_dbSheetInflow:1}});
     const input={from:{date:"2026-10-11",channel:"직접생산" as const,metrics:row},to:{date:"2026-10-12",channel:"직접생산" as const},deltas:{inflow:1}};
-    await expect(moveDailyRowsInDb(ctx,input)).rejects.toThrow("DB관리시트에서 변경");
+    await expect(moveDailyRowsInDb(ctx,input)).rejects.toThrow("DB 목록에서 바꿔");
     expect((await db.query("select payload from sheet_rows where spreadsheet_id=$1 and row_key=$2",[ctx.spreadsheetId,"2026-10-12:직접생산"])).rows).toHaveLength(0);
     await upsertSheetRow({...ctx,tab:"sales",rowKey:"2026-10-11:직접생산",payload:{_dbSheetInflow:0}});
     bridge.query.mockImplementation(async (sql:string,args?:unknown[])=>{

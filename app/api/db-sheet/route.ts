@@ -12,7 +12,7 @@ function failure(error: unknown) {
   if (error instanceof DbSheetConflict) return NextResponse.json({ error: "다른 화면에서 변경되었습니다. 입력 내용을 보관한 뒤 새로고침해 주세요." }, { status: 409 });
   if (error instanceof DbSheetLinkedMeetingReadOnly || error instanceof DbSheetOperationBlocked) return NextResponse.json({ error: error.message }, { status: 409 });
   if (error instanceof ZodError || error instanceof SyntaxError) return NextResponse.json({ error: "날짜·유입채널·필수 입력값을 확인해 주세요." }, { status: 400 });
-  if (error instanceof DbSheetUnavailable) return NextResponse.json({ error: error.message }, { status: 503 });
+  if (error instanceof DbSheetUnavailable) return NextResponse.json({ error: error.message, code: error.code }, { status: 503 });
   // Never expose database errors or customer payloads to a browser/log.
   return NextResponse.json({ error: "저장소에 연결하지 못했습니다. 입력 내용을 유지하고 다시 시도해 주세요." }, { status: 503 });
 }

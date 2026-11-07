@@ -28,11 +28,11 @@ export function BulkBar({count,busy,message,onInflow,onSupplier,onDelete,onClear
  </div>;
 }
 
-/** 삭제 직후 안내 줄 — 휴지통으로 옮긴 건수·정리된 STEP 2 기록, 「휴지통 열기」(되돌리기는 휴지통에서). */
+/** 삭제 직후 안내 줄 — 휴지통으로 옮긴 건수·정리된 일별 기록, 「휴지통 열기」(되돌리기는 휴지통에서). */
 export function TrashNoticeBar({deleting,onOpen,onClose}:{deleting:PendingDelete;onOpen:()=>void;onClose:()=>void}){
  const step2=[deleting.inflow?`유입 ${deleting.inflow}건`:'',deleting.contacts?`상담 ${deleting.contacts}건`:'',deleting.meetings?`미팅 ${deleting.meetings}건`:''].filter(Boolean).join('·');
  return <div className="sheet-undo-bar" role="status">
-  <span><b>{deleting.count}</b>건을 휴지통으로 옮겼어요{step2?` · STEP 2 ${step2}도 함께 정리돼요`:''}</span>
+  <span><b>{deleting.count}</b>건을 휴지통으로 옮겼어요{step2?` · 일별 기록 ${step2}도 함께 정리돼요`:''}</span>
   <button type="button" className="sheet-btn" onClick={onOpen}>휴지통 열기</button>
   <button type="button" className="sheet-text-btn" aria-label="안내 닫기" onClick={onClose}>닫기</button>
  </div>;

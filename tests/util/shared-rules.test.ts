@@ -21,7 +21,7 @@ describe("DB관리시트 실적 컨택 판정 — 한 곳", () => {
     expect([...outcomes]).toEqual(["미컨택", "부재", "단순거절", "재통화", "컨택진행", "상담 후 거절", "AS예정"]);
   });
   it("라벨·상태 필터·기록이 같은 판정을 쓴다", () => {
-    expect(outcomeLabel("상담 후 거절")).toContain("STEP 2 컨택진행 +1");
+    expect(outcomeLabel("상담 후 거절")).toContain("일별 기록 컨택진행 +1");
     expect(outcomeLabel("재통화")).toContain("집계 제외");
     expect(STATUS_FILTERS.find(f => f.id === "progress")!.results).toEqual([...DB_SHEET_QUALIFIED_RESULTS]);
     const row = { ...blank(), stage: "미컨택", hasQualifiedContact: false };

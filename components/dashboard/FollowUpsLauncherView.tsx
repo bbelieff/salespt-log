@@ -21,7 +21,7 @@ import "./followups-launcher.css";
 
 type DialogProps = { capture: string; onClose: () => void };
 
-const STEP_LABEL: Record<FollowUpItem["step"], string> = { "1.5": "DB관리시트", "2": "컨택관리", "3": "일정·계약", "4": "실무/수납" };
+const STEP_LABEL: Record<FollowUpItem["step"], string> = { "2": "DB관리", "3": "일정·계약", "4": "실무/수납" };
 
 const GRANT_BADGE = { urgent: ["소진", "long-overdue"], match: ["맞음", "upcoming"], check: ["확인", "unknown"] } as const;
 const GRANT_TOP = 5;

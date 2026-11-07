@@ -16,7 +16,7 @@ const KIND_FILTERS: { id: TrashKind | "all"; label: string }[] = [
   { id: "all", label: "전체" },
   { id: "todo", label: "할 일" },
   { id: "meeting", label: "미팅" },
-  { id: "lead", label: "DB관리시트" },
+  { id: "lead", label: "DB 목록" },
 ];
 const keyOf = (i: { kind: TrashKind; id: string }) => `${i.kind}:${i.id}`;
 
@@ -64,7 +64,7 @@ export default function TrashPage() {
       <TopHeader pageEmoji="🗑️" pageTitle="휴지통" pageSubtitle="지운 기록 되살리기" />
       <PageContainer width="narrow">
         <div className="space-y-3 px-4 py-4 pc:px-0">
-          <p className="text-sm text-slate-600">지운 할 일·미팅·DB관리시트 기록이에요. 줄을 골라 <b className="text-slate-800">되살리기</b>를 누르면 원래 자리로 돌아가요.</p>
+          <p className="text-sm text-slate-600">지운 할 일·미팅·DB 목록 기록이에요. 줄을 골라 <b className="text-slate-800">되살리기</b>를 누르면 원래 자리로 돌아가요.</p>
           <div className="flex flex-wrap gap-1.5" role="group" aria-label="종류">
             {KIND_FILTERS.map((f) => {
               const n = f.id === "all" ? items.length : items.filter((i) => i.kind === f.id).length;

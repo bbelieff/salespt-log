@@ -8,6 +8,7 @@ import ImportResultNotice from './_components/ImportResultNotice';
 import React,{useState,useEffect,useRef,useMemo} from 'react';
 import {useGuardedRouter} from '@/components/DirtyGuard';
 import TopHeader from '@/components/TopHeader';
+import DbManagementTabs from '@/components/DbManagementTabs';
 import PageContainer from '@/components/PageContainer';
 import {useMe} from '@/query/me-hook';
 import {InflowPeriod} from './_components/InflowPeriod';
@@ -40,6 +41,8 @@ import {useDbSheetFeeds,type FeedAction} from './_components/feed-client';
 /** DB 목록이 먼저 보이도록 기본은 접힘. 공급처 바로가기 진입에서만 펼친다. */
 export default function DbSheetPage(){
  const router=useGuardedRouter(),data=useDbSheet(),rows=data.leads,me=useMe();
+ // DB 전환 전 기수는 DB 목록이 없다 — STEP 2 DB관리를 누르면 일별 기록으로 바로 보낸다(2026-11-07).
+ useEffect(()=>{if(data.errorCode==='unsupported')router.replace('/contact');},[data.errorCode]);// eslint-disable-line react-hooks/exhaustive-deps
  const callUi=useCallUi(rows,data.reload);
  // 정리 기다리는 통화만 모아 보기(2026-11-07) — 다른 필터 위에 한 겹 더.
  const [callsOnly,setCallsOnly]=useState(false);
@@ -96,7 +99,7 @@ export default function DbSheetPage(){
  </div></div>;
  const quickFilters=<div className="sheet-quick-filters">{dateFilter}{statusFilter}</div>;
  const columnSettings=settings&&<div id="db-visible-fields" className="sheet-column-settings"><strong>목록에서 보고 싶은 항목</strong><div>{columns.map(c=><label key={c.key}><input type="checkbox" checked={visible.includes(c.key)} onChange={e=>setVisible(e.target.checked?[...visible,c.key]:visible.filter(k=>k!==c.key))}/>{c.label}</label>)}</div><button className="sheet-text-btn" onClick={()=>{setVisible([...defaults]);window.dispatchEvent(new Event('db-sheet-reset-view'));}}>기본 항목으로 되돌리기</button></div>;
- return <SupplierOptions.Provider value={data.suppliers}><div className="db-sheet-frame" data-db-sheet-frame><TopHeader pageEmoji="📋" pageTitle="DB관리시트" pageNavigation={<nav className="sheet-banner-tabs" aria-label="DB 메뉴"><button type="button" onClick={()=>router.push('/db')}>DB생산</button><button type="button" aria-current="page" onClick={()=>router.push('/db-sheet')}>DB관리시트</button></nav>}/><PageContainer width="fluid" className="sheet-page px-3 py-3">
+ return <SupplierOptions.Provider value={data.suppliers}><div className="db-sheet-frame" data-db-sheet-frame><TopHeader pageEmoji="📋" pageTitle="DB관리" pageNavigation={<DbManagementTabs current="/db-sheet"/>}/><PageContainer width="fluid" className="sheet-page px-3 py-3">
  {data.error&&<div role="alert" className="rounded border border-red-300 bg-red-50 p-3 mb-2 text-sm text-red-700">{data.error} <button onClick={()=>window.location.reload()}>새로고침</button></div>}
  <section className="sheet-panel db-sheet-panel">
  <div className="sheet-panel-head">

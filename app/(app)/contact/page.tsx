@@ -21,6 +21,7 @@ import { useSwipe } from "@/lib/hooks/useSwipe";
 import WeekHeader from "./_components/WeekHeader";
 import ChannelTabsAndPanel from "./_components/ChannelTabsAndPanel";
 import TopHeader from "@/components/TopHeader";
+import DbManagementTabs from "@/components/DbManagementTabs";
 import type { NewSlot } from "./_components/MeetingSlotItem";
 import MeetingSlotList from "./_components/MeetingSlotList";
 import ContactDbLeads from "../db-sheet/_components/ContactDbLeads";
@@ -152,7 +153,7 @@ export default function ContactPage() {
     const cur = metrics.draft[ch];
     const cur2 = cur[key];
     if (delta < 0 && cur2 + delta < metricMinimum(cur, key)) {
-      showToast("DB관리시트 자동 집계는 DB관리시트에서 변경해 주세요");
+      showToast("DB 목록에서 잡힌 숫자는 DB 목록에서 바꿔 주세요");
       return;
     }
     if (key === "meetingReservation") {
@@ -216,7 +217,7 @@ export default function ContactPage() {
 
   const setVal = (key: MetricKey, value: number) => {
     const minimum = metricMinimum(metrics.draft[activeChannel], key);
-    if (value < minimum) showToast("DB관리시트 자동 집계는 DB관리시트에서 변경해 주세요");
+    if (value < minimum) showToast("DB 목록에서 잡힌 숫자는 DB 목록에서 바꿔 주세요");
     const v = Math.max(minimum, value);
     if (key === "contactProgress") {
       const cards = meetingCardCount(activeChannel);
@@ -315,7 +316,7 @@ export default function ContactPage() {
     metrics.dirty,
     () => metrics.flush(),
     () => discardUnsaved(metrics),
-    "컨택관리 입력 (저장 안 됨)",
+    "일별 기록 입력 (저장 안 됨)",
   );
 
   // 미등록 신규 슬롯 가드 — save-and-leave 는 완성분만 등록, 미완성은 머무름.
@@ -375,7 +376,7 @@ export default function ContactPage() {
     <>
       {deleteConfirm.element}
       <div className="mx-auto flex w-full justify-end px-4 py-2"><DeletedMeetings /></div>
-      <TopHeader pageEmoji="📞" pageTitle="컨택관리" />
+      <TopHeader pageEmoji="📞" pageTitle="일별 기록" pageNavigation={<DbManagementTabs current="/contact" />} />
       {/* 백그라운드 refetch 로 본문을 dim 하지 않는다 — 자동저장 invalidate 마다
           화면이 깜빡여 느리게 느껴진 원인. 초기 로딩은 전역 오버레이+조기 반환이 담당. */}
       <section className="px-4 pt-4 pb-6 pc:px-0"

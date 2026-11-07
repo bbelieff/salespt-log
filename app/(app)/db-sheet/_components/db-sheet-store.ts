@@ -16,7 +16,7 @@ import type { ContactDraft } from "./ContactPanel";
 import { SheetRequestError, type Recording, type RecordingImpact, type sheetRequest } from "./recording-client";
 import type { ImportResult } from "./ImportResultNotice";
 
-/** 10초 되돌리기 동안 숨겨 둔 삭제 — 확정 전이라 서버에는 아직 그대로 있다. 숫자는 함께 정리될 STEP 2 기록. */
+/** 10초 되돌리기 동안 숨겨 둔 삭제 — 확정 전이라 서버에는 아직 그대로 있다. 숫자는 함께 정리될 일별 기록. */
 export type PendingDelete = { count: number; inflow: number; contacts: number; meetings: number };
 /** 여러 줄 작업 결과 — 바꾼 수 · 이미 그 상태 · 바꾸지 못한 줄(이유). */
 export type BulkOutcome = { done: number; unchanged: number; blocked: { id: string; company: string; reason: string }[] };
@@ -32,6 +32,8 @@ export type DbSheetState = {
   loading: boolean;
   pending: number;
   error: string;
+  /** 불러오기 실패 코드 — "unsupported" 면 DB 목록이 없는 기수(일별 기록으로 보낸다). */
+  errorCode?: string;
 };
 
 export type DbSheetStoreDeps = {
@@ -79,7 +81,7 @@ export function createDbSheetStore(deps: DbSheetStoreDeps) {
       server = new Map(rows.map((r) => [r.id, r]));
       versions.clear(); for (const r of rows) versions.set(r.id, 0);
       show(rows);
-    }).catch((e: Error) => { if (active) set({ error: e.message }); })
+    }).catch((e: Error & { code?: string }) => { if (active) set({ error: e.message, errorCode: e.code }); })
       .finally(() => { if (active) set({ loading: false }); });
     return () => { active = false; };
   }

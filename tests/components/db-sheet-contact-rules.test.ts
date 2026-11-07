@@ -14,8 +14,8 @@ describe("result display labels (stored values unchanged)", () => {
   });
   it("routes select options and filters through the same label", () => {
     expect(outcomeDisplayLabel).toBe(dbSheetResultLabel);
-    expect(outcomeLabel("컨택진행")).toBe("미팅예약 · STEP 2 컨택진행 +1");
-    expect(outcomeLabel("상담 후 거절")).toBe("컨택 후 거절 · STEP 2 컨택진행 +1");
+    expect(outcomeLabel("컨택진행")).toBe("미팅예약 · 일별 기록 컨택진행 +1");
+    expect(outcomeLabel("상담 후 거절")).toBe("컨택 후 거절 · 일별 기록 컨택진행 +1");
     expect(STATUS_FILTERS.find(f => f.id === "progress")!.label).toBe("미팅예약·컨택 후 거절");
   });
 });

@@ -42,7 +42,7 @@ describe("restoreTrash", () => {
     expect(r.restored).toBe(2);
     expect(r.failed).toEqual([
       { kind: "meeting", id: "m1", reason: "계약·연결된 미팅이라 되살릴 수 없어요" },
-      { kind: "lead", id: "l1", reason: "같은 업체가 DB관리시트에 이미 있어요" },
+      { kind: "lead", id: "l1", reason: "같은 업체가 DB 목록에 이미 있어요" },
     ]);
   });
 });

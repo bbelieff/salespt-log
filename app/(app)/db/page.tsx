@@ -79,7 +79,6 @@ export default function DbPage() {
   return <>
     <TopHeader pageEmoji="📊" pageTitle="DB생산" />
     <section className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6"><PageContainer width="fluid">
-<nav aria-label="DB 메뉴" className="mb-3 flex gap-5 border-b text-sm font-semibold"><span className="border-b-2 border-blue-500 py-3 text-blue-600">DB생산</span><Link className="py-3 text-slate-600" href={"/db-sheet" as Route}>DB관리시트</Link></nav>
       {/* 폰·태블릿(1024px 미만)은 채널 고르기 → 바로 밑 입력 → 요약 순(2026-11-06 belie 「4채널 클릭을 우선, 생산 내용을 바로 밑에」). PC 는 원래 순서. */}
       <div className="flex flex-col pc:block">
       <div className="order-1 pc:order-none">
