@@ -21,6 +21,7 @@ import {ImportDialog} from './_components/ImportDialog';
 import {DbDetail} from './_components/DbDetail';
 import {useDbSheet} from './_components/use-db-sheet';
 import {useCallUi} from './_components/CallUi';
+import {TodayActivity} from './_components/TodayActivity';
 import {SupplierSummary} from './_components/SupplierSummary';
 import {BulkBar,TrashNoticeBar,bulkOutcomeText} from './_components/BulkBar';
 import {TrashDialog} from './_components/TrashDialog';
@@ -102,7 +103,7 @@ export default function DbSheetPage(){
  </div></div>;
  const quickFilters=<div className="sheet-quick-filters">{dateFilter}{statusFilter}</div>;
  const columnSettings=settings&&<div id="db-visible-fields" className="sheet-column-settings"><strong>목록에서 보고 싶은 항목</strong><div>{columns.map(c=><label key={c.key}><input type="checkbox" checked={visible.includes(c.key)} onChange={e=>setVisible(e.target.checked?[...visible,c.key]:visible.filter(k=>k!==c.key))}/>{c.label}</label>)}</div><button className="sheet-text-btn" onClick={()=>{setVisible([...defaults]);window.dispatchEvent(new Event('db-sheet-reset-view'));}}>기본 항목으로 되돌리기</button></div>;
- return <SupplierOptions.Provider value={data.suppliers}><div className="db-sheet-frame" data-db-sheet-frame><TopHeader pageEmoji="📋" pageTitle="DB관리" pageNavigation={<DbManagementTabs current="/db-sheet"/>}/><PageContainer width="fluid" className="sheet-page px-3 py-3">
+ return <SupplierOptions.Provider value={data.suppliers}><div className="db-sheet-frame has-today-activity" data-db-sheet-frame><TopHeader pageEmoji="📋" pageTitle="DB관리" pageNavigation={<DbManagementTabs current="/db-sheet"/>}/><PageContainer width="fluid" className="sheet-page px-3 py-3">
  {data.error&&<div role="alert" className="rounded border border-red-300 bg-red-50 p-3 mb-2 text-sm text-red-700">{data.error} <button onClick={()=>window.location.reload()}>새로고침</button></div>}
  <section className="sheet-panel db-sheet-panel">
  <div className="sheet-panel-head">
@@ -134,6 +135,8 @@ export default function DbSheetPage(){
  {feedState.editable&&!inflowLater&&!importing&&!data.loading&&pendingFeedRows.length>0&&<FeedInflowDialog key={pendingFeedRows.map(r=>r.id).join()} rows={pendingFeedRows} onReflect={async ids=>{const out=await data.bulkInflow(ids,true);if(out.blocked.length)throw new Error(`${out.blocked.length}건은 반영하지 못했어요: ${out.blocked[0]!.reason}`);}} onAnswer={async ids=>{await feedState.act({action:'answer',ids});}} onLater={()=>setInflowLater(true)}/>}
  {recording&&rows.find(r=>r.id===recording.id)&&<RecordingDialog row={rows.find(r=>r.id===recording.id)!} deleting={recording.deleting} onClose={()=>setRecording(null)} onPreview={v=>data.recordingPreview(recording.id,v,recording.deleting)} onConfirm={async v=>{await data.configure(recording.id,v,recording.deleting);if(recording.deleting)setDetail('');}}/>}
  {trashOpen&&<TrashDialog onList={data.listTrash} onRestore={data.restoreTrash} onEmpty={data.emptyTrash} onClose={()=>setTrashOpen(false)}/>}
+ {/* 오늘 활동(2026-11-07 belie): 일별 기록을 목록 옆으로 — 닫혀도 살짝 나와 있다. DB 전환 전 기수는 이 화면에 오지 않는다. */}
+ {!data.loading&&!data.errorCode&&<TodayActivity onAdd={()=>setImporting(true)}/>}
  {callUi.layer}
  {supplierOpen&&<BulkSupplierDialog count={chosen.size} suppliers={data.suppliers} onApply={bulkSupplier} onClose={()=>setSupplierOpen(false)}/>}
  </SupplierOptions.Provider>;

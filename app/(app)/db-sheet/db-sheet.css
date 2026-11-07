@@ -252,3 +252,5 @@ body.db-sheet-route .db-company-form .cg-inline select,body.db-sheet-route .db-c
 body.db-sheet-route span.sheet-step-cell{cursor:default}body.db-sheet-route .sheet-step-name{font-size:11.5px;font-weight:600;color:#64748b}body.db-sheet-route .sheet-step-name.is-link{color:#1d4ed8;font-weight:700}body.db-sheet-route .sheet-step-cell:hover .sheet-step-name.is-link{text-decoration:underline}
 /* 도달 STEP 배지를 누르면 한 줄 설명(효과 ④, 2026-10-28) — 배지는 설명 단추, 이름·→ 는 이동 링크로 나눴다. */
 body.db-sheet-route .sheet-step-go{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:inherit}body.db-sheet-route .sheet-step-go:focus-visible{outline:2px solid #3b82f6;outline-offset:2px;border-radius:4px}
+/* 오늘 활동 띠(폰·태블릿 화면 아래)가 목록 마지막 줄을 가리지 않게 — 띠 높이만큼 아래 여백(2026-11-07). */
+@media(max-width:1023px){body.db-sheet-route .db-sheet-frame.has-today-activity{padding-bottom:calc(168px + env(safe-area-inset-bottom))}}
