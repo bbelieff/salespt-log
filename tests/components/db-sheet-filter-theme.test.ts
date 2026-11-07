@@ -48,9 +48,9 @@ it('keeps compact parallel filters and save signals without shipping synthetic l
 });
 it('keeps three neutral circular actions above one 34px filter row without changing existing actions or 48px rows',()=>{
  const page=readFileSync('app/(app)/db-sheet/page.tsx','utf8'),css=readFileSync('app/(app)/db-sheet/compact.css','utf8');
- expect(page).toContain("import {Plus,ClipboardPaste,SlidersHorizontal,Trash2} from 'lucide-react'");expect(page).not.toContain('<Upload');
- expect(page).toContain('<ClipboardPaste className="sheet-mobile-action-icon" size={18} strokeWidth={1.75}');
- expect(page.match(/size=\{18\} strokeWidth=\{1\.75\}/g)).toHaveLength(3);
+ expect(page).toContain("import {Plus,SlidersHorizontal,Trash2} from 'lucide-react'");expect(page).not.toContain('<Upload');
+ expect(page).toContain('<Plus className="sheet-mobile-action-icon" size={18} strokeWidth={1.75}');
+ expect(page.match(/size=\{18\} strokeWidth=\{1\.75\}/g)).toHaveLength(2); // 보기 옵션 · ＋ DB 추가(직접 입력·가져오기를 하나로, 2026-11-07)
  expect(page).toContain("유입일<DisclosureChevron open={mobileFilter==='date'} />");expect(page).toContain("상태<DisclosureChevron open={mobileFilter==='status'} />");
  expect(css).toContain('border-radius:10px;background:white;padding:0 10px');
  expect(css).toContain('.sheet-panel-head :is(.sheet-btn,.sheet-btn.is-on){display:inline-flex');
@@ -63,11 +63,13 @@ it('keeps three neutral circular actions above one 34px filter row without chang
  const actions=page.slice(page.indexOf('<div className="sheet-add-actions">'),page.indexOf('{!mobile&&<>{summary}'));
  expect(filters).not.toContain('sheet-view-options-trigger');
  expect(actions.indexOf('sheet-view-options-trigger')).toBeLessThan(actions.indexOf('<Plus'));
- expect(actions.indexOf('<Plus')).toBeLessThan(actions.indexOf('<ClipboardPaste'));
+ // 「＋ DB 추가」 하나(2026-11-07 belie): 직접 입력·통화 녹음은 그 창 안에서 고른다.
+ expect(actions).not.toContain('aria-label="직접 입력"');expect(actions).not.toContain('ClipboardPaste');
  expect(page.match(/className="sheet-btn sheet-view-options-trigger"/g)).toHaveLength(1);
  expect(actions).toContain('setMobileFilter(null);setOptionsOpen(true);');
- expect(actions).toContain('setDraft({...blank(),date:todayKST()})');expect(actions).toContain('onClick={()=>setImporting(true)}');
- expect(actions).toContain("mobile?'DB 붙여넣기/가져오기':'DB 가져오기'");
+ expect(actions).not.toContain('setDraft(');expect(actions).toContain('onClick={()=>setImporting(true)}');
+ expect(actions).toContain('aria-label="DB 추가"');expect(actions).toContain('＋ DB 추가');
+ expect(page).toContain("onDirect={()=>{setImporting(false);setImportUrl('');setDraft({...blank(),date:todayKST()});}}");
  expect(page).not.toContain('onPointerEnter');expect(page).not.toContain('navigator.clipboard');
  expect(css).toContain('background:rgba(226,232,240,.65);border-color:rgba(226,232,240,.8);box-shadow:none');
  expect(css).toContain('.sheet-btn:focus-visible{outline:2px solid #1d4ed8;outline-offset:2px}');expect(css).toContain('button:disabled{opacity:.45;cursor:not-allowed}');

@@ -13,7 +13,7 @@ import { CallButton, CallChip, CallDialDialog } from "./CallDial";
 import { CallScriptSheet } from "./CallScriptSheet";
 import { CallUploadDialog } from "./CallUploadDialog";
 import { useCalls } from "./use-calls";
-import { phoneDigits } from "./call-client";
+import { isCallTextFile, phoneDigits, readCallTextFile, startCall, uploadCallAudio, uploadCallText } from "./call-client";
 import { useCallFocus } from "@/components/announcements/call-focus";
 import "../call.css";
 
@@ -22,7 +22,8 @@ const resumable = (c?: CallRecord) => c && (c.status === "dialed" || c.status ==
 
 /** rows = DB관리시트 원본(revision·contact.ci 포함). onSaved = 확정 뒤 목록 다시 읽기. */
 export function useCallUi(rows: DbSheetLead[], onSaved: () => void | Promise<void>) {
-  const company = (leadId: string) => rows.find(r => r.id === leadId)?.company || "이 업체";
+  // 「＋ DB 추가」로 녹음부터 올린 새 DB는 업체명이 비어 있다 — 정리가 끝나기 전까지는 전화번호로 부른다.
+  const company = (leadId: string) => { const r = rows.find(v => v.id === leadId); return r?.company || r?.phone || "새 DB"; };
   const calls = useCalls(company);
   const [dial, setDial] = useState<Row | null>(null);
   const [upload, setUpload] = useState<{ row: Row; call: CallRecord | null; asked: boolean } | null>(null);
@@ -77,5 +78,11 @@ export function useCallUi(rows: DbSheetLead[], onSaved: () => void | Promise<voi
       {calls.toast.open && <button type="button" onClick={() => { setConfirm(calls.toast!.open!); calls.clearToast(); }}>확인하기</button>}
       <button type="button" aria-label="알림 닫기" onClick={calls.clearToast}><X size={16} aria-hidden="true" /></button></div>}
   </>;
-  return { enabled: calls.enabled, slot, bar, layer, pending, strip };
+  /** 「＋ DB 추가」에서 고른 녹음·받아쓴 글을 그 줄의 통화로 올린다(고지는 부르는 쪽이 이미 확인). */
+  async function uploadFile(leadId: string, file: File, calledAt?: string) {
+    const id = await startCall(leadId, calledAt);
+    await (isCallTextFile(file.name) ? uploadCallText(id, await readCallTextFile(file)) : uploadCallAudio(id, file));
+    calls.uploaded(id, leadId);
+  }
+  return { enabled: calls.enabled, slot, bar, layer, pending, strip, uploadFile };
 }

@@ -11,3 +11,25 @@ body.db-sheet-route .sheet-dialog.adaptive-dialog .ai-sheet-hint{margin-top:-4px
 body.db-sheet-route .sheet-dialog.adaptive-dialog .ai-linked{display:inline-flex;align-items:center;gap:4px;margin-left:auto;border-radius:999px;background:#ecfdf5;color:#047857;padding:2px 8px;font-size:11px;font-weight:600;white-space:nowrap}
 body.db-sheet-route .sheet-dialog.adaptive-dialog .ai-options .ai-follow.ai-linked{margin-left:0;font-size:12px}
 @media(max-width:650px){body.db-sheet-route .sheet-dialog.adaptive-dialog .ai-drop small{display:none}body.db-sheet-route .sheet-dialog.adaptive-dialog .ai-paste input[type=url]{height:44px;font-size:16px}}
+/* 「＋ DB 추가」 첫 화면·통화 단계(2026-11-07 belie 「팝업 너비를 줄이고 복잡하지 않게」 「모바일도 가운데 팝업」): 560px 한 줄 쌓기, 폰도 가운데 팝업(내용 높이만큼). */
+body.db-sheet-route .sheet-dialog.adaptive-dialog.ai-add{width:min(560px,calc(100vw - 32px))}
+body.db-sheet-route .sheet-dialog.adaptive-dialog.ai-add .ai-input-grid{display:flex;flex-direction:column;gap:16px}
+body.db-sheet-route .sheet-dialog.adaptive-dialog.ai-add .ai-drop{min-height:0;padding:20px 16px;gap:8px}
+body.db-sheet-route .sheet-dialog.adaptive-dialog.ai-add .ai-drop small{display:none}
+body.db-sheet-route .sheet-dialog.adaptive-dialog.ai-add .ai-paste textarea{min-height:72px}
+body.db-sheet-route .sheet-dialog.adaptive-dialog.ai-add .ai-direct{width:100%;min-height:48px;margin:12px 0;gap:8px;font-size:14px}
+body.db-sheet-route .sheet-dialog.adaptive-dialog .ai-call-step{display:flex;flex-direction:column}
+body.db-sheet-route .sheet-dialog.adaptive-dialog .ai-call-file{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid #e2e8f0;border-radius:12px;background:#f8fafc;color:#64748b}
+body.db-sheet-route .sheet-dialog.adaptive-dialog .ai-call-file.is-error{border-color:#fecdd3;background:#fff1f2;color:#be123c}
+body.db-sheet-route .sheet-dialog.adaptive-dialog .ai-call-file-name{display:grid;min-width:0;flex:1;gap:2px}
+body.db-sheet-route .sheet-dialog.adaptive-dialog .ai-call-file-name b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;font-weight:700;color:#0f172a}
+body.db-sheet-route .sheet-dialog.adaptive-dialog .ai-call-file-name small{font-size:12px;color:inherit}
+body.db-sheet-route .sheet-dialog.adaptive-dialog .ai-call-change{flex-shrink:0;min-height:40px;padding:0 4px;font-size:14px;font-weight:600;color:#047857}
+body.db-sheet-route .sheet-dialog.adaptive-dialog .ai-call-h{margin:20px 0 8px;font-size:16px;font-weight:700;color:#0f172a}
+body.db-sheet-route .sheet-dialog.adaptive-dialog .ai-call-step>.ai-call-h:first-child{margin-top:0}
+body.db-sheet-route .sheet-dialog.adaptive-dialog .ai-call-channels{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+body.db-sheet-route .sheet-dialog.adaptive-dialog .ai-call-channel{display:flex;align-items:center;justify-content:center;height:48px;border:1px solid #e2e8f0;border-radius:12px;background:white}
+body.db-sheet-route .sheet-dialog.adaptive-dialog .ai-call-channel.is-on{border-color:#059669;background:#ecfdf5;box-shadow:0 0 0 1px #059669}
+body.db-sheet-route .sheet-dialog.adaptive-dialog .ai-call-existing{margin-top:12px;font-size:14px;color:#334155}
+body.db-sheet-route .sheet-dialog.adaptive-dialog .ai-call-step .dbs-call-notice{font-size:14px;color:#334155}
+@media(max-width:650px){body.db-sheet-route .sheet-overlay:has(.sheet-dialog.adaptive-dialog.ai-add){padding:16px!important;align-items:center}body.db-sheet-route .sheet-dialog.adaptive-dialog.ai-add{width:100%;height:auto;max-height:calc(100dvh - 32px);border-radius:16px;border:1px solid #e2e8f0}body.db-sheet-route .sheet-dialog.adaptive-dialog.ai-add .ai-body{flex:0 1 auto}}

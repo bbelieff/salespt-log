@@ -3,6 +3,7 @@
  * 「통화 정리 확인」(plan call-summary PR-5b, 목업 통화확인_목업.html). [저장하기] 전에는 아무것도 저장하지 않는다.
  * 폰 = 요약 → 미팅 → 컨택결과 → 업체정보 한 줄, PC(1024px~) = 왼쪽 요약·미팅·결과 / 오른쪽 업체정보.
  * 저장은 POST /api/calls/[id]/confirm 한 번 — DB관리시트 저장·컨택 기록·(켰으면) 미팅카드.
+ * 「＋ DB 추가」로 녹음부터 올린 새 DB(업체명·대표가 빈 줄)는 맨 위 「새 DB」 칸에서 AI가 들은 업체명·대표를 고친다(2026-11-07).
  * 글자는 50대 기준 최소(belie 2026-11-04): 같은 말 반복·내부 용어(STEP)·「빈칸 채움」 꼬리표·같은 값 줄을 뺀다. 부품·용어는 DB정보와 같게.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -12,6 +13,8 @@ import { DB_SHEET_RESULTS, dbSheetResultLabel, type DbSheetLead } from "@/types/
 import { buildCiRows, confirmBlocker, confirmBody, missingQuestions, noteDraft, timeOptions, type CiRow, type ConfirmState, type DbSheetResult } from "./call-confirm-model";
 import { confirmCall, hhmm } from "./call-client";
 import { meetingPlace } from "@/util/call-place";
+import ChannelBadge from "@/components/ui/ChannelBadge";
+import { Channel } from "@/types/channel";
 
 const QUESTIONS = ["대표 여부·법인/개인·상호", "업종", "창업연월", "연 매출", "올해 매출", "사업자 대출", "개인 대출", "4대보험", "수출·배달·키오스크", "특허·인증", "신용점수", "필요 자금"];
 const kstDate = (iso: string) => new Date(Date.parse(iso) + 9 * 3_600_000).toISOString().slice(0, 10);
@@ -36,6 +39,8 @@ export function CallConfirmScreen({ lead, call, onSaved, onClose }: { lead: DbSh
   const picked = s.rows.filter(r => r.checked && r.status !== "same").length;
   const blocker = confirmBlocker(s);
   const missing = missingQuestions(x.answered);
+  const fresh = !lead.company && !lead.owner;
+  const channel = Channel.safeParse(lead.channel);
 
   async function save() {
     setBusy(true); setError("");
@@ -54,6 +59,14 @@ export function CallConfirmScreen({ lead, call, onSaved, onClose }: { lead: DbSh
 
     <main className="dbs-cc-main">
       <div className="dbs-cc-col">
+        {fresh && <section className="dbs-cc-panel dbs-cc-new" aria-labelledby="dbs-cc-new">
+          <div className="dbs-cc-panel-h"><h2 id="dbs-cc-new">새 DB</h2>{channel.success && <ChannelBadge channel={channel.data} />}</div>
+          <p className="dbs-cc-facts num">유입일 {lead.date}{lead.phone && ` · ${lead.phone}`}</p>
+          <div className="dbs-cc-two">
+            <label className="dbs-cc-field">업체명<input className="sheet-input" value={s.lead.company ?? ""} onChange={e => setS(v => ({ ...v, lead: { ...v.lead, company: e.target.value } }))} /></label>
+            <label className="dbs-cc-field">대표<input className="sheet-input" value={s.lead.owner ?? ""} onChange={e => setS(v => ({ ...v, lead: { ...v.lead, owner: e.target.value } }))} /></label>
+          </div>
+        </section>}
         <section className="dbs-cc-panel" aria-labelledby="dbs-cc-lead">
           <div className="dbs-cc-lead"><strong id="dbs-cc-lead">{lead.company || x.lead.company || "업체명 없음"}</strong>{lead.owner && <span>{lead.owner} 대표</span>}</div>
           <p className="dbs-cc-facts num">{dayLabel(call.calledAt)} {hhmm(call.calledAt)} 통화</p>

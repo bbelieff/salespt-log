@@ -14,7 +14,8 @@ import {useMe} from '@/query/me-hook';
 import {InflowPeriod} from './_components/InflowPeriod';
 import {inflowPeriodBounds,type InflowPeriodId} from './_components/inflow-period';
 import {todayKST} from '@/util/week';
-import {Row,Key,columns,defaults,blank} from './_components/model';
+import {Row,Key,columns,defaults,blank,formatPhone} from './_components/model';
+import {callFilePhone,recordedAt,type CallImportChannel} from './_components/call-import';
 import {Grid} from './_components/Grid';
 import {ImportDialog} from './_components/ImportDialog';
 import {DbDetail} from './_components/DbDetail';
@@ -27,7 +28,7 @@ import {BulkSupplierDialog} from './_components/BulkSupplierDialog';
 import {restoreVisibleColumns} from './_components/visible-columns';
 import MobileViewOptions from './_components/MobileViewOptions';
 import MobileFilterMenu from './_components/MobileFilterMenu';
-import {Plus,ClipboardPaste,SlidersHorizontal,Trash2} from 'lucide-react';
+import {Plus,SlidersHorizontal,Trash2} from 'lucide-react';
 import {STATUS_FILTERS,filterDbSheetRows,hasStatusRestriction,toggleStatusFilter,type StatusFilterId} from './_components/status-filter';
 import './db-sheet.css';
 import './recording.css';
@@ -78,6 +79,8 @@ export default function DbSheetPage(){
  async function bulkInflow(value:boolean){setBulkBusy(true);setBulkMessage('');try{const out=await data.bulkInflow([...chosen],value);setBulkMessage(bulkOutcomeText(value?'유입 반영':'유입 미반영',out));}finally{setBulkBusy(false);}}
  async function bulkSupplier(patch:{channel?:string;supplier?:string}){setBulkBusy(true);setBulkMessage('');try{const out=await data.bulkSupplier([...chosen],patch);setBulkMessage(bulkOutcomeText('공급처 변경',out));}finally{setBulkBusy(false);}}
  async function bulkDelete(){setBulkBusy(true);setBulkMessage('');try{const ids=[...chosen];const out=await data.scheduleDelete(ids);setPicked(current=>new Set([...current].filter(id=>!ids.includes(id)||out.blocked.some(b=>b.id===id))));if(out.blocked.length)setBulkMessage(bulkOutcomeText('삭제',out));}finally{setBulkBusy(false);}}
+ // 「＋ DB 추가」에 녹음·받아쓴 글을 놓으면(2026-11-07 belie): 목록에 없는 번호면 DB 줄을 먼저 만들고(유입일 = 녹음한 날), 그 줄에 통화를 올려 정리한다.
+ async function callImport(file:File,channel:CallImportChannel|null,existingId:string|null){const when=recordedAt(file);let leadId=existingId;if(!leadId){if(!channel)throw new Error('어디서 온 DB인지 골라 주세요.');const row:Row={...blank(),date:when.date,channel,supplier:channel,phone:formatPhone(callFilePhone(file.name)),recording:{inflow:true,activities:true}};await data.add([row],row.id);leadId=row.id;}await callUi.uploadFile(leadId,file,when.calledAt);setImporting(false);setImportUrl('');}
  function resetFilters(){setSearch('');setSelectedSuppliers([]);setFrom('');setTo('');setPeriod('all');setSelectedStatuses([]);}
  // 공급처 줄은 같은 다중선택에 더하거나 뺀다. 합계는 전체 선택을 해제한다. 모바일은 요약 아래로 밀려난 목록 첫 줄로 내려 준다.
  function pickSupplier(value:string){setSelectedSuppliers(current=>value?(current.includes(value)?current.filter(item=>item!==value):[...current,value]):[]);if(value&&window.matchMedia?.('(max-width: 1023px)').matches)listTop.current?.scrollIntoView({block:'start'});}
@@ -111,7 +114,7 @@ export default function DbSheetPage(){
    {!mobile&&activeFilters&&<button className="sheet-text-btn" onClick={resetFilters}>초기화</button>}
   </div>
   {!mobile&&tableTools}
-  <div className="sheet-add-actions">{mobile&&<button type="button" className="sheet-btn sheet-view-options-trigger" aria-label={`설정(보기 옵션)${activeFilters?' 선택됨':''}`} title="설정(보기 옵션)" aria-haspopup="dialog" aria-expanded={optionsOpen} onClick={()=>{setMobileFilter(null);setOptionsOpen(true);}}><SlidersHorizontal size={18} strokeWidth={1.75} aria-hidden="true"/></button>}{!mobile&&<button className="sheet-btn" aria-label="휴지통" title="휴지통" onClick={()=>setTrashOpen(true)}><span className="app-header-pill sheet-toolbar-pill">휴지통</span></button>}<button className="sheet-btn" aria-label="직접 입력" title="직접 입력" onClick={()=>setDraft({...blank(),date:todayKST()})}><Plus className="sheet-mobile-action-icon" size={18} strokeWidth={1.75} aria-hidden="true"/><span className="app-header-pill sheet-toolbar-pill">＋ 직접 입력</span></button><button className="sheet-btn primary" aria-label={mobile?'DB 붙여넣기/가져오기':'DB 가져오기'} title={mobile?'DB 붙여넣기/가져오기':'DB 가져오기'} onClick={()=>setImporting(true)}><ClipboardPaste className="sheet-mobile-action-icon" size={18} strokeWidth={1.75} aria-hidden="true"/><span className="app-header-pill sheet-toolbar-pill">DB 가져오기</span></button></div>
+  <div className="sheet-add-actions">{mobile&&<button type="button" className="sheet-btn sheet-view-options-trigger" aria-label={`설정(보기 옵션)${activeFilters?' 선택됨':''}`} title="설정(보기 옵션)" aria-haspopup="dialog" aria-expanded={optionsOpen} onClick={()=>{setMobileFilter(null);setOptionsOpen(true);}}><SlidersHorizontal size={18} strokeWidth={1.75} aria-hidden="true"/></button>}{!mobile&&<button className="sheet-btn" aria-label="휴지통" title="휴지통" onClick={()=>setTrashOpen(true)}><span className="app-header-pill sheet-toolbar-pill">휴지통</span></button>}<button className="sheet-btn primary" aria-label="DB 추가" title="DB 추가 — 엑셀·통화 녹음·직접 입력" onClick={()=>setImporting(true)}><Plus className="sheet-mobile-action-icon" size={18} strokeWidth={1.75} aria-hidden="true"/><span className="app-header-pill sheet-toolbar-pill">＋ DB 추가</span></button></div>
  </div>
  {!mobile&&<>{summary}{quickFilters}{columnSettings}</>}
  {mobile&&<MobileViewOptions open={optionsOpen} count={filtered.length} onClose={()=>setOptionsOpen(false)} onReset={resetFilters}><div ref={setMobileToolsTarget}/>{tableTools}{summary}{columnSettings}<button type="button" className="sheet-btn sheet-trash-open" onClick={()=>{setOptionsOpen(false);setTrashOpen(true);}}><Trash2 size={16} aria-hidden="true"/>휴지통</button></MobileViewOptions>}
@@ -127,7 +130,7 @@ export default function DbSheetPage(){
  </section></PageContainer></div>
  {selected&&<DbDetail key={selected.id} row={selected} callBar={callUi.bar(selected)} onStage={v=>data.stage(selected.id,v)} onAbsence={(entry,remove)=>data.absence(selected.id,entry,remove)} onLink={id=>data.linkMeeting(selected.id,id)} draft={selected.contact} onRestored={data.reload} onAsInfo={v=>data.asInfo(selected.id,v)} onInflowChange={value=>changeInflow(selected.id,value)} onDelete={()=>setRecording({id:selected.id,deleting:true})} onChange={v=>data.contact(selected.id,v)} onEdit={(k,v)=>data.edit(selected.id,k,v)} onResult={(v,date)=>{void data.record(selected.id,v,date).catch(()=>{});}} onRegister={()=>{void data.register(selected.id).catch(()=>{});}} onOpen={()=>{void data.flush(selected.id).then(()=>router.push(`/contact?date=${selected.contact.date}&channel=${encodeURIComponent(selected.channel)}`)).catch(()=>{});}} onClose={()=>{void data.flush(selected.id).catch(()=>{});setDetail('');}}/>}
  {draft&&<DirectInputDialog initial={draft} rows={rows} onClose={()=>setDraft(null)} onExisting={id=>{setDraft(null);setDetail(id);}} onSave={async(row,allow)=>{await data.add([row],row.id,allow?[row.id]:[]);setDraft(null);}}/>}
- {importing&&<ImportDialog key={importUrl||'new'} accountKey={accountKey} rows={rows} initialUrl={importUrl} connected={!!importUrl} feeds={feedState.feeds} onListTrash={data.listTrash} onExisting={id=>{setImporting(false);setImportUrl('');setDetail(id);}} onClose={()=>{setImporting(false);setImportUrl('');}} onApply={async(added,allow)=>{await data.add(added,added[0]!.id,allow);setImporting(false);setImportUrl('');}}/>}
+ {importing&&<ImportDialog key={importUrl||'new'} accountKey={accountKey} rows={rows} initialUrl={importUrl} connected={!!importUrl} feeds={feedState.feeds} onListTrash={data.listTrash} onExisting={id=>{setImporting(false);setImportUrl('');setDetail(id);}} onClose={()=>{setImporting(false);setImportUrl('');}} onApply={async(added,allow)=>{await data.add(added,added[0]!.id,allow);setImporting(false);setImportUrl('');}} onDirect={()=>{setImporting(false);setImportUrl('');setDraft({...blank(),date:todayKST()});}} onCallFile={callUi.enabled?callImport:undefined}/>}
  {feedState.editable&&!inflowLater&&!importing&&!data.loading&&pendingFeedRows.length>0&&<FeedInflowDialog key={pendingFeedRows.map(r=>r.id).join()} rows={pendingFeedRows} onReflect={async ids=>{const out=await data.bulkInflow(ids,true);if(out.blocked.length)throw new Error(`${out.blocked.length}건은 반영하지 못했어요: ${out.blocked[0]!.reason}`);}} onAnswer={async ids=>{await feedState.act({action:'answer',ids});}} onLater={()=>setInflowLater(true)}/>}
  {recording&&rows.find(r=>r.id===recording.id)&&<RecordingDialog row={rows.find(r=>r.id===recording.id)!} deleting={recording.deleting} onClose={()=>setRecording(null)} onPreview={v=>data.recordingPreview(recording.id,v,recording.deleting)} onConfirm={async v=>{await data.configure(recording.id,v,recording.deleting);if(recording.deleting)setDetail('');}}/>}
  {trashOpen&&<TrashDialog onList={data.listTrash} onRestore={data.restoreTrash} onEmpty={data.emptyTrash} onClose={()=>setTrashOpen(false)}/>}
