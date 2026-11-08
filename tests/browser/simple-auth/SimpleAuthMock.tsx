@@ -18,13 +18,11 @@ const SCENARIOS: { key: Scenario; label: string }[] = [
 ];
 const stamp = () => { const d = new Date(); return `${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
 type Sel = { reqId: string; bizNo: string };
-const DEFAULT_SEL: Sel = { reqId: "req-2", bizNo: "312-81-55210" };
 
 export default function SimpleAuthMock({ live = false }: { live?: boolean }) {
   const [now, setNow] = useState(() => Date.now());
   const [scenario, setScenario] = useState<Scenario>("normal");
   const [items, setItems] = useState<AuthRequest[]>(() => seedRequests(Date.now()));
-  const [sel, setSel] = useState<Sel | null>(DEFAULT_SEL);
   const [toast, setToast] = useState("");
   const [approveAt, setApproveAt] = useState<Record<string, number>>({});
 
@@ -59,7 +57,7 @@ export default function SimpleAuthMock({ live = false }: { live?: boolean }) {
 
   function pickScenario(s: Scenario) {
     setScenario(s); setApproveAt({});
-    if (s === "empty") { setItems([]); setSel(null); } else { setItems(seedRequests(Date.now())); setSel(DEFAULT_SEL); }
+    setItems(s === "empty" ? [] : seedRequests(Date.now()));
   }
   function send(v: RequestInput) {
     const id = nextId(), t = Date.now();
@@ -80,26 +78,21 @@ export default function SimpleAuthMock({ live = false }: { live?: boolean }) {
   const remove = (id: string) => { setItems(l => l.filter(r => r.id !== id)); setToast("기록을 삭제했어요"); };
   const patchBiz = (s: Sel, f: (b: AuthRequest["businesses"][number]) => AuthRequest["businesses"][number]) =>
     setItems(l => l.map(r => (r.id === s.reqId ? { ...r, businesses: r.businesses.map(b => (b.bizNo === s.bizNo ? f(b) : b)) } : r)));
-  function applied(n: number) {
-    if (!sel) return;
+  // 펼침 상태는 RequestList 가 업체마다 따로 기억한다 — 여기서는 어느 업체에 대한 동작인지만 받는다.
+  function applied(sel: Sel, n: number) {
     patchBiz(sel, b => ({ ...b, applied: true }));
-    setSel(null);
     setToast(`업체정보 ${n}칸 반영 — 목록에서 뺐어요 (목업: 저장 안 함)`);
   }
-  function retryDoc(key: DocKey) {
-    if (!sel) return;
+  function retryDoc(sel: Sel, key: DocKey) {
     patchBiz(sel, b => ({ ...b, results: b.results.map(x => (x.key === key ? resultFor(key) : x)) }));
     setToast("다시 받으려면 고객 승인이 한 번 더 필요해요 (목업: 바로 성공 처리)");
   }
-  function link(l: Link) {
-    if (!sel) return;
+  function link(sel: Sel, l: Link) {
     patchBiz(sel, b => ({ ...b, link: l }));
     if (l.state === "linked") setToast("DB에 연결했어요");
     if (l.state === "created") setToast("새 DB로 만들었어요 (목업: 저장 안 함)");
   }
   const skipTime = () => setItems(l => l.map(r => (r.status === "waiting" ? { ...r, deadline: Date.now() + 5000 } : r)));
-  const selReq = sel ? items.find(r => r.id === sel.reqId && r.status === "done") : undefined;
-  const selBiz = selReq?.businesses.find(b => b.bizNo === sel?.bizNo);
 
   const controls = (
     <div role="region" aria-label="목업 조작" className={`flex flex-wrap items-center gap-2 text-xs text-gray-700 ${live ? "fixed bottom-4 right-4 z-50 rounded-lg border border-dashed border-gray-400 bg-gray-100/95 px-3 py-2 shadow-md" : "border-b border-dashed border-gray-400 bg-gray-200 px-4 py-2"}`}>
@@ -111,17 +104,20 @@ export default function SimpleAuthMock({ live = false }: { live?: boolean }) {
     </div>
   );
   // 2단(belie 2026-11-09): ① 보내기·가져오기 | ② 보낸 인증. 받은 서류·DB 연결·업체정보 반영은 ② 의 업체 바로 밑에 펼친다.
-  const detail = (reqId: string, bizNo: string) => (selReq && selBiz && selReq.id === reqId && selBiz.bizNo === bizNo
-    ? <DocBox key={`${reqId}:${bizNo}`} inline req={selReq} biz={selBiz} onClose={() => setSel(null)} onRetry={retryDoc} onLink={link} onApplied={applied} />
-    : null);
-  const pickBiz = (reqId: string, bizNo: string) => setSel(s => (s?.reqId === reqId && s.bizNo === bizNo ? null : { reqId, bizNo }));
+  const detail = (reqId: string, bizNo: string) => {
+    const req = items.find(r => r.id === reqId && r.status === "done");
+    const biz = req?.businesses.find(b => b.bizNo === bizNo);
+    if (!req || !biz) return null;
+    const t = { reqId, bizNo };
+    return <DocBox key={`${reqId}:${bizNo}`} inline req={req} biz={biz} onClose={() => undefined} onRetry={k => retryDoc(t, k)} onLink={l => link(t, l)} onApplied={n => applied(t, n)} />;
+  };
   const body = (
     <div className="flex flex-col gap-4 pc:flex-row pc:items-start">
       <div className="pc:w-96 pc:shrink-0 wide:w-1/3">
         <RequestForm onSend={send} busy={false} />
       </div>
       <div className="min-w-0 flex-1">
-        <RequestList items={items} now={now} selected={selBiz ? sel : null} detail={detail} onSelect={pickBiz} onApproved={approved} onResend={resend} onCancel={cancel} onDelete={remove} />
+        <RequestList items={items} now={now} detail={detail} onApproved={approved} onResend={resend} onCancel={cancel} onDelete={remove} />
       </div>
     </div>
   );
