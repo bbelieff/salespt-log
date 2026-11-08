@@ -11,7 +11,7 @@ import { TodayActivity } from "@/app/(app)/db-sheet/_components/TodayActivity";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 const z = { production: 0, inflow: 0, contactProgress: 0, meetingReservation: 0 };
-const day = () => ({ date: "2026-11-07", weekIndex: 1, courseStart: "2026-11-06", meetings: [], inflowWaitBase: 0, bannerStockBase: 16, bannerOrderQty: 20,
+const day = () => ({ date: "2026-11-07", weekIndex: 1, courseStart: "2026-11-06", meetings: [], inflowWaitBase: 8, bannerStockBase: 16, bannerOrderQty: 20,
   channels: { 매입DB: { ...z, production: 5, inflow: 5, contactProgress: 3, meetingReservation: 1, dbSheetInflow: 5, dbSheetContacts: 3 }, 직접생산: { ...z, production: 2, inflow: 2 }, 현수막: { ...z, production: 2, inflow: 1, dbSheetInflow: 1 }, "콜·지·기·소": { ...z, production: 3, inflow: 3, contactProgress: 2, meetingReservation: 1 } } });
 
 const btnIn = (el: Element, label: string) => el.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
@@ -35,7 +35,8 @@ describe("오늘 활동", () => {
     expect(peek.textContent).toContain("11유입");
     expect(peek.textContent).toContain("5컨택");
     expect(peek.textContent).toContain("2미팅");
-    const btn = (t: string) => [...peek.querySelectorAll("button")].find(b => b.textContent === t)!;
+    const btn = (t: string) => [...peek.querySelectorAll("button")].find(b => b.textContent?.startsWith(t))!;
+    expect(btn("＋ 현수막 게시").textContent).toContain("재고 14");
     act(() => btn("＋ DB 추가").click());
     expect(onAdd).toHaveBeenCalledTimes(1);
     act(() => btn("＋ 현수막 게시").click());
@@ -57,6 +58,8 @@ describe("오늘 활동", () => {
     await flush();
     act(() => [...host!.querySelectorAll("button[aria-expanded]")][0]!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(host.textContent).toContain("재고 14개");
+    // 매입DB 유입대기 = inflowWaitBase 8 − 오늘 유입 5 = 3
+    expect(host.textContent).toMatch(/유입대기.*유입 안 된 수3개/);
     expect(host.querySelector('a[href="/contact"]')!.textContent).toContain("일별 기록 전체");
     expect(host.querySelectorAll("tbody tr")).toHaveLength(4);
     // 장수 칸에 바로 적기 — 15 를 적고 Enter 면 현수막 줄 production 15 만 보낸다(belie 2026-11-08 대량 게시)

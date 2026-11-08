@@ -44,6 +44,10 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
   const stock = day.data ? Math.max(0, day.data.bannerStockBase - (banner?.production ?? 0)) : null;
   // 현수막을 산 적이 없으면 현수막 게시 칸·버튼을 뺀다. 재고 base 는 오늘 게시를 더한 값이라 구매 수로 본다(belie 2026-11-08).
   const showBanner = !!banner && !!day.data && (day.data.bannerOrderQty ?? 0) > 0;
+  // 매입DB 유입대기 = 산 DB 중 아직 유입 안 된 수(일별 기록과 같은 셈, belie 2026-11-08). 매입DB 를 산 적이 있을 때만.
+  const buy = ch?.매입DB;
+  const inflowWait = day.data && buy ? Math.max(0, day.data.inflowWaitBase - buy.inflow) : null;
+  const showWait = inflowWait !== null && (inflowWait > 0 || (buy?.production ?? 0) > 0);
 
   useEffect(() => {
     if (!open) return;
@@ -87,7 +91,7 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
   </ol>;
   const chips = (column: boolean) => <div className={column ? "flex flex-col gap-1.5" : "flex gap-1.5"}>
     <button type="button" className={`rounded-full border border-emerald-600 bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white ${column ? "rounded-lg py-2 text-left" : "shrink-0"}`} onClick={add}>＋ DB 추가</button>
-    {showBanner && <button type="button" className={`rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 ${column ? "rounded-lg py-2 text-left" : "shrink-0"}`} onClick={openBanner}>＋ 현수막 게시</button>}
+    {showBanner && <button type="button" className={`rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 ${column ? "rounded-lg py-2 text-left" : "shrink-0"}`} onClick={openBanner}>＋ 현수막 게시{stock !== null && <span className="ml-1 text-xs font-normal tabular-nums text-slate-500">재고 {stock}</span>}</button>}
   </div>;
 
   const head = <div {...swipe("down", () => setOpen(false))} className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-4 pb-3 pt-3">
@@ -116,12 +120,20 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
         <thead><tr className="text-xs text-slate-500"><th className="w-[34%] text-left font-medium">채널</th>{STEPS.map(([k, l]) => <th key={k} className="font-medium">{l}</th>)}</tr></thead>
         <tbody>{(ch ? activeChannels : CHANNEL_ORDER).map(c => <tr key={c}><td className="text-left"><ChannelBadge channel={c} /></td>{STEPS.map(([k]) => <td key={k} className="tabular-nums text-slate-700">{ch ? ch[c]?.[k] ?? 0 : "–"}</td>)}</tr>)}</tbody>
       </table>}
+      {showWait && <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2.5">
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5"><ChannelBadge channel="매입DB" /><span className="text-sm font-semibold text-slate-800">유입대기</span></div>
+          <div className="mt-0.5 text-xs text-slate-500">산 DB 중 아직 유입 안 된 수</div>
+        </div>
+        <b className="shrink-0 text-lg tabular-nums text-slate-900">{inflowWait}<span className="ml-0.5 text-sm font-medium text-slate-500">개</span></b>
+      </div>}
       {showBanner && <>
       <p className="mb-1 mt-4 text-xs font-semibold text-slate-500">목록에 없는 활동</p>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-xl bg-slate-50 px-3 py-2.5">
         <div className="min-w-0">
-          <div className="flex items-center gap-1.5"><ChannelBadge channel="현수막" /><span className="text-sm font-semibold text-slate-800">게시</span></div>
-          <div className="mt-0.5 text-xs text-slate-500">오늘 붙인 장수를 적어요{stock !== null && ` · 재고 ${stock}개`}</div>
+          <div className="flex items-center gap-1.5"><ChannelBadge channel="현수막" /><span className="text-sm font-semibold text-slate-800">게시</span>
+            {stock !== null && <span className={`rounded-full bg-white px-2 py-0.5 text-xs font-bold tabular-nums ring-1 ring-slate-200 ${stock === 0 ? "text-red-700" : "text-slate-700"}`}>재고 {stock}개</span>}</div>
+          <div className="mt-0.5 text-xs text-slate-500">오늘 붙인 장수를 적어요</div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <button type="button" aria-label="현수막 게시 빼기" disabled={!banner || !banner.production || save.isPending} onClick={() => void bump(-1)} className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-slate-700 disabled:opacity-40"><Minus size={18} aria-hidden="true" /></button>
