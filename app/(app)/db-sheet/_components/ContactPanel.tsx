@@ -6,6 +6,7 @@ import CompanyInfoEditor from '@/components/CompanyInfoEditor';
 import {CompanyInfo} from '@/types';
 import {DateTimeRow,FieldNote} from '@/app/(app)/contact/_components/MeetingSlotForm';
 import {Row,meetingUnregistered} from './model';
+import {MeetingBookedCard} from './MeetingBookedCard';
 import {useDirtyEntry} from '@/components/DirtyGuard';
 import {useAutosave} from '@/components/autosave/useAutosave';
 import AutosaveStatus from '@/components/autosave/AutosaveStatus';
@@ -43,6 +44,9 @@ export function ContactPanel({row,draft,onChange,onResult,onRegister,onOpen,onCo
  const pending=!draft.registered&&!row.meetingId&&(book||meetingUnregistered(row));
  const [booking,setBooking]=useState(!!(draft.registered||draft.meetingDate||draft.reservationNote||pending));
  useEffect(()=>{if(pending)setBooking(true);},[pending]);
+ // 이 화면에서 방금 등록됐는지 — 확인 카드를 강조한다(2026-11-08).
+ const was=useRef(draft.registered),[just,setJust]=useState(false);
+ useEffect(()=>{if(!was.current&&draft.registered)setJust(true);was.current=draft.registered;},[draft.registered]);
  const armed=useRef(false);
  const patch=(p:Partial<ContactDraft>)=>{if('meetingDate' in p||'time' in p||'ci' in p)armed.current=true;onChange({...draft,...p});};
  const missing=[!draft.meetingDate&&'미팅 일정',!draft.time&&'시간',!draft.ci.소재지?.trim()&&'소재지'].filter(Boolean) as string[];
@@ -67,7 +71,7 @@ export function ContactPanel({row,draft,onChange,onResult,onRegister,onOpen,onCo
 
    </div>}
   </section></fieldset>
-  {row.meetingId&&draft.registered&&<a className="sheet-btn primary" href={`/schedule?date=${encodeURIComponent(draft.meetingDate)}&focus=${encodeURIComponent(row.effectiveMeetingId??row.meetingId)}&edit=schedule`}>STEP 3 · 일정 변경 →</a>}
+  {row.meetingId&&draft.registered&&row.stage!=='미팅 삭제됨'&&<MeetingBookedCard row={row} draft={draft} just={just}/>}
   {onOpen&&draft.registered&&<button className="sheet-btn" onClick={onOpen}>업체정보 수정 →</button>}
   {row.meetingId&&row.stage==='미팅 삭제됨'&&<DeletedMeetings meetingId={row.meetingId} onRestored={onRestored}/>}
  </div>;
