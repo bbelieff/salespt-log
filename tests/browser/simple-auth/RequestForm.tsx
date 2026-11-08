@@ -45,7 +45,6 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
   const show = (k: keyof typeof errors) => (tried && errors[k] ? <p id={`${id}-${k}-err`} className="mt-1 text-xs text-red-600">{errors[k]}</p> : null);
   const invalid = (k: keyof typeof errors) => (tried && errors[k] ? { "aria-invalid": true, "aria-describedby": `${id}-${k}-err` } : {});
   const toggleDoc = (k: DocKey) => setDocs(d => (d.includes(k) ? d.filter(x => x !== k) : [...d, k]));
-  const extra = docs.includes("ins");
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -117,12 +116,11 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
                 <input type="checkbox" checked={docs.includes(d.key)} onChange={() => toggleDoc(d.key)} className="h-4 w-4 accent-blue-600" />
                 <span>{d.label}</span>
                 {d.note && <span className="text-xs text-gray-500">{d.note}</span>}
-                {d.extraAuth && <span className="ml-auto rounded-full bg-amber-100 px-1.5 text-xs font-semibold text-amber-800">승인 1번 더</span>}
               </label>
             </li>
           ))}
         </ul>
-        {extra && <p className="mt-1 text-xs text-amber-800">4대보험은 기관이 달라 고객 휴대폰에 인증 요청이 한 번 더 가요.</p>}
+        <p className="mt-1 text-xs text-gray-500">고른 서류는 고객 승인 한 번으로 모두 받아요.</p>
         {show("docs")}
       </fieldset>
 

@@ -54,7 +54,7 @@ export default function RequestList({ items, now, selectedId, onSelect, onApprov
               </div>
               {r.status === "waiting" && (
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="mr-auto text-xs text-gray-600">고객이 {r.method} 앱에서 승인하면 자동으로 서류를 받아요.</span>
+                  <span className="mr-auto text-xs text-gray-600">고객이 {r.method} 앱에서 승인하면 서류를 받아요. 승인했다고 하면 「고객이 승인했어요」를 눌러 바로 확인하세요.</span>
                   <button type="button" onClick={() => onApproved(r.id)} className={`${GHOST} border border-blue-200 text-blue-700 hover:bg-blue-50`}>고객이 승인했어요</button>
                   <button type="button" onClick={() => onResend(r.id)} className={`${GHOST} inline-flex items-center gap-1 text-gray-700 hover:bg-gray-100`}><RotateCcw className="h-3.5 w-3.5" aria-hidden />다시 보내기</button>
                   <button type="button" onClick={() => onCancel(r.id)} className={`${GHOST} inline-flex items-center gap-1 text-gray-500 hover:bg-gray-100`}><X className="h-3.5 w-3.5" aria-hidden />취소</button>

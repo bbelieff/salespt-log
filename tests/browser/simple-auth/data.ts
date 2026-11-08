@@ -9,14 +9,14 @@ export type AuthMethod = (typeof AUTH_METHODS)[number];
 export const TELECOMS = ["SKT", "KT", "LG U+"] as const;
 export const CONSENT_WAYS = ["통화", "대면", "문자"] as const;
 
-export type DocKey = "biz" | "vat" | "fs" | "tax" | "income" | "ins";
-export const DOCS: { key: DocKey; label: string; note?: string; extraAuth?: boolean }[] = [
+// 4대보험 가입자명부는 CODEF 에서 공동인증서만 지원(간편인증 불가, 2026-11-08 확인) → 목록에서 뺐다.
+export type DocKey = "biz" | "vat" | "fs" | "tax" | "income";
+export const DOCS: { key: DocKey; label: string; note?: string }[] = [
   { key: "biz", label: "사업자등록증명" },
   { key: "vat", label: "부가세 과세표준증명", note: "최근 3년" },
   { key: "fs", label: "표준재무제표증명", note: "직전 연도" },
   { key: "tax", label: "납세증명(국세 완납)" },
   { key: "income", label: "소득금액증명", note: "개인사업자" },
-  { key: "ins", label: "4대보험 가입자 명부", extraAuth: true },
 ];
 export const DEFAULT_DOCS: DocKey[] = ["biz", "vat", "fs", "tax"];
 export const docLabel = (k: DocKey) => DOCS.find(d => d.key === k)?.label ?? k;
@@ -49,7 +49,6 @@ const FACTS: Record<DocKey, string[]> = {
   fs: ["2025년 매출액 1,301,000,000원", "영업이익 96,400,000원 · 자산총계 2,050,000,000원"],
   tax: ["국세 체납 없음"],
   income: ["2025년 사업소득 84,200,000원"],
-  ins: ["가입자 12명 (고용보험 기준)"],
 };
 export function resultFor(key: DocKey, fail = false): DocResult {
   if (fail) return { key, ok: false, reason: key === "fs" ? "아직 신고되지 않은 연도예요. 결산 신고 뒤 다시 요청해 주세요." : "홈택스가 잠시 응답하지 않았어요.", facts: [] };
