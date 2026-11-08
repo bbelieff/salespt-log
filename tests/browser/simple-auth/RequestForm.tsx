@@ -81,7 +81,7 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
         <legend className={LABEL}>인증 수단</legend>
         <div className="mt-1 grid grid-cols-3 gap-1.5">
           {AUTH_METHODS.map(m => (
-            <label key={m} className={`flex cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border px-1.5 py-1.5 text-sm transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-500 ${method === m ? "border-blue-500 bg-blue-50 font-semibold text-blue-700" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}>
+            <label key={m} className={`flex cursor-pointer items-center justify-start gap-2 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-sm transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-500 ${method === m ? "border-blue-500 bg-blue-50 font-semibold text-blue-700" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}>
               <input type="radio" name={`${id}-method`} value={m} checked={method === m} onChange={() => setMethod(m)} className="sr-only" /><AuthMethodIcon method={m} />{m}
             </label>
           ))}
