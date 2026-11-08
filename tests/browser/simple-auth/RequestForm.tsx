@@ -9,10 +9,15 @@ import { useId, useState } from "react";
 import { FileKey2, Send } from "lucide-react";
 import PhoneInput from "@/components/ui/PhoneInput";
 import AuthMethodIcon from "./AuthMethodIcon";
+import RegionSearch from "./RegionSearch";
 import { AUTH_METHODS, CERT_DEFAULT_DOCS, DEFAULT_DOCS, DOCS, TELECOMS, type AuthMethod, type DocKey, type Method } from "./data";
 
-export type RequestInput = { owner: string; birth: string; phone: string; telecom: string; method: Method; docs: DocKey[] };
+export type CertKind = "법인" | "개인";
+export type RequestInput = { owner: string; birth: string; phone: string; telecom: string; method: Method; docs: DocKey[]; certKind?: CertKind };
 type Mode = "simple" | "cert";
+
+/** 목업: 파일 이름으로 흉내. 실제 구현은 인증서 안의 정책 OID(법인용/개인용)로 판별한다. */
+const guessKind = (names: string[]): CertKind => (names.some(n => /\(주\)|주식회사|법인|㈜/.test(n)) ? "법인" : "개인");
 
 const INPUT = "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base focus:border-blue-500 focus:outline-none";
 const LABEL = "text-sm font-medium text-gray-700";
@@ -42,7 +47,9 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
   const [tried, setTried] = useState(false);
   const cert = mode === "cert";
   const gov24 = docs.includes("localTax");
-  const shownDocs = DOCS.filter(d => cert || !d.certOnly);
+  const shownDocs = DOCS.filter(d => (cert ? !d.simpleOnly : !d.certOnly));
+  const certKind = certFiles.length ? guessKind(certFiles) : undefined;
+  const corp = certKind === "법인";
 
   const errors = {
     owner: owner.trim() ? "" : "대표 이름을 넣어 주세요.",
@@ -53,7 +60,7 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
     certPw: cert && !certPw ? "인증서 비밀번호를 넣어 주세요." : "",
     docs: docs.length ? "" : "받을 서류를 하나 이상 골라 주세요.",
     rrnBack: !cert && gov24 && !/^\d{7}$/.test(rrnBack) ? "주민번호 뒷자리 7자리를 넣어 주세요." : "",
-    address: gov24 && !address.trim() ? "주소를 넣어 주세요." : "",
+    address: gov24 && !address ? "시·군·구를 골라 주세요." : "",
   };
   const show = (k: keyof typeof errors) => (tried && errors[k] ? <p id={`${id}-${k}-err`} className="mt-1 text-xs text-red-600">{errors[k]}</p> : null);
   const invalid = (k: keyof typeof errors) => (tried && errors[k] ? { "aria-invalid": true, "aria-describedby": `${id}-${k}-err` } : {});
@@ -67,13 +74,13 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
     e.preventDefault();
     setTried(true);
     if (Object.values(errors).some(Boolean)) return;
-    onSend({ owner: owner.trim(), birth, phone, telecom, method: cert ? "공동인증서" : method, docs });
+    onSend({ owner: owner.trim(), birth, phone, telecom, method: cert ? "공동인증서" : method, docs, ...(cert && certKind ? { certKind } : {}) });
     setOwner(""); setBirth(""); setPhone(""); setTelecom(""); setRrnBack(""); setAddress(""); setCertFiles([]); setCertPw(""); setTried(false);
   }
 
   const tab = (m: Mode, label: string) => (
     <button type="button" role="tab" aria-selected={mode === m} onClick={() => switchMode(m)}
-      className={`flex-1 rounded-md px-3 py-1.5 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 ${mode === m ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+      className={`flex-1 whitespace-nowrap rounded-md px-2 py-1.5 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 ${mode === m ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
       {label}
     </button>
   );
@@ -107,7 +114,7 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
       </div>
 
       {cert ? (
-        <fieldset className="flex flex-col gap-3">
+        <fieldset className="flex min-w-0 flex-col gap-3">
           <legend className="sr-only">공동인증서</legend>
           <div>
             <label htmlFor={`${id}-cert`} className={LABEL}>인증서 파일</label>
@@ -117,6 +124,12 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
               <input id={`${id}-cert`} type="file" multiple accept=".pfx,.p12,.der,.key" className="sr-only" onChange={e => setCertFiles([...(e.target.files ?? [])].map(f => f.name))} {...invalid("cert")} />
             </label>
             {show("cert")}
+            {certKind && (
+              <p className="mt-1.5 flex items-center gap-1.5 text-sm text-gray-700">
+                <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${corp ? "bg-violet-50 text-violet-700" : "bg-emerald-50 text-emerald-700"}`}>{certKind} 인증서</span>
+                {corp ? "법인 서류로 가져와요" : "대표의 개인사업자를 모두 가져와요"}
+              </p>
+            )}
           </div>
           <div>
             <label htmlFor={`${id}-certpw`} className={LABEL}>인증서 비밀번호</label>
@@ -125,11 +138,11 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
           </div>
         </fieldset>
       ) : (
-        <fieldset>
+        <fieldset className="min-w-0">
           <legend className={LABEL}>인증 수단</legend>
           <div className="mt-1 grid grid-cols-3 gap-1.5">
             {AUTH_METHODS.map(m => (
-              <label key={m} className={`flex cursor-pointer items-center justify-start gap-2 whitespace-nowrap rounded-lg border px-2.5 py-1.5 text-base transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-500 ${method === m ? "border-blue-500 bg-blue-50 font-semibold text-blue-700" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}>
+              <label key={m} className={`flex cursor-pointer items-center justify-start gap-1.5 whitespace-nowrap rounded-lg border px-2 py-1.5 text-sm 2xl:gap-2 2xl:px-2.5 2xl:text-base transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-500 ${method === m ? "border-blue-500 bg-blue-50 font-semibold text-blue-700" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}>
                 <input type="radio" name={`${id}-method`} value={m} checked={method === m} onChange={() => setMethod(m)} className="sr-only" /><AuthMethodIcon method={m} />{m}
               </label>
             ))}
@@ -147,7 +160,7 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
         </fieldset>
       )}
 
-      <fieldset>
+      <fieldset className="min-w-0">
         <legend className={LABEL}>받을 서류</legend>
         <ul className="mt-1 flex flex-wrap gap-1.5 pc:flex-col pc:items-start">
           {shownDocs.map(d => {
@@ -167,7 +180,7 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
       </fieldset>
 
       {gov24 && (
-        <fieldset className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+        <fieldset className="flex min-w-0 flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
           <legend className="px-1 text-xs font-semibold text-gray-600">지방세 완납증명(정부24)에 필요</legend>
           {!cert && (
             <div>
@@ -177,8 +190,8 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
             </div>
           )}
           <div>
-            <label htmlFor={`${id}-addr`} className={LABEL}>주소</label>
-            <input id={`${id}-addr`} value={address} onChange={e => setAddress(e.target.value)} autoComplete="off" placeholder="주민등록상 주소" className={`${INPUT} mt-1`} {...invalid("address")} />
+            <label htmlFor={`${id}-addr`} className={LABEL}>{corp ? "본점 소재지" : "주민등록 주소"} <span className="font-normal text-gray-500">시·군·구</span></label>
+            <RegionSearch id={`${id}-addr`} value={address} onChange={setAddress} invalid={invalid("address")} />
             {show("address")}
           </div>
         </fieldset>

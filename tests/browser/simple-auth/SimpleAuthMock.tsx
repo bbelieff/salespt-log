@@ -67,7 +67,7 @@ export default function SimpleAuthMock({ live = false }: { live?: boolean }) {
     const cert = v.method === "공동인증서";
     setItems(l => [{ id, owner: v.owner, phone: v.phone, method: v.method, docs: v.docs, status: cert ? "scraping" : "waiting", sentAt: stamp(), deadline: t + WAIT_LIMIT_MS, resends: 0, progress: 0, businesses: [] }, ...l]);
     if (cert || scenario !== "noApprove") setApproveAt(a => ({ ...a, [id]: cert ? t : t + 8000 }));
-    setToast(cert ? `${v.owner} 대표 공동인증서로 서류를 가져오고 있어요` : `대표 휴대폰으로 ${v.method} 인증을 보냈어요`);
+    setToast(cert ? `${v.certKind ?? ""} 공동인증서로 ${v.owner} 대표 서류를 가져오고 있어요` : `대표 휴대폰으로 ${v.method} 인증을 보냈어요`);
   }
   const approved = (id: string) => setApproveAt(a => ({ ...a, [id]: Date.now() }));
   function resend(id: string) {
@@ -110,12 +110,18 @@ export default function SimpleAuthMock({ live = false }: { live?: boolean }) {
       <button type="button" onClick={skipTime} className="rounded border border-gray-400 bg-white px-2 py-0.5 hover:bg-gray-50">대기 5초 남기기</button>
     </div>
   );
+  // 2단(belie 2026-11-09): ① 보내기·가져오기 | ② 보낸 인증. 받은 서류·DB 연결·업체정보 반영은 ② 의 업체 바로 밑에 펼친다.
+  const detail = (reqId: string, bizNo: string) => (selReq && selBiz && selReq.id === reqId && selBiz.bizNo === bizNo
+    ? <DocBox key={`${reqId}:${bizNo}`} inline req={selReq} biz={selBiz} onClose={() => setSel(null)} onRetry={retryDoc} onLink={link} onApplied={applied} />
+    : null);
+  const pickBiz = (reqId: string, bizNo: string) => setSel(s => (s?.reqId === reqId && s.bizNo === bizNo ? null : { reqId, bizNo }));
   const body = (
     <div className="flex flex-col gap-4 pc:flex-row pc:items-start">
-      <div className="pc:w-96 pc:shrink-0"><RequestForm onSend={send} busy={false} /></div>
-      <div className="flex min-w-0 flex-1 flex-col gap-4">
-        <RequestList items={items} now={now} selected={selBiz ? sel : null} onSelect={(reqId, bizNo) => setSel({ reqId, bizNo })} onApproved={approved} onResend={resend} onCancel={cancel} onDelete={remove} />
-        {selReq && selBiz && <DocBox key={`${selReq.id}:${selBiz.bizNo}`} req={selReq} biz={selBiz} onClose={() => setSel(null)} onRetry={retryDoc} onLink={link} onApplied={applied} />}
+      <div className="pc:w-96 pc:shrink-0 wide:w-1/3">
+        <RequestForm onSend={send} busy={false} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <RequestList items={items} now={now} selected={selBiz ? sel : null} detail={detail} onSelect={pickBiz} onApproved={approved} onResend={resend} onCancel={cancel} onDelete={remove} />
       </div>
     </div>
   );

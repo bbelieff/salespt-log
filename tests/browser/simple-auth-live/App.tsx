@@ -21,7 +21,7 @@ createRoot(document.getElementById("root")!).render(
           <main className="app-shell-main">
             <TopHeader pageEmoji="🔐" pageTitle="간편인증 서류 조회" />
             <section className="px-4 pb-10">
-              <PageContainer width="wide">
+              <PageContainer width="fluid">
                 <SimpleAuthMock live />
               </PageContainer>
             </section>

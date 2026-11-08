@@ -17,16 +17,17 @@ export const TELECOMS = ["SKT", "KT", "LG U+"] as const;
 // 지방세 완납증명(정부24, belie 2026-11-08): 기관이 달라 고객 승인 1번 더, 주민번호·주소 필요(CODEF 문서).
 // 4대보험 가입자명부는 공동인증서로만(CODEF pp/4insure) — 공동인증서 탭에서만 고를 수 있다.
 export type DocKey = "biz" | "vat" | "fs" | "tax" | "localTax" | "ins" | "income";
-export const DOCS: { key: DocKey; label: string; note?: string; locked?: boolean; gov24?: boolean; certOnly?: boolean }[] = [
+export const DOCS: { key: DocKey; label: string; note?: string; locked?: boolean; gov24?: boolean; certOnly?: boolean; simpleOnly?: boolean }[] = [
   { key: "biz", label: "사업자등록증명", note: "필수", locked: true },
   { key: "vat", label: "부가세 과세표준증명", note: "3년" },
   { key: "fs", label: "표준재무제표증명", note: "3년" },
   { key: "tax", label: "국세 완납증명" },
   { key: "localTax", label: "지방세 완납증명", note: "정부24 · 승인 1번 더", gov24: true },
   { key: "ins", label: "4대보험 가입자명부", note: "인증서 전용", certOnly: true },
-  { key: "income", label: "소득금액증명", note: "개인사업자" },
+  { key: "income", label: "소득금액증명", note: "개인사업자", simpleOnly: true },
 ];
-export const CERT_DEFAULT_DOCS: DocKey[] = ["biz", "vat", "fs", "localTax", "ins"];
+/** 공동인증서 탭 — 법인·개인 모두 같은 6종(belie 2026-11-09). */
+export const CERT_DEFAULT_DOCS: DocKey[] = ["biz", "vat", "fs", "tax", "localTax", "ins"];
 export const DEFAULT_DOCS: DocKey[] = ["biz", "vat", "fs"];
 export const docLabel = (k: DocKey) => DOCS.find(d => d.key === k)?.label ?? k;
 /** 목록 칩용 짧은 이름 — 「재무제표 실패」처럼 어떤 서류인지 한눈에. */

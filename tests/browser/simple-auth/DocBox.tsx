@@ -68,7 +68,7 @@ function DbLinkPanel({ biz, onLink }: { biz: Biz; onLink: (l: Link) => void }) {
 
 type Props = { req: AuthRequest; biz: Biz; onClose: () => void; onRetry: (key: DocKey) => void; onLink: (l: Link) => void; onApplied: (n: number) => void };
 
-export default function DocBox({ req, biz, onClose, onRetry, onLink, onApplied }: Props) {
+export default function DocBox({ req, biz, onClose, onRetry, onLink, onApplied, inline = false }: Props & { inline?: boolean }) {
   const [applying, setApplying] = useState(false);
   const okKeys = biz.results.filter(r => r.ok).map(r => r.key);
   const rows = useMemo(() => {
@@ -87,14 +87,15 @@ export default function DocBox({ req, biz, onClose, onRetry, onLink, onApplied }
   const linked = biz.link.state === "auto" || biz.link.state === "linked" || biz.link.state === "created";
 
   return (
-    <section aria-label={`${biz.name} 서류함`} className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <header className="flex min-w-0 items-start gap-3">
+    <section aria-label={`${biz.name} 서류함`} className={`flex flex-col gap-4 bg-white ${inline ? "border-t border-blue-200 p-3" : "rounded-xl border border-gray-200 p-4 shadow-sm"}`}>
+      {/* 목록 안에 펼칠 때(inline)는 업체 이름 줄이 바로 위에 있으므로 머리글을 뺀다. */}
+      {!inline && <header className="flex min-w-0 items-start gap-3">
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-base font-semibold text-gray-900" title={biz.name}>{biz.name} <span className="text-sm font-normal text-gray-500 tabular-nums">{biz.bizNo}</span></h2>
           <p className="text-xs text-gray-500">{req.owner} 대표 · {req.sentAt}</p>
         </div>
         <button type="button" onClick={onClose} aria-label="서류함 닫기" className="rounded-md p-1 text-gray-500 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"><X className="h-4 w-4" /></button>
-      </header>
+      </header>}
 
       <DbLinkPanel key={biz.link.state} biz={biz} onLink={onLink} />
 

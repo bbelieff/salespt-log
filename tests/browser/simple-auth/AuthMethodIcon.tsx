@@ -34,8 +34,8 @@ export function MethodBadge({ method, time }: { method: Method; time?: string })
     <span title={name} className="inline-flex shrink-0 items-center gap-1.5 rounded-full py-0.5 pl-1 pr-2 text-sm text-gray-700 tabular-nums" style={{ backgroundColor: `${m.bg}26`, boxShadow: `inset 0 0 0 1px ${m.bg}66` }}>
       <AuthMethodIcon method={method} className="h-4 w-4" />
       <span className="sr-only">{name}</span>
-      {/* 날짜는 위 날짜 묶음에 있으므로 좁은 화면에서는 시각만(「11-08 14:02」 → 「14:02」). */}
-      {time && <span>{time.includes(" ") && <span className="hidden 2xl:inline">{time.split(" ")[0]} </span>}{time.split(" ").pop()}</span>}
+      {/* 날짜는 위 날짜 묶음에 있으므로 시각만(「11-08 14:02」 → 「14:02」, belie 2026-11-09 한 줄 요청). */}
+      {time && <span>{time.split(" ").pop()}</span>}
     </span>
   );
 }
