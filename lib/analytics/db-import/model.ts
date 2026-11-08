@@ -12,7 +12,7 @@ export const defaults:Key[]=['channel','supplier','date','inflow','company','own
 /** 표에서 바로 고치는 칸(2026-10-23 belie 「keep-quick」) — 나머지 칸은 누르면 DB정보가 열린다. */
 export const QUICK_EDIT_KEYS:readonly Key[]=['result','next'];
 /** 컨택결과·현재상태 배지 색: 진행 중(파랑) · 기다림(재통화·장기관리, 주황) · 그 외 회색. */
-export function stageBadgeClass(value:string):string{return ['컨택진행','상담 중','미팅예약','실무진행'].includes(value)?'is-active':['재통화','장기관리'].includes(value)?'is-wait':'';}
+export function stageBadgeClass(value:string):string{return ['컨택진행','상담 중','미팅예약','실무진행'].includes(value)?'is-active':['재통화','장기관리','일정 미등록'].includes(value)?'is-wait':'';}
 export const supplierPlaceholder=(channel:string)=>({'매입DB':'DB업체명','직접생산':'광고매체 · 예: 메타, 네이버','현수막':'현수막 제작업체','콜·지·기·소':'콜·지·기·소의 출처'}[channel]??'공급처 이름');
 export const blank = ():Row => ({id:crypto.randomUUID(),supplier:'',date:'',channel:'매입DB',company:'',owner:'',phone:'',biz:'',address:'',industry:'',credit:'',sales:'',arrears:'미확인',funds:'',result:'미컨택',first:'',stage:'미컨택',next:'',memo:''});
 const aliases:Record<string,Key>={'디비업체':'supplier','공급처':'supplier','DB공급처':'supplier','유입일':'date','날짜':'date','업체명':'company','사업자명':'company','상호':'company','대표자':'owner','이름':'owner','전화':'phone','연락처':'phone','전화번호':'phone','사업자등록번호':'biz','주소':'address','업종':'industry','신용점수':'credit','신용점수·기관':'credit','매출':'sales','매출·기준':'sales','체납':'arrears','체납여부':'arrears','필요자금':'funds','메모':'note','한줄메모':'note','상담메모':'note','상담내용':'note','특이사항':'note','요청사항':'note','문의내용':'note','메모사항':'note','채널':'channel','channel':'channel','유입채널':'channel','공급처유형':'channel','DB유형':'channel',
@@ -100,6 +100,8 @@ export const stepBadgeOf=(step:keyof typeof STEP_NAMES):'2'|'3'|'4'=>step==='1.5
 export const STEP_HINTS={'1.5':'아직 컨택 전이거나 재통화를 기다리는 업체예요.','2':'통화가 닿아 미팅을 잡았거나 컨택을 진행한 업체예요.','3':'미팅이 잡혀 일정·계약 단계에 있는 업체예요.','4':'계약해서 실무·수납을 진행하는 업체예요.'} as const;
 type ReachedStep=keyof typeof STEP_NAMES;
 const reached=(step:ReachedStep,href:string|null,state:string,rank:number)=>({step,name:STEP_NAMES[step],label:`STEP ${stepBadgeOf(step)} ${STEP_NAMES[step]}`,href,state,rank});
+/** 미팅예약(컨택진행)인데 미팅이 이어지지 않은 줄 — 예약을 마저 해야 STEP 3 으로 간다. */
+export const meetingUnregistered=(row:Pick<Row,'result'|'meetingId'>)=>row.result==='컨택진행'&&!row.meetingId;
 export function stepStage(row:Pick<Row,'result'|'stage'|'meetingId'|'effectiveMeetingId'|'contact'|'contractRow'>):{step:ReachedStep;name:string;label:string;href:string|null;state:string;rank:number}{
  const link=stepShortcut(row);
  if(link){
@@ -107,7 +109,8 @@ export function stepStage(row:Pick<Row,'result'|'stage'|'meetingId'|'effectiveMe
   const i=STEP_STATE_ORDER.indexOf(link.state);
   return reached(four?'4':'3',link.href,link.state,(four?400:300)+(i<0?STEP_STATE_ORDER.length:i));
  }
- if(isQualifiedDbSheetContact(row.result))return reached('2',null,outcomeDisplayLabel(row.result),200+(row.result==='컨택진행'?0:1));
+ // 미팅예약인데 미팅이 안 이어진 줄 = 「일정 미등록」(2026-11-08 belie) — 예전에 결과만 저장된 줄을 찾아 예약하도록 눈에 띄게.
+ if(isQualifiedDbSheetContact(row.result))return reached('2',null,row.result==='컨택진행'?'일정 미등록':outcomeDisplayLabel(row.result),200+(row.result==='컨택진행'?0:1));
  const i=outcomes.indexOf(row.result);
  return reached('1.5',null,'',100+(i<0?outcomes.length:i));
 }

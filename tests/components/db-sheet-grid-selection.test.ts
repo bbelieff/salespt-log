@@ -130,7 +130,7 @@ it('진행 단계 분류 — 재통화 이하 「STEP 2 컨택 전」 · 미팅�
  const {stepStage}=await import('@/app/(app)/db-sheet/_components/model');
  const base={stage:'',meetingId:null as string|null};
  for(const result of ['미컨택','부재','단순거절','재통화','AS예정'])expect(stepStage({...base,result})).toMatchObject({step:'1.5',name:'컨택 전',label:'STEP 2 컨택 전',href:null});
- expect(stepStage({...base,result:'컨택진행'})).toMatchObject({step:'2',name:'컨택 완료',label:'STEP 2 컨택 완료',href:null,state:'미팅예약'});
+ expect(stepStage({...base,result:'컨택진행'})).toMatchObject({step:'2',name:'컨택 완료',label:'STEP 2 컨택 완료',href:null,state:'일정 미등록'});
  expect(stepStage({...base,result:'상담 후 거절'})).toMatchObject({step:'2',state:'컨택 후 거절'});
  expect(stepStage({result:'컨택진행',stage:'미팅예약',meetingId:'m1'})).toMatchObject({step:'3',name:'일정·계약',label:'STEP 3 일정·계약'});
  expect(stepStage({result:'컨택진행',stage:'수납대기',meetingId:'m1',contractRow:7})).toMatchObject({step:'4'});

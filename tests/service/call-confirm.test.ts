@@ -40,18 +40,23 @@ beforeEach(() => {
   sheet.executeDbSheet.mockImplementation(async () => ({ leads: [{ id: LEAD, revision: ++rev }] }));
 });
 
-it("save → contact → meeting 을 이어진 revision 으로, 업체정보는 덮되 다른 칸은 보존", async () => {
+it("save → meeting → contact 을 이어진 revision 으로(미팅 먼저 = STEP 3 보장), 업체정보는 덮되 다른 칸은 보존", async () => {
   expect(await confirmCall(ctx, ID, body)).toEqual({ lead: { id: LEAD, revision: 7 } });
-  const [save, contact, meeting] = sheet.executeDbSheet.mock.calls.map(c => c[1]);
+  const [save, meeting, contact] = sheet.executeDbSheet.mock.calls.map(c => c[1]);
   expect(save).toMatchObject({ action: "save", revision: 4 });
   expect(save.lead.company).toBe("합성정밀");
   expect(save.lead.owner).toBe("기존대표");
   expect(save.lead.contact.ci).toMatchObject({ 과년도매출: "1,200", 신용점수: "820", 업종주생산품목: "기존 업종", 주민등록번호: "", 자택주소지: "" });
   expect(save.lead.contact.ci.커스텀).toEqual({ 업체: { 기존칸: "x", 필요자금: "500백만" } });
-  expect(save.lead.contact).toMatchObject({ meetingDate: "2026-11-11", time: "14:30", place: "공장(합성 주소)" });
-  expect(contact).toEqual({ action: "contact", id: LEAD, revision: 5, date: "2026-11-03", result: "컨택진행", note: body.note });
-  expect(meeting).toEqual({ action: "meeting", id: LEAD, revision: 6, place: "공장(합성 주소)" });
+  expect(save.lead.contact).toMatchObject({ date: "2026-11-03", meetingDate: "2026-11-11", time: "14:30", place: "공장(합성 주소)" });
+  expect(meeting).toEqual({ action: "meeting", id: LEAD, revision: 5, place: "공장(합성 주소)" });
+  expect(contact).toEqual({ action: "contact", id: LEAD, revision: 6, date: "2026-11-03", result: "컨택진행", note: body.note });
   expect(db.unlockConfirmCall).not.toHaveBeenCalled();
+});
+
+it("미팅 없이 미팅예약은 저장하지 않는다(STEP 3 누락 방지, 2026-11-08)", async () => {
+  await expect(confirmCall(ctx, ID, { ...body, result: "컨택진행", meeting: null })).rejects.toThrow("미팅예약은 미팅 날짜·시간");
+  expect(sheet.executeDbSheet).not.toHaveBeenCalled();
 });
 
 it("미팅 없이 확정하면 미팅카드를 만들지 않는다", async () => {

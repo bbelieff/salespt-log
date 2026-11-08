@@ -8,7 +8,7 @@ const fixture = vi.hoisted(() => ({ db: null as PGlite | null }));
 vi.mock("@/repo/db/client", () => ({ dbEnabled: () => true, getDbPool: () => ({ query, connect: async () => ({ query, release() {} }) }) }));
 vi.mock("@/util/week", async (original) => ({ ...(await original<typeof import("@/util/week")>()), todayKST: () => "2027-05-10" }));
 async function query(sql: string, params: unknown[] = []) { const r = await fixture.db!.query(sql, params); return { rows: r.rows, rowCount: r.affectedRows ?? r.rows.length }; }
-import { listDbSheet, saveDbSheetLead, saveDbSheetContact, scheduleDbSheetContact, setDbSheetFirstDate, addDbSheetAbsence } from "@/repo/db/db-sheet";
+import { listDbSheet, saveDbSheetLead, saveDbSheetContact, scheduleDbSheetContact, setDbSheetFirstDate, addDbSheetAbsence, DbSheetMeetingRequired } from "@/repo/db/db-sheet";
 const ctx = { spreadsheetId: "contact-rules-synthetic", cohort: "fixture", email: "rules@example.test" };
 let serial = 0;
 const input = () => DbSheetLeadInput.parse({ id: randomUUID(), date: "2027-05-01", channel: "매입DB", supplier: "합성공급", company: "합성 규칙 " + (++serial), phone: "010-0000-" + String(serial).padStart(4, "0") });
@@ -178,4 +178,13 @@ it("다른 날의 실적 상담 뒤 단순거절은 상담 중 유지", async ()
   lead = (await saveDbSheetContact(ctx, lead.id, { date: "2027-05-08", result: "단순거절", note: "" }, lead.revision)).lead;
   expect(lead.stage).toBe("상담 중");
   expect((await get(lead.id)).stage).toBe("상담 중");
+});
+
+it("화면 경로(requireMeeting)에서 미팅 없는 미팅예약은 막고, 미팅이 이어진 뒤에는 기록한다(2026-11-08 STEP 3 누락 방지)", async () => {
+  let lead = await fresh();
+  await expect(saveDbSheetContact(ctx, lead.id, { date: "2027-05-09", result: "컨택진행", note: "" }, lead.revision, { requireMeeting: true })).rejects.toBeInstanceOf(DbSheetMeetingRequired);
+  expect((await get(lead.id)).result).not.toBe("컨택진행");
+  // 미팅예약 아닌 결과는 그대로 기록된다.
+  lead = (await saveDbSheetContact(ctx, lead.id, { date: "2027-05-09", result: "재통화", note: "" }, lead.revision, { requireMeeting: true })).lead;
+  expect(lead.result).toBe("재통화");
 });
