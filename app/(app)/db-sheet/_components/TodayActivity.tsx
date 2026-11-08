@@ -40,7 +40,10 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
   const ch = day.data?.channels;
   const total = (k: Key) => ch ? CHANNEL_ORDER.reduce((n, c) => n + (ch[c]?.[k] ?? 0), 0) : null;
   const banner = ch?.현수막;
+  const activeChannels = ch ? CHANNEL_ORDER.filter(c => STEPS.some(([k]) => (ch[c]?.[k] ?? 0) > 0)) : [];
   const stock = day.data ? Math.max(0, day.data.bannerStockBase - (banner?.production ?? 0)) : null;
+  // 현수막을 산 적이 없거나 재고가 없으면(오늘 게시도 0) 현수막 게시 칸·버튼을 뺀다(belie 2026-11-08).
+  const showBanner = !!banner && !!day.data && (day.data.bannerStockBase > 0 || banner.production > 0);
 
   useEffect(() => {
     if (!open) return;
@@ -81,7 +84,7 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
   </ol>;
   const chips = (column: boolean) => <div className={column ? "flex flex-col gap-1.5" : "flex gap-1.5"}>
     <button type="button" className={`rounded-full border border-emerald-600 bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white ${column ? "rounded-lg py-2 text-left" : "shrink-0"}`} onClick={add}>＋ DB 추가</button>
-    <button type="button" className={`rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 disabled:opacity-50 ${column ? "rounded-lg py-2 text-left" : "shrink-0"}`} disabled={!banner} onClick={openBanner}>＋ 현수막 게시</button>
+    {showBanner && <button type="button" className={`rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 ${column ? "rounded-lg py-2 text-left" : "shrink-0"}`} onClick={openBanner}>＋ 현수막 게시</button>}
   </div>;
 
   const head = <div {...swipe("down", () => setOpen(false))} className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-4 pb-3 pt-3">
@@ -92,7 +95,7 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
         <h2 className="text-base font-bold text-slate-900">오늘 활동</h2>
         <span className="text-sm text-slate-500">{dayLabel(today)}</span>
       </div>
-      <p className="mt-1 break-keep text-xs text-slate-500">DB 목록에서 한 일은 저절로 세져요. 목록에 없는 활동만 여기서 더해요.</p>
+      <p className="mt-1 break-keep text-xs text-slate-500">DB 목록에서 한 일은 저절로 세져요.{showBanner && " 목록에 없는 활동만 여기서 더해요."}</p>
     </div>
     <button type="button" aria-label="오늘 활동 닫기" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100" onClick={() => setOpen(false)}>
       <ChevronDown className="pc:hidden" size={18} aria-hidden="true" /><ChevronLeft className="hidden rotate-180 pc:block" size={18} aria-hidden="true" />
@@ -103,11 +106,14 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
     {head}
     <div className="flex-1 overflow-y-auto px-4 py-3">
       {funnel(true)}
+      {/* 네 칸이 모두 0인 채널은 뺀다(belie 2026-11-08). 다 0이면 한 줄 안내 */}
+      {ch && !activeChannels.length ? <p className="mt-3 rounded-lg bg-slate-50 px-3 py-3 text-center text-sm text-slate-500">아직 오늘 기록이 없어요</p> :
       <table className="mt-3 w-full table-fixed border-separate border-spacing-y-1 text-center text-sm">
         <caption className="sr-only">채널별 오늘 숫자</caption>
         <thead><tr className="text-xs text-slate-500"><th className="w-[34%] text-left font-medium">채널</th>{STEPS.map(([k, l]) => <th key={k} className="font-medium">{l}</th>)}</tr></thead>
-        <tbody>{CHANNEL_ORDER.map(c => <tr key={c}><td className="text-left"><ChannelBadge channel={c} /></td>{STEPS.map(([k]) => <td key={k} className="tabular-nums text-slate-700">{ch ? ch[c]?.[k] ?? 0 : "–"}</td>)}</tr>)}</tbody>
-      </table>
+        <tbody>{(ch ? activeChannels : CHANNEL_ORDER).map(c => <tr key={c}><td className="text-left"><ChannelBadge channel={c} /></td>{STEPS.map(([k]) => <td key={k} className="tabular-nums text-slate-700">{ch ? ch[c]?.[k] ?? 0 : "–"}</td>)}</tr>)}</tbody>
+      </table>}
+      {showBanner && <>
       <p className="mb-1 mt-4 text-xs font-semibold text-slate-500">목록에 없는 활동</p>
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-xl bg-slate-50 px-3 py-2.5">
         <div className="min-w-0">
@@ -126,6 +132,7 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
           {[1, 5, 10].map(n => <button key={n} type="button" aria-label={`현수막 게시 ${n}장 더하기`} disabled={!banner || save.isPending} onClick={() => void bump(n)} className="flex h-10 min-w-10 items-center justify-center rounded-full bg-emerald-600 px-2 text-sm font-bold tabular-nums text-white disabled:opacity-40">＋{n}</button>)}
         </div>
       </div>
+      </>}
       <p className="mt-2 break-keep text-xs text-slate-500">현수막 문의·지인 소개·콜드콜도 「＋ DB 추가」로 목록에 올리면 유입·컨택·미팅이 저절로 더해져요.</p>
       {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
     </div>

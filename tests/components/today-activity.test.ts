@@ -90,4 +90,32 @@ describe("오늘 활동", () => {
     touch(head, "touchstart", 100); touch(head, "touchmove", 160);
     expect(host.querySelector("tbody")).toBeNull();
   });
+
+  it("네 칸이 모두 0인 채널은 표에서 빼고, 다 0이면 한 줄 안내", async () => {
+    const zeroDirect = { ...day(), channels: { ...day().channels, 직접생산: { ...z } } };
+    const allZero = { ...day(), channels: { 매입DB: { ...z }, 직접생산: { ...z }, 현수막: { ...z }, "콜·지·기·소": { ...z } } };
+    for (const [data, rows] of [[zeroDirect, 3], [allZero, 0]] as const) {
+      vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(data), { status: 200 })));
+      host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+      act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity, { onAdd: vi.fn() }))));
+      await flush();
+      act(() => [...host!.querySelectorAll("button[aria-expanded]")][0]!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+      expect(host.querySelectorAll("tbody tr")).toHaveLength(rows);
+      if (rows) expect(host.querySelector("tbody")!.textContent).not.toContain("직접생산");
+      else expect(host.textContent).toContain("아직 오늘 기록이 없어요");
+      act(() => root!.unmount()); host.remove(); root = null; host = null;
+    }
+  });
+
+  it("현수막 재고가 없고 오늘 게시도 0이면 현수막 게시 칸·버튼을 뺀다", async () => {
+    const none = { ...day(), bannerStockBase: 0, channels: { ...day().channels, 현수막: { ...z } } };
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(none), { status: 200 })));
+    host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+    act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity, { onAdd: vi.fn() }))));
+    await flush();
+    expect(host.textContent).not.toContain("현수막 게시");
+    act(() => [...host!.querySelectorAll("button[aria-expanded]")][0]!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(host.querySelector('input[aria-label="오늘 현수막 게시 수"]')).toBeNull();
+    expect(host.textContent).not.toContain("목록에 없는 활동");
+  });
 });
