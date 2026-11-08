@@ -13,6 +13,8 @@ import { assertNotDuplicate } from "./db-sheet-safety";
 export {DbSheetDuplicate} from "./db-sheet-safety";
 import { lockedMeetingCounts } from "./sales-meeting-counts";
 export class DbSheetLinkedMeetingReadOnly extends Error { constructor(){super("예약된 업체정보와 일정은 STEP 3 일정·계약에서 수정해 주세요.");} }
+/** 미팅예약(저장값 컨택진행)은 미팅 등록과 함께만 기록한다(2026-11-08 belie 「미팅예약인데 STEP 3 누락 0건」) — 결과만 따로 저장하면 일정에 안 들어간다. */
+export class DbSheetMeetingRequired extends DbSheetOperationBlocked { constructor(){super("미팅예약은 미팅 날짜·시간을 넣어 예약해야 기록돼요. 오른쪽 「미팅예약」에서 날짜·시간을 정해 주세요.");} }
 export class DbSheetConflict extends Error { constructor(){super("DB_SHEET_CONFLICT");} }
 function guard(ctx:DbSheetContext){if(!dbEnabled())throw new Error("DB unavailable");if(!ctx.spreadsheetId||!ctx.cohort||!ctx.email)throw new Error("Tenant required");}
 async function transaction<T>(ctx:DbSheetContext,work:(c:PoolClient)=>Promise<T>):Promise<T>{
@@ -136,10 +138,10 @@ export async function listDbSheet(ctx:DbSheetContext):Promise<DbSheetLead[]>{
  });
 }
 export async function saveDbSheetLead(ctx:DbSheetContext,input:unknown,expectedRevision:number|null,scheduleNext=false,allowDuplicate=false){return transaction(ctx,c=>save(c,ctx,input,expectedRevision,scheduleNext,allowDuplicate));}
-export async function saveDbSheetContact(ctx:DbSheetContext,leadId:string,input:{date:string;result:string;note:string},expectedRevision:number){
+export async function saveDbSheetContact(ctx:DbSheetContext,leadId:string,input:{date:string;result:string;note:string},expectedRevision:number,opts:{requireMeeting?:boolean}={}){
  z.string().uuid().parse(leadId);const event=z.object({date:DbSheetDate,result:DbSheetResult,note:z.string().max(20000)}).parse(input);
  return transaction(ctx,async c=>{
- const stored=await expected(c,ctx,leadId,expectedRevision);const old=stored.meetingId?await linkedProjection(c,ctx,stored):stored;old.followUp=await followUpState(c,ctx,old);const before=await contributions(c,ctx,old,-1);
+ const stored=await expected(c,ctx,leadId,expectedRevision);if(opts.requireMeeting&&event.result==="컨택진행"&&!stored.meetingId)throw new DbSheetMeetingRequired();const old=stored.meetingId?await linkedProjection(c,ctx,stored):stored;old.followUp=await followUpState(c,ctx,old);const before=await contributions(c,ctx,old,-1);
  const qualified=isQualifiedDbSheetContact(event.result);
  await c.query(`insert into db_sheet_contacts(spreadsheet_id,lead_id,contact_date,qualified,result,note) values($1,$2,$3,$4,$5,$6)
  on conflict(spreadsheet_id,lead_id,contact_date) do update set qualified=db_sheet_contacts.qualified or excluded.qualified,result=excluded.result,note=excluded.note`,[ctx.spreadsheetId,leadId,event.date,qualified,event.result,event.note]);

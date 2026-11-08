@@ -114,7 +114,7 @@ describe("DB sheet HTTP + real service boundary", () => {
   it("dispatches contact and import commands with tenant/revision intact", async () => {
     const command = { action: "contact", id, revision: 1, date: "2026-10-12", result: "컨택진행", note: "합성 상담" };
     expect((await POST(request(command))).status).toBe(200);
-    expect(mocks.contact).toHaveBeenCalledWith(ctx, id, command, 1);
+    expect(mocks.contact).toHaveBeenCalledWith(ctx, id, command, 1, { requireMeeting: true });
     expect((await POST(request({ action: "import", batchId, leads: [input] }))).status).toBe(200);
     expect(mocks.batch).toHaveBeenCalledWith(ctx, batchId, [input]);
   });
@@ -220,7 +220,7 @@ it("validates AS input without defaulting omitted fields",async()=>{
  expect(DbSheetLeadInput.safeParse({...input,asReceived:"true"}).success).toBe(false);
  expect(DbSheetLeadInput.safeParse({...input,asNote:"x".repeat(20001)}).success).toBe(false);
  const response=await POST(request({action:"contact",id,revision:1,date:input.date,result:"AS예정",note:"AS 요청"}));expect(response.status).toBe(200);
- expect(mocks.contact).toHaveBeenCalledWith(ctx,id,expect.objectContaining({result:"AS예정"}),1);
+ expect(mocks.contact).toHaveBeenCalledWith(ctx,id,expect.objectContaining({result:"AS예정"}),1,{requireMeeting:true});
 });
 it("routes inflow preview/apply through tenant and revision guard",async()=>{
  expect((await POST(request({action:"inflow-preview",id,revision:1,inflow:false}))).status).toBe(200);

@@ -2,8 +2,8 @@
  * Layer: service — 「통화 정리 확인」 [확정하고 저장] (plan call-summary PR-4b).
  * 화면에서 고친 값을 DB관리시트의 기존 명령 그대로 저장한다 — 사람이 직접 누르는 것과 같은 경로라 시트 동기화·실적 집계가 똑같다.
  *   ① save: 업체정보(ci)·사용자 추가 칸·미팅 초안, DB 원본 업체명·대표자명은 비어 있을 때만
- *   ② contact: 컨택 날짜·결과·상담메모
- *   ③ meeting(미팅 초안이 있을 때만): 미팅카드 등록 — 자동 등록 없음, 이 확정에서만
+ *   ② meeting(미팅 초안이 있을 때만): 미팅카드 등록 — 자동 등록 없음, 이 확정에서만
+ *   ③ contact: 컨택 날짜·결과·상담메모 (미팅예약은 ② 뒤에만 저장된다)
  * 두 번 눌러도 한 번: 시작할 때 통화를 confirmed 로 잠그고, 중간에 실패하면 review 로 되돌린다.
  */
 import { z } from "zod";
@@ -38,6 +38,7 @@ export async function confirmCall(ctx: DbSheetContext, id: string, raw: unknown)
   const m = body.meeting;
   if (m && (!m.meetingDate || !m.time)) throw new CallSummaryError("미팅 날짜와 시간을 정해 주세요", 400);
   if (m && body.result !== "컨택진행") throw new CallSummaryError("미팅을 등록하면 컨택결과는 미팅예약이에요", 400);
+  if (!m && body.result === "컨택진행") throw new CallSummaryError("미팅예약은 미팅 날짜·시간을 넣어야 저장돼요", 400);
 
   const call = await calls.getCall(ctx.email, id);
   if (!call) throw new CallSummaryError("없는 통화예요", 404);
@@ -61,12 +62,14 @@ export async function confirmCall(ctx: DbSheetContext, id: string, raw: unknown)
       contact: {
         ...lead.contact,
         ci: CompanyInfo.parse({ ...ci, ...body.company, 커스텀: custom }),
-        ...(m ? { meetingDate: m.meetingDate, time: m.time, place: m.place, reservationNote: m.reservationNote } : {}),
+        // 미팅이 있으면 예약일 = 이 통화의 컨택 날짜(직접 [예약 등록] 과 같은 날로 집계).
+        ...(m ? { date: body.date, meetingDate: m.meetingDate, time: m.time, place: m.place, reservationNote: m.reservationNote } : {}),
       },
     });
     let out = await executeDbSheet(ctx, { action: "save", lead: input, revision: lead.revision });
-    out = await executeDbSheet(ctx, { action: "contact", id: lead.id, revision: out.leads[0]!.revision, date: body.date, result: body.result, note: body.note });
+    // 미팅 먼저 등록(STEP 3) → 그다음 컨택 기록. 미팅예약 결과는 미팅이 연결돼야만 저장된다(DbSheetMeetingRequired, 2026-11-08).
     if (m) out = await executeDbSheet(ctx, { action: "meeting", id: lead.id, revision: out.leads[0]!.revision, place: m.place });
+    out = await executeDbSheet(ctx, { action: "contact", id: lead.id, revision: out.leads[0]!.revision, date: body.date, result: body.result, note: body.note });
     return { lead: out.leads[0] };
   } catch (e) {
     await calls.unlockConfirmCall(id);

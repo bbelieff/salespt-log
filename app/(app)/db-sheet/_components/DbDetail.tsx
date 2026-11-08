@@ -5,7 +5,7 @@ import SupplierInput from './SupplierInput';
 import InflowStatusCell from './InflowStatusCell';
 import {CHANNEL_ORDER} from '@/types/channel';
 import React,{useState,useRef,useEffect} from 'react';
-import {Row,Key,columns,showsNextContact,DATE_PICKS} from './model';
+import {Row,Key,columns,showsNextContact,DATE_PICKS,meetingUnregistered} from './model';
 import {DatePicks} from './DatePicks';
 import {DB_SHEET_AUTO_NEXT_RESULTS,type DbSheetManualStage,type DbSheetAbsence} from '@/types/db-sheet';
 import {AbsenceLog} from './AbsenceLog';
@@ -22,8 +22,11 @@ const RIGHT_DEFAULT=680,LEGACY_RIGHT_DEFAULT=560;
 /** DB정보 칸 순서(2026-10-25 belie): 업체 정보 묶음, 그 아래 원본 메모, 맨 끝 날짜 셋(유입일·최초상담일·다음 연락일). */
 const INFO_ORDER_BUSINESS:Key[]=['channel','supplier','company','biz','industry','sales','funds','address','owner','phone','credit','arrears'];
 const INFO_ORDER_DATES:Key[]=['date','first','next'];
-export function DbDetail({onStage,onAbsence,onLink,row,draft,onChange,onEdit,onResult,onRegister,onOpen,onClose,onDelete,onRestored,onAsInfo,onInflowChange,callBar}:{/** 통화 정리(켜진 사람만) — 전화 걸기·녹음 올리기 줄. */callBar?:React.ReactNode;onStage?:(stage:DbSheetManualStage)=>Promise<unknown>;onAbsence?:(entry:DbSheetAbsence,remove?:boolean)=>Promise<unknown>;onLink?:(meetingId:string|null)=>Promise<unknown>;row:Row;draft:ContactDraft;onChange:(v:ContactDraft)=>void;onEdit:(k:Key,v:string)=>void;onResult:(v:string,date:string)=>void;onRegister:()=>void;onOpen:()=>void;onClose:()=>void;onDelete:()=>void;onAsInfo:(v:{asReceived?:boolean;asNote?:string})=>void;onRestored?:()=>void|Promise<void>;onInflowChange?:(value:boolean)=>Promise<void>}){
- const [contact,setContact]=useState(false);
+export function DbDetail({onStage,onAbsence,onLink,row,draft,onChange,onEdit,onResult,onRegister,onOpen,onClose,onDelete,onRestored,onAsInfo,onInflowChange,callBar,bookMeeting=false}:{/** 표에서 컨택결과 「미팅예약」을 골라 열었다 — 미팅예약 칸부터 연다(2026-11-08). */bookMeeting?:boolean;/** 통화 정리(켜진 사람만) — 전화 걸기·녹음 올리기 줄. */callBar?:React.ReactNode;onStage?:(stage:DbSheetManualStage)=>Promise<unknown>;onAbsence?:(entry:DbSheetAbsence,remove?:boolean)=>Promise<unknown>;onLink?:(meetingId:string|null)=>Promise<unknown>;row:Row;draft:ContactDraft;onChange:(v:ContactDraft)=>void;onEdit:(k:Key,v:string)=>void;onResult:(v:string,date:string)=>void;onRegister:()=>void;onOpen:()=>void;onClose:()=>void;onDelete:()=>void;onAsInfo:(v:{asReceived?:boolean;asNote?:string})=>void;onRestored?:()=>void|Promise<void>;onInflowChange?:(value:boolean)=>Promise<void>}){
+ const [book,setBook]=useState(bookMeeting);
+ const [contact,setContact]=useState(bookMeeting||meetingUnregistered(row));
+ // 미팅예약은 결과만 따로 저장하지 않는다 — 미팅예약 칸을 열고 예약 등록이 결과까지 함께 저장한다(2026-11-08 belie).
+ const pickResult=(v:string,date:string)=>{if(v==='컨택진행'&&!row.meetingId){setBook(true);setContact(true);return;}setBook(false);onResult(v,date);};
  const contactPane=useRef<HTMLElement>(null);
  // 폰(699px 이하)은 업체정보가 DB정보 아래에 붙는다 — 「컨택내용」을 누르면 그 시작(제목 줄)까지만 내려 준다, 맨 바닥까지는 아님(2026-11-06 belie).
  useEffect(()=>{if(!contact||window.innerWidth>=700)return;const id=requestAnimationFrame(()=>contactPane.current?.scrollIntoView({block:"start",behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"}));return()=>cancelAnimationFrame(id);},[contact]);
@@ -57,8 +60,8 @@ export function DbDetail({onStage,onAbsence,onLink,row,draft,onChange,onEdit,onR
    {row.memo&&<details className="db-previous-notes"><summary>받은 DB의 원본 메모 보기</summary><p>{row.memo}</p></details>}
    <div className="db-info-fields db-info-dates">{INFO_ORDER_DATES.filter(k=>k!=='next'||showsNextContact(row.result)).map(k=>columns.find(c=>c.key===k)!).map(infoField)}</div>
    {/* 날짜 아래(2026-10-26 belie): 상담메모 → 부재 기록 → 컨택결과 묶음(결과·컨택내용 →·장기관리·진행종료) → 따로 잡은 미팅. 「컨택내용」 제목·컨택일 칸은 없앰(최초상담일과 겹침). */}
-   <div className="db-contact-bottom">{callBar}<label className="db-note-label db-contact-memo">상담메모<textarea aria-label="상담메모" className="sheet-input" rows={2} placeholder="통화 내용·요청사항" value={draft.note} onChange={e=>onChange({...draft,note:e.target.value})}/></label>{onAbsence&&row.result==='부재'&&<AbsenceLog row={row} onAbsence={onAbsence} suggested={memo.absenceDates}/>}<DbContactActions suggestion={memo.result} onNext={v=>onEdit('next',v)} row={row} contact={contact} onResult={onResult} onAsInfo={onAsInfo} onToggleContact={()=>setContact(!contact)} onStage={onStage}/>{onLink&&<MeetingLinkPanel row={row} onLink={onLink}/>}</div>
+   <div className="db-contact-bottom">{callBar}<label className="db-note-label db-contact-memo">상담메모<textarea aria-label="상담메모" className="sheet-input" rows={2} placeholder="통화 내용·요청사항" value={draft.note} onChange={e=>onChange({...draft,note:e.target.value})}/></label>{onAbsence&&row.result==='부재'&&<AbsenceLog row={row} onAbsence={onAbsence} suggested={memo.absenceDates}/>}<DbContactActions suggestion={memo.result} onNext={v=>onEdit('next',v)} row={row} contact={contact} onResult={pickResult} onAsInfo={onAsInfo} onToggleContact={()=>setContact(!contact)} onStage={onStage}/>{onLink&&<MeetingLinkPanel row={row} onLink={onLink}/>}</div>
    <div className="db-detail-bottom-actions"><button className="sheet-text-btn dbs-delete" onClick={onDelete}>삭제</button></div>
-  </section>{contact&&<div className="db-split-grip"><PanelGrip label="우열 중앙 경계 너비 조절" value={right} readValue={()=>right} min={400} max={maxRight} scale={-1} onChange={changeRight}/></div>}{contact&&<section ref={contactPane} id="db-contact-pane" className="db-contact-pane"><div className="db-contact-header"><div><h3>업체정보 · 미팅예약</h3></div><button className="sheet-text-btn" onClick={()=>setContact(false)}>접기 <DisclosureChevron open /></button></div><ContactPanel onRestored={onRestored} onMeetingSaved={()=>{void onRestored?.();}} showContact={false} onCompany={v=>onEdit("company",v)} row={row} draft={draft} onChange={onChange} onResult={onResult} onRegister={onRegister} onOpen={onOpen}/></section>}</div>
+  </section>{contact&&<div className="db-split-grip"><PanelGrip label="우열 중앙 경계 너비 조절" value={right} readValue={()=>right} min={400} max={maxRight} scale={-1} onChange={changeRight}/></div>}{contact&&<section ref={contactPane} id="db-contact-pane" className="db-contact-pane"><div className="db-contact-header"><div><h3>업체정보 · 미팅예약</h3></div><button className="sheet-text-btn" onClick={()=>setContact(false)}>접기 <DisclosureChevron open /></button></div><ContactPanel onRestored={onRestored} onMeetingSaved={()=>{void onRestored?.();}} showContact={false} onCompany={v=>onEdit("company",v)} row={row} draft={draft} onChange={onChange} onResult={pickResult} onRegister={onRegister} onOpen={onOpen} book={book}/></section>}</div>
  </section></div>;
 }

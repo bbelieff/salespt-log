@@ -80,7 +80,8 @@ export async function executeDbSheet(ctx: DbSheetContext, command: z.infer<typeo
     case "delete-preview": case "delete": changes=[await ledger.deleteDbSheetLead(ctx,command.id,command.revision,command.action==='delete-preview')];break;
     case "trash-restore": changes=await ledger.restoreDbSheetTrash(ctx,command.ids,!!command.allowDuplicate);break;
     case "trash-empty": return {leads:[],impact:{inflow:0,contacts:0,meetings:0,rows:[]},emptied:await ledger.emptyDbSheetTrash(ctx,command.ids)};
-    case "contact": changes = [await ledger.saveDbSheetContact(ctx, command.id, command, command.revision)]; break;
+    // 미팅예약(컨택진행)은 미팅이 이어진 DB 에만 — 결과만 따로 저장돼 STEP 3 에서 빠지던 구멍을 막는다(2026-11-08 belie).
+    case "contact": changes = [await ledger.saveDbSheetContact(ctx, command.id, command, command.revision, { requireMeeting: true })]; break;
     case "first-date": changes = [await ledger.setDbSheetFirstDate(ctx, command.id, command.first, command.revision)]; break;
     case "inflow-preview": case "inflow": changes=[await ledger.changeDbSheetInflow(ctx,command.id,command.revision,command.inflow,command.action==="inflow-preview")];break;
     case "stage": changes = [await ledger.setDbSheetManualStage(ctx, command.id, command.stage, command.revision)]; break;
