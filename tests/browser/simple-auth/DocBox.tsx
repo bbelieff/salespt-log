@@ -1,20 +1,72 @@
 "use client";
 /**
- * 간편인증 서류 조회 — 업체별 서류함(목업). 받은 증명서 목록 + 「업체정보에 반영」.
+ * 간편인증 서류 조회 — 사업자 한 곳의 서류함(목업). ① DB 연결 ② 받은 증명서 ③ 업체정보에 반영.
  * 반영 비교표는 「문서로 자동입력」과 같은 CompanyDocDiffTable·buildDiffRows 를 그대로 쓴다.
  */
-import { useMemo, useState } from "react";
-import { CheckCircle2, FileText, RotateCcw, X, XCircle } from "lucide-react";
+import { useId, useMemo, useState } from "react";
+import { CheckCircle2, FileText, Link2, RotateCcw, X, XCircle } from "lucide-react";
 import CompanyDocDiffTable from "@/components/company-doc/CompanyDocDiffTable";
 import { buildDiffRows, selectedPatch, type FileProposal } from "@/lib/document-ocr/diff";
-import { CURRENT_INFO, FIELD_LABEL, PROPOSAL, docLabel, type AuthRequest, type DocKey } from "./data";
+import { CURRENT_INFO, DB_ROWS, FIELD_LABEL, PROPOSAL, dbRow, docLabel, type AuthRequest, type Biz, type DocKey, type Link } from "./data";
 
-const BTN2 = "inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500";
+const BTN2 = "inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500";
+const BTN1 = "rounded-lg bg-blue-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500";
 
-export default function DocBox({ req, onClose, onRetry, onApplied }: { req: AuthRequest; onClose: () => void; onRetry: (id: string, key: DocKey) => void; onApplied: (n: number) => void }) {
+function DbLinkPanel({ biz, onLink }: { biz: Biz; onLink: (l: Link) => void }) {
+  const id = useId();
+  const l = biz.link;
+  const [choosing, setChoosing] = useState(false);
+  const cands = l.state === "pick" ? l.candidates : choosing ? DB_ROWS.map(r => ({ id: r.id, why: `${r.owner} · ${r.channel}` })) : [];
+  const [pick, setPick] = useState<string>(cands[0]?.id ?? "");
+  if (l.state === "auto" || l.state === "linked") {
+    const row = dbRow(l.dbId);
+    return (
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+        <Link2 className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+        <span className="min-w-0 flex-1 truncate text-gray-800" title={row?.name}>DB 연결: <b>{row?.name}</b> <span className="text-xs text-gray-500">· {row?.channel}{l.state === "auto" ? ` · ${l.why}로 자동 연결` : ""}</span></span>
+        <button type="button" onClick={() => { setChoosing(true); onLink({ state: "pick", candidates: DB_ROWS.map(r => ({ id: r.id, why: `${r.owner} · ${r.channel}` })) }); }} className="text-xs font-medium text-blue-700 hover:underline">다른 DB로 바꾸기</button>
+      </div>
+    );
+  }
+  if (l.state === "added" || l.state === "later") return (
+    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+      <Link2 className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
+      <span className="flex-1">{l.state === "added" ? "새 DB로 추가했어요 (채널은 DB 관리시트에서 정해 주세요)" : "아직 DB에 연결하지 않았어요"}</span>
+      <button type="button" onClick={() => onLink({ state: "none" })} className="text-xs font-medium text-blue-700 hover:underline">바꾸기</button>
+    </div>
+  );
+  return (
+    <fieldset className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
+      <legend className="sr-only">DB 연결</legend>
+      <p className="text-sm font-semibold text-amber-900">{l.state === "pick" ? "이 사업자가 어느 DB인지 골라 주세요" : "내 DB에서 같은 업체를 찾지 못했어요"}</p>
+      {cands.length > 0 && (
+        <ul className="flex flex-col gap-1">
+          {cands.map(c => { const row = dbRow(c.id); return (
+            <li key={c.id}>
+              <label className="flex cursor-pointer items-center gap-2 rounded-md bg-white px-2 py-1.5 text-sm text-gray-800">
+                <input type="radio" name={`${id}-db`} value={c.id} checked={pick === c.id} onChange={() => setPick(c.id)} className="accent-blue-600" />
+                <span className="min-w-0 flex-1 truncate" title={row?.name}>{row?.name}</span>
+                <span className="shrink-0 text-xs text-gray-500">{c.why}</span>
+              </label>
+            </li>); })}
+        </ul>
+      )}
+      <div className="flex flex-wrap gap-2">
+        {cands.length > 0 && <button type="button" disabled={!pick} onClick={() => onLink({ state: "linked", dbId: pick, why: "" })} className={BTN1}>이 DB에 연결</button>}
+        {l.state === "none" && !choosing && <button type="button" onClick={() => setChoosing(true)} className={BTN2}>기존 DB에서 찾기</button>}
+        <button type="button" onClick={() => onLink({ state: "added" })} className={BTN2}>새 DB로 추가</button>
+        <button type="button" onClick={() => onLink({ state: "later" })} className="px-2 text-sm text-gray-600 hover:underline">나중에</button>
+      </div>
+    </fieldset>
+  );
+}
+
+type Props = { req: AuthRequest; biz: Biz; onClose: () => void; onRetry: (key: DocKey) => void; onLink: (l: Link) => void; onApplied: (n: number) => void };
+
+export default function DocBox({ req, biz, onClose, onRetry, onLink, onApplied }: Props) {
   const [preview, setPreview] = useState<DocKey | null>(null);
   const [applying, setApplying] = useState(false);
-  const okKeys = req.results.filter(r => r.ok).map(r => r.key);
+  const okKeys = biz.results.filter(r => r.ok).map(r => r.key);
   const rows = useMemo(() => {
     const byDoc = new Map<DocKey, FileProposal>();
     for (const p of PROPOSAL) {
@@ -28,19 +80,22 @@ export default function DocBox({ req, onClose, onRetry, onApplied }: { req: Auth
   const [checked, setChecked] = useState<Record<string, boolean>>(() => Object.fromEntries(rows.map(r => [r.key, r.defaultChecked])));
   const [choice, setChoice] = useState<Record<string, number>>({});
   const patchCount = Object.keys(selectedPatch(rows, checked, choice)).length;
+  const linked = biz.link.state === "auto" || biz.link.state === "linked" || biz.link.state === "added";
 
   return (
-    <section aria-label={`${req.company} 서류함`} className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+    <section aria-label={`${biz.name} 서류함`} className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <header className="flex min-w-0 items-start gap-3">
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-base font-semibold text-gray-900" title={req.company}>{req.company} 서류함</h2>
-          <p className="text-xs text-gray-500">{req.sentAt} 요청 · {req.method} 인증 · 원문은 암호화해 90일 보관 후 지워져요</p>
+          <h2 className="truncate text-base font-semibold text-gray-900" title={biz.name}>{biz.name} <span className="text-sm font-normal text-gray-500 tabular-nums">{biz.bizNo}</span></h2>
+          <p className="text-xs text-gray-500">{req.owner} 대표 · {req.sentAt} 요청 · {req.method} 인증 · 원문은 암호화해 90일 보관 후 지워져요</p>
         </div>
         <button type="button" onClick={onClose} aria-label="서류함 닫기" className="rounded-md p-1 text-gray-500 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"><X className="h-4 w-4" /></button>
       </header>
 
+      <DbLinkPanel key={biz.link.state} biz={biz} onLink={onLink} />
+
       <ul className="flex flex-col gap-2">
-        {req.results.map(d => (
+        {biz.results.map(d => (
           <li key={d.key} className={`rounded-lg border px-3 py-2.5 ${d.ok ? "border-gray-200" : "border-red-200 bg-red-50"}`}>
             <div className="flex min-w-0 items-center gap-2">
               {d.ok ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden /> : <XCircle className="h-4 w-4 shrink-0 text-red-600" aria-hidden />}
@@ -48,14 +103,14 @@ export default function DocBox({ req, onClose, onRetry, onApplied }: { req: Auth
               {d.ok ? <>
                 <span className="text-xs text-gray-500 tabular-nums">{d.issuedAt} 발급</span>
                 <button type="button" onClick={() => setPreview(p => (p === d.key ? null : d.key))} aria-expanded={preview === d.key} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"><FileText className="h-3.5 w-3.5" aria-hidden />원문</button>
-              </> : <button type="button" onClick={() => onRetry(req.id, d.key)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-500"><RotateCcw className="h-3.5 w-3.5" aria-hidden />이 서류만 다시 요청</button>}
+              </> : <button type="button" onClick={() => onRetry(d.key)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-500"><RotateCcw className="h-3.5 w-3.5" aria-hidden />이 서류만 다시 요청</button>}
             </div>
             {d.ok
               ? <ul className="mt-1 pl-6 text-sm text-gray-700">{d.facts.map(f => <li key={f} className="tabular-nums">{f}</li>)}</ul>
               : <p className="mt-1 pl-6 text-sm text-red-700">{d.reason}</p>}
             {preview === d.key && (
-              <div className="mt-2 ml-6 rounded-md border border-dashed border-gray-300 bg-gray-50 p-3 text-xs text-gray-600">
-                원문 미리보기 자리 — 실제로는 홈택스가 발급한 증명서(PDF)를 이 자리에서 보여 주고, 내려받을 수 있어요. (목업이라 합성 문구만 보여요)
+              <div className="ml-6 mt-2 rounded-md border border-dashed border-gray-300 bg-gray-50 p-3 text-xs text-gray-600">
+                원문 미리보기 자리 — 실제로는 홈택스가 발급한 증명서(PDF)를 여기서 보여 주고 내려받을 수 있어요. (목업이라 합성 문구만 보여요)
               </div>
             )}
           </li>
@@ -71,14 +126,14 @@ export default function DocBox({ req, onClose, onRetry, onApplied }: { req: Auth
           </div>
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setApplying(false)} className={BTN2}>닫기</button>
-            <button type="button" disabled={patchCount === 0} onClick={() => { onApplied(patchCount); setApplying(false); }}
-              className="rounded-lg bg-blue-500 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500">
-              {patchCount}칸 반영하기
-            </button>
+            <button type="button" disabled={patchCount === 0} onClick={() => { onApplied(patchCount); setApplying(false); }} className={BTN1}>{patchCount}칸 반영하기</button>
           </div>
         </div>
       ) : (
-        <button type="button" onClick={() => setApplying(true)} className={`${BTN2} self-start`}>업체정보에 반영…</button>
+        <div className="flex items-center gap-2">
+          <button type="button" disabled={!linked} onClick={() => setApplying(true)} className={`${BTN2} disabled:cursor-not-allowed disabled:text-gray-400`}>업체정보에 반영…</button>
+          {!linked && <span className="text-xs text-gray-500">DB에 연결하면 반영할 수 있어요</span>}
+        </div>
       ))}
     </section>
   );
