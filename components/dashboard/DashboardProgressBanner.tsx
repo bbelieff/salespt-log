@@ -62,7 +62,7 @@ export default function DashboardProgressBanner({
           좁은 화면은 지금처럼 세 줄 — 묶음 div 를 pc:contents 로 풀고 order 로 순서만 바꾼다. */}
       <div className="px-4 pb-2.5 pt-3 pc:flex pc:items-center pc:gap-4 pc:py-2.5">
         {/* 상단 라벨 — 현재 날짜·주차 + D-day (요청 [6] — D-day 진행표 우측) */}
-        <div className="mb-3 flex items-center justify-between gap-2.5 pc:contents">
+        <div className={`${graduated ? "" : "mb-3 "}flex items-center justify-between gap-2.5 pc:contents`}>
           <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-1 pc:order-1 pc:shrink-0 pc:flex-nowrap pc:whitespace-nowrap">
             <span
               className="text-sm font-extrabold text-gray-900 sm:text-base"
@@ -78,9 +78,11 @@ export default function DashboardProgressBanner({
               </span>
             )}
           </div>
-          <div className="shrink-0 pc:order-6"><DDayBadge graduationISO={graduationISO} /></div>
+          <div className={`shrink-0 pc:order-6${graduated ? " pc:ml-auto" : ""}`}><DDayBadge graduationISO={graduationISO} /></div>
         </div>
 
+        {/* 수료하면 진행바·시작·진행률·종강총회는 뺀다 — 날짜·「수료 후 N주」·배지만(belie 2026-11-08) */}
+        {!graduated && <>
         {/* 진행바 + amber 5겹 끝점 */}
         <div className="relative mb-3 h-1.5 rounded-full bg-slate-100 pc:order-3 pc:mb-0 pc:min-w-0 pc:flex-1">
           <div
@@ -120,6 +122,7 @@ export default function DashboardProgressBanner({
           </span>
           <span className="text-gray-500 pc:order-5 pc:shrink-0 pc:whitespace-nowrap pc:text-xs">🎓 {graduationDate} 종강총회</span>
         </div>
+        </>}
       </div>
     </div>
   );

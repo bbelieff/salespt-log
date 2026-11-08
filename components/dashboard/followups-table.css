@@ -61,3 +61,8 @@
 @keyframes ft-rainbow-glow{to{background-position:100% 100%}}
 @media(max-width:767px){.follow-ups-card.ft-card[data-emphasis=flow]{padding:10px}}
 @media(prefers-reduced-motion:reduce){.follow-ups-card.ft-card[data-emphasis=flow],.follow-ups-card.ft-card[data-emphasis=flow]::before,.follow-ups-card.ft-card[data-emphasis=flow] .ft-glow{animation:none}}
+
+/* 폰·좁은 창 — 줄 높이를 줄이고(눌리는 범위 44px 는 투명하게 유지) 숨긴 「기준일 · 기관」을 할 일 아래 작은 줄로(belie 2026-11-08) */
+.ft-action-text{display:flex;flex-direction:column;min-width:0;flex:1}.ft-action-text>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ft-action-sub{display:none}
+@media(max-width:767px){.ft-table tbody>tr:not(.ft-expanded){height:auto}.ft-table td{padding-block:3px}.ft-action,.ft-go{min-height:34px;position:relative}.ft-action::after,.ft-go::after{content:"";position:absolute;inset:-5px 0}.ft-action{line-height:1.3}.ft-action>.ft-action-text{display:flex;-webkit-line-clamp:unset;white-space:nowrap}.ft-action-text>span{white-space:nowrap;display:block}.ft-action-sub{display:block;font-size:10px;color:#64748b;margin-top:1px;font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ft-go{padding:3px 6px}}
+@container followups-popup (max-width:420px){.ft-action-sub{display:block;font-size:10px;color:#64748b;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
