@@ -70,4 +70,24 @@ describe("오늘 활동", () => {
     act(() => host!.querySelector<HTMLButtonElement>('button[aria-label="오늘 활동 닫기"]')!.click());
     expect(host.querySelector("tbody")).toBeNull();
   });
+
+  it("폰: 띠를 위로 쓸어 올리면 열리고, 펼친 머리를 아래로 쓸면 닫힌다", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(day()), { status: 200 })));
+    host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+    act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity, { onAdd: vi.fn() }))));
+    await flush();
+    const touch = (el: Element, type: string, y: number) => {
+      const ev = new Event(type, { bubbles: true });
+      Object.defineProperty(ev, "touches", { value: type === "touchend" ? [] : [{ clientY: y }] });
+      act(() => { el.dispatchEvent(ev); });
+    };
+    const strip = host.querySelector('section[aria-label="오늘 활동"]')!; // 첫 번째 = 폰 띠
+    touch(strip, "touchstart", 700); touch(strip, "touchmove", 690); // 10px 은 안 열림
+    expect(host.querySelector("tbody")).toBeNull();
+    touch(strip, "touchmove", 650); touch(strip, "touchend", 650);
+    expect(host.querySelector("tbody")).not.toBeNull();
+    const head = host.querySelector('button[aria-label="오늘 활동 닫기"]')!.parentElement!;
+    touch(head, "touchstart", 100); touch(head, "touchmove", 160);
+    expect(host.querySelector("tbody")).toBeNull();
+  });
 });

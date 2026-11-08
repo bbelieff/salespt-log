@@ -257,3 +257,8 @@ body.db-sheet-route .sheet-step-go{display:inline-flex;align-items:center;gap:6p
 
 /* 오늘 활동 아래 띠가 있는 폰·태블릿 — 「오늘 챙길 일」 떠 있는 버튼을 띠 위로 올려 겹치지 않게(belie 2026-11-08) */
 @media(max-width:1023px){body:has(.db-sheet-frame.has-today-activity) .fl-root{--fl-bottom:calc(var(--app-tabbar-height) + 156px + env(safe-area-inset-bottom,0px))}}
+/* 오늘 활동 펼침 — 폰·태블릿은 아래에서, PC 는 오른쪽에서 스르륵(belie 2026-11-08). 움직임 줄이기 설정이면 바로 */
+@keyframes ta-up{from{transform:translateY(100%)}to{transform:none}}@keyframes ta-left{from{transform:translateX(100%)}to{transform:none}}@keyframes ta-fade{from{opacity:0}to{opacity:1}}
+.ta-sheet{animation:ta-up .28s cubic-bezier(.2,.8,.2,1)}.ta-scrim{animation:ta-fade .2s ease-out}
+@media(min-width:1024px){.ta-sheet{animation-name:ta-left}}
+@media(prefers-reduced-motion:reduce){.ta-sheet,.ta-scrim{animation:none}}

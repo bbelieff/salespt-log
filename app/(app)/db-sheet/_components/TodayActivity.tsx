@@ -8,7 +8,7 @@
  * PC 닫힘 카드는 오른쪽 아래 「오늘 챙길 일」 버튼과 겹치지 않게 그 왼쪽에 둔다.
  */
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type TouchEvent as RTouchEvent } from "react";
 import { ChevronDown, ChevronLeft, ChevronUp, Minus } from "lucide-react";
 import { CHANNEL_ORDER, type Channel } from "@/types";
 import ChannelBadge from "@/components/ui/ChannelBadge";
@@ -26,6 +26,17 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
   const [open, setOpen] = useState(false), [error, setError] = useState("");
   const [draft, setDraft] = useState<string | null>(null), [focusBanner, setFocusBanner] = useState(false);
   const bannerInput = useRef<HTMLInputElement>(null), cancelDraft = useRef(false);
+  // 폰: 띠를 위로 쓸어 올리면 열고, 펼친 머리를 아래로 쓸어내리면 닫는다(belie 2026-11-08 「스르륵」).
+  const touchY = useRef<number | null>(null);
+  const swipe = (dir: "up" | "down", act: () => void) => ({
+    onTouchStart: (e: RTouchEvent) => { touchY.current = e.touches[0]?.clientY ?? null; },
+    onTouchMove: (e: RTouchEvent) => {
+      const y0 = touchY.current, y = e.touches[0]?.clientY;
+      if (y0 === null || y === undefined) return;
+      if (dir === "up" ? y0 - y > 24 : y - y0 > 40) { touchY.current = null; act(); }
+    },
+    onTouchEnd: () => { touchY.current = null; },
+  });
   const ch = day.data?.channels;
   const total = (k: Key) => ch ? CHANNEL_ORDER.reduce((n, c) => n + (ch[c]?.[k] ?? 0), 0) : null;
   const banner = ch?.현수막;
@@ -73,7 +84,8 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
     <button type="button" className={`rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 disabled:opacity-50 ${column ? "rounded-lg py-2 text-left" : "shrink-0"}`} disabled={!banner} onClick={openBanner}>＋ 현수막 게시</button>
   </div>;
 
-  const head = <div className="flex items-start justify-between gap-3 border-b border-slate-100 px-4 pb-3 pt-3">
+  const head = <div {...swipe("down", () => setOpen(false))} className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-4 pb-3 pt-3">
+    <span aria-hidden="true" className="absolute left-1/2 top-1.5 h-1 w-10 -translate-x-1/2 rounded-full bg-slate-300 pc:hidden" />
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-x-2">
         <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-xs font-bold text-emerald-800">STEP 2</span>
@@ -126,13 +138,14 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
   if (day.isError) return null; // 일별 기록을 못 읽는 계정(시트 없음 등)은 패널 없이 목록만
   return <>
     {/* 펼치면 위 머리줄(z-50)·메뉴(55·56)보다 위, 대화상자(200)보다 아래. */}
-    {open && <div aria-hidden="true" className="fixed inset-0 z-[60] bg-slate-900/25" onClick={() => setOpen(false)} />}
+    {open && <div aria-hidden="true" className="ta-scrim fixed inset-0 z-[60] bg-slate-900/25" onClick={() => setOpen(false)} />}
     {/* 펼침 — 폰·태블릿은 아래에서 반쯤, PC 는 오른쪽 반. 한 벌만 그린다. */}
-    {open && <div className="fixed inset-x-0 bottom-0 z-[61] h-[60dvh] overflow-hidden rounded-t-2xl shadow-2xl pc:left-auto pc:top-0 pc:h-auto pc:w-[min(46vw,560px)] pc:rounded-none">{body}</div>}
+    {open && <div className="ta-sheet fixed inset-x-0 bottom-0 z-[61] h-[60dvh] overflow-hidden rounded-t-2xl shadow-2xl pc:left-auto pc:top-0 pc:h-auto pc:w-[min(46vw,560px)] pc:rounded-none">{body}</div>}
     {/* 닫힘 — 폰·태블릿: 아래 띠 / PC: 오른쪽 아래 카드 */}
     {!open && <>
       <div className="fixed inset-x-0 bottom-0 z-40 pc:hidden">
-        <section aria-label="오늘 활동" className="rounded-t-2xl border-t border-slate-200 bg-white px-4 pb-[max(10px,env(safe-area-inset-bottom))] pt-2 shadow-lg">
+        <section aria-label="오늘 활동" {...swipe("up", () => setOpen(true))} className="relative touch-pan-x rounded-t-2xl border-t border-slate-200 bg-white px-4 pb-[max(10px,env(safe-area-inset-bottom))] pt-3 shadow-lg">
+          <span aria-hidden="true" className="absolute left-1/2 top-1.5 h-1 w-10 -translate-x-1/2 rounded-full bg-slate-300" />
           <button type="button" aria-expanded={false} className="flex w-full items-center justify-between" onClick={() => setOpen(true)}>
             <span className="flex items-center gap-2"><span className="text-sm font-bold text-slate-900">오늘 활동</span><span className="text-xs text-slate-500">{dayLabel(today)}</span></span>
             <span className="flex items-center gap-0.5 text-xs font-semibold text-emerald-700">펼치기<ChevronUp size={14} aria-hidden="true" /></span>
