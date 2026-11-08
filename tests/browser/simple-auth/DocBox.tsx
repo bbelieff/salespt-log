@@ -110,8 +110,8 @@ export default function DocBox({ req, biz, onClose, onRetry, onLink, onApplied }
               </> : <button type="button" onClick={() => onRetry(d.key)} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-red-500"><RotateCcw className="h-3.5 w-3.5" aria-hidden />이 서류만 다시 요청</button>}
             </div>
             {d.ok
-              ? <ul className="mt-1 pl-6 text-sm text-gray-700">{d.facts.map(f => <li key={f} className="tabular-nums">{f}</li>)}</ul>
-              : <p className="mt-1 pl-6 text-sm text-red-700">{d.reason}</p>}
+              ? <ul className="mt-1 pl-6 text-base text-gray-700">{d.facts.map(f => <li key={f} className="tabular-nums">{f}</li>)}</ul>
+              : <p className="mt-1 pl-6 text-base text-red-700">{d.reason}</p>}
           </li>
         ))}
       </ul>

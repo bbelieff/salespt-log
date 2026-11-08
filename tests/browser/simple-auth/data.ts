@@ -9,21 +9,29 @@ import { isSimilarDbSheetCompany } from "@/types/db-sheet";
 
 export const AUTH_METHODS = ["카카오톡", "네이버", "PASS", "토스", "삼성패스", "KB모바일"] as const;
 export type AuthMethod = (typeof AUTH_METHODS)[number];
+/** 목록에 보이는 인증 방식 — 간편인증 6종 + 공동인증서(사용자가 인증서를 가진 경우, belie 2026-11-08). */
+export type Method = AuthMethod | "공동인증서";
 export const TELECOMS = ["SKT", "KT", "LG U+"] as const;
 
 // 4대보험 가입자명부는 CODEF 에서 공동인증서만(간편인증 불가) → 제외. 사업자등록증명은 DB 연결에 쓰므로 항상 받는다.
 // 지방세 완납증명(정부24, belie 2026-11-08): 기관이 달라 고객 승인 1번 더, 주민번호·주소 필요(CODEF 문서).
-export type DocKey = "biz" | "vat" | "fs" | "tax" | "localTax" | "income";
-export const DOCS: { key: DocKey; label: string; note?: string; locked?: boolean; gov24?: boolean }[] = [
+// 4대보험 가입자명부는 공동인증서로만(CODEF pp/4insure) — 공동인증서 탭에서만 고를 수 있다.
+export type DocKey = "biz" | "vat" | "fs" | "tax" | "localTax" | "ins" | "income";
+export const DOCS: { key: DocKey; label: string; note?: string; locked?: boolean; gov24?: boolean; certOnly?: boolean }[] = [
   { key: "biz", label: "사업자등록증명", note: "필수", locked: true },
   { key: "vat", label: "부가세 과세표준증명", note: "3년" },
   { key: "fs", label: "표준재무제표증명", note: "3년" },
   { key: "tax", label: "국세 완납증명" },
   { key: "localTax", label: "지방세 완납증명", note: "정부24 · 승인 1번 더", gov24: true },
+  { key: "ins", label: "4대보험 가입자명부", note: "인증서 전용", certOnly: true },
   { key: "income", label: "소득금액증명", note: "개인사업자" },
 ];
+export const CERT_DEFAULT_DOCS: DocKey[] = ["biz", "vat", "fs", "localTax", "ins"];
 export const DEFAULT_DOCS: DocKey[] = ["biz", "vat", "fs"];
 export const docLabel = (k: DocKey) => DOCS.find(d => d.key === k)?.label ?? k;
+/** 목록 칩용 짧은 이름 — 「재무제표 실패」처럼 어떤 서류인지 한눈에. */
+const SHORT: Record<DocKey, string> = { biz: "사업자등록", vat: "부가세", fs: "재무제표", tax: "국세완납", localTax: "지방세완납", ins: "4대보험", income: "소득금액" };
+export const docShort = (k: DocKey) => SHORT[k];
 
 export type DocResult = { key: DocKey; ok: boolean; reason?: string; issuedAt?: string; facts: string[] };
 
@@ -91,7 +99,7 @@ export type AuthRequest = {
   id: string;
   owner: string;
   phone: string; // 마스킹 없이 그대로 보여 준다(belie 2026-11-08)
-  method: AuthMethod;
+  method: Method;
   docs: DocKey[];
   status: ReqStatus;
   sentAt: string;
@@ -110,6 +118,7 @@ const FACTS: Record<DocKey, string[]> = {
   fs: ["2025년 매출액 1,301,000,000원 · 영업이익 96,400,000원", "2024년 매출액 1,020,000,000원 · 2023년 890,000,000원"],
   tax: ["국세 체납 없음"],
   localTax: ["지방세 체납 없음 · 유효기간 2026-12-08"],
+  ins: ["가입자 12명 · 국민연금 11 · 건강 12 · 고용 12 · 산재 12"],
   income: ["2025년 사업소득 84,200,000원"],
 };
 export function resultFor(key: DocKey, fail = false): DocResult {

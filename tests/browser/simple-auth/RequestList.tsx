@@ -6,11 +6,12 @@
  */
 import { useState } from "react";
 import { CheckCircle2, ChevronDown, ChevronRight, Clock, Loader2, RotateCcw, Smartphone, Trash2, X, XCircle } from "lucide-react";
-import { isFinished, type AuthRequest, type Biz, type Link } from "./data";
+import { MethodBadge } from "./AuthMethodIcon";
+import { docLabel, docShort, isFinished, type AuthRequest, type Biz, type Link } from "./data";
 
 const fmt = (ms: number) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
-const GHOST = "rounded-md px-2 py-1 text-xs font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500";
-const CHIP = "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold";
+const GHOST = "rounded-md px-2 py-1 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500";
+const CHIP = "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-sm font-semibold";
 
 function LinkChip({ link }: { link: Link }) {
   const map: Record<Link["state"], [string, string]> = {
@@ -31,11 +32,7 @@ function StatusPill({ r, now }: { r: AuthRequest; now: number }) {
   }
   if (r.status === "scraping") return <span className={`${CHIP} bg-blue-50 text-blue-700 tabular-nums`}><Loader2 className="h-3.5 w-3.5 animate-spin motion-reduce:animate-none" aria-hidden />서류 받는 중 {r.progress}/{r.docs.length}</span>;
   if (r.status === "done") {
-    const bad = r.businesses.flatMap(b => b.results).filter(x => !x.ok).length;
-    return <span className="inline-flex flex-wrap items-center gap-1.5">
-      <span className={`${CHIP} bg-emerald-50 text-emerald-700`}><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />사업자 {r.businesses.length}곳</span>
-      {bad > 0 && <span className={`${CHIP} bg-red-50 text-red-700`}><XCircle className="h-3.5 w-3.5" aria-hidden />{bad}건 실패</span>}
-    </span>;
+    return <span className={`${CHIP} bg-emerald-50 text-emerald-700`}><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />사업자 {r.businesses.length}곳</span>;
   }
   return <span className={`${CHIP} bg-gray-100 text-gray-600`}>{r.status === "expired" ? "시간 초과" : "취소함"}</span>;
 }
@@ -45,30 +42,27 @@ type Actions = { onSelect: (reqId: string, bizNo: string) => void; onApproved: (
 type Props = Actions & { items: AuthRequest[]; now: number; selected: Sel };
 
 /** 요청 한 건 — 상태, 할 수 있는 일, 사업자들. */
-function RequestCard({ r, now, selected, a, showOwner }: { r: AuthRequest; now: number; selected: Sel; a: Actions; showOwner: boolean }) {
+function RequestCard({ r, now, selected, a, showMeta }: { r: AuthRequest; now: number; selected: Sel; a: Actions; showMeta: boolean }) {
   const failed = r.status === "expired" || r.status === "canceled";
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex min-w-0 items-center gap-2">
-        <p className="min-w-0 flex-1 truncate text-sm text-gray-700">
-          {showOwner && <b className="font-medium text-gray-900">{r.owner} · {r.phone} · </b>}
-          <span className="text-xs text-gray-500">{r.method} · {r.sentAt}</span>
-        </p>
-        <StatusPill r={r} now={now} />
+      {/* 상태와 할 수 있는 일을 한 줄에(belie 2026-11-08: 공간 낭비 줄이기). 좁으면 버튼만 다음 줄로 넘어간다.
+          요청이 한 건뿐이면 수단·시각 띠는 이름 줄에 있으므로 여기서는 뺀다. */}
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+        {showMeta && <p className="flex min-w-0 basis-full items-center pc:flex-1 pc:basis-auto"><MethodBadge method={r.method} time={r.sentAt} /></p>}
+        <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
+          <StatusPill r={r} now={now} />
+          {r.status === "waiting" && <>
+            <button type="button" onClick={() => a.onApproved(r.id)} className={`${GHOST} border border-blue-200 text-blue-700 hover:bg-blue-50`}>승인 확인</button>
+            <button type="button" onClick={() => a.onResend(r.id)} className={`${GHOST} inline-flex items-center gap-1 text-gray-700 hover:bg-gray-100`}><RotateCcw className="h-3.5 w-3.5" aria-hidden />다시 보내기</button>
+            <button type="button" onClick={() => a.onCancel(r.id)} className={`${GHOST} inline-flex items-center gap-1 text-gray-500 hover:bg-gray-100`}><X className="h-3.5 w-3.5" aria-hidden />취소</button>
+          </>}
+          {failed && <>
+            <button type="button" onClick={() => a.onResend(r.id)} className={`${GHOST} inline-flex items-center gap-1 border border-gray-300 text-gray-700 hover:bg-gray-50`}><RotateCcw className="h-3.5 w-3.5" aria-hidden />다시 보내기</button>
+            <button type="button" onClick={() => a.onDelete(r.id)} className={`${GHOST} inline-flex items-center gap-1 text-red-600 hover:bg-red-50`}><Trash2 className="h-3.5 w-3.5" aria-hidden />기록 삭제</button>
+          </>}
+        </div>
       </div>
-      {r.status === "waiting" && (
-        <div className="flex flex-wrap justify-end gap-1.5">
-          <button type="button" onClick={() => a.onApproved(r.id)} className={`${GHOST} border border-blue-200 text-blue-700 hover:bg-blue-50`}>승인 확인</button>
-          <button type="button" onClick={() => a.onResend(r.id)} className={`${GHOST} inline-flex items-center gap-1 text-gray-700 hover:bg-gray-100`}><RotateCcw className="h-3.5 w-3.5" aria-hidden />다시 보내기</button>
-          <button type="button" onClick={() => a.onCancel(r.id)} className={`${GHOST} inline-flex items-center gap-1 text-gray-500 hover:bg-gray-100`}><X className="h-3.5 w-3.5" aria-hidden />취소</button>
-        </div>
-      )}
-      {failed && (
-        <div className="flex flex-wrap justify-end gap-1.5">
-          <button type="button" onClick={() => a.onResend(r.id)} className={`${GHOST} inline-flex items-center gap-1 border border-gray-300 text-gray-700 hover:bg-gray-50`}><RotateCcw className="h-3.5 w-3.5" aria-hidden />다시 보내기</button>
-          <button type="button" onClick={() => a.onDelete(r.id)} className={`${GHOST} inline-flex items-center gap-1 text-red-600 hover:bg-red-50`}><Trash2 className="h-3.5 w-3.5" aria-hidden />기록 삭제</button>
-        </div>
-      )}
       {r.status === "done" && (
         <ul className="flex flex-col gap-1.5">
           {r.businesses.filter(b => !isFinished(b)).map(b => <BizRow key={b.bizNo} b={b} active={selected?.reqId === r.id && selected.bizNo === b.bizNo} onOpen={() => a.onSelect(r.id, b.bizNo)} />)}
@@ -79,10 +73,13 @@ function RequestCard({ r, now, selected, a, showOwner }: { r: AuthRequest; now: 
 }
 
 function BizRow({ b, active, onOpen }: { b: Biz; active: boolean; onOpen: () => void }) {
+  const failed = b.results.filter(x => !x.ok);
   return (
-    <li className={`flex min-w-0 items-center gap-2 rounded-lg border px-3 py-2 ${active ? "border-blue-300 bg-blue-50" : "border-gray-200 bg-white"}`}>
-      <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-900" title={b.name}>{b.name} <span className="text-xs font-normal text-gray-500 tabular-nums">{b.bizNo}</span></p>
-      <LinkChip link={b.link} />
+    <li className={`flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border px-3 py-2 ${active ? "border-blue-300 bg-blue-50" : "border-gray-200 bg-white"}`}>
+      <p className="min-w-0 basis-full truncate text-base font-medium text-gray-900 2xl:flex-1 2xl:basis-auto" title={b.name}>{b.name} <span className="text-sm font-normal text-gray-500 tabular-nums">{b.bizNo}</span></p>
+      {/* 실패한 서류는 이름으로 바로 보여 준다(belie 2026-11-08: 무엇이 실패했는지 알 수 없음). */}
+      {failed.length > 0 && <span className={`${CHIP} ml-auto bg-red-50 text-red-700 2xl:ml-0`} title={failed.map(x => `${docLabel(x.key)}: ${x.reason ?? ""}`).join("\n")}><XCircle className="h-3.5 w-3.5" aria-hidden />{failed.map(x => docShort(x.key)).join("·")} 실패</span>}
+      <span className={failed.length ? "" : "ml-auto 2xl:ml-0"}><LinkChip link={b.link} /></span>
       <button type="button" onClick={onOpen} aria-pressed={active} className={`${GHOST} inline-flex shrink-0 items-center gap-0.5 text-blue-700 hover:bg-blue-100`}>
         {b.link.state === "pick" ? "연결" : "보기"}<ChevronRight className="h-3.5 w-3.5" aria-hidden />
       </button>
@@ -130,7 +127,7 @@ export default function RequestList({ items, now, selected, ...a }: Props) {
         const open = (date === today || group.some(isActive) || selReq?.sentAt.startsWith(date) === true) !== flipDates.has(date);
         return (
           <div key={date} className="border-b border-gray-100 last:border-b-0">
-            <button type="button" onClick={() => setFlipDates(s => toggle(s, date))} aria-expanded={open} className="flex w-full items-center gap-2 bg-gray-50 px-4 py-2 text-left text-sm font-semibold text-gray-800 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-500">
+            <button type="button" onClick={() => setFlipDates(s => toggle(s, date))} aria-expanded={open} className="flex w-full items-center gap-2 bg-gray-50 px-4 py-2 text-left text-base font-semibold text-gray-800 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-500">
               {open ? <ChevronDown className="h-4 w-4" aria-hidden /> : <ChevronRight className="h-4 w-4" aria-hidden />}
               <span className="tabular-nums">{dateLabel(date)}</span>
               <span className="font-normal text-gray-500">{owners.length}명</span>
@@ -148,12 +145,17 @@ export default function RequestList({ items, now, selected, ...a }: Props) {
                     <li key={ok}>
                       <button type="button" onClick={() => setFlipOwners(s => toggle(s, key))} aria-expanded={ownerOpen} className="flex w-full min-w-0 items-center gap-2 py-2 pl-3 pr-4 text-left hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-500">
                         {ownerOpen ? <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" aria-hidden /> : <ChevronRight className="h-4 w-4 shrink-0 text-gray-400" aria-hidden />}
-                        <span className="min-w-0 flex-1 truncate text-sm"><b className="font-medium text-gray-900">{first.owner}</b> <span className="text-gray-500 tabular-nums">{first.phone}</span></span>
+                        {/* 이름 칸 폭을 고정해 전화번호 시작 위치를 줄마다 맞춘다(belie 2026-11-08). */}
+                        <span className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-base">
+                          <b className="w-20 shrink-0 truncate font-medium text-gray-900" title={first.owner}>{first.owner}</b>
+                          <span className="shrink-0 text-gray-500 tabular-nums">{first.phone}</span>
+                          {reqs.length === 1 && <MethodBadge method={first.method} time={first.sentAt} />}
+                        </span>
                         {!ownerOpen && (live ? <StatusPill r={live} now={now} /> : <OwnerSummary reqs={reqs} />)}
                       </button>
                       {ownerOpen && (
                         <div className="flex flex-col gap-3 pb-3 pl-9 pr-4">
-                          {reqs.map(r => <RequestCard key={r.id} r={r} now={now} selected={selected} a={a} showOwner={false} />)}
+                          {reqs.map(r => <RequestCard key={r.id} r={r} now={now} selected={selected} a={a} showMeta={reqs.length > 1} />)}
                         </div>
                       )}
                     </li>

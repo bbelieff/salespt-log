@@ -63,9 +63,11 @@ export default function SimpleAuthMock({ live = false }: { live?: boolean }) {
   }
   function send(v: RequestInput) {
     const id = nextId(), t = Date.now();
-    setItems(l => [{ id, owner: v.owner, phone: v.phone, method: v.method, docs: v.docs, status: "waiting", sentAt: stamp(), deadline: t + WAIT_LIMIT_MS, resends: 0, progress: 0, businesses: [] }, ...l]);
-    if (scenario !== "noApprove") setApproveAt(a => ({ ...a, [id]: t + 8000 }));
-    setToast(`대표 휴대폰으로 ${v.method} 인증을 보냈어요`);
+    // 공동인증서는 고객 승인이 없어 바로 「받는 중」으로 간다.
+    const cert = v.method === "공동인증서";
+    setItems(l => [{ id, owner: v.owner, phone: v.phone, method: v.method, docs: v.docs, status: cert ? "scraping" : "waiting", sentAt: stamp(), deadline: t + WAIT_LIMIT_MS, resends: 0, progress: 0, businesses: [] }, ...l]);
+    if (cert || scenario !== "noApprove") setApproveAt(a => ({ ...a, [id]: cert ? t : t + 8000 }));
+    setToast(cert ? `${v.owner} 대표 공동인증서로 서류를 가져오고 있어요` : `대표 휴대폰으로 ${v.method} 인증을 보냈어요`);
   }
   const approved = (id: string) => setApproveAt(a => ({ ...a, [id]: Date.now() }));
   function resend(id: string) {
