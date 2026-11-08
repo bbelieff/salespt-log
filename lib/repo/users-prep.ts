@@ -18,6 +18,7 @@ import { readRange, sheetsClient } from "./sheets-client";
 import { invalidateRegistry } from "./users";
 import { nextRegistryRowNumber } from "./users-claim";
 import { readProfileBundle } from "./sales";
+import { writeProfileCohort } from "./sales-profile";
 import {
   mirrorUserCells,
   mirrorUserRow,
@@ -83,6 +84,22 @@ async function readCachedFromSheet(spreadsheetId: string): Promise<CachedLabels>
     );
     return EMPTY_CACHED;
   }
+}
+
+/**
+ * 숫자 기수의 기수 표시값(I)은 관리자가 입력한 기수를 정본으로 한다 — 순수, 테스트 대상.
+ * 시트 B3 가 양식 잔재(양식 시트 B3 = "8")로 남은 채 사전등록되면 I 캐시가 "8" 이 되어
+ * 0기 코스텝이 8기 상자에 보였다(2026-11-06 belie). 입력과 B3 가 다르면 I 는 입력값,
+ * `fixSheet` 로 시트 B3 도 맞춘다. 아레나 라벨(A1-3 등)·시트 읽기 실패(빈 B3)는 그대로 둔다.
+ */
+export function resolvePrepCohortLabel(
+  inputCohort: string,
+  sheetCohort: string,
+): { cohortLabel: string; fixSheet: boolean } {
+  const want = String(inputCohort).replace(/기\s*$/, "").trim();
+  const have = String(sheetCohort).replace(/기\s*$/, "").trim();
+  if (!/^\d+$/.test(want) || have === "" || have === want) return { cohortLabel: sheetCohort, fixSheet: false };
+  return { cohortLabel: want, fixSheet: true };
 }
 
 /**
@@ -168,7 +185,16 @@ export async function addTraineePrepRow(
   const ffid = feedbackFolderId.trim();
   const memoVal = memo.trim();
   // 시트 메타 1회 fetch (실패해도 빈값으로 진행). update/write 양쪽에서 사용.
-  const cached = await readCachedFromSheet(spreadsheetId);
+  const fromSheet = await readCachedFromSheet(spreadsheetId);
+  const label = resolvePrepCohortLabel(cohortNorm, fromSheet.cohortLabel);
+  const cached = { ...fromSheet, cohortLabel: label.cohortLabel };
+  if (label.fixSheet) {
+    try {
+      await writeProfileCohort(spreadsheetId, label.cohortLabel);
+    } catch (e) {
+      console.warn(`[users-prep] 시트 B3 기수 맞추기 실패 (sheet=${spreadsheetId})`, e instanceof Error ? e.message : e);
+    }
+  }
 
   const idx = findPrepRowIndex(rows, cohortNorm, cleanName);
   if (idx >= 0) {
