@@ -60,7 +60,7 @@ describe("오늘 활동", () => {
     expect(host.textContent).toContain("재고 14개");
     // 매입DB 유입대기 = inflowWaitBase 8 − 오늘 유입 5 = 3
     expect(host.textContent).toMatch(/유입대기.*유입 안 된 수3개/);
-    expect(host.querySelector('a[href="/contact"]')!.textContent).toContain("일별 기록 전체");
+    expect(host.querySelector('a[href="/contact"]')!.textContent).toContain("일별 기록에서 고치기");
     expect(host.querySelectorAll("tbody tr")).toHaveLength(4);
     // 장수 칸에 바로 적기 — 15 를 적고 Enter 면 현수막 줄 production 15 만 보낸다(belie 2026-11-08 대량 게시)
     const input = host.querySelector<HTMLInputElement>('input[aria-label="오늘 현수막 게시 수"]')!;
@@ -140,5 +140,35 @@ describe("오늘 활동", () => {
     await flush();
     expect(posts).toHaveLength(0);
     expect(host.textContent).toContain("재고가 14개뿐이에요");
+  });
+  it("날짜 ‹ › 로 지난 날을 그 자리에서 보고, 그날 현수막도 그날로 저장 — 오늘 뒤로는 못 가고 닫으면 오늘로", async () => {
+    const gets: string[] = [], posts: string[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === "POST") { posts.push(url); return new Response('{"ok":true}', { status: 200 }); }
+      gets.push(url);
+      return new Response(JSON.stringify(day()), { status: 200 });
+    }));
+    const { todayKST, addDays } = await import("@/util/week");
+    const today = todayKST();
+    const yest = addDays(new Date(`${today}T12:00:00+09:00`), -1).toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
+    host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+    act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity, { onAdd: vi.fn() }))));
+    await flush();
+    act(() => [...host!.querySelectorAll("button[aria-expanded]")][0]!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(btnIn(host, "하루 뒤").disabled).toBe(true);
+    act(() => btnIn(host!, "하루 전").click());
+    await flush();
+    expect(gets.some(u => u.endsWith(`/api/daily/${yest}`))).toBe(true);
+    expect(host.querySelector("h2")!.textContent).toBe("지난 활동");
+    expect(btnIn(host, "하루 뒤").disabled).toBe(false);
+    await act(async () => btnIn(host!, "현수막 게시 1장 더하기").click());
+    await flush();
+    expect(posts.at(-1)).toContain(yest);
+    act(() => [...host!.querySelectorAll("button")].find(b => b.textContent === "오늘로")!.click());
+    expect(host.querySelector("h2")!.textContent).toBe("오늘 활동");
+    act(() => btnIn(host!, "하루 전").click());
+    act(() => host!.querySelector<HTMLButtonElement>('button[aria-label="오늘 활동 닫기"]')!.click());
+    act(() => [...host!.querySelectorAll("button[aria-expanded]")][0]!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(host.querySelector("h2")!.textContent).toBe("오늘 활동");
   });
 });

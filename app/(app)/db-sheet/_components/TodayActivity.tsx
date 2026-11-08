@@ -4,27 +4,35 @@
  * 닫혀 있어도 살짝 나와 있다: 폰 = 화면 아래 띠(흐름 숫자 + 빠른 추가), PC = 오른쪽 아래 카드.
  * 펼치면 폰은 아래에서 반쯤 올라오고, PC 는 그 카드가 제자리에서 위·왼쪽으로 커진다(사이드 패널 아님, belie 2026-11-08).
  * 숫자는 일별 기록(GET /api/daily/오늘) 그대로 — DB 목록에서 한 일은 이미 들어 있다. 손으로 더하는 건 현수막 게시(사람이 없는 활동) 하나.
- * 지난 날짜 고치기·기록 옮기기는 일별 기록 탭.
+ * 펼친 머리의 날짜 양옆 ‹ › 로 어제·그제 숫자를 그 자리에서 넘겨 본다(belie 2026-11-08). 닫으면 오늘로 돌아온다.
+ * 기록 옮기기·자세한 고치기는 일별 기록 탭.
  * 현수막은 한 번에 여러 장 붙이므로 게시 수를 칸에 바로 적는다(−/＋ 는 미세 조정, belie 2026-11-08).
  * PC 닫힘 카드는 오른쪽 아래 「오늘 챙길 일」 버튼과 겹치지 않게 그 왼쪽에 두고, 그 창을 열면 창 왼쪽으로 비켜 준다(.ta-pc-card, db-sheet.css).
  */
 import Link from "next/link";
 import { useEffect, useRef, useState, type TouchEvent as RTouchEvent } from "react";
-import { ChevronDown, ChevronUp, Minus } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Minus } from "lucide-react";
 import { CHANNEL_ORDER, type Channel } from "@/types";
 import ChannelBadge from "@/components/ui/ChannelBadge";
 import { useDay, useSaveMetrics } from "@/query/contact-hooks";
-import { todayKST } from "@/util/week";
+import { addDays, todayKST } from "@/util/week";
 
 const STEPS = [["production", "생산"], ["inflow", "유입"], ["contactProgress", "컨택"], ["meetingReservation", "미팅"]] as const;
 type Key = (typeof STEPS)[number][0];
+const shiftDay = (iso: string, n: number) => addDays(new Date(`${iso}T12:00:00+09:00`), n).toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
 const dayLabel = (iso: string) => new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", month: "long", day: "numeric", weekday: "short" }).format(new Date(`${iso}T12:00:00+09:00`));
 
 export function TodayActivity({ onAdd }: { onAdd: () => void }) {
   const today = todayKST();
-  const day = useDay(today);
+  // 오늘 기록은 띠·카드와 「못 읽는 계정이면 숨기기」 판단에, 보고 있는 날(date)은 펼친 내용에 쓴다. 같은 날이면 같은 캐시.
+  const todayQ = useDay(today);
+  const [date, setDate] = useState(today);
+  const day = useDay(date);
+  const isToday = date === today;
   const save = useSaveMetrics({ silent: true });
-  const [open, setOpen] = useState(false), [error, setError] = useState("");
+  const [open, setOpenRaw] = useState(false), [error, setError] = useState("");
+  const setOpen = (v: boolean) => { setOpenRaw(v); if (!v) { setDate(todayKST()); setError(""); } };
+  const goDay = (n: number) => { const next = shiftDay(date, n); if (next <= today) { setDate(next); setError(""); setDraft(null); } };
   const [draft, setDraft] = useState<string | null>(null), [focusBanner, setFocusBanner] = useState(false);
   const bannerInput = useRef<HTMLInputElement>(null), cancelDraft = useRef(false);
   // 폰: 띠를 위로 쓸어 올리면 열고, 펼친 머리를 아래로 쓸어내리면 닫는다(belie 2026-11-08 「스르륵」).
@@ -38,7 +46,9 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
     },
     onTouchEnd: () => { touchY.current = null; },
   });
-  const ch = day.data?.channels;
+  const ch = day.isError ? undefined : day.data?.channels;
+  const todayCh = todayQ.data?.channels;
+  const todayTotal = (k: Key) => todayCh ? CHANNEL_ORDER.reduce((n, c) => n + (todayCh[c]?.[k] ?? 0), 0) : null;
   const total = (k: Key) => ch ? CHANNEL_ORDER.reduce((n, c) => n + (ch[c]?.[k] ?? 0), 0) : null;
   const banner = ch?.현수막;
   const activeChannels = ch ? CHANNEL_ORDER.filter(c => STEPS.some(([k]) => (ch[c]?.[k] ?? 0) > 0)) : [];
@@ -69,7 +79,7 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
     const max = day.data?.bannerStockBase ?? 0;
     if (next > banner.production && next > max) { setError(`재고가 ${Math.max(0, max - banner.production)}개뿐이에요. 산 현수막을 먼저 적어 주세요.`); return; }
     setError("");
-    try { await save.mutateAsync({ date: today, channels: { 현수막: { ...banner, production: next } } as Record<Channel, typeof banner> }); }
+    try { await save.mutateAsync({ date, channels: { 현수막: { ...banner, production: next } } as Record<Channel, typeof banner> }); }
     catch (e) { setError((e as Error).message || "저장하지 못했어요. 일별 기록에서 다시 해 주세요."); }
   }
 
@@ -83,13 +93,13 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
   }
   const openBanner = () => { setFocusBanner(true); setOpen(true); };
   const add = () => { setOpen(false); onAdd(); };
-  const num = (k: Key) => { const v = total(k); return v === null ? "–" : String(v); };
-  const funnel = (row: boolean) => <ol className={row ? "flex items-center gap-1" : "grid gap-1"} aria-label="오늘 숫자">
+  const funnel = (row: boolean, viewed = false) => { const num = (k: Key) => { const v = viewed ? total(k) : todayTotal(k); return v === null ? "–" : String(v); };
+  return <ol className={row ? "flex items-center gap-1" : "grid gap-1"} aria-label={viewed && !isToday ? `${dayLabel(date)} 숫자` : "오늘 숫자"}>
     {STEPS.map(([k, label], i) => <li key={k} className={`flex flex-1 items-center gap-1 rounded-lg ${row ? "justify-center px-1 py-1.5" : "justify-between px-3 py-2"} ${i === 3 ? "bg-emerald-50" : "bg-slate-50"}`}>
       {row ? <><b className={`text-base tabular-nums ${i === 3 ? "text-emerald-700" : "text-slate-900"}`}>{num(k)}</b><span className="text-xs text-slate-500">{label}</span></>
         : <><span className="text-sm text-slate-600">{label}</span><b className={`text-lg tabular-nums ${i === 3 ? "text-emerald-700" : "text-slate-900"}`}>{num(k)}</b></>}
     </li>)}
-  </ol>;
+  </ol>; };
   const chips = (column: boolean) => <div className={column ? "flex flex-col gap-1.5" : "flex gap-1.5"}>
     <button type="button" className={`rounded-full border border-emerald-600 bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white ${column ? "rounded-lg py-2 text-left" : "shrink-0"}`} onClick={add}>＋ DB 추가</button>
     {showBanner && <button type="button" className={`rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 ${column ? "rounded-lg py-2 text-left" : "shrink-0"}`} onClick={openBanner}>＋ 현수막 게시{stock !== null && <span className="ml-1 text-xs font-normal tabular-nums text-slate-500">재고 {stock}</span>}</button>}
@@ -100,8 +110,14 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
     <div className="min-w-0">
       <div className="flex flex-wrap items-center gap-x-2">
         <span className="rounded-full bg-emerald-100 px-1.5 py-0.5 text-xs font-bold text-emerald-800">STEP 2</span>
-        <h2 className="text-base font-bold text-slate-900">오늘 활동</h2>
-        <span className="text-sm text-slate-500">{dayLabel(today)}</span>
+        <h2 className="text-base font-bold text-slate-900">{isToday ? "오늘 활동" : "지난 활동"}</h2>
+      </div>
+      {/* 날짜 넘기기 — 오늘보다 뒤로는 못 간다. 지난 날이면 「오늘로」 */}
+      <div className="mt-1.5 flex items-center gap-1" role="group" aria-label="날짜 넘기기">
+        <button type="button" aria-label="하루 전" className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100" onClick={() => goDay(-1)}><ChevronLeft size={18} aria-hidden="true" /></button>
+        <span className={`min-w-[7.5em] text-center text-sm font-semibold tabular-nums ${isToday ? "text-slate-700" : "text-emerald-800"}`} aria-live="polite">{dayLabel(date)}</span>
+        <button type="button" aria-label="하루 뒤" disabled={isToday} className="flex h-9 w-9 items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent" onClick={() => goDay(1)}><ChevronRight size={18} aria-hidden="true" /></button>
+        {!isToday && <button type="button" className="ml-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200" onClick={() => { setDate(today); setError(""); setDraft(null); }}>오늘로</button>}
       </div>
       <p className="mt-1 break-keep text-xs text-slate-500">DB 목록에서 한 일은 저절로 세져요.{showBanner && " 목록에 없는 활동만 여기서 더해요."}</p>
     </div>
@@ -112,12 +128,13 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
 
   const body = <section aria-label="오늘 활동" className="flex h-full flex-col bg-white pc:h-auto pc:max-h-[min(78dvh,720px)]">
     {head}
-    <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-      {funnel(true)}
+    <div className={`min-h-0 flex-1 overflow-y-auto px-4 py-3 transition-opacity ${day.isPlaceholderData ? "opacity-50" : ""}`} aria-busy={day.isPlaceholderData}>
+      {day.isError ? <p role="alert" className="rounded-lg bg-slate-50 px-3 py-3 text-center text-sm text-slate-500">{dayLabel(date)} 기록을 읽지 못했어요. 기수 기간 밖이면 기록이 없어요.</p> : <>
+      {funnel(true, true)}
       {/* 네 칸이 모두 0인 채널은 뺀다(belie 2026-11-08). 다 0이면 한 줄 안내 */}
-      {ch && !activeChannels.length ? <p className="mt-3 rounded-lg bg-slate-50 px-3 py-3 text-center text-sm text-slate-500">아직 오늘 기록이 없어요</p> :
+      {ch && !activeChannels.length ? <p className="mt-3 rounded-lg bg-slate-50 px-3 py-3 text-center text-sm text-slate-500">{isToday ? "아직 오늘 기록이 없어요" : "이날은 기록이 없어요"}</p> :
       <table className="mt-3 w-full table-fixed border-separate border-spacing-y-1 text-center text-sm">
-        <caption className="sr-only">채널별 오늘 숫자</caption>
+        <caption className="sr-only">채널별 {isToday ? "오늘" : dayLabel(date)} 숫자</caption>
         <thead><tr className="text-xs text-slate-500"><th className="w-[34%] text-left font-medium">채널</th>{STEPS.map(([k, l]) => <th key={k} className="font-medium">{l}</th>)}</tr></thead>
         <tbody>{(ch ? activeChannels : CHANNEL_ORDER).map(c => <tr key={c}><td className="text-left"><ChannelBadge channel={c} /></td>{STEPS.map(([k]) => <td key={k} className="tabular-nums text-slate-700">{ch ? ch[c]?.[k] ?? 0 : "–"}</td>)}</tr>)}</tbody>
       </table>}
@@ -134,11 +151,11 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
         <div className="min-w-0">
           <div className="flex items-center gap-1.5"><ChannelBadge channel="현수막" /><span className="text-sm font-semibold text-slate-800">게시</span>
             {stock !== null && <span className={`rounded-full bg-white px-2 py-0.5 text-xs font-bold tabular-nums ring-1 ring-slate-200 ${stock === 0 ? "text-red-700" : "text-slate-700"}`}>재고 {stock}개</span>}</div>
-          <div className="mt-0.5 text-xs text-slate-500">오늘 붙인 장수를 적어요</div>
+          <div className="mt-0.5 text-xs text-slate-500">{isToday ? "오늘" : "그날"} 붙인 장수를 적어요</div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <button type="button" aria-label="현수막 게시 빼기" disabled={!banner || !banner.production || save.isPending} onClick={() => void bump(-1)} className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-200 text-slate-700 disabled:opacity-40"><Minus size={18} aria-hidden="true" /></button>
-          <input ref={bannerInput} type="text" inputMode="numeric" aria-label="오늘 현수막 게시 수" disabled={!banner || save.isPending}
+          <input ref={bannerInput} type="text" inputMode="numeric" aria-label={`${isToday ? "오늘" : dayLabel(date)} 현수막 게시 수`} disabled={!banner || save.isPending}
             className="h-10 w-16 rounded-lg border border-slate-300 bg-white text-center text-lg font-bold tabular-nums text-slate-900 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-200 disabled:bg-slate-100"
             value={draft ?? (banner ? String(banner.production) : "–")}
             onFocus={e => { setDraft(banner ? String(banner.production) : ""); e.currentTarget.select(); }}
@@ -151,14 +168,15 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
       </>}
       <p className="mt-2 break-keep text-xs text-slate-500">현수막 문의·지인 소개·콜드콜도 「＋ DB 추가」로 목록에 올리면 유입·컨택·미팅이 저절로 더해져요.</p>
       {error && <p role="alert" className="mt-2 text-sm text-red-700">{error}</p>}
+      </>}
     </div>
     <div className="flex items-center justify-between gap-2 border-t border-slate-100 px-4 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))]">
-      <Link href="/contact" className="text-sm font-semibold text-emerald-700">일별 기록 전체 →</Link>
+      <Link href="/contact" className="text-sm font-semibold text-emerald-700">일별 기록에서 고치기 →</Link>
       <button type="button" className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white" onClick={add}>＋ DB 추가</button>
     </div>
   </section>;
 
-  if (day.isError) return null; // 일별 기록을 못 읽는 계정(시트 없음 등)은 패널 없이 목록만
+  if (todayQ.isError) return null; // 일별 기록을 못 읽는 계정(시트 없음 등)은 패널 없이 목록만
   return <>
     {/* 펼치면 위 머리줄(z-50)·메뉴(55·56)보다 위, 대화상자(200)보다 아래. */}
     {open && <div aria-hidden="true" className="ta-scrim fixed inset-0 z-[60] bg-slate-900/25 pc:bg-slate-900/10" onClick={() => setOpen(false)} />}
