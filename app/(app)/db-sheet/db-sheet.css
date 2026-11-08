@@ -274,3 +274,7 @@ body.db-sheet-route .db-meeting-booked-facts>div{display:grid;grid-template-colu
 body.db-sheet-route .db-meeting-booked-facts dt{color:#64748b}
 body.db-sheet-route .db-meeting-booked-facts dd{margin:0;color:#0f172a;font-weight:600;overflow-wrap:anywhere}
 body.db-sheet-route .db-meeting-booked-actions{display:flex;flex-wrap:wrap;gap:6px}
+/* PC 「오늘 챙길 일」 창(오른쪽 24px·폭 360px)을 열면 오늘 활동 닫힘 카드가 가려진다 — 창 왼쪽(24+360+12px)으로 비켜 준다(belie 2026-11-08). */
+.ta-pc-card{transition:right .3s cubic-bezier(.2,.8,.2,1)}
+@media(min-width:1024px){body:has(.fl-pop[data-open=true]) .ta-pc-card{right:calc(396px + env(safe-area-inset-right,0px))}}
+@media(prefers-reduced-motion:reduce){.ta-pc-card{transition:none}}

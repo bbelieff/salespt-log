@@ -6,7 +6,7 @@
  * 숫자는 일별 기록(GET /api/daily/오늘) 그대로 — DB 목록에서 한 일은 이미 들어 있다. 손으로 더하는 건 현수막 게시(사람이 없는 활동) 하나.
  * 지난 날짜 고치기·기록 옮기기는 일별 기록 탭.
  * 현수막은 한 번에 여러 장 붙이므로 게시 수를 칸에 바로 적는다(−/＋ 는 미세 조정, belie 2026-11-08).
- * PC 닫힘 카드는 오른쪽 아래 「오늘 챙길 일」 버튼과 겹치지 않게 그 왼쪽에 둔다.
+ * PC 닫힘 카드는 오른쪽 아래 「오늘 챙길 일」 버튼과 겹치지 않게 그 왼쪽에 두고, 그 창을 열면 창 왼쪽으로 비켜 준다(.ta-pc-card, db-sheet.css).
  */
 import Link from "next/link";
 import { useEffect, useRef, useState, type TouchEvent as RTouchEvent } from "react";
@@ -177,7 +177,7 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
           <div className="mt-2 overflow-x-auto">{chips(false)}</div>
         </section>
       </div>
-      <div className="fixed bottom-0 right-[calc(96px+env(safe-area-inset-right,0px))] z-40 hidden w-72 pc:block">
+      <div className="ta-pc-card fixed bottom-0 right-[calc(96px+env(safe-area-inset-right,0px))] z-40 hidden w-72 pc:block">
         <section aria-label="오늘 활동" className="rounded-t-2xl border-x border-t border-slate-200 bg-white px-4 pb-4 pt-3 shadow-lg">
           <button type="button" aria-expanded={false} className="flex w-full items-center justify-between" onClick={() => setOpen(true)}>
             <span className="text-left"><span className="block text-sm font-bold text-slate-900">오늘 활동</span><span className="text-xs text-slate-500">{dayLabel(today)}</span></span>
