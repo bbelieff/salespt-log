@@ -105,7 +105,6 @@ function App() {
 
       <header className="mx-auto max-w-6xl px-4 pb-4 pt-6">
         <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900"><ShieldCheck className="h-5 w-5 text-blue-600" aria-hidden />간편인증 서류 조회</h1>
-        <p className="mt-1 text-sm text-gray-600">대표 휴대폰으로 간편인증을 보내면, 고객이 승인하는 대로 그 대표의 모든 사업자 서류를 받아 내 DB에 연결해요.</p>
       </header>
 
       <main className="mx-auto flex max-w-6xl flex-col gap-4 px-4 pb-10 pc:flex-row pc:items-start">

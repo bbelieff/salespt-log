@@ -10,14 +10,13 @@ import { isSimilarDbSheetCompany } from "@/types/db-sheet";
 export const AUTH_METHODS = ["카카오톡", "네이버", "PASS", "토스", "삼성패스", "KB모바일"] as const;
 export type AuthMethod = (typeof AUTH_METHODS)[number];
 export const TELECOMS = ["SKT", "KT", "LG U+"] as const;
-export const CONSENT_WAYS = ["통화", "대면", "문자"] as const;
 
 // 4대보험 가입자명부는 CODEF 에서 공동인증서만(간편인증 불가) → 제외. 사업자등록증명은 DB 연결에 쓰므로 항상 받는다.
 export type DocKey = "biz" | "vat" | "fs" | "tax" | "income";
 export const DOCS: { key: DocKey; label: string; note?: string; locked?: boolean }[] = [
-  { key: "biz", label: "사업자등록증명", note: "모든 사업장 · DB 연결에 필요", locked: true },
-  { key: "vat", label: "부가세 과세표준증명", note: "최근 3년" },
-  { key: "fs", label: "표준재무제표증명", note: "당기 포함 3개년 · 08~22시" },
+  { key: "biz", label: "사업자등록증명", note: "필수", locked: true },
+  { key: "vat", label: "부가세 과세표준증명", note: "3년" },
+  { key: "fs", label: "표준재무제표증명", note: "3년" },
   { key: "tax", label: "납세증명(국세 완납)" },
   { key: "income", label: "소득금액증명", note: "개인사업자" },
 ];

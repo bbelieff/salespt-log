@@ -23,22 +23,22 @@ function DbLinkPanel({ biz, onLink }: { biz: Biz; onLink: (l: Link) => void }) {
     return (
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
         <Link2 className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
-        <span className="min-w-0 flex-1 truncate text-gray-800" title={row?.name}>DB 연결: <b>{row?.name}</b> <span className="text-xs text-gray-500">· {row?.channel}{l.state === "auto" ? ` · ${l.why}로 자동 연결` : ""}</span></span>
-        <button type="button" onClick={() => { setChoosing(true); onLink({ state: "pick", candidates: DB_ROWS.map(r => ({ id: r.id, why: `${r.owner} · ${r.channel}` })) }); }} className="text-xs font-medium text-blue-700 hover:underline">다른 DB로 바꾸기</button>
+        <span className="min-w-0 flex-1 truncate text-gray-800" title={row?.name}>DB: <b>{row?.name}</b></span>
+        <button type="button" onClick={() => { setChoosing(true); onLink({ state: "pick", candidates: DB_ROWS.map(r => ({ id: r.id, why: `${r.owner} · ${r.channel}` })) }); }} className="text-xs font-medium text-blue-700 hover:underline">바꾸기</button>
       </div>
     );
   }
   if (l.state === "added" || l.state === "later") return (
     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
       <Link2 className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
-      <span className="flex-1">{l.state === "added" ? "새 DB로 추가했어요 (채널은 DB 관리시트에서 정해 주세요)" : "아직 DB에 연결하지 않았어요"}</span>
+      <span className="flex-1">{l.state === "added" ? "새 DB로 추가함" : "연결 안 함"}</span>
       <button type="button" onClick={() => onLink({ state: "none" })} className="text-xs font-medium text-blue-700 hover:underline">바꾸기</button>
     </div>
   );
   return (
     <fieldset className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
       <legend className="sr-only">DB 연결</legend>
-      <p className="text-sm font-semibold text-amber-900">{l.state === "pick" ? "이 사업자가 어느 DB인지 골라 주세요" : "내 DB에서 같은 업체를 찾지 못했어요"}</p>
+      <p className="text-sm font-semibold text-amber-900">{l.state === "pick" ? "어느 DB인가요?" : "DB에 없어요"}</p>
       {cands.length > 0 && (
         <ul className="flex flex-col gap-1">
           {cands.map(c => { const row = dbRow(c.id); return (
@@ -87,7 +87,7 @@ export default function DocBox({ req, biz, onClose, onRetry, onLink, onApplied }
       <header className="flex min-w-0 items-start gap-3">
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-base font-semibold text-gray-900" title={biz.name}>{biz.name} <span className="text-sm font-normal text-gray-500 tabular-nums">{biz.bizNo}</span></h2>
-          <p className="text-xs text-gray-500">{req.owner} 대표 · {req.sentAt} 요청 · {req.method} 인증 · 원문은 암호화해 90일 보관 후 지워져요</p>
+          <p className="text-xs text-gray-500">{req.owner} 대표 · {req.sentAt}</p>
         </div>
         <button type="button" onClick={onClose} aria-label="서류함 닫기" className="rounded-md p-1 text-gray-500 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"><X className="h-4 w-4" /></button>
       </header>
@@ -110,7 +110,7 @@ export default function DocBox({ req, biz, onClose, onRetry, onLink, onApplied }
               : <p className="mt-1 pl-6 text-sm text-red-700">{d.reason}</p>}
             {preview === d.key && (
               <div className="ml-6 mt-2 rounded-md border border-dashed border-gray-300 bg-gray-50 p-3 text-xs text-gray-600">
-                원문 미리보기 자리 — 실제로는 홈택스가 발급한 증명서(PDF)를 여기서 보여 주고 내려받을 수 있어요. (목업이라 합성 문구만 보여요)
+                원문 PDF 자리 (목업)
               </div>
             )}
           </li>
@@ -119,7 +119,7 @@ export default function DocBox({ req, biz, onClose, onRetry, onLink, onApplied }
 
       {rows.length > 0 && (applying ? (
         <div className="flex flex-col gap-3 rounded-lg border border-gray-200 p-3">
-          <h3 className="text-sm font-semibold text-gray-900">업체정보에 반영 <span className="font-normal text-gray-500">— 체크한 칸만 바뀌어요</span></h3>
+          <h3 className="text-sm font-semibold text-gray-900">업체정보에 반영</h3>
           <div className="overflow-x-auto">
             <CompanyDocDiffTable rows={rows} labelOf={k => FIELD_LABEL[k] ?? k} checked={checked} choice={choice}
               onCheck={(k, v) => setChecked(c => ({ ...c, [k]: v }))} onChoose={(k, i) => setChoice(c => ({ ...c, [k]: i }))} />
@@ -132,7 +132,7 @@ export default function DocBox({ req, biz, onClose, onRetry, onLink, onApplied }
       ) : (
         <div className="flex items-center gap-2">
           <button type="button" disabled={!linked} onClick={() => setApplying(true)} className={`${BTN2} disabled:cursor-not-allowed disabled:text-gray-400`}>업체정보에 반영…</button>
-          {!linked && <span className="text-xs text-gray-500">DB에 연결하면 반영할 수 있어요</span>}
+          {!linked && <span className="text-xs text-gray-500">DB 연결 후 가능</span>}
         </div>
       ))}
     </section>

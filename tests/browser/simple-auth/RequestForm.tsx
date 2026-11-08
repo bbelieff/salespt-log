@@ -3,9 +3,9 @@
 import { useId, useState } from "react";
 import { Info, Send } from "lucide-react";
 import PhoneInput from "@/components/ui/PhoneInput";
-import { AUTH_METHODS, CONSENT_WAYS, DEFAULT_DOCS, DOCS, TELECOMS, type AuthMethod, type DocKey } from "./data";
+import { AUTH_METHODS, DEFAULT_DOCS, DOCS, TELECOMS, type AuthMethod, type DocKey } from "./data";
 
-export type RequestInput = { owner: string; birth: string; phone: string; telecom: string; method: AuthMethod; docs: DocKey[]; consentWay: string };
+export type RequestInput = { owner: string; birth: string; phone: string; telecom: string; method: AuthMethod; docs: DocKey[] };
 
 const INPUT = "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none";
 const LABEL = "text-sm font-medium text-gray-700";
@@ -27,8 +27,6 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
   const [telecom, setTelecom] = useState("");
   const [method, setMethod] = useState<AuthMethod>("카카오톡");
   const [docs, setDocs] = useState<DocKey[]>(DEFAULT_DOCS);
-  const [consent, setConsent] = useState(false);
-  const [consentWay, setConsentWay] = useState<string>("통화");
   const [tried, setTried] = useState(false);
 
   const errors = {
@@ -37,7 +35,6 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
     phone: /^010-\d{4}-\d{4}$/.test(phone) ? "" : "휴대폰 번호 11자리를 넣어 주세요.",
     telecom: method === "PASS" && !telecom ? "PASS는 통신사가 필요해요." : "",
     docs: docs.length ? "" : "받을 서류를 하나 이상 골라 주세요.",
-    consent: consent ? "" : "고객 동의를 받은 뒤 체크해 주세요.",
   };
   const show = (k: keyof typeof errors) => (tried && errors[k] ? <p id={`${id}-${k}-err`} className="mt-1 text-xs text-red-600">{errors[k]}</p> : null);
   const invalid = (k: keyof typeof errors) => (tried && errors[k] ? { "aria-invalid": true, "aria-describedby": `${id}-${k}-err` } : {});
@@ -47,15 +44,13 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
     e.preventDefault();
     setTried(true);
     if (Object.values(errors).some(Boolean)) return;
-    onSend({ owner: owner.trim(), birth, phone, telecom, method, docs, consentWay });
-    setOwner(""); setBirth(""); setPhone(""); setTelecom(""); setConsent(false); setTried(false);
+    onSend({ owner: owner.trim(), birth, phone, telecom, method, docs });
+    setOwner(""); setBirth(""); setPhone(""); setTelecom(""); setTried(false);
   }
 
   return (
     <form onSubmit={submit} noValidate className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <h2 className="text-base font-semibold text-gray-900">인증 보내기</h2>
-
-      <p className="-mt-2 text-sm text-gray-600">업체를 먼저 고르지 않아도 돼요. 서류가 오면 사업자번호로 내 DB에 연결해 드려요.</p>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="min-w-0">
@@ -89,7 +84,7 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
           <div className="mt-2">
             <label htmlFor={`${id}-telecom`} className="text-xs text-gray-600">통신사</label>
             <select id={`${id}-telecom`} value={telecom} onChange={e => setTelecom(e.target.value)} className={`${INPUT} mt-1`} {...invalid("telecom")}>
-              <option value="">통신사 고르기 (알뜰폰은 망 기준)</option>
+              <option value="">통신사</option>
               {TELECOMS.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
             {show("telecom")}
@@ -110,34 +105,15 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
             </li>
           ))}
         </ul>
-        <p className="mt-1 text-xs text-gray-500">고른 서류는 고객 승인 한 번으로 모두 받아요.</p>
         {show("docs")}
       </fieldset>
 
-      <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
-        <p className="flex items-center gap-1.5 font-semibold"><Info className="h-4 w-4 shrink-0" aria-hidden />보내기 전에 고객에게 말해 주세요</p>
-        <p className="mt-1 text-blue-800">“곧 {method}으로 홈택스 로그인 인증 요청이 갑니다. 승인만 눌러 주시면 서류는 저희가 받아 둘게요. 4분 30초 안에 눌러 주세요.”</p>
-      </div>
+      <p className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-800"><Info className="h-4 w-4 shrink-0" aria-hidden />고객에게 “{method} 인증 승인만 눌러 주세요”라고 먼저 말해 주세요.</p>
 
-      <div>
-        <label className="flex cursor-pointer items-start gap-2 text-sm text-gray-800">
-          <input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} className="mt-0.5 h-4 w-4 accent-blue-600" {...invalid("consent")} />
-          <span>고객에게 개인정보 조회·제3자 제공(조회 대행사) 동의를 받았습니다.</span>
-        </label>
-        <div className="mt-2 flex items-center gap-2 pl-6 text-xs text-gray-600">
-          <label htmlFor={`${id}-way`}>동의 방법</label>
-          <select id={`${id}-way`} value={consentWay} onChange={e => setConsentWay(e.target.value)} className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs">
-            {CONSENT_WAYS.map(w => <option key={w}>{w}</option>)}
-          </select>
-          <span>· 보낸 시각과 함께 남아요</span>
-        </div>
-        {show("consent")}
-      </div>
 
       <button type="submit" disabled={busy} className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-500 px-4 py-2 font-medium text-white transition-colors hover:bg-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500">
         <Send className="h-4 w-4" aria-hidden />{busy ? "보내는 중…" : "인증 보내기"}
       </button>
-      <p className="-mt-2 text-center text-xs text-gray-500">주민등록번호는 받지 않아요. 홈택스 회원이 아니면 회원가입 후 다시 보내 주세요.</p>
     </form>
   );
 }
