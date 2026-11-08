@@ -14,15 +14,6 @@ import { spawnSync } from "node:child_process";
 const dir = mkdtempSync(join(tmpdir(), "simple-auth-live-"));
 const nav = `import React,{useSyncExternalStore} from 'react';const subscribe=f=>{window.addEventListener('popstate',f);return()=>window.removeEventListener('popstate',f)};export const usePathname=()=>useSyncExternalStore(subscribe,()=>location.pathname);export const go=p=>{history.pushState({},'',p);window.dispatchEvent(new PopStateEvent('popstate'))};export const useRouter=()=>({push:go,replace:go,refresh:()=>{},prefetch:()=>{}});export const useSearchParams=()=>new URLSearchParams(location.search);export default function Link({href,children,...p}){return <a {...p} href={href}>{children}</a>}`;
 const mocks = { "next-auth/react": `export const signOut=()=>{};export const useSession=()=>({data:null});` };
-const NAV_FILE = resolve("components/desktop/DesktopNav.tsx");
-const NAV_ROW = `{!compact && "트레이닝일지"}
-      </SideLink>`;
-const NEW_ROW = `${NAV_ROW}
-      <SideLink sub compact={compact} href={"/work-tools/simple-auth" as Route} active={pathname.startsWith("/work-tools/simple-auth")} label="간편인증 서류 조회">
-        <__Shield className="h-4 w-4 shrink-0" aria-hidden="true" />
-        {!compact && "간편인증 서류 조회"}
-      </SideLink>`;
-
 const ctx = await context({
   entryPoints: ["tests/browser/simple-auth-live/App.tsx"], bundle: true, outfile: join(dir, "app.js"), platform: "browser", jsx: "automatic", logLevel: "warning",
   external: ["tesseract.js", "pdfjs-dist/*"], define: { "process.env": "{}", "process.env.NODE_ENV": '"development"' },
@@ -40,12 +31,7 @@ const ctx = await context({
         : mocks[a.path],
       loader: "tsx", resolveDir: process.cwd(),
     }));
-    b.onLoad({ filter: /DesktopNav\.tsx$/ }, a => {
-      if (resolve(a.path) !== NAV_FILE) return undefined;
-      const src = readFileSync(a.path, "utf8");
-      if (!src.includes(NAV_ROW)) throw new Error("DesktopNav 의 트레이닝일지 행을 찾지 못했어요 — 목업 끼워넣기 위치를 고쳐 주세요");
-      return { contents: `import { ShieldCheck as __Shield } from "lucide-react";\n${src.replace(NAV_ROW, NEW_ROW)}`, loader: "tsx", resolveDir: resolve("components/desktop") };
-    });
+    // 업무도구 행은 이제 실제 DesktopNav 에 있다(2026-11-09) — 끼워넣기 없음.
   } }],
 });
 await ctx.rebuild();

@@ -9,8 +9,14 @@ import DesktopNav from "@/components/desktop/DesktopNav";
 import TopHeader from "@/components/TopHeader";
 import PageContainer from "@/components/PageContainer";
 import SimpleAuthMock from "../simple-auth/SimpleAuthMock";
+import SimpleAuthPanel from "@/components/simple-auth/SimpleAuthPanel";
+import { installRealApi } from "./real-api";
 
-history.replaceState({}, "", "/work-tools/simple-auth");
+// ?real=1 — 실제 화면 컴포넌트를 가상 API 로(승인 목업과 비교용).
+const REAL = new URLSearchParams(location.search).has("real");
+if (REAL) installRealApi();
+
+history.replaceState({}, "", `/work-tools/simple-auth${REAL ? "?real=1" : ""}`);
 
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -22,7 +28,7 @@ createRoot(document.getElementById("root")!).render(
             <TopHeader pageEmoji="🔐" pageTitle="간편인증 서류 조회" />
             <section className="px-4 pb-10">
               <PageContainer width="fluid">
-                <SimpleAuthMock live />
+                {REAL ? <SimpleAuthPanel /> : <SimpleAuthMock live />}
               </PageContainer>
             </section>
           </main>

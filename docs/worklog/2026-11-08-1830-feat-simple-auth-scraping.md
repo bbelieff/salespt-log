@@ -5,3 +5,9 @@
 - 제공사: 미정. CODEF 1순위(간편인증 11종·다건 세션·원문·홈택스 증명 전 항목), 틸코 2순위(완료여부 확인 API). 가격 비공개 → 데모 실측 필요.
 - 변경: plan 작성, 합성 목업(`node tests/browser/simple-auth-server.mjs`) — 실제 CSS·PhoneInput·CompanyDocDiffTable 재사용, 제공사·서버 호출 없음.
 - 미완료: 목업 승인, 제공사 확정·데모 시험, 구현 전체. [plan](../plans/active/simple-auth-scraping.md)
+
+## 2026-11-09 · 목업 승인 → 구현(운영반영 지시)
+- 담당 파일 추가: `lib/{types,config,service}/simple-auth*.ts`, `lib/repo/codef-client.ts`, `lib/repo/db/simple-auth.ts`, `lib/repo/db/migrations/0018_simple_auth.sql`, `app/api/simple-auth/**`, `app/(app)/work-tools/simple-auth/page.tsx`, `components/simple-auth/*`, `components/desktop/DesktopNav.tsx`(업무도구 행 1줄), `middleware.ts`(/work-tools 보호), docs data-model·components.
+- 결정(belie): 데모 키로 먼저, 지방세 주소는 도로명주소 검색(키 없는 카카오 우편번호), 수강생 전체 공개.
+- 검증: 파서 단위 9 · PGlite 흐름 5(승인 전/후·DB 연결·새 DB 유입 미반영·반영 칸 제한·원문 PDF·테넌트 분리·재시작 정리) · 실제 화면을 가상 API 로 PC 캡처 확인.
+- 남은 것: 병합·배포, 0018 적용(DB Migrate), VPS `.env` CODEF 키 3개(belie 직접), 실제 1건 시험. 실호출 미검증 항목: 법인 인증서·국세 pfx·4대보험·정부24 지방세 간편인증.

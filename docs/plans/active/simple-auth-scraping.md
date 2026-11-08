@@ -73,16 +73,28 @@ belie(2026-11-08): 업무도구에 간편인증 스크래핑을 만든다. 수�
 - 채권자변동조회, 주민번호 입력, 휴대폰 화면(업무도구는 PC 전용 — 모바일은 별도 확인).
 - 실제 제공사 계약·키 입력(belie가 직접), 운영 데이터 쓰기는 목업 승인 + 제공사 확정 뒤.
 
-## 목업 (승인 대기)
-- 라이브 셸: `node tests/browser/simple-auth-live/server.mjs` → `/work-tools/simple-auth` (실제 DesktopNav·TopHeader·PageContainer·글꼴, 업무도구 행은 목업에서만 끼움).
-- 본문만: `node tests/browser/simple-auth-server.mjs` → 출력된 주소. 실제 앱 CSS·PhoneInput·CompanyDocDiffTable·buildDiffRows + 합성 상태. 제공사·서버 호출 없음.
-- 파일: `tests/browser/simple-auth/{fixture,RequestForm,RequestList,DocBox,data}.tsx|ts`, 기준 SHA d8676402.
-- 확인할 것: 입력 검증 문구, 승인 대기 카운트다운·다시 보내기·취소·「고객이 승인했어요」, 서류 하나씩 도착, 일부 실패 → 「이 서류만 다시 요청」, 시간 초과, 빈 목록, 긴 상호, 업체정보 반영 비교표.
+## 목업 — 승인됨 (belie 2026-11-09 「운영반영하자」, 승인 기준 5a0db45a)
+- 라이브 셸: `node tests/browser/simple-auth-live/server.mjs` → `/work-tools/simple-auth` (실제 DesktopNav·TopHeader·PageContainer·글꼴). `?real=1` 이면 실제 `components/simple-auth` 화면을 가상 API(`real-api.ts`)로 그린다 — 목업과 비교용.
+- 본문만: `node tests/browser/simple-auth-server.mjs`. 파일 `tests/browser/simple-auth/*`.
 
-## 설계 기본안 (승인 뒤)
-- `lib/types/simple-auth.ts` → `lib/config/simple-auth.ts`(서류 목록·대기 한도·보관 기간) → `lib/repo/<provider>-client.ts`(외부 호출 격리, 키는 VPS `.env` 만) + `lib/repo/db/simple-auth-*.ts`(요청·서류함 테이블) → `lib/service/simple-auth.ts`(상태 전이·응답→업체정보 매핑 순수 함수) → `app/api/simple-auth/*`(로그인 수강생만, 자기 업체만, 호출 횟수 제한) → `/work-tools/simple-auth` 화면 + PC 업무도구 행.
-- 제공사 교체 가능하도록 repo 경계에 `requestAuth / checkApproved / fetchDocs` 3함수 인터페이스.
-- 로그: 요청 ID·상태·소요 시간만. 이름·생년월일·휴대폰·증명서 내용은 남기지 않는다.
+## 운영 결정 (belie 2026-11-09)
+- CODEF **데모 키로 먼저 켠다**(하루 100건·발급 후 1달, 테스트 서버 development.codef.io). 정식 계약 뒤 `CODEF_HOST=https://api.codef.io` + 정식 키로 바꾼다.
+- 지방세 주소 = **도로명주소 검색**. juso 승인키 대신 키가 필요 없는 카카오(다음) 우편번호 서비스를 쓴다(같은 도로명+건물번호를 얻음).
+- 공개 범위 = **수강생 전체**(업무도구 사이드 행). 키가 없으면 화면이 「연결 준비 중」으로 보내기를 막는다.
+
+## 구현 (2026-11-09)
+- `lib/types/simple-auth.ts` → `lib/config/simple-auth.ts`(서류·CODEF 경로·앱 코드·대기 4분30초·하루 20건·90일 보관) → `lib/repo/codef-client.ts`(토큰·URL 인코딩·RSA, 키는 VPS .env) + `lib/repo/db/simple-auth.ts`(migration 0018: `simple_auth_requests` · `simple_auth_originals` 원문 PDF 봉인) → `lib/service/simple-auth-parse.ts`(CODEF 정형 응답 → 요약·업체정보 후보, 순수) + `lib/service/simple-auth.ts`(실행·승인 확인·정리·DB 연결·반영) → `app/api/simple-auth/*` → `components/simple-auth/*` + `/work-tools/simple-auth` + DesktopNav 업무도구 행 + middleware 보호.
+- 간편인증: 서류마다 같은 id 로 한꺼번에 보내고, 기관별 첫 요청의 추가인증을 「승인 확인」이 2차 요청으로 끝낸다(2번까지). 지방세(정부24)는 기관이 달라 승인 1번 더.
+- 공동인증서: 사업자등록증명을 먼저 받아 사업자 종류(법인)를 보고 재무제표(법인 yyyyMM)·지방세(법인 상품)를 고른다. 4대보험은 사업장이 여럿이면 첫 사업장.
+- 결과: 사업자번호별로 나눠 요약·업체정보 후보·원문 PDF. DB 연결은 사업자번호 → 휴대폰+비슷한 상호 → 후보 고르기 → 새 DB(유입 반영 안 함, supplier 간편인증·channel 직접생산). 반영은 받은 서류의 칸만 `contact.ci` 에 합침(미팅 연결 DB 는 거절).
+- 저장하지 않는 것: 인증서·비밀번호·주민번호 뒷자리·4대보험 가입자 개인정보. 진행 중 상태는 메모리(PM2 1개) — 재시작으로 끊기면 목록이 「다시 보내 주세요」로 정리.
+- 이번 범위 밖: 「이 서류만 다시 요청」(목업에만 있던 버튼, 실제로는 전체 다시 보내기로 대신), 인증서 정책 OID 판별(서버가 사업자등록증명으로 판별).
+
+## 운영 반영 순서
+1. PR CI 통과 → master 병합(= 배포) → 배포 run·health 확인.
+2. DB Migrate 워크플로(mode installed) dry-run → execute 로 0018 적용(추가 테이블만).
+3. **VPS `.env` 에 CODEF 키 3개(CODEF_CLIENT_ID · CODEF_CLIENT_SECRET · CODEF_PUBLIC_KEY)는 belie 가 직접 넣고** PM2 재시작(`--update-env`). 넣기 전까지 화면은 「연결 준비 중」.
+4. belie 본인 정보로 실제 1건(간편인증 사업자등록증명·부가세) → 결과·원문·DB 연결 확인.
 
 ## Acceptance Criteria (수용 기준)
 - [ ] 목업 승인(버전·시각 기록)
@@ -97,6 +109,7 @@ belie(2026-11-08): 업무도구에 간편인증 스크래핑을 만든다. 수�
 - 업무도구 행·라우트 제거, 새 테이블은 추가만(기존 데이터 무관), 제공사 키 삭제.
 
 ## Log
+- 2026-11-09 목업 승인(운영반영 지시) · 데모 키·도로명 검색·전체 공개 결정 · 구현(types~화면) · 테스트(파서 9 · PGlite 흐름 5).
 - 2026-11-09 펼침 고정·제목행 여닫기·업체 1곳 자동 펼침.
 - 2026-11-09 목업 수정: 2단+업체 밑 펼침, 공동인증서 법인/개인 6종·종류 판별, 지방세 시·군·구 검색기, 인증서 파일명 넘침 수정, 한 줄 배치.
 - 2026-11-08 CODEF 데모 키 발급(belie 가입·캡차), 실측 3회 — 승인 1번에 다건 도착 확인, 4대보험 간편인증 불가 확인.
