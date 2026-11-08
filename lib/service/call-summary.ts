@@ -4,7 +4,7 @@
  * 확정 저장(DB정보·미팅)은 PR-4b. 기능 스위치 CALL_SUMMARY_EMAILS 에 없는 사람에게는 없는 기능처럼 군다.
  * 로그에는 통화 id·오류 종류만 남긴다(통화 내용·전화번호·키 금지).
  */
-import { callSummaryEmails, isCallSummaryUser } from "@/config";
+import { CALL_PAST_DAYS, callSummaryEmails, isCallSummaryUser } from "@/config";
 import type { CallRecord } from "@/types/call";
 import { CALL_AUDIO_MAX_BYTES, CallAiError, summarizeCall } from "@/repo/ai/call-gemini";
 import { CALL_AUDIO_TYPES, readCallAudio, removeCallAudio, removeOldCallAudio, saveCallAudio } from "@/repo/call-audio";
@@ -35,13 +35,13 @@ function kstMidnight(now = new Date()): Date {
 }
 
 /**
- * 📞 버튼 — 업체·시각만 남긴다. calledAt 은 📞 없이 건 통화를 올릴 때 녹음 파일의 저장 시각(지난 7일 안, 미래 금지).
+ * 📞 버튼 — 업체·시각만 남긴다. calledAt 은 📞 없이 건 통화를 올릴 때 녹음한 시각(지난 CALL_PAST_DAYS 일 안, 미래 금지).
  * 「다음 주 화요일」을 날짜로 바꾸는 기준이라 실제 통화 시각이어야 한다.
  */
 export async function startCall(who: Who, leadId: string, calledAt?: string): Promise<string> {
   gate(who.email);
   const now = Date.now(), at = calledAt ? Date.parse(calledAt) : now;
-  if (!Number.isFinite(at) || at > now + 5 * 60_000 || at < now - 7 * 86_400_000) {
+  if (!Number.isFinite(at) || at > now + 5 * 60_000 || at < now - CALL_PAST_DAYS * 86_400_000) {
     throw new CallSummaryError("통화 시각을 확인해 주세요", 400);
   }
   return calls.createCall({ email: who.email, spreadsheetId: who.spreadsheetId, leadId, calledAt: new Date(at).toISOString() });

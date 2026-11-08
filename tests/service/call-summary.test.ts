@@ -111,12 +111,15 @@ it("글자로 받은 통화는 글자를 보내고, 닫기는 남은 녹음을 �
   await expect(discardCall(who.email, ID)).rejects.toMatchObject({ status: 409 });
 });
 
-it("📞 없이 올리는 통화 시각은 지난 7일 안, 미래는 안 된다", async () => {
+it("📞 없이 올리는 통화 시각은 지난 90일 안, 미래는 안 된다", async () => {
   db.createCall.mockResolvedValue("id");
   const at = new Date(Date.now() - 3 * 3_600_000).toISOString();
   await startCall(who, ID, at);
   expect(db.createCall).toHaveBeenLastCalledWith(expect.objectContaining({ calledAt: at }));
   await expect(startCall(who, ID, new Date(Date.now() + 3_600_000).toISOString())).rejects.toMatchObject({ status: 400 });
-  await expect(startCall(who, ID, new Date(Date.now() - 8 * 86_400_000).toISOString())).rejects.toMatchObject({ status: 400 });
+  const old = new Date(Date.now() - 30 * 86_400_000).toISOString(); // 지난달 녹음도 그날로
+  await startCall(who, ID, old);
+  expect(db.createCall).toHaveBeenLastCalledWith(expect.objectContaining({ calledAt: old }));
+  await expect(startCall(who, ID, new Date(Date.now() - 91 * 86_400_000).toISOString())).rejects.toMatchObject({ status: 400 });
   await expect(startCall(who, ID, "아무 말")).rejects.toMatchObject({ status: 400 });
 });

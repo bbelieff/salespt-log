@@ -17,7 +17,7 @@ describe("통화 파일 규칙", () => {
     expect(["list.txt", "db.xlsx", "x.csv"].map(isCallImportFile)).toEqual([false, false, false]);
   });
 
-  it("녹음한 때: 파일 이름 날짜·시각이 먼저, 없으면 저장 시각, 미래는 지금. 7일 넘으면 통화 시각은 보내지 않는다", () => {
+  it("녹음한 때: 파일 이름 날짜·시각이 먼저, 없으면 저장 시각, 미래는 지금. 90일 안이면 통화 시각도 그날로", () => {
     const named = recordedAt({ name: "통화 010-0000-0007_20261105_1412.m4a", lastModified: NOW }, NOW);
     expect(named.date).toBe("2026-11-05");
     expect(named.calledAt).toBe(new Date("2026-11-05T14:12:00+09:00").toISOString());
@@ -25,8 +25,10 @@ describe("통화 파일 규칙", () => {
     const plain = recordedAt({ name: "녹음.m4a", lastModified: Date.parse("2026-11-07T00:30:00+09:00") }, NOW);
     expect([plain.date, recordedLabel(plain.ms, NOW)]).toEqual(["2026-11-07", "오늘 00:30"]);
     expect(recordedAt({ name: "x.m4a", lastModified: NOW + 86_400_000 }, NOW).ms).toBe(NOW);
-    const old = recordedAt({ name: "통화_20261020_0910.m4a", lastModified: NOW }, NOW);
-    expect([old.date, old.calledAt]).toEqual(["2026-10-20", undefined]);
+    const old = recordedAt({ name: "통화_20261020_0910.m4a", lastModified: NOW }, NOW); // 18일 전 — 유입일·통화일 같은 날
+    expect([old.date, old.calledAt]).toEqual(["2026-10-20", new Date("2026-10-20T09:10:00+09:00").toISOString()]);
+    const older = recordedAt({ name: "통화_20260801_0910.m4a", lastModified: NOW }, NOW); // 90일 넘음 — 통화 시각은 서버가 지금으로
+    expect([older.date, older.calledAt]).toEqual(["2026-08-01", undefined]);
     expect(recordedAt({ name: "통화_20261399_0910.m4a", lastModified: NOW }, NOW).date).toBe("2026-11-07"); // 없는 날짜는 저장 시각
   });
 

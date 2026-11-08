@@ -79,6 +79,12 @@ export const isCallSummaryUser = (email: string): boolean => {
 };
 
 /**
+ * 📞 없이 올린 통화(녹음 파일)의 통화 시각을 받는 기간 — 지난 90일(12주 과정을 넉넉히 덮음, 미래 금지).
+ * 7일이던 것을 늘렸다(belie 2026-11-08): 지난 녹음으로 만든 새 DB 의 유입일과 통화·미팅 날짜가 어긋나지 않게.
+ */
+export const CALL_PAST_DAYS = 90;
+
+/**
  * 관리자(소유자) Google Drive refresh token (ADR-0015).
  * SA(masterbot)는 Drive 용량 0 → My-Drive 공유 폴더에 파일을 *소유*하며 만들 수 없음.
  * 시트 복제/폴더 생성만 이 토큰(belie OAuth)으로 수행해 belie 소유로 생성한다.
