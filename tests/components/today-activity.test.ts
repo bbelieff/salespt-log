@@ -14,12 +14,13 @@ const z = { production: 0, inflow: 0, contactProgress: 0, meetingReservation: 0 
 const day = () => ({ date: "2026-11-07", weekIndex: 1, courseStart: "2026-11-06", meetings: [], inflowWaitBase: 0, bannerStockBase: 16,
   channels: { 매입DB: { ...z, production: 5, inflow: 5, contactProgress: 3, meetingReservation: 1, dbSheetInflow: 5, dbSheetContacts: 3 }, 직접생산: { ...z, production: 2, inflow: 2 }, 현수막: { ...z, production: 2, inflow: 1, dbSheetInflow: 1 }, "콜·지·기·소": { ...z, production: 3, inflow: 3, contactProgress: 2, meetingReservation: 1 } } });
 
+const btnIn = (el: Element, label: string) => el.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
 let root: Root | null = null, host: HTMLDivElement | null = null;
 afterEach(() => { act(() => root?.unmount()); host?.remove(); root = null; host = null; vi.unstubAllGlobals(); });
 const flush = () => act(async () => { for (let i = 0; i < 5; i++) await new Promise(r => setTimeout(r, 0)); });
 
 describe("오늘 활동", () => {
-  it("닫혀 있어도 흐름 숫자(합계)와 빠른 추가, 현수막 게시 +1 은 현수막 줄만 그대로 보낸다", async () => {
+  it("닫혀 있어도 흐름 숫자(합계)와 빠른 추가, 현수막 게시는 패널을 열어 장수 칸으로 — 현수막 줄만 보낸다", async () => {
     const posts: unknown[] = [];
     vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
       if (init?.method === "POST") { posts.push(JSON.parse(String(init.body))); return new Response('{"ok":true}', { status: 200 }); }
@@ -37,13 +38,20 @@ describe("오늘 활동", () => {
     const btn = (t: string) => [...peek.querySelectorAll("button")].find(b => b.textContent === t)!;
     act(() => btn("＋ DB 추가").click());
     expect(onAdd).toHaveBeenCalledTimes(1);
-    await act(async () => btn("＋ 현수막 게시").click());
+    act(() => btn("＋ 현수막 게시").click());
+    const input = host.querySelector<HTMLInputElement>('input[aria-label="오늘 현수막 게시 수"]')!;
+    expect(document.activeElement).toBe(input); // 바로 적게
+    await act(async () => btnIn(host!, "현수막 게시 10장 더하기").click());
     await flush();
-    expect(posts).toEqual([{ 현수막: { ...z, production: 3, inflow: 1, dbSheetInflow: 1 } }]);
+    expect(posts).toEqual([{ 현수막: { ...z, production: 12, inflow: 1, dbSheetInflow: 1 } }]);
   });
 
-  it("펼치면 채널별 표·재고·일별 기록 링크, 닫기 버튼으로 닫힘", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(day()), { status: 200 })));
+  it("펼치면 채널별 표·재고·일별 기록 링크, 장수 칸 직접 입력, 닫기 버튼으로 닫힘", async () => {
+    const posts: unknown[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
+      if (init?.method === "POST") { posts.push(JSON.parse(String(init.body))); return new Response('{"ok":true}', { status: 200 }); }
+      return new Response(JSON.stringify(day()), { status: 200 });
+    }));
     host = document.createElement("div"); document.body.append(host); root = createRoot(host);
     act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity, { onAdd: vi.fn() }))));
     await flush();
@@ -51,6 +59,14 @@ describe("오늘 활동", () => {
     expect(host.textContent).toContain("재고 14개");
     expect(host.querySelector('a[href="/contact"]')!.textContent).toContain("일별 기록 전체");
     expect(host.querySelectorAll("tbody tr")).toHaveLength(4);
+    // 장수 칸에 바로 적기 — 25 를 적고 Enter 면 현수막 줄 production 25 만 보낸다(belie 2026-11-08 대량 게시)
+    const input = host.querySelector<HTMLInputElement>('input[aria-label="오늘 현수막 게시 수"]')!;
+    act(() => input.focus());
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    act(() => { set.call(input, "25"); input.dispatchEvent(new Event("input", { bubbles: true })); });
+    await act(async () => { input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); });
+    await flush();
+    expect(posts).toEqual([{ 현수막: { ...z, production: 25, inflow: 1, dbSheetInflow: 1 } }]);
     act(() => host!.querySelector<HTMLButtonElement>('button[aria-label="오늘 활동 닫기"]')!.click());
     expect(host.querySelector("tbody")).toBeNull();
   });

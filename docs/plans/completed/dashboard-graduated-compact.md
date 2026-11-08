@@ -1,0 +1,17 @@
+> **📄 이 문서는 무엇인가요?**
+> - **한 줄 요약**: 수료 뒤 진행바 줄 빼기 · 「오늘 챙길 일」 펼친 표 줄 높이 줄이고 정보 더 · 「오늘 활동」 카드가 떠 있는 버튼과 겹치지 않게 · 현수막 게시 장수 바로 입력과 ＋1·＋5·＋10.
+> - **누가 읽나요**: 개발자 / belie
+> - **어떤 기능·작업과 연결?**: `DashboardProgressBanner`, `DashboardFollowUpsView`·`followups-table.css`, `TodayActivity`·`db-sheet.css`
+> - **관련 문서**: [today-activity-panel](today-activity-panel.md) · [components](../../design/components.md)
+
+# 대시보드·오늘 활동 다듬기 (2026-11-08, belie 요청 4건 「바로 운영반영」)
+
+## 수용 조건
+1. 수료(`graduated`)면 진행바·시작·진행률·종강총회 줄 없음 — 날짜·「🎓 수료 후 N주」·수료 배지 한 줄.
+2. 「오늘 챙길 일」 펼친 표(폰·좁은 창): 줄 높이 ↓(할 일·열기 34px, 누르는 범위 44px 유지), 할 일 아래 `MM.DD · 기관/상태` 한 줄.
+3. 오늘 활동 PC 카드 288px, 떠 있는 버튼 왼쪽(right 96px). 폰·태블릿은 떠 있는 버튼을 아래 띠 위로.
+4. 현수막 게시: 장수 칸 직접 입력(0~999, Enter·벗어나면 저장, Esc 취소) + −1·＋1·＋5·＋10. 닫힘의 「＋ 현수막 게시」는 패널을 열고 장수 칸에 커서. 저장은 현수막 줄만.
+
+## 검증
+- `course-banner`(수료 뒤 줄 없음·수료 전 그대로), `today-activity`(＋10 → 12, 직접 25), 대시보드 표 시험 그대로 통과. check.sh·CI·배포 뒤 health.
+- 로그인 운영 화면은 belie 확인 대상.

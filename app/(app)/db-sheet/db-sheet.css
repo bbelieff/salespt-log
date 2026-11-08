@@ -254,3 +254,6 @@ body.db-sheet-route span.sheet-step-cell{cursor:default}body.db-sheet-route .she
 body.db-sheet-route .sheet-step-go{display:inline-flex;align-items:center;gap:6px;text-decoration:none;color:inherit}body.db-sheet-route .sheet-step-go:focus-visible{outline:2px solid #3b82f6;outline-offset:2px;border-radius:4px}
 /* 오늘 활동 띠(폰·태블릿 화면 아래)가 목록 마지막 줄을 가리지 않게 — 띠 높이만큼 아래 여백(2026-11-07). */
 @media(max-width:1023px){body.db-sheet-route .db-sheet-frame.has-today-activity{padding-bottom:calc(168px + env(safe-area-inset-bottom))}}
+
+/* 오늘 활동 아래 띠가 있는 폰·태블릿 — 「오늘 챙길 일」 떠 있는 버튼을 띠 위로 올려 겹치지 않게(belie 2026-11-08) */
+@media(max-width:1023px){body:has(.db-sheet-frame.has-today-activity) .fl-root{--fl-bottom:calc(var(--app-tabbar-height) + 156px + env(safe-area-inset-bottom,0px))}}

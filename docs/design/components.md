@@ -1136,6 +1136,7 @@ app/(app)/dashboard/page.tsx
 - 상단 왼쪽: `현재 M/D (요일)`과 `N주차 진행중` 또는 `🎓 수료 후 N주`. 오른쪽: `DDayBadge`. 계산은 `app/(app)/dashboard/_lib/course-banner.ts`.
 - 진행바: `h-1.5 bg-slate-100 rounded-full`, 파란 그라데이션과 amber SVG 끝점. 위아래 `mb-3`, 컨테이너 `pt-3 pb-2.5`.
 - 하단: 시작일 / 진행률 / `🎓 종강총회일` 세 라벨. 날짜와 기간은 저장된 시작·종강일을 사용하며 고정 57일을 적용하지 않는다.
+- 수료 뒤(`graduated`)에는 진행바와 하단 세 라벨을 그리지 않는다 — `현재 M/D (요일) · 🎓 수료 후 N주 · DDayBadge` 한 줄만(belie 2026-11-08).
 - 진행 배너의 코스 주차(시작일 앵커)와 주간목표의 금~목 주차는 서로 다른 계약이다.
 
 ### 9-2. FinanceSummaryBoxes (매출·비용·영업이익 3열 1행)
@@ -1802,7 +1803,7 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 ### DashboardFollowUps STEP별 표 · 2026-10-14 사용자 승인
 
 - **DashboardActionOverview**: PC 왼쪽 진행건→오늘 챙길 일, 오른쪽 생산성→주간목표. 두 열 하단을 stretch/flex로 맞추며 내용이 넘치면 함께 늘어난다. 모바일 실제 교육주차별 순서 유지, 모든 카드 처음부터 표시.
-- **DashboardFollowUpsView**: STEP 2(DB관리)/3/4 행(2026-11-07 1.5 행을 STEP 2 로 합침 — 첫 연락·재연락은 kind 로 구분)과 장기누락(7일~)·경과(1~6일)·오늘 열. 정상 0건은 회색 0으로 항상 표시. 데이터 조회·재시도·집계는 기존 DashboardFollowUps 책임.
+- **DashboardFollowUpsView**: 펼친 표는 폰·좁은 창(기준일 열이 숨는 곳)에서 「해야 할 일」 아래 작은 줄로 `MM.DD · 기관/상태`(`.ft-action-sub`)를 보이고, 줄 높이를 줄이려 할 일·「열기」 모양은 34px·누르는 범위는 투명 `::after` 로 44px 유지(2026-11-08). STEP 2(DB관리)/3/4 행(2026-11-07 1.5 행을 STEP 2 로 합침 — 첫 연락·재연락은 kind 로 구분)과 장기누락(7일~)·경과(1~6일)·오늘 열. 정상 0건은 회색 0으로 항상 표시. 데이터 조회·재시도·집계는 기존 DashboardFollowUps 책임.
 - STEP 호버/클릭으로 긴급순 표, 숫자는 해당 구간, 전체 숫자는 전체 미처리. 긴급도/업체·진행건/해야 할 일/기준일·기관/바로가기. 행 상세에 이유와 전체 facts. PC 7행 스크롤 없이 표시, 더 많거나 작은 높이는 팝업 내부 스크롤.
 - 모바일은 기준일·기관을 행 상세로 옮겨 가로 넘침 방지. click/tap/키보드로 조작 가능. 바깥 클릭·Escape·닫기 및 hover 영역 이탈 닫기. 빈 상세는 “지금 처리할 일이 없어요”.
 - 부분 조회 실패는 확인된 건수·재시도, 미확인 0 대신 —. 날짜 확인 항목 및 미래 7일 별도 표시. 기존 DB 미지원·5분 조회·저장 무효화 유지.
@@ -1822,7 +1823,7 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - `CallScriptSheet`(`CallScriptSheet.tsx`, 2026-11-07 모바일 기획 2판 ①②): 📜 대본 창. DB정보 「통화」 줄 끝 `.dbs-call-script` 「대본 보기」(lucide ScrollText, 폰 430px 이하 한 줄 전체)로 열고, 📞 로 실제로 건 뒤 거는 창이 닫히면 열려 있다(전화 앱에서 돌아오면 대본이 먼저). 대본이 열린 동안 「방금 통화하셨나요?」는 미뤘다가 닫으면 묻는다. 내용은 업체정보 「대본」 탭과 같은 `ContactScriptPanel`(그 길도 그대로). `SheetDialog` + 아래 [닫기], 글자 14px `.dbs-call-script-body`.
   - 「정리 기다리는 통화 N건」 줄(`useCallUi().strip`, `.dbs-pending-strip`, 2026-11-07 ③): DB관리시트 목록 맨 위. 최근 7일 통화 중 녹음 필요·정리 실패·확인 필요만 센다(정리 중 제외), 0건이면 없음. 누르면 그 업체만 걸러 보기(`aria-pressed`, 다른 필터 위에 한 겹), 다시 누르면 전체. 파랑 blue-50 바탕·44px.
 - 규칙(`call-client.ts`): 파일 이름 번호 ≠ 📞 번호 또는 시각 30분 초과 → 한 번 묻기, 받침 따라 을/를·로/으로. 상태 `use-calls.ts`: 정리 중이면 4초 폴링, 📞 뒤 돌아오면 묻기(sessionStorage).
-- `TodayActivity`(`TodayActivity.tsx`, 2026-11-07 belie 「일별 기록을 사이드로」): DB 목록 화면의 「오늘 활동」. 닫혀 있어도 살짝 나와 있다 — 폰·태블릿은 화면 아래 띠(제목·날짜·「펼치기」, 생산›유입›컨택›미팅 흐름 4칸, 「＋ DB 추가」 초록·「＋ 현수막 게시」 칩; 목록 아래 여백 `.has-today-activity`), PC 는 오른쪽 아래 240px 카드(같은 4칸 세로 + 버튼 두 개). 펼치면 폰은 아래 60dvh, PC 는 오른쪽 min(46vw,560px) 반쪽(z 60·61, 머리줄 위·대화상자 아래, 바깥 누르기·Esc·닫기). 펼친 내용 = 흐름 4칸 · 채널별 표(읽기 전용) · 「목록에 없는 활동」 현수막 게시 −/＋(재고 = bannerStockBase − 오늘 게시) · 「일별 기록 전체 →」·「＋ DB 추가」. 숫자는 `useDay(오늘)` 그대로(DB 목록 집계 포함), 현수막 게시 ±1 은 `useSaveMetrics` 로 현수막 줄만(읽은 값 그대로 + production) 보낸다. 일별 기록을 못 읽는 계정은 그리지 않는다.
+- `TodayActivity`(`TodayActivity.tsx`, 2026-11-07 belie 「일별 기록을 사이드로」): DB 목록 화면의 「오늘 활동」. 닫혀 있어도 살짝 나와 있다 — 폰·태블릿은 화면 아래 띠(제목·날짜·「펼치기」, 생산›유입›컨택›미팅 흐름 4칸, 「＋ DB 추가」 초록·「＋ 현수막 게시」 칩; 목록 아래 여백 `.has-today-activity`), PC 는 오른쪽 아래 288px 카드 — 「오늘 챙길 일」 떠 있는 버튼(오른쪽 24px·56px) 왼쪽 `right: 96px`(같은 4칸 세로 + 버튼 두 개; 폰·태블릿은 그 버튼을 띠 위로 올림, db-sheet.css `body:has(.has-today-activity) .fl-root`, 2026-11-08). 펼치면 폰은 아래 60dvh, PC 는 오른쪽 min(46vw,560px) 반쪽(z 60·61, 머리줄 위·대화상자 아래, 바깥 누르기·Esc·닫기). 펼친 내용 = 흐름 4칸 · 채널별 표(읽기 전용) · 「목록에 없는 활동」 현수막 게시 −1 · 장수 칸(직접 입력, Enter·칸 벗어나면 저장, Esc 취소) · ＋1·＋5·＋10(재고 = bannerStockBase − 오늘 게시; 닫힘의 「＋ 현수막 게시」는 패널을 열고 장수 칸에 커서, 2026-11-08 대량 게시) · 「일별 기록 전체 →」·「＋ DB 추가」. 숫자는 `useDay(오늘)` 그대로(DB 목록 집계 포함), 현수막 게시 수는 `useSaveMetrics` 로 현수막 줄만(읽은 값 그대로 + production) 보낸다. 일별 기록을 못 읽는 계정은 그리지 않는다.
 - `CallConfirmScreen`(`CallConfirmScreen.tsx`, PR-5b): 목록 위를 덮는 「통화 정리 확인」(`.dbs-cc`, z 200). 폰 한 줄 · PC(1024~) 왼쪽 440px 요약·미팅·컨택결과 / 오른쪽 업체정보, 아래 고정 줄([나중에]·[저장하기], 막는 이유만 호박색). 못 물어본 질문은 이름으로 한 줄(`.dbs-cc-miss`, 없으면 안 보임). 컨택결과는 DB정보와 같은 드롭다운이고 미팅 카드를 만들면 숨김. 업체정보 줄 `.dbs-cc-row`(체크 · 민감 violet 꼬리표 · 지금 값 amber 「지금: …」 · 들은 말), 지금 값과 같은 칸은 숨김. 사업자구분·과세유형은 업체정보와 같은 5개 선택지(`BIZ_TYPE_OPTIONS`) 드롭다운 한 줄(PR-8). 입력칸 높이는 날짜·시간·글 모두 38px. 규칙은 `call-confirm-model.ts`(칸 상태·기본 체크·업체 기준 연도로 매출 옮기기·확정 본문). 업체명·대표가 빈 줄(「＋ DB 추가」로 녹음부터 올린 새 DB)은 맨 위 「새 DB」 칸(`.dbs-cc-new` — 채널 배지·유입일·전화 + AI가 들은 업체명·대표 입력, 저장 때 빈 칸만 채움).
 - 합성 화면: `node tests/browser/call-summary-front/server.mjs` → `?s=list|pick|copied|upload|upload-ios|file-ok|file-warn|bar|confirm|confirm-nomeet`.
 
