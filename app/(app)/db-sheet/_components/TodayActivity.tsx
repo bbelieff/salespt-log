@@ -42,8 +42,8 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
   const banner = ch?.현수막;
   const activeChannels = ch ? CHANNEL_ORDER.filter(c => STEPS.some(([k]) => (ch[c]?.[k] ?? 0) > 0)) : [];
   const stock = day.data ? Math.max(0, day.data.bannerStockBase - (banner?.production ?? 0)) : null;
-  // 현수막을 산 적이 없거나 재고가 없으면(오늘 게시도 0) 현수막 게시 칸·버튼을 뺀다(belie 2026-11-08).
-  const showBanner = !!banner && !!day.data && (day.data.bannerStockBase > 0 || banner.production > 0);
+  // 현수막을 산 적이 없으면 현수막 게시 칸·버튼을 뺀다. 재고 base 는 오늘 게시를 더한 값이라 구매 수로 본다(belie 2026-11-08).
+  const showBanner = !!banner && !!day.data && (day.data.bannerOrderQty ?? 0) > 0;
 
   useEffect(() => {
     if (!open) return;
@@ -60,6 +60,9 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
   // 현수막 게시 수 저장 — 그날 현수막 줄을 읽은 값 그대로(DB 목록 집계 기준값 포함) 보내 다른 칸은 건드리지 않는다.
   async function setBannerCount(next: number) {
     if (!banner || save.isPending || !Number.isInteger(next) || next < 0 || next > 999 || next === banner.production) return;
+    // 산 장수보다 많이 붙일 수는 없다 — 늘릴 때만 막고, 줄이는 건 언제나 된다.
+    const max = day.data?.bannerStockBase ?? 0;
+    if (next > banner.production && next > max) { setError(`재고가 ${Math.max(0, max - banner.production)}개뿐이에요. 산 현수막을 먼저 적어 주세요.`); return; }
     setError("");
     try { await save.mutateAsync({ date: today, channels: { 현수막: { ...banner, production: next } } as Record<Channel, typeof banner> }); }
     catch (e) { setError((e as Error).message || "저장하지 못했어요. 일별 기록에서 다시 해 주세요."); }

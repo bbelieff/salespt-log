@@ -11,7 +11,7 @@ import { TodayActivity } from "@/app/(app)/db-sheet/_components/TodayActivity";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 const z = { production: 0, inflow: 0, contactProgress: 0, meetingReservation: 0 };
-const day = () => ({ date: "2026-11-07", weekIndex: 1, courseStart: "2026-11-06", meetings: [], inflowWaitBase: 0, bannerStockBase: 16,
+const day = () => ({ date: "2026-11-07", weekIndex: 1, courseStart: "2026-11-06", meetings: [], inflowWaitBase: 0, bannerStockBase: 16, bannerOrderQty: 20,
   channels: { 매입DB: { ...z, production: 5, inflow: 5, contactProgress: 3, meetingReservation: 1, dbSheetInflow: 5, dbSheetContacts: 3 }, 직접생산: { ...z, production: 2, inflow: 2 }, 현수막: { ...z, production: 2, inflow: 1, dbSheetInflow: 1 }, "콜·지·기·소": { ...z, production: 3, inflow: 3, contactProgress: 2, meetingReservation: 1 } } });
 
 const btnIn = (el: Element, label: string) => el.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)!;
@@ -59,14 +59,14 @@ describe("오늘 활동", () => {
     expect(host.textContent).toContain("재고 14개");
     expect(host.querySelector('a[href="/contact"]')!.textContent).toContain("일별 기록 전체");
     expect(host.querySelectorAll("tbody tr")).toHaveLength(4);
-    // 장수 칸에 바로 적기 — 25 를 적고 Enter 면 현수막 줄 production 25 만 보낸다(belie 2026-11-08 대량 게시)
+    // 장수 칸에 바로 적기 — 15 를 적고 Enter 면 현수막 줄 production 15 만 보낸다(belie 2026-11-08 대량 게시)
     const input = host.querySelector<HTMLInputElement>('input[aria-label="오늘 현수막 게시 수"]')!;
     act(() => input.focus());
     const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
-    act(() => { set.call(input, "25"); input.dispatchEvent(new Event("input", { bubbles: true })); });
+    act(() => { set.call(input, "15"); input.dispatchEvent(new Event("input", { bubbles: true })); });
     await act(async () => { input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); });
     await flush();
-    expect(posts).toEqual([{ 현수막: { ...z, production: 25, inflow: 1, dbSheetInflow: 1 } }]);
+    expect(posts).toEqual([{ 현수막: { ...z, production: 15, inflow: 1, dbSheetInflow: 1 } }]);
     act(() => host!.querySelector<HTMLButtonElement>('button[aria-label="오늘 활동 닫기"]')!.click());
     expect(host.querySelector("tbody")).toBeNull();
   });
@@ -107,8 +107,9 @@ describe("오늘 활동", () => {
     }
   });
 
-  it("현수막 재고가 없고 오늘 게시도 0이면 현수막 게시 칸·버튼을 뺀다", async () => {
-    const none = { ...day(), bannerStockBase: 0, channels: { ...day().channels, 현수막: { ...z } } };
+  it("현수막을 산 적이 없으면 오늘 게시가 있어도 현수막 게시 칸·버튼을 뺀다", async () => {
+    // 재고 base 는 오늘 게시를 더한 값이라(0 − 0 + 3 = 3) 구매가 없어도 양수가 된다 — 구매 수로 판단.
+    const none = { ...day(), bannerOrderQty: 0, bannerStockBase: 3, channels: { ...day().channels, 현수막: { ...z, production: 3 } } };
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(none), { status: 200 })));
     host = document.createElement("div"); document.body.append(host); root = createRoot(host);
     act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity, { onAdd: vi.fn() }))));
@@ -117,5 +118,24 @@ describe("오늘 활동", () => {
     act(() => [...host!.querySelectorAll("button[aria-expanded]")][0]!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(host.querySelector('input[aria-label="오늘 현수막 게시 수"]')).toBeNull();
     expect(host.textContent).not.toContain("목록에 없는 활동");
+  });
+
+  it("재고보다 많이 붙이려 하면 저장하지 않고 남은 재고를 알려 준다", async () => {
+    const posts: unknown[] = [];
+    vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
+      if (init?.method === "POST") { posts.push(init.body); return new Response('{"ok":true}', { status: 200 }); }
+      return new Response(JSON.stringify(day()), { status: 200 });
+    }));
+    host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+    act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity, { onAdd: vi.fn() }))));
+    await flush();
+    act(() => [...host!.querySelectorAll("button[aria-expanded]")][0]!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    const input = host.querySelector<HTMLInputElement>('input[aria-label="오늘 현수막 게시 수"]')!;
+    const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+    act(() => { input.focus(); set.call(input, "30"); input.dispatchEvent(new Event("input", { bubbles: true })); });
+    await act(async () => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+    await flush();
+    expect(posts).toHaveLength(0);
+    expect(host.textContent).toContain("재고가 14개뿐이에요");
   });
 });

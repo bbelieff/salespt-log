@@ -72,6 +72,8 @@ export interface ContactDayView {
   inflowWaitBase: number;
   /** 현수막 재고 base = Σ주문장수 − Σ게시누적 + 오늘 저장 게시. UI: max(0, base − draft.게시)(ADR-0025). */
   bannerStockBase: number;
+  /** 현수막 산 장수 합(Σ주문장수). 0이면 산 적이 없다 — 「오늘 활동」이 현수막 게시 칸을 뺀다(belie 2026-11-08). */
+  bannerOrderQty: number;
 }
 
 export interface ChannelDailyRowMetrics {
@@ -231,6 +233,7 @@ export async function loadDay(
     meetings,
     inflowWaitBase,
     bannerStockBase,
+    bannerOrderQty,
   };
 }
 
