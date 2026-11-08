@@ -2,7 +2,7 @@
 /**
  * 녹음 올리기(목업 v5 ③④). 업체는 📞 를 누른 줄(또는 연 DB정보)로 이미 정해져 있고, 파일은 「그 통화가 맞나」만 본다:
  * 파일 이름의 번호 = 📞 번호가 1차, 저장 시각이 📞 시각과 30분 넘게 어긋나면 2차로 한 번 묻는다.
- * 📞 없이 건 통화는 녹음 저장 시각을 통화 시각으로 쓴다(「다음 주 화요일」의 기준).
+ * 📞 없이 건 통화는 녹음한 시각(파일 이름 날짜 → 저장 시각)을 통화 시각으로 쓴다(「다음 주 화요일」의 기준).
  * 이 폰에서 처음 보낼 때 외부 AI 고지(D6)를 한 번 보여 준다. 글자는 50대 기준 최소(belie 2026-11-04).
  * 받아쓴 통화 내용 파일(.txt·.pdf)도 같은 자리에서 고른다 — 글만 뽑아 글자 경로로 보낸다(belie 2026-11-05).
  * 「내 파일 › Recordings › Call」은 갤럭시 기본 전화 앱의 녹음 자리 — 익시오·에이닷은 녹음을 앱 안에 두므로 아이폰처럼 앱에서 저장하게 안내한다.
@@ -12,9 +12,9 @@ import { AlertTriangle, CheckCircle2, FileAudio, FileText } from "lucide-react";
 import type { CallRecord } from "@/types/call";
 import SheetDialog from "./SheetDialog";
 import type { Row } from "./model";
+import { recordedAt } from "./call-import";
 import { CALL_AUDIO_ACCEPT, callAppName, checkRecording, isCallTextFile, isIos, readCallApp, readCallNotice, readCallTextFile, saveCallNotice, startCall, uploadCallAudio, uploadCallText } from "./call-client";
 
-const WEEK_MS = 7 * 86_400_000;
 const size = (n: number) => n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)}MB` : `${Math.max(1, Math.round(n / 1024))}KB`;
 
 /** call = 이어서 올릴 통화(전화 걸음·정리 실패). 없으면 새 통화로 기록한다. asked = 📞 뒤 돌아와서 연 경우. */
@@ -39,7 +39,7 @@ export function CallUploadDialog({ row, call, asked, onUploaded, onClose }: {
     try {
       let id = call?.id;
       if (!id) {
-        const at = tab === "audio" && file && Date.now() - file.lastModified < WEEK_MS ? new Date(Math.min(file.lastModified, Date.now())).toISOString() : undefined;
+        const at = tab === "audio" && file ? recordedAt(file).calledAt : undefined; // 「＋ DB 추가」와 같은 규칙(이름 날짜 → 저장 시각, 지난 90일)
         id = await startCall(row.id, at);
       }
       if (tab === "audio" && file) await (isCallTextFile(file.name) ? uploadCallText(id, await readCallTextFile(file)) : uploadCallAudio(id, file));

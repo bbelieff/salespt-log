@@ -2,6 +2,7 @@
  * 「＋ DB 추가」에 통화 녹음·받아쓴 글을 놓았을 때(plan db-add-one-button) — 화면과 떨어진 규칙.
  * 엑셀·붙여넣기(여러 건)와 같은 창에서 받고, 파일 종류로 갈라 통화면 「채널만 묻고 정리 시작」으로 보낸다.
  */
+import { CALL_PAST_DAYS } from "@/config";
 import { CALL_AUDIO_EXTS, phoneDigits } from "./call-client";
 
 const ext = (name: string) => name.toLowerCase().split(".").pop() ?? "";
@@ -21,11 +22,11 @@ export function isCallImportFile(name: string): boolean {
 export const callFilePhone = (name: string) => name.match(PHONE)?.[0] ?? "";
 
 const kstDay = (ms: number) => new Date(ms + 9 * 3_600_000).toISOString().slice(0, 10);
-const WEEK_MS = 7 * 86_400_000;
+const PAST_MS = CALL_PAST_DAYS * 86_400_000 - 60_000; // 서버 기준보다 1분 안쪽(보내는 사이 시간)
 
 /**
  * 녹음한 때(belie 2026-11-07 「녹음 파일 날로 유입일」) — 파일 이름의 날짜·시각이 먼저(옮겨 받으면 저장 시각이 바뀐다),
- * 없으면 파일 저장 시각. 미래면 지금. date = 유입일(한국 날짜), calledAt = 통화 시각(서버 규칙상 지난 7일 안일 때만 보낸다).
+ * 없으면 파일 저장 시각. 미래면 지금. date = 유입일(한국 날짜), calledAt = 통화 시각(서버 규칙상 지난 90일 안일 때만 보낸다 — 넘으면 서버가 지금 시각으로 기록).
  */
 export function recordedAt(file: { name: string; lastModified: number }, now = Date.now()): { ms: number; date: string; calledAt?: string } {
   const m = file.name.match(/(20\d{2})[-.]?(\d{2})[-.]?(\d{2})(?:[_\-\s T]?(\d{2})[:.]?(\d{2}))?/);
@@ -36,7 +37,7 @@ export function recordedAt(file: { name: string; lastModified: number }, now = D
     if (Number.isFinite(t) && Number(mo) >= 1 && Number(mo) <= 12 && Number(d) >= 1 && Number(d) <= 31 && Number(h) < 24 && Number(mi) < 60) ms = t;
   }
   if (!Number.isFinite(ms) || ms > now) ms = now;
-  return { ms, date: kstDay(ms), calledAt: now - ms < WEEK_MS ? new Date(ms).toISOString() : undefined };
+  return { ms, date: kstDay(ms), calledAt: now - ms < PAST_MS ? new Date(ms).toISOString() : undefined };
 }
 
 /** 「오늘 14:12」·「11월 5일 14:12」 — 고른 파일 아래 한 줄. */
