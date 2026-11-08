@@ -257,10 +257,10 @@ body.db-sheet-route .sheet-step-go{display:inline-flex;align-items:center;gap:6p
 
 /* 오늘 활동 아래 띠가 있는 폰·태블릿 — 「오늘 챙길 일」 떠 있는 버튼을 띠 위로 올려 겹치지 않게(belie 2026-11-08) */
 @media(max-width:1023px){body:has(.db-sheet-frame.has-today-activity) .fl-root{--fl-bottom:calc(var(--app-tabbar-height) + 156px + env(safe-area-inset-bottom,0px))}}
-/* 오늘 활동 펼침 — 폰·태블릿은 아래에서, PC 는 오른쪽에서 스르륵(belie 2026-11-08). 움직임 줄이기 설정이면 바로 */
-@keyframes ta-up{from{transform:translateY(100%)}to{transform:none}}@keyframes ta-left{from{transform:translateX(100%)}to{transform:none}}@keyframes ta-fade{from{opacity:0}to{opacity:1}}
+/* 오늘 활동 펼침 — 폰·태블릿은 아래에서 스르륵, PC 는 닫힘 카드(오른쪽 아래 288px)가 제자리에서 위·왼쪽으로 커진다(belie 2026-11-08). 움직임 줄이기 설정이면 바로 */
+@keyframes ta-up{from{transform:translateY(100%)}to{transform:none}}@keyframes ta-grow{from{clip-path:inset(42% 0 0 40% round 16px 16px 0 0)}to{clip-path:inset(0 round 16px 16px 0 0)}}@keyframes ta-fade{from{opacity:0}to{opacity:1}}
 .ta-sheet{animation:ta-up .28s cubic-bezier(.2,.8,.2,1)}.ta-scrim{animation:ta-fade .2s ease-out}
-@media(min-width:1024px){.ta-sheet{animation-name:ta-left}}
+@media(min-width:1024px){.ta-sheet{animation:ta-grow .26s cubic-bezier(.2,.8,.2,1)}}
 @media(prefers-reduced-motion:reduce){.ta-sheet,.ta-scrim{animation:none}}
 /* 미팅예약 아직 일정에 안 들어감(2026-11-08 belie 「미팅예약인데 STEP 3 누락」) — 예약 등록 버튼 바로 위 한 줄, 기다림 주황(.is-wait 와 같은 색). */
 body.db-sheet-route .db-meeting-pending{margin:0;padding:6px 8px;border-radius:6px;background:#fffbeb;color:#b45309;font-size:12px;font-weight:600;line-height:1.4}
@@ -274,3 +274,7 @@ body.db-sheet-route .db-meeting-booked-facts>div{display:grid;grid-template-colu
 body.db-sheet-route .db-meeting-booked-facts dt{color:#64748b}
 body.db-sheet-route .db-meeting-booked-facts dd{margin:0;color:#0f172a;font-weight:600;overflow-wrap:anywhere}
 body.db-sheet-route .db-meeting-booked-actions{display:flex;flex-wrap:wrap;gap:6px}
+/* PC 「오늘 챙길 일」 창(오른쪽 24px·폭 360px)을 열면 오늘 활동 닫힘 카드가 가려진다 — 창 왼쪽(24+360+12px)으로 비켜 준다(belie 2026-11-08). */
+.ta-pc-card{transition:right .3s cubic-bezier(.2,.8,.2,1)}
+@media(min-width:1024px){body:has(.fl-pop[data-open=true]) .ta-pc-card{right:calc(396px + env(safe-area-inset-right,0px))}}
+@media(prefers-reduced-motion:reduce){.ta-pc-card{transition:none}}

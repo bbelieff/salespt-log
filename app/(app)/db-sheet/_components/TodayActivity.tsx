@@ -1,15 +1,16 @@
 "use client";
 /**
  * 「오늘 활동」(belie 2026-11-07, 목업 0-v2·B안) — 일별 기록을 DB 목록 옆으로 뺀 반쪽 패널.
- * 닫혀 있어도 살짝 나와 있다: 폰 = 화면 아래 띠(흐름 숫자 + 빠른 추가), PC = 오른쪽 아래 카드. 누르면 덮어 들어오는 반페이지.
+ * 닫혀 있어도 살짝 나와 있다: 폰 = 화면 아래 띠(흐름 숫자 + 빠른 추가), PC = 오른쪽 아래 카드.
+ * 펼치면 폰은 아래에서 반쯤 올라오고, PC 는 그 카드가 제자리에서 위·왼쪽으로 커진다(사이드 패널 아님, belie 2026-11-08).
  * 숫자는 일별 기록(GET /api/daily/오늘) 그대로 — DB 목록에서 한 일은 이미 들어 있다. 손으로 더하는 건 현수막 게시(사람이 없는 활동) 하나.
  * 지난 날짜 고치기·기록 옮기기는 일별 기록 탭.
  * 현수막은 한 번에 여러 장 붙이므로 게시 수를 칸에 바로 적는다(−/＋ 는 미세 조정, belie 2026-11-08).
- * PC 닫힘 카드는 오른쪽 아래 「오늘 챙길 일」 버튼과 겹치지 않게 그 왼쪽에 둔다.
+ * PC 닫힘 카드는 오른쪽 아래 「오늘 챙길 일」 버튼과 겹치지 않게 그 왼쪽에 두고, 그 창을 열면 창 왼쪽으로 비켜 준다(.ta-pc-card, db-sheet.css).
  */
 import Link from "next/link";
 import { useEffect, useRef, useState, type TouchEvent as RTouchEvent } from "react";
-import { ChevronDown, ChevronLeft, ChevronUp, Minus } from "lucide-react";
+import { ChevronDown, ChevronUp, Minus } from "lucide-react";
 import { CHANNEL_ORDER, type Channel } from "@/types";
 import ChannelBadge from "@/components/ui/ChannelBadge";
 import { useDay, useSaveMetrics } from "@/query/contact-hooks";
@@ -105,13 +106,13 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
       <p className="mt-1 break-keep text-xs text-slate-500">DB 목록에서 한 일은 저절로 세져요.{showBanner && " 목록에 없는 활동만 여기서 더해요."}</p>
     </div>
     <button type="button" aria-label="오늘 활동 닫기" className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-slate-500 hover:bg-slate-100" onClick={() => setOpen(false)}>
-      <ChevronDown className="pc:hidden" size={18} aria-hidden="true" /><ChevronLeft className="hidden rotate-180 pc:block" size={18} aria-hidden="true" />
+      <ChevronDown size={18} aria-hidden="true" />
     </button>
   </div>;
 
-  const body = <section aria-label="오늘 활동" className="flex h-full flex-col bg-white">
+  const body = <section aria-label="오늘 활동" className="flex h-full flex-col bg-white pc:h-auto pc:max-h-[min(78dvh,720px)]">
     {head}
-    <div className="flex-1 overflow-y-auto px-4 py-3">
+    <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
       {funnel(true)}
       {/* 네 칸이 모두 0인 채널은 뺀다(belie 2026-11-08). 다 0이면 한 줄 안내 */}
       {ch && !activeChannels.length ? <p className="mt-3 rounded-lg bg-slate-50 px-3 py-3 text-center text-sm text-slate-500">아직 오늘 기록이 없어요</p> :
@@ -160,9 +161,9 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
   if (day.isError) return null; // 일별 기록을 못 읽는 계정(시트 없음 등)은 패널 없이 목록만
   return <>
     {/* 펼치면 위 머리줄(z-50)·메뉴(55·56)보다 위, 대화상자(200)보다 아래. */}
-    {open && <div aria-hidden="true" className="ta-scrim fixed inset-0 z-[60] bg-slate-900/25" onClick={() => setOpen(false)} />}
-    {/* 펼침 — 폰·태블릿은 아래에서 반쯤, PC 는 오른쪽 반. 한 벌만 그린다. */}
-    {open && <div className="ta-sheet fixed inset-x-0 bottom-0 z-[61] h-[60dvh] overflow-hidden rounded-t-2xl shadow-2xl pc:left-auto pc:top-0 pc:h-auto pc:w-[min(46vw,560px)] pc:rounded-none">{body}</div>}
+    {open && <div aria-hidden="true" className="ta-scrim fixed inset-0 z-[60] bg-slate-900/25 pc:bg-slate-900/10" onClick={() => setOpen(false)} />}
+    {/* 펼침 — 폰·태블릿은 아래에서 반쯤, PC 는 닫힘 카드 자리(오른쪽 아래, 오른쪽 끝 같음)에서 커진 카드. 한 벌만 그린다. */}
+    {open && <div className="ta-sheet fixed inset-x-0 bottom-0 z-[61] h-[60dvh] overflow-hidden rounded-t-2xl shadow-2xl pc:left-auto pc:right-[calc(96px+env(safe-area-inset-right,0px))] pc:h-auto pc:w-[min(480px,calc(100vw-128px))] pc:border-x pc:border-t pc:border-slate-200">{body}</div>}
     {/* 닫힘 — 폰·태블릿: 아래 띠 / PC: 오른쪽 아래 카드 */}
     {!open && <>
       <div className="fixed inset-x-0 bottom-0 z-40 pc:hidden">
@@ -176,11 +177,11 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
           <div className="mt-2 overflow-x-auto">{chips(false)}</div>
         </section>
       </div>
-      <div className="fixed bottom-0 right-[calc(96px+env(safe-area-inset-right,0px))] z-40 hidden w-72 pc:block">
+      <div className="ta-pc-card fixed bottom-0 right-[calc(96px+env(safe-area-inset-right,0px))] z-40 hidden w-72 pc:block">
         <section aria-label="오늘 활동" className="rounded-t-2xl border-x border-t border-slate-200 bg-white px-4 pb-4 pt-3 shadow-lg">
           <button type="button" aria-expanded={false} className="flex w-full items-center justify-between" onClick={() => setOpen(true)}>
             <span className="text-left"><span className="block text-sm font-bold text-slate-900">오늘 활동</span><span className="text-xs text-slate-500">{dayLabel(today)}</span></span>
-            <span className="flex items-center gap-0.5 text-xs font-semibold text-emerald-700"><ChevronLeft size={14} aria-hidden="true" />펼치기</span>
+            <span className="flex items-center gap-0.5 text-xs font-semibold text-emerald-700">펼치기<ChevronUp size={14} aria-hidden="true" /></span>
           </button>
           <div className="mt-3">{funnel(false)}</div>
           <div className="mt-3">{chips(true)}</div>
