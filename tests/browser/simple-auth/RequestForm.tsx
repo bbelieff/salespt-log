@@ -1,8 +1,9 @@
 "use client";
 /** 간편인증 서류 조회 — 「인증 보내기」 입력(목업). 고객 정보는 수강생이 통화로 받아 넣는다. */
 import { useId, useState } from "react";
-import { Info, Send } from "lucide-react";
+import { Send } from "lucide-react";
 import PhoneInput from "@/components/ui/PhoneInput";
+import AuthMethodIcon from "./AuthMethodIcon";
 import { AUTH_METHODS, DEFAULT_DOCS, DOCS, TELECOMS, type AuthMethod, type DocKey } from "./data";
 
 export type RequestInput = { owner: string; birth: string; phone: string; telecom: string; method: AuthMethod; docs: DocKey[] };
@@ -27,9 +28,14 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
   const [telecom, setTelecom] = useState("");
   const [method, setMethod] = useState<AuthMethod>("카카오톡");
   const [docs, setDocs] = useState<DocKey[]>(DEFAULT_DOCS);
+  const [rrnBack, setRrnBack] = useState("");
+  const [address, setAddress] = useState("");
   const [tried, setTried] = useState(false);
+  const gov24 = docs.includes("localTax");
 
   const errors = {
+    rrnBack: gov24 && !/^\d{7}$/.test(rrnBack) ? "주민번호 뒷자리 7자리를 넣어 주세요." : "",
+    address: gov24 && !address.trim() ? "주소를 넣어 주세요." : "",
     owner: owner.trim() ? "" : "대표 이름을 넣어 주세요.",
     birth: birthError(birth),
     phone: /^010-\d{4}-\d{4}$/.test(phone) ? "" : "휴대폰 번호 11자리를 넣어 주세요.",
@@ -45,7 +51,7 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
     setTried(true);
     if (Object.values(errors).some(Boolean)) return;
     onSend({ owner: owner.trim(), birth, phone, telecom, method, docs });
-    setOwner(""); setBirth(""); setPhone(""); setTelecom(""); setTried(false);
+    setOwner(""); setBirth(""); setPhone(""); setTelecom(""); setRrnBack(""); setAddress(""); setTried(false);
   }
 
   return (
@@ -75,8 +81,8 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
         <legend className={LABEL}>인증 수단</legend>
         <div className="mt-1 grid grid-cols-3 gap-1.5">
           {AUTH_METHODS.map(m => (
-            <label key={m} className={`cursor-pointer rounded-lg border px-2 py-1.5 text-center text-sm transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-500 ${method === m ? "border-blue-500 bg-blue-50 font-semibold text-blue-700" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}>
-              <input type="radio" name={`${id}-method`} value={m} checked={method === m} onChange={() => setMethod(m)} className="sr-only" />{m}
+            <label key={m} className={`flex cursor-pointer items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border px-1.5 py-1.5 text-sm transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-500 ${method === m ? "border-blue-500 bg-blue-50 font-semibold text-blue-700" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}>
+              <input type="radio" name={`${id}-method`} value={m} checked={method === m} onChange={() => setMethod(m)} className="sr-only" /><AuthMethodIcon method={m} />{m}
             </label>
           ))}
         </div>
@@ -94,21 +100,38 @@ export default function RequestForm({ onSend, busy }: { onSend: (v: RequestInput
 
       <fieldset>
         <legend className={LABEL}>받을 서류</legend>
-        <ul className="mt-1 flex flex-col gap-1">
-          {DOCS.map(d => (
-            <li key={d.key}>
-              <label className={`flex items-center gap-2 rounded-md px-1 py-1 text-sm text-gray-800 ${d.locked ? "" : "cursor-pointer hover:bg-gray-50"}`}>
-                <input type="checkbox" checked={docs.includes(d.key)} disabled={d.locked} onChange={() => toggleDoc(d.key)} className="h-4 w-4 accent-blue-600" />
-                <span>{d.label}</span>
-                {d.note && <span className="text-xs text-gray-500">{d.note}</span>}
-              </label>
-            </li>
-          ))}
+        <ul className="mt-1 flex flex-wrap gap-1.5 pc:flex-col pc:items-start">
+          {DOCS.map(d => {
+            const on = docs.includes(d.key);
+            return (
+              <li key={d.key}>
+                <label className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-500 ${on ? "border-blue-500 bg-blue-50 font-semibold text-blue-700" : "border-gray-300 text-gray-700"} ${d.locked ? "cursor-default" : "cursor-pointer hover:bg-gray-50"}`}>
+                  <input type="checkbox" checked={on} disabled={d.locked} onChange={() => toggleDoc(d.key)} className="sr-only" />
+                  {d.label}{d.note && <span className={on ? "font-normal text-blue-600" : "text-gray-500"}>{d.note}</span>}
+                </label>
+              </li>
+            );
+          })}
         </ul>
         {show("docs")}
       </fieldset>
 
-      <p className="flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-sm text-blue-800"><Info className="h-4 w-4 shrink-0" aria-hidden />고객에게 “{method} 인증 승인만 눌러 주세요”라고 먼저 말해 주세요.</p>
+      {gov24 && (
+        <fieldset className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+          <legend className="px-1 text-xs font-semibold text-gray-600">지방세 완납증명(정부24)에 필요</legend>
+          <div>
+            <label htmlFor={`${id}-rrn`} className={LABEL}>주민번호 뒷자리</label>
+            <input id={`${id}-rrn`} value={rrnBack} onChange={e => setRrnBack(e.target.value.replace(/\D/g, "").slice(0, 7))} type="password" inputMode="numeric" autoComplete="off" placeholder="7자리" className={`${INPUT} mt-1 tabular-nums`} {...invalid("rrnBack")} />
+            {show("rrnBack")}
+          </div>
+          <div>
+            <label htmlFor={`${id}-addr`} className={LABEL}>주소</label>
+            <input id={`${id}-addr`} value={address} onChange={e => setAddress(e.target.value)} autoComplete="off" placeholder="주민등록상 주소" className={`${INPUT} mt-1`} {...invalid("address")} />
+            {show("address")}
+          </div>
+        </fieldset>
+      )}
+
 
 
       <button type="submit" disabled={busy} className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-500 px-4 py-2 font-medium text-white transition-colors hover:bg-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500">
