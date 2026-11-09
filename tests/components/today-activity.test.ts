@@ -47,6 +47,19 @@ describe("오늘 활동", () => {
     expect(posts).toEqual([{ 현수막: { ...z, production: 12, inflow: 1, dbSheetInflow: 1 } }]);
   });
 
+  it("PC 중간 폭 띠: 숫자 네 칸이 보이고, 띠 아무 데나 누르면 펼친다(belie 2026-11-09)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(day()), { status: 200 })));
+    host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+    act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity, { onAdd: vi.fn() }))));
+    await flush();
+    const pill = host.querySelector(".ta-pc-pill section")!;
+    expect(pill.textContent).toContain("12생산");
+    expect(pill.textContent).toContain("2미팅");
+    expect(pill.querySelectorAll("button")).toHaveLength(1); // 추가 버튼 없이 펼치기만 — 높이를 한 줄로
+    act(() => pill.querySelector("b")!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(host.querySelector("tbody")).not.toBeNull();
+  });
+
   it("펼치면 채널별 표·재고·일별 기록 링크, 장수 칸 직접 입력, 닫기 버튼으로 닫힘", async () => {
     const posts: unknown[] = [];
     vi.stubGlobal("fetch", vi.fn(async (_url: string, init?: RequestInit) => {
