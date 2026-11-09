@@ -16,8 +16,8 @@ const CHIP = "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 t
 function LinkChip({ link }: { link: Link }) {
   const map: Record<Link["state"], [string, string]> = {
     linked: [link.state === "linked" && link.why === "created" ? "새 DB 생성" : "DB 연결됨", "bg-gray-100 text-gray-700"],
-    none: ["DB 연결 안 됨", "bg-gray-100 text-gray-500"],
-    later: ["연결 안 함", "bg-gray-100 text-gray-500"],
+    none: ["DB 등록 선택", "bg-amber-50 text-amber-800"],
+    later: ["등록 안 함", "bg-gray-100 text-gray-500"],
     pick: ["DB 확인 필요", "bg-amber-50 text-amber-800"],
   };
   const [label, cls] = map[link.state];

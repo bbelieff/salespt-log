@@ -91,7 +91,7 @@ async function startAndApprove() {
 }
 
 describe("간편인증 보내기 → 승인 확인 → 결과", () => {
-  it("승인 전에는 「아직 승인 전」, 승인 뒤 사업자별 결과 · 사업자번호로 DB 연결 · 없는 사업자는 새 DB(유입 반영 안 함)", async () => {
+  it("승인 전에는 「아직 승인 전」, 승인 뒤 사업자별 결과 · 사업자번호로 DB 연결 · 사업자가 여럿이면 없는 사업자는 「DB 등록」을 골라야 새 DB(유입 반영 안 함)", async () => {
     const req = await startAndApprove();
     expect(req.status).toBe("waiting");
     expect(h.calls[0]!.params).toMatchObject({ loginType: "5", loginTypeLevel: "1", loginIdentity: "19780312", phoneNo: "01000001234", originDataYN1: "1" });
@@ -102,13 +102,16 @@ describe("간편인증 보내기 → 승인 확인 → 결과", () => {
     await actSimpleAuth(who, req.id, { action: "confirm" });
     await wait(async () => (await listSimpleAuth(who))[0]!.status === "done");
     const [done] = await listSimpleAuth(who);
-    expect(done!.businesses.map((b) => [b.name, b.link.state])).toEqual([["가상정밀", "linked"], ["가상물산", "linked"]]);
+    expect(done!.businesses.map((b) => [b.name, b.link.state])).toEqual([["가상정밀", "linked"], ["가상물산", "none"]]);
+    expect(h.saved).toHaveLength(0);
     const a = done!.businesses[0]!;
     expect(a.link).toMatchObject({ why: "bizNo", dbId: h.leads[0]!.id });
     expect(a.results.find((r) => r.key === "vat")).toMatchObject({ ok: true, facts: ["2025년 500,000,000원"] });
     expect(a.results.find((r) => r.key === "biz")!.hasOriginal).toBe(true);
     const b = done!.businesses[1]!;
-    expect(b.link).toMatchObject({ why: "created" });
+    expect(b.link).toEqual({ state: "none" });
+    const { request: linked } = await actSimpleAuth(who, req.id, { action: "link", bizNo: b.bizNo, link: { to: "new" } });
+    expect(linked!.businesses[1]!.link).toMatchObject({ state: "linked", why: "created" });
     expect(b.results.find((r) => r.key === "vat")).toMatchObject({ ok: false });
     expect(h.saved).toHaveLength(1);
     expect(h.saved[0]!.lead).toMatchObject({ company: "가상물산", recording: { inflow: false } });

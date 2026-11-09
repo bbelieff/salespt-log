@@ -24,7 +24,7 @@ function DbLinkPanel({ biz, busy, onLink }: { biz: Biz; busy: boolean; onLink: (
   const cands = l.state === "pick" ? l.candidates : [];
   const [pick, setPick] = useState<string>(cands[0]?.dbId ?? "");
   if ((l.state === "linked" || l.state === "later") && !changing) {
-    const text = l.state === "later" ? <>연결 안 함</> : <>{l.why === "created" ? "새 DB 생성 · " : "DB: "}<b>{l.company}</b></>;
+    const text = l.state === "later" ? <>등록 안 함</> : <>{l.why === "created" ? "새 DB 생성 · " : "DB: "}<b>{l.company}</b></>;
     return (
       <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
         <Link2 className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
@@ -36,7 +36,7 @@ function DbLinkPanel({ biz, busy, onLink }: { biz: Biz; busy: boolean; onLink: (
   return (
     <fieldset className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3">
       <legend className="sr-only">DB 연결</legend>
-      <p className="text-sm font-semibold text-amber-900">{cands.length ? "어느 DB인가요?" : "이 사업자를 DB에 연결할까요?"}</p>
+      <p className="text-sm font-semibold text-amber-900">{cands.length ? "어느 DB인가요?" : "이 사업자를 DB에 등록할까요?"}</p>
       {cands.length > 0 && (
         <ul className="flex flex-col gap-1">
           {cands.map((c) => (
@@ -52,8 +52,8 @@ function DbLinkPanel({ biz, busy, onLink }: { biz: Biz; busy: boolean; onLink: (
       )}
       <div className="flex flex-wrap gap-2">
         {cands.length > 0 && <button type="button" disabled={!pick || busy} onClick={() => onLink({ to: "db", dbId: pick })} className={BTN1}>이 DB에 연결</button>}
-        <button type="button" disabled={busy} onClick={() => onLink({ to: "new" })} className={BTN2}>새 DB로 추가</button>
-        <button type="button" disabled={busy} onClick={() => onLink({ to: "later" })} className="px-2 text-sm text-gray-600 hover:underline">나중에</button>
+        <button type="button" disabled={busy} onClick={() => onLink({ to: "new" })} className={cands.length ? BTN2 : BTN1}>{cands.length ? "새 DB로 등록" : "DB 등록"}</button>
+        <button type="button" disabled={busy} onClick={() => onLink({ to: "later" })} className="px-2 text-sm text-gray-600 hover:underline">등록 안 함</button>
         {changing && <button type="button" onClick={() => setChanging(false)} className="px-2 text-sm text-gray-600 hover:underline">그대로 두기</button>}
       </div>
     </fieldset>

@@ -24,7 +24,7 @@ const DATA: SimpleAuthRequest[] = [
     sentAt: iso(60 * 26), deadline: 0, resends: 0, progress: 2, businesses: [
       { bizNo: "607-12-33410", name: "가상철강", applied: false, link: { state: "pick", candidates: [{ dbId: "db-2", company: "가상철강(주)", owner: "박가상", phone: "010-0000-4471" }] },
         results: [ok("biz", ["개업일 2015-05-02 · 개인사업자"]), ok("vat", ["2025년 830,000,000원"])] },
-      { bizNo: "607-25-81002", name: "가상정밀가공", applied: false, link: { state: "linked", dbId: "db-3", company: "가상정밀가공", why: "created" },
+      { bizNo: "607-25-81002", name: "가상정밀가공", applied: false, link: { state: "none" },
         results: [ok("biz", ["개업일 2022-01-10 · 개인사업자"]), ok("vat", ["2025년 120,000,000원"])] },
     ] },
   { id: "00000000-0000-4000-8000-000000000004", owner: "이가상", phone: "010-0000-8890", method: "PASS", docs: ["biz"], status: "failed",

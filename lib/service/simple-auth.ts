@@ -275,9 +275,12 @@ async function finish(job: Job) {
     try {
       const rows = await loadDbSheet(ctx);
       const phone = job.input.phone;
+      // 새 DB 자동 생성은 사업자가 1곳일 때만. 여러 곳(임대사업자 등 영업 대상이 아닌 사업자가 섞임)이면
+      // 화면에서 「DB 등록」을 골라야 만든다(belie 2026-11-09). 기존 DB 와 맞는 사업자는 그대로 연결.
+      const autoCreate = businesses.length === 1;
       for (const b of businesses) {
         b.link = matchBusiness(b, phone, rows);
-        if (b.link.state === "none") b.link = await createDbRow(ctx, b, job.input.owner, phone).catch(() => ({ state: "none" as const }));
+        if (b.link.state === "none" && autoCreate) b.link = await createDbRow(ctx, b, job.input.owner, phone).catch(() => ({ state: "none" as const }));
       }
     } catch { /* DB 를 못 읽어도 서류는 보여 준다 — 연결은 화면에서 */ }
   }
