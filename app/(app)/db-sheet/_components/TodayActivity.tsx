@@ -195,7 +195,15 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
           <div className="mt-2 overflow-x-auto">{chips(false)}</div>
         </section>
       </div>
-      <div className="ta-pc-card fixed bottom-0 right-[calc(96px+env(safe-area-inset-right,0px))] z-40 hidden w-72 pc:block">
+      {/* PC 중간 폭(1024~1599px): 표를 덮지 않게 숫자만 한 줄 띠. 목록은 띠 높이만큼 위에서 끝난다(db-sheet.css). */}
+      <div className="ta-pc-card ta-pc-pill fixed bottom-0 right-[calc(96px+env(safe-area-inset-right,0px))] z-40 hidden">
+        <section aria-label="오늘 활동" className="flex cursor-pointer items-center gap-3 rounded-t-xl border-x border-t border-slate-200 bg-white py-1.5 pl-4 pr-2 shadow-lg" onClick={() => setOpen(true)}>
+          <span className="shrink-0 text-sm font-bold text-slate-900">오늘 활동</span>
+          <div className="w-72">{funnel(true)}</div>
+          <button type="button" aria-expanded={false} className="flex h-9 shrink-0 items-center gap-0.5 rounded-full px-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50" onClick={e => { e.stopPropagation(); setOpen(true); }}>펼치기<ChevronUp size={14} aria-hidden="true" /></button>
+        </section>
+      </div>
+      <div className="ta-pc-card ta-pc-full fixed bottom-0 right-[calc(96px+env(safe-area-inset-right,0px))] z-40 hidden w-72 pc:block">
         <section aria-label="오늘 활동" className="rounded-t-2xl border-x border-t border-slate-200 bg-white px-4 pb-4 pt-3 shadow-lg">
           <button type="button" aria-expanded={false} className="flex w-full items-center justify-between" onClick={() => setOpen(true)}>
             <span className="text-left"><span className="block text-sm font-bold text-slate-900">오늘 활동</span><span className="text-xs text-slate-500">{dayLabel(today)}</span></span>
