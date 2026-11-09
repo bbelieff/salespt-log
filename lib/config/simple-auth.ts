@@ -4,11 +4,16 @@
  */
 import type { SimpleAuthDocKey, SimpleAuthMethod } from "@/types/simple-auth";
 
+export const SIMPLE_AUTH_SITES = ["홈택스", "정부24", "4대사회보험 정보연계센터"] as const;
+export type SimpleAuthSite = (typeof SIMPLE_AUTH_SITES)[number];
+
 export type SimpleAuthDocDef = {
   key: SimpleAuthDocKey;
   label: string;
   short: string;
   note?: string;
+  /** 발급 기관 — 화면에서 기관별로 묶어 보여 준다. */
+  site: SimpleAuthSite;
   locked?: boolean;
   /** 공동인증서로만 받을 수 있다. */
   certOnly?: boolean;
@@ -17,13 +22,13 @@ export type SimpleAuthDocDef = {
 };
 
 export const SIMPLE_AUTH_DOCS: readonly SimpleAuthDocDef[] = [
-  { key: "biz", label: "사업자등록증명", short: "사업자등록", note: "필수", locked: true },
-  { key: "vat", label: "부가세 과세표준증명", short: "부가세", note: "3년" },
-  { key: "fs", label: "표준재무제표증명", short: "재무제표", note: "3년" },
-  { key: "tax", label: "국세 완납증명", short: "국세" },
-  { key: "localTax", label: "지방세 완납증명", short: "지방세", note: "정부24" },
-  { key: "ins", label: "4대보험 가입자명부", short: "4대보험", note: "인증서 전용", certOnly: true },
-  { key: "income", label: "소득금액증명", short: "소득금액", note: "개인사업자", simpleOnly: true },
+  { key: "biz", label: "사업자등록증명", short: "사업자등록", note: "필수", site: "홈택스", locked: true },
+  { key: "vat", label: "부가세 과세표준증명", short: "부가세", note: "3년", site: "홈택스" },
+  { key: "fs", label: "표준재무제표증명", short: "재무제표", note: "3년", site: "홈택스" },
+  { key: "tax", label: "국세 완납증명", short: "국세", site: "홈택스" },
+  { key: "income", label: "소득금액증명", short: "소득금액", note: "개인사업자", site: "홈택스", simpleOnly: true },
+  { key: "localTax", label: "지방세 완납증명", short: "지방세", site: "정부24" },
+  { key: "ins", label: "4대보험 가입자명부", short: "4대보험", site: "4대사회보험 정보연계센터", certOnly: true },
 ];
 export const SIMPLE_AUTH_DEFAULT_DOCS: readonly SimpleAuthDocKey[] = ["biz", "vat", "fs"];
 /** 공동인증서 탭 기본 — 법인·개인 같은 6종(belie 2026-11-09). */

@@ -11,7 +11,7 @@ import PhoneInput from "@/components/ui/PhoneInput";
 import AuthMethodIcon from "./AuthMethodIcon";
 import AddressSearch from "./AddressSearch";
 import CertPicker, { type PickedCert } from "./CertPicker";
-import { SIMPLE_AUTH_APPS, SIMPLE_AUTH_CERT_DEFAULT_DOCS, SIMPLE_AUTH_DEFAULT_DOCS, SIMPLE_AUTH_DOCS, SIMPLE_AUTH_TELECOMS } from "@/config/simple-auth";
+import { SIMPLE_AUTH_APPS, SIMPLE_AUTH_CERT_DEFAULT_DOCS, SIMPLE_AUTH_DEFAULT_DOCS, SIMPLE_AUTH_DOCS, SIMPLE_AUTH_SITES, SIMPLE_AUTH_TELECOMS } from "@/config/simple-auth";
 import type { SimpleAuthAddress, SimpleAuthDocKey } from "@/types/simple-auth";
 
 type AuthMethod = (typeof SIMPLE_AUTH_APPS)[number];
@@ -172,20 +172,30 @@ export default function RequestForm({ onSend, busy }: { onSend: (body: Record<st
 
       <fieldset className="min-w-0">
         <legend className={LABEL}>받을 서류</legend>
-        <ul className="mt-1 flex flex-wrap gap-1.5 pc:flex-col pc:items-start">
-          {shownDocs.map(d => {
-            const on = docs.includes(d.key);
-            const note = cert && d.key === "localTax" ? "정부24" : d.note;
+        <div className="mt-1 flex flex-col gap-2.5">
+          {SIMPLE_AUTH_SITES.map(site => {
+            const list = shownDocs.filter(d => d.site === site);
+            if (!list.length) return null;
             return (
-              <li key={d.key}>
-                <label className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-500 ${on ? "border-blue-500 bg-blue-50 font-semibold text-blue-700" : "border-gray-300 text-gray-700"} ${d.locked ? "cursor-default" : "cursor-pointer hover:bg-gray-50"}`}>
-                  <input type="checkbox" checked={on} disabled={d.locked} onChange={() => toggleDoc(d.key)} className="sr-only" />
-                  {d.label}{note && <span className={on ? "font-normal text-blue-600" : "text-gray-500"}>{note}</span>}
-                </label>
-              </li>
+              <div key={site} className="min-w-0">
+                <p className="text-xs font-semibold text-gray-500">{site}</p>
+                <ul className="mt-1 flex flex-wrap gap-1.5">
+                  {list.map(d => {
+                    const on = docs.includes(d.key);
+                    return (
+                      <li key={d.key}>
+                        <label className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-500 ${on ? "border-blue-500 bg-blue-50 font-semibold text-blue-700" : "border-gray-300 text-gray-700"} ${d.locked ? "cursor-default" : "cursor-pointer hover:bg-gray-50"}`}>
+                          <input type="checkbox" checked={on} disabled={d.locked} onChange={() => toggleDoc(d.key)} className="sr-only" />
+                          {d.label}{d.note && <span className={on ? "font-normal text-blue-600" : "text-gray-500"}>{d.note}</span>}
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
             );
           })}
-        </ul>
+        </div>
         {show("docs")}
       </fieldset>
 
