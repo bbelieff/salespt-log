@@ -17,7 +17,7 @@ import { usePathname } from "next/navigation";
 import type { Route } from "next";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, CalendarDays, FolderOpen, LayoutDashboard, MessagesSquare, Newspaper, NotebookPen, PanelLeftClose, PanelLeftOpen, Shield, Target, X } from "lucide-react";
+import { BookOpen, CalendarDays, FolderOpen, LayoutDashboard, MessagesSquare, Newspaper, NotebookPen, PanelLeftClose, PanelLeftOpen, Shield, ShieldCheck, Target, X } from "lucide-react";
 import { NAV_STEPS } from "@/components/TabBar";
 import { useGuardedRouter } from "@/components/DirtyGuard";
 import { SALESPT_CAFE_URL, WORK_MANUAL_URL } from "@/config/links";
@@ -125,6 +125,7 @@ function WorkTools({ pathname, compact }: { pathname: string; compact: boolean }
       : "";
   const newsActive = pathname.startsWith("/payment/news");
   const logActive = pathname.startsWith("/training-log");
+  const authDocActive = pathname.startsWith("/work-tools/simple-auth");
   return (
     <section aria-label="업무도구" className={`mt-4 rounded-xl border border-slate-200/80 bg-slate-200/65 shadow-inner shadow-white/70 ${compact ? "p-1" : "p-2"}`}>
       {!compact && <p className="px-2 pb-1 text-xs font-bold text-slate-600">업무도구</p>}
@@ -160,6 +161,11 @@ function WorkTools({ pathname, compact }: { pathname: string; compact: boolean }
       <SideLink sub compact={compact} href={"/training-log" as Route} active={logActive} label="트레이닝일지">
         <NotebookPen className="h-4 w-4 shrink-0" aria-hidden="true" />
         {!compact && "트레이닝일지"}
+      </SideLink>
+      {/* 간편인증 서류 조회 — 대표 휴대폰 승인 한 번으로 홈택스·정부24 증명서를 업체별로(2026-11-09 belie). */}
+      <SideLink sub compact={compact} href={"/work-tools/simple-auth" as Route} active={authDocActive} label="간편인증 서류 조회">
+        <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
+        {!compact && "간편인증 서류 조회"}
       </SideLink>
       <a
         href={WORK_MANUAL_URL}

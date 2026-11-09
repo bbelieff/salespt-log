@@ -840,6 +840,16 @@ DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서
 
 - `TrainingLogItem`: 노션 기수 「[○○N기] 트레이닝 일지」 DB 의 내 행 한 줄(id·title·week(제목의 N주차, 없으면 null)·createdTime). `TrainingLogDetail` = Item + `blocks: LogBlock[]`(노션 블록을 화면용으로 줄인 모양, `LogText` 글자 조각). `TrainingLogList` = `{status, items}` — status `ok`·`not_configured`(NOTION_TOKEN 없음)·`no_cohort`·`no_database`·`unavailable`. 저장 없음(노션 읽기 전용, 서버 5분 캐시). 소유 판정 = 레지스트리 기수·이름(서버), 계획 `docs/plans/completed/training-log-own-only.md`.
 
+## 간편인증 서류 조회 (2026-11-09, `lib/types/simple-auth.ts` · migration 0018)
+- `SimpleAuthDocKey` = biz 사업자등록증명 · vat 부가세 과세표준증명 · fs 표준재무제표증명 · tax 국세 납세증명 · localTax 지방세 납세증명(정부24) · ins 4대보험 가입자명부(공동인증서 전용) · income 소득금액증명(간편인증 전용). 목록·CODEF 경로는 `lib/config/simple-auth.ts`.
+- `SimpleAuthMethod` = 간편인증 앱 6개(카카오톡·네이버·PASS·토스·삼성패스·KB모바일) + 공동인증서. `SimpleAuthStatus` = waiting(고객 승인 대기) · scraping(받는 중) · done · expired · canceled · failed(사유 error).
+- `SimpleAuthField`: 업체정보 칸 후보 {key(CompanyInfo 키), value(저장 형식, 금액은 백만원), confidence, sourceWon?}. `SimpleAuthDocResult`: 서류 한 종류 {key, ok, reason?, issuedAt?, facts(화면 요약 줄), fields, hasOriginal}.
+- `SimpleAuthLink` = linked{dbId, company, why: bizNo·phone·picked·created} · pick{candidates} · none · later. 연결 순서: 사업자번호 → 대표 휴대폰+비슷한 상호 → 비슷한 상호만(pick) → 없으면 새 DB(유입 반영 안 함, supplier 「간편인증」·channel 직접생산).
+- `SimpleAuthBusiness`: {bizNo, name, results, link, applied}. `SimpleAuthRequest`: {id, owner, phone, method, docs, status, sentAt(ISO), deadline(ms), resends, progress, error?, businesses}.
+- `SimpleAuthAddress`: 지방세용 도로명주소 {road(「세종대로 110」), detail, full}. `SimpleAuthStartSimple`(owner·birth 8자리·phone·telecom·method·docs·rrnBack?·address?) / `SimpleAuthStartCert`(owner·phone·certPfx 또는 certDer+certKey(base64)·certPassword·docs·address?) → `SimpleAuthStart`. 인증서·비밀번호·주민번호 뒷자리는 요청에만 쓰고 저장하지 않는다.
+- `SimpleAuthAction` = confirm · resend · cancel · delete · link{bizNo, to db/new/later} · apply{bizNo, patch}. apply 는 받은 서류에 있는 칸(+매출기준연도)만 연결한 DB 의 `contact.ci` 에 합친다. 미팅에 연결된 DB 는 거절(미팅 화면에서).
+- 표 `simple_auth_requests`(spreadsheet_id 테넌트, businesses jsonb, 90일 보관) · `simple_auth_originals`(원문 PDF base64 를 sealVault 로 봉인, 요청 삭제 시 cascade). 4대보험 가입자 성명·주민번호는 저장하지 않고 인원 수만. 흐름 `lib/service/simple-auth.ts`(진행 중 상태는 프로세스 메모리, 재시작으로 끊기면 failed), 파서 `lib/service/simple-auth-parse.ts`, CODEF `lib/repo/codef-client.ts`, API `/api/simple-auth`. 계획 [simple-auth-scraping](../plans/active/simple-auth-scraping.md).
+
 ## 통화 정리 (2026-10-31, `lib/types/call.ts` · migration 0014)
 - `CallStatus` = dialed(DB관리시트 📞 버튼으로 전화 걸음, 녹음 전) · queued(녹음 올림) · processing(글자 변환+정리) · review(확인 대기) · confirmed(확정 저장) · failed(사유) · discarded(저장 안 하고 닫음).
 - `CallSource` = audio(녹음 파일 — 안드로이드 기본 녹음, 아이폰 에이닷·익시오 내보내기) · text(통화 녹음 앱이 만든 글자를 붙여 넣음, 녹음은 외부로 안 나감). dialed 단계에서는 null.

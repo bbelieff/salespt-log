@@ -30,6 +30,7 @@ export default auth((req) => {
     pathname.startsWith("/settings") ||
     pathname.startsWith("/inbox") ||
     pathname.startsWith("/training-log") ||
+    pathname.startsWith("/work-tools") ||
     (pathname.startsWith("/trainer") && pathname !== "/trainer/invite");
   if (isProtected && !req.auth && !isDevStubAuthed()) {
     const url = new URL("/", req.url);
