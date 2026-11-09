@@ -63,10 +63,40 @@ function groupLabeledBlocks(blocks:string[][]):{cells:string[][];before:string[]
  if(pending.length){if(cells.length)after[after.length-1]=pending;else{cells.push(pending);before.push([]);after.push([]);}}
  return {cells,before,after};
 }
+/**
+ * 「항목 줄 → 값 줄」 공급처 글(belie 2026-11-09 새 DB 업체): `이름` 다음 줄에 `홍길동` 처럼 콜론 없이 번갈아 온다.
+ * 아는 항목 이름만 있는 줄이 3개 이상(전화번호 포함)이고 콜론 항목 줄이 없을 때만 `항목: 값` 으로 합친다.
+ * 모르는 항목(사업자 종류 등)도 짧은 낱말 줄이면 항목으로 보고 원문에 남긴다. 값 뒤에 이어지는 긴 줄은 앞 값에 붙인다.
+ * 같은 항목이 다시 나오면 다음 고객으로 본다(빈 줄을 넣어 나눈다).
+ */
+export function joinLabelValueLines(text:string):string {
+ const lines=text.split('\n');
+ if(lines.some(s=>/[\t;]/.test(s)||fieldLine(s)))return text;
+ const bare=(s:string)=>{const v=s.trim();return !!v&&v.length<=12&&!!headerKey(v)&&!/\d/.test(v);};
+ const keys=lines.filter(bare).map(s=>headerKey(s.trim()));
+ if(keys.length<3||!keys.includes('phone'))return text;
+ const start=lines.findIndex(bare);
+ const out=lines.slice(0,start);if(start>0&&out.some(s=>!blankImportText(s)))out.push('');
+ const seen=new Set<string>();let last=-1;
+ const labelLike=(s:string)=>{const v=s.trim();return bare(s)||/^[가-힣A-Za-z ]{2,10}$/.test(v)&&!/\s{2,}/.test(v);};
+ for(let i=start;i<lines.length;i++){
+  const line=lines[i]!.trim();
+  if(!line)continue;
+  let j=i+1;while(j<lines.length&&!lines[j]!.trim())j++;
+  const next=(lines[j]??'').trim();
+  if(labelLike(line)&&next&&!bare(next)){
+   const k=headerKey(line)??line.replace(/\s/g,'');
+   if(seen.has(k)){out.push('');seen.clear();}
+   seen.add(k);out.push(`${line}: ${next}`);last=out.length-1;i=j;continue;
+  }
+  if(last>=0)out[last]+=` ${line}`;else out.push(line);
+ }
+ return out.join('\n');
+}
 export function analyzeImport(text:string,mode:'auto'|'yes'|'no'='auto',rules:Rules={}):Analysis {
  // A tab is a column delimiter: trim() would shift only the first heading row.
  if(text.length>5*1024*1024)throw new Error('5MB 이하 내용을 가져와 주세요.');
- const cleaned=normalizeImportText(text);if(blankImportText(cleaned))throw new Error('파일을 선택하거나 내용을 붙여넣어 주세요.');
+ const cleaned=joinLabelValueLines(normalizeImportText(text));if(blankImportText(cleaned))throw new Error('파일을 선택하거나 내용을 붙여넣어 주세요.');
  const normalized=mode==='no'?cleaned:skipImportPreamble(cleaned);
  const {separator,firstRecord,offset,unterminated}=importTextFormat(normalized);
  const raw=normalized.slice(offset);
