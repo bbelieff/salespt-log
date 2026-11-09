@@ -8,7 +8,7 @@
  * 「서류 가져오기」 때 요청 한 번에만 서버로 보낸다(서버도 저장하지 않음).
  */
 import { useEffect, useId, useRef, useState } from "react";
-import { Check, Copy, FileKey2, FolderOpen, Upload } from "lucide-react";
+import { Check, Copy, FileKey2, FolderOpen } from "lucide-react";
 import { groupCertFiles, isCertFileName, readNpkiCert, type NpkiCertInfo } from "@/util/npki-cert";
 
 export type PickedCert =
@@ -142,13 +142,19 @@ export default function CertPicker({ id: givenId, value, onChange, invalid }: {
       setSaved(h); void saveHandle(h);
       await scanHandle(h);
     } catch (e) {
-      if ((e as Error).name !== "AbortError") { setFallback(true); setNote("폴더 창을 열지 못했어요. 「폴더 올리기」로 다시 골라 주세요."); }
+      if ((e as Error).name !== "AbortError") { setFallback(true); setNote("폴더 창을 열지 못했어요. 버튼을 한 번 더 눌러 폴더를 올려 주세요."); }
     }
   }
 
-  async function reopenSaved() {
-    if (!saved?.requestPermission) return;
-    if ((await saved.requestPermission({ mode: "read" })) === "granted") await scanHandle(saved);
+  /** 한 버튼: 지난번 폴더가 있으면 그 폴더(「허용」 한 번), 없으면 폴더 창, 폴더 창이 막히면 폴더 올리기. */
+  async function findCerts() {
+    if (fallback) { folderInput.current?.click(); return; }
+    if (saved?.requestPermission && options === null) {
+      if ((await saved.requestPermission({ mode: "read" })) === "granted") await scanHandle(saved);
+      else setOptions([]); // 허용 안 함 → 다음 누름은 새 폴더 창
+      return;
+    }
+    await pickFolder();
   }
 
   async function fromInput(list: FileList | null, folder: boolean) {
@@ -183,45 +189,13 @@ export default function CertPicker({ id: givenId, value, onChange, invalid }: {
         className={`mt-1 flex w-full items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-left text-base transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 ${drag ? "border-blue-500 bg-blue-50" : picked ? "border-blue-300 bg-blue-50/40 text-gray-900" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}
         {...invalid}>
         <FileKey2 className="h-5 w-5 shrink-0 text-gray-500" aria-hidden />
-        <span className="min-w-0 flex-1 truncate">{summary || "인증서 선택 — 설치된 인증서 · USB · .pfx 파일"}</span>
+        <span className="min-w-0 flex-1 truncate">{summary || "인증서 선택"}</span>
         <span className="shrink-0 text-sm text-blue-600">{picked ? "바꾸기" : "열기"}</span>
       </button>
 
       {open && (
         <div id={`${id}-box`} className="mt-2 flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3"
           onDragOver={e => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)} onDrop={onDrop}>
-          <div className="flex flex-wrap gap-1.5">
-            <button type="button" onClick={pickFolder} disabled={busy} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-800 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50">
-              <FolderOpen className="h-4 w-4" aria-hidden />설치된 인증서 · USB 폴더
-            </button>
-            <button type="button" onClick={() => fileInput.current?.click()} disabled={busy} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-800 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50">
-              <Upload className="h-4 w-4" aria-hidden />파일 (.pfx · .der+.key)
-            </button>
-            {fallback && (
-              <button type="button" onClick={() => folderInput.current?.click()} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-800 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500">
-                <FolderOpen className="h-4 w-4" aria-hidden />폴더 올리기
-              </button>
-            )}
-            {saved && !options && (
-              <button type="button" onClick={reopenSaved} className="inline-flex min-h-9 items-center rounded-lg px-2 text-sm font-medium text-blue-600 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500">
-                지난번 「{saved.name}」 다시 열기
-              </button>
-            )}
-          </div>
-          <div className="text-xs leading-relaxed text-gray-600">
-            <p>설치된 인증서는 폴더 창 주소줄에 아래 경로를 붙여 넣고 <b className="font-semibold text-gray-800">NPKI</b> 폴더를 고르세요.</p>
-            <p className="mt-1 flex min-w-0 items-center gap-1.5">
-              <code className="min-w-0 truncate rounded bg-white px-1.5 py-0.5 text-gray-800 ring-1 ring-gray-200">{NPKI_PATH}</code>
-              <button type="button" onClick={copyPath} className="inline-flex shrink-0 items-center gap-0.5 font-medium text-blue-600 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500">
-                {copied ? <Check className="h-3 w-3" aria-hidden /> : <Copy className="h-3 w-3" aria-hidden />}{copied ? "복사됨" : "경로 복사"}
-              </button>
-            </p>
-            <p className="mt-1">USB는 그 드라이브의 NPKI 폴더. 폴더·파일을 여기로 끌어 놓아도 돼요.</p>
-          </div>
-
-          {busy && <p className="text-sm text-gray-600" role="status">인증서를 찾는 중…</p>}
-          {note && <p className="text-sm text-amber-700" role="status">{note}</p>}
-
           {options && options.length > 0 && (
             <ul role="listbox" aria-label="찾은 인증서" className="flex flex-col divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white">
               {options.map(o => {
@@ -235,7 +209,6 @@ export default function CertPicker({ id: givenId, value, onChange, invalid }: {
                         {o.kind === "pfx" ? "PFX" : info?.kind ?? "인증서"}
                       </span>
                       <span className="min-w-0 flex-1 truncate font-medium text-gray-900">{o.label}</span>
-                      {info && <span className="hidden shrink-0 text-xs text-gray-500 2xl:inline">{info.issuer}</span>}
                       {info && <span className={`shrink-0 text-xs tabular-nums ${info.expired ? "font-semibold text-red-600" : "text-gray-600"}`}>{info.expired ? "만료됨" : `${info.notAfter}까지`}</span>}
                       {on && <Check className="h-4 w-4 shrink-0 text-blue-600" aria-hidden />}
                     </button>
@@ -243,6 +216,31 @@ export default function CertPicker({ id: givenId, value, onChange, invalid }: {
                 );
               })}
             </ul>
+          )}
+
+          {busy && <p className="text-sm text-gray-600" role="status">인증서를 찾는 중…</p>}
+          {note && <p className="text-sm text-amber-700" role="status">{note}</p>}
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <button type="button" onClick={findCerts} disabled={busy} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-800 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50">
+              <FolderOpen className="h-4 w-4" aria-hidden />{options?.length ? "다른 폴더에서 찾기" : "내 PC에서 인증서 찾기"}
+            </button>
+            <button type="button" onClick={() => fileInput.current?.click()} disabled={busy} className="text-sm font-medium text-blue-600 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50">
+              파일로 고르기(.pfx)
+            </button>
+          </div>
+
+          {!options?.length && (
+            <details className="text-xs text-gray-600">
+              <summary className="cursor-pointer select-none font-medium text-gray-700">어느 폴더를 고르나요?</summary>
+              <p className="mt-1.5 leading-relaxed">폴더 창 주소줄에 아래 경로를 붙여 넣고 <b className="font-semibold text-gray-800">NPKI</b> 폴더를 고르세요. USB는 그 드라이브의 NPKI 폴더예요.</p>
+              <p className="mt-1 flex min-w-0 items-center gap-1.5">
+                <code className="min-w-0 truncate rounded bg-white px-1.5 py-0.5 text-gray-800 ring-1 ring-gray-200">{NPKI_PATH}</code>
+                <button type="button" onClick={copyPath} className="inline-flex shrink-0 items-center gap-0.5 font-medium text-blue-600 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500">
+                  {copied ? <Check className="h-3 w-3" aria-hidden /> : <Copy className="h-3 w-3" aria-hidden />}{copied ? "복사됨" : "경로 복사"}
+                </button>
+              </p>
+            </details>
           )}
         </div>
       )}
