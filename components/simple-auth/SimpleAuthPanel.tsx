@@ -73,7 +73,7 @@ export default function SimpleAuthPanel() {
     if (!req || !biz) return null;
     return (
       <DocBox key={`${reqId}:${bizNo}`} req={req} biz={biz} busy={busy}
-        onLink={(l: LinkTo) => void act(reqId, { action: "link", bizNo, link: l }, l.to === "new" ? "새 DB로 만들었어요" : l.to === "db" ? "DB에 연결했어요" : "")}
+        onLink={(l: LinkTo) => void act(reqId, { action: "link", bizNo, link: l }, l.to === "new" ? "DB에 등록했어요" : l.to === "db" ? "DB에 연결했어요" : "")}
         onApply={(patch) => act(reqId, { action: "apply", bizNo, patch }, `업체정보 ${Object.keys(patch).length}칸을 반영했어요`)} />
     );
   };
