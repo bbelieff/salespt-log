@@ -2,7 +2,7 @@
 /**
  * 간편인증 서류 조회 — 입력. 탭 2개(belie 2026-11-08~09):
  *  · 간편인증 — 대표 휴대폰으로 인증을 보내고 고객이 승인.
- *  · 공동인증서 — 고객 공동인증서(.pfx 또는 der+key)와 비밀번호로 승인 없이 6종(법인·개인 같음)을 한 번에.
+ *  · 공동인증서 — 고객 공동인증서(설치된 NPKI·USB 폴더, 또는 .pfx·der+key 파일 — CertPicker 한 버튼)와 비밀번호로 승인 없이 6종(법인·개인 같음)을 한 번에.
  * 인증서 파일·비밀번호·주민번호 뒷자리는 서버가 요청에만 쓰고 저장하지 않는다(비밀번호는 서버에서 CODEF 공개키로 암호화).
  */
 import { useId, useState } from "react";
@@ -10,6 +10,7 @@ import { FileKey2, Send } from "lucide-react";
 import PhoneInput from "@/components/ui/PhoneInput";
 import AuthMethodIcon from "./AuthMethodIcon";
 import AddressSearch from "./AddressSearch";
+import CertPicker, { type PickedCert } from "./CertPicker";
 import { SIMPLE_AUTH_APPS, SIMPLE_AUTH_CERT_DEFAULT_DOCS, SIMPLE_AUTH_DEFAULT_DOCS, SIMPLE_AUTH_DOCS, SIMPLE_AUTH_TELECOMS } from "@/config/simple-auth";
 import type { SimpleAuthAddress, SimpleAuthDocKey } from "@/types/simple-auth";
 
@@ -49,21 +50,19 @@ export default function RequestForm({ onSend, busy }: { onSend: (body: Record<st
   const [docs, setDocs] = useState<DocKey[]>([...SIMPLE_AUTH_DEFAULT_DOCS]);
   const [rrnBack, setRrnBack] = useState("");
   const [address, setAddress] = useState<SimpleAuthAddress | null>(null);
-  const [certFiles, setCertFiles] = useState<File[]>([]);
+  const [picked, setPicked] = useState<PickedCert | null>(null);
   const [certPw, setCertPw] = useState("");
   const [tried, setTried] = useState(false);
   const cert = mode === "cert";
   const gov24 = docs.includes("localTax");
   const shownDocs = DOCS.filter(d => (cert ? !d.simpleOnly : !d.certOnly));
-  const pfx = certFiles.find(f => /\.(pfx|p12)$/i.test(f.name));
-  const der = certFiles.find(f => /\.der$/i.test(f.name)), key = certFiles.find(f => /\.key$/i.test(f.name));
 
   const errors = {
     owner: owner.trim() ? "" : "대표 이름을 넣어 주세요.",
     birth: cert ? "" : birthError(birth),
     phone: cert ? (phone && !/^010-\d{4}-\d{4}$/.test(phone) ? "휴대폰 번호 11자리를 넣어 주세요." : gov24 && !phone ? "지방세 완납증명은 대표 휴대폰이 필요해요." : "") : /^010-\d{4}-\d{4}$/.test(phone) ? "" : "휴대폰 번호 11자리를 넣어 주세요.",
     telecom: !cert && method === "PASS" && !telecom ? "PASS는 통신사가 필요해요." : "",
-    cert: cert && !pfx && !(der && key) ? "인증서 파일을 골라 주세요. (.pfx, 또는 signCert.der + signPri.key 두 개)" : "",
+    cert: !cert ? "" : !picked ? "인증서를 골라 주세요." : picked.kind === "npki" && picked.info?.expired ? "만료된 인증서예요. 다른 인증서를 골라 주세요." : "",
     certPw: cert && !certPw ? "인증서 비밀번호를 넣어 주세요." : "",
     docs: docs.length ? "" : "받을 서류를 하나 이상 골라 주세요.",
     rrnBack: !cert && gov24 && !/^\d{7}$/.test(rrnBack) ? "주민번호 뒷자리 7자리를 넣어 주세요." : "",
@@ -72,6 +71,11 @@ export default function RequestForm({ onSend, busy }: { onSend: (body: Record<st
   const show = (k: keyof typeof errors) => (tried && errors[k] ? <p id={`${id}-${k}-err`} className="mt-1 text-xs text-red-600">{errors[k]}</p> : null);
   const invalid = (k: keyof typeof errors) => (tried && errors[k] ? { "aria-invalid": true, "aria-describedby": `${id}-${k}-err` } : {});
   const toggleDoc = (k: DocKey) => k !== "biz" && setDocs(d => (d.includes(k) ? d.filter(x => x !== k) : [...d, k]));
+  // 개인 인증서면 이름 칸이 비었을 때 인증서 이름으로 채운다(법인은 상호라 채우지 않음).
+  function pickCert(c: PickedCert | null) {
+    setPicked(c);
+    if (c?.kind === "npki" && c.info?.kind === "개인" && !owner.trim()) setOwner(c.info.name);
+  }
   function switchMode(m: Mode) {
     setMode(m); setTried(false);
     setDocs([...(m === "cert" ? SIMPLE_AUTH_CERT_DEFAULT_DOCS : SIMPLE_AUTH_DEFAULT_DOCS)]);
@@ -85,11 +89,11 @@ export default function RequestForm({ onSend, busy }: { onSend: (body: Record<st
     let body: Record<string, unknown>;
     try {
       body = cert
-        ? { mode: "cert", ...common, certPassword: certPw, ...(pfx ? { certPfx: await toBase64(pfx) } : { certDer: await toBase64(der!), certKey: await toBase64(key!) }) }
+        ? { mode: "cert", ...common, certPassword: certPw, ...(picked!.kind === "pfx" ? { certPfx: await toBase64(picked!.file) } : { certDer: await toBase64(picked!.der), certKey: await toBase64(picked!.key) }) }
         : { mode: "simple", ...common, birth, telecom, method, ...(gov24 ? { rrnBack } : {}) };
     } catch { return; }
     if (!(await onSend(body))) return;
-    setOwner(""); setBirth(""); setPhone(""); setTelecom(""); setRrnBack(""); setAddress(null); setCertFiles([]); setCertPw(""); setTried(false);
+    setOwner(""); setBirth(""); setPhone(""); setTelecom(""); setRrnBack(""); setAddress(null); setPicked(null); setCertPw(""); setTried(false);
   }
 
   const tab = (m: Mode, label: string) => (
@@ -131,12 +135,8 @@ export default function RequestForm({ onSend, busy }: { onSend: (body: Record<st
         <fieldset className="flex min-w-0 flex-col gap-3">
           <legend className="sr-only">공동인증서</legend>
           <div>
-            <label htmlFor={`${id}-cert`} className={LABEL}>인증서 파일</label>
-            <label className="mt-1 flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-gray-300 px-3 py-2 text-base text-gray-700 hover:bg-gray-50 has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-500">
-              <FileKey2 className="h-5 w-5 shrink-0 text-gray-500" aria-hidden />
-              <span className="min-w-0 flex-1 truncate">{certFiles.length ? certFiles.map(f => f.name).join(", ") : ".pfx 또는 signCert.der + signPri.key"}</span>
-              <input id={`${id}-cert`} type="file" multiple accept=".pfx,.p12,.der,.key" className="sr-only" onChange={e => setCertFiles([...(e.target.files ?? [])].filter(f => f.size < 30_000))} {...invalid("cert")} />
-            </label>
+            <label htmlFor={`${id}-cert`} className={LABEL}>인증서</label>
+            <CertPicker id={`${id}-cert`} value={picked} onChange={pickCert} invalid={invalid("cert")} />
             {show("cert")}
             {/* 법인/개인은 받은 사업자등록증명의 사업자 종류로 서버가 정한다(재무제표·지방세 상품이 다름). */}
             <p className="mt-1.5 text-xs text-gray-500">법인 인증서면 법인 서류, 개인 인증서면 대표의 개인사업자 서류를 가져와요.</p>

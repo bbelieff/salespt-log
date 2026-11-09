@@ -11,3 +11,10 @@
 - 결정(belie): 데모 키로 먼저, 지방세 주소는 도로명주소 검색(키 없는 카카오 우편번호), 수강생 전체 공개.
 - 검증: 파서 단위 9 · PGlite 흐름 5(승인 전/후·DB 연결·새 DB 유입 미반영·반영 칸 제한·원문 PDF·테넌트 분리·재시작 정리) · 실제 화면을 가상 API 로 PC 캡처 확인.
 - 남은 것: 병합·배포, 0018 적용(DB Migrate), VPS `.env` CODEF 키 3개(belie 직접), 실제 1건 시험. 실호출 미검증 항목: 법인 인증서·국세 pfx·4대보험·정부24 지방세 간편인증.
+
+## 2026-11-09 · 인증서 고르기 한 버튼(설치된 인증서·파일 모두)
+- 요청(belie): pfx 내보내기 대신 기관 사이트처럼 설치된 공동인증서를 골라 비밀번호만 넣기, 같은 버튼에서 모든 형식 허용.
+- 변경: `components/simple-auth/CertPicker.tsx`(새), `lib/util/npki-cert.ts`(새, 인증서 요약·폴더 묶기), `RequestForm.tsx` 인증서 칸 교체. 서버·API 변경 없음(der+key·pfx 기존 경로).
+- 검증: `tests/util/npki-cert.test.ts` 6(가상 자체서명 인증서) · 실제 화면 가짜 NPKI 폴더 넣기→2장 목록→개인 선택·이름 자동·der+key 전송, pfx 끌어 놓기(PC·모바일).
+- 미확인: 실제 Windows 폴더 창에서 `AppData\LocalLow\NPKI` 선택(자동화 불가 — 크롬 차단 목록상 허용 경로), 실제 발급 인증서의 정책 OID 판별.
+
