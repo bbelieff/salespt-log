@@ -28,7 +28,10 @@ export async function isSheetDetached(
 ): Promise<boolean> {
   if (isSheetlessTenantKey(spreadsheetId)) return true;
   if (detached.size === 0 || !spreadsheetId) return false;
-  const owners = (await cachedRegistryRows()).filter((r) => String(r[3] ?? "").trim() === spreadsheetId);
+  // 명단을 못 읽으면 붙은 것으로(=예전 동작). 떼어 낸 기수의 시트는 얼어 있을 뿐 그대로 있어 미러가 한 번 더 가도 해가 없다.
+  const rows = await cachedRegistryRows().catch(() => null);
+  if (!rows) return false;
+  const owners = rows.filter((r) => String(r[3] ?? "").trim() === spreadsheetId);
   return owners.length > 0 && owners.every((r) => detached.has(storageCohort(r)));
 }
 
