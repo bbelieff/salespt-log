@@ -13,6 +13,7 @@ import {
   COMPANY_FIELDS_EXT5,
   COMPANY_FIELDS_EXT6,
 } from "@/repo/meetings";
+import { COMPANY_FIELDS_DB_ONLY } from "@/repo/meetings-rows";
 import { companyInfoFromDbPayload } from "@/repo/db/read-daily";
 
 import { colName } from "@/util/sheet-column";
@@ -49,6 +50,8 @@ function expected(): Record<string, unknown> {
   for (const f of COMPANY_FIELDS_EXT4) ci[f] = FILLED[f] ?? "";
   for (const f of COMPANY_FIELDS_EXT5) ci[f] = FILLED[f] ?? "";
   for (const f of COMPANY_FIELDS_EXT6) ci[f] = FILLED[f] ?? "";
+  // DB 전용 키(시트 열 없음 — company-info-email-v2): 시트 read 결과에서도 스키마 default "".
+  for (const f of COMPANY_FIELDS_DB_ONLY) ci[f] = "";
   ci.커스텀 = CUSTOM;
   return ci;
 }

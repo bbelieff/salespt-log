@@ -107,6 +107,10 @@ export const CompanyInfo = z.object({
   // 확장6 1필드 (04 CJ · 06 BR — company-ksic-save 2026-11-05). 고른 표준산업분류("47711 운송장비용 주유소 운영업").
   // 빈값 = 업태·업종에서 자동 추천(저장 안 함, lib/util/ksic.ts).
   표준산업분류: z.string().default(""),
+  // [대표자] 이메일 (company-info-email-v2 2026-11-10) — **DB payload 전용, 시트 열 없음**(DB 정본 ADR, 2026-08-24).
+  // 04·06 시트 미러는 이 키를 모르고 건너뛴다(쓰기 열 목록에 없음). 자유 텍스트 — .email() 같은 차단 검증을
+  // 넣지 않는다(서버 safeParse 실패 = 저장 전체 400). 모양 안내는 편집기 칸만(lib/util/contact-email.ts).
+  이메일: z.string().default(""),
   // AN: "필드추가+" 커스텀(비정형) — {업체:{라벨:값}, 대표자:{라벨:값}}.
   커스텀: z
     .object({

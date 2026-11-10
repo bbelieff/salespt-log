@@ -137,6 +137,9 @@ export const COMPANY_EXT5_START = COMPANY_EXT4_START + COMPANY_FIELDS_EXT4.lengt
 // 06 BR 미러도 같은 순서.
 export const COMPANY_FIELDS_EXT6 = ["표준산업분류"] as const;
 export const COMPANY_EXT6_START = COMPANY_EXT5_START + COMPANY_FIELDS_EXT5.length; // 87 = CJ
+/** 시트 열이 없는 DB payload 전용 업체정보 키(company-info-email-v2 2026-11-10). 04·06 시트 코덱은 이 키를
+ * 읽지도 쓰지도 않는다 — DB 정본(2026-08-24) 이후 새 칸은 시트 열을 늘리지 않는다. DB read 만 필드명으로 복원. */
+export const COMPANY_FIELDS_DB_ONLY = ["이메일"] as const;
 /** 04 행 코덱 폭 = A~CJ (88셀). grid 보장·읽기 범위의 단일 기준. */
 export const MEETING_ROW_WIDTH = COMPANY_EXT6_START + COMPANY_FIELDS_EXT6.length; // 88
 /**
