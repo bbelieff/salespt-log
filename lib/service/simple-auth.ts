@@ -99,6 +99,7 @@ function buildCalls(input: SimpleAuthStart, ids: Record<Call["group"], string>, 
     }
     // isAddrViewYn 를 빼면 CODEF 가 {userError:ADDR_VIEWYN:undefined} 로 거절한다(2026-11-10 운영 실측).
     if (doc === "tax") calls.push(nt("tax", CODEF_PATH.tax, { proofType: "B0007", submitTargets: "99", isIdentityViewYN: "0", isAddrViewYn: "0", originDataYN1: "1" }));
+    if (doc === "closed") calls.push(nt("closed", CODEF_PATH.closed, { usePurposes: "99", submitTargets: "99", isIdentityViewYn: "0", originDataYN1: "1" }));
     if (doc === "income") calls.push(nt("income", CODEF_PATH.income, { startYear: String(y - SIMPLE_AUTH_YEARS), endYear: String(y - 1), usePurposes: "99", submitTargets: "99", isIdentityViewYn: "0", isAddrViewYn: "0", originDataYN1: "1" }));
     if (doc === "localTax") {
       const addr = input.address!;

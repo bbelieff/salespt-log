@@ -40,3 +40,7 @@
   ① 표준재무제표: 「사용자 주민번호/사업자 번호를 입력하지 않았습니다」(사업장 2곳 이상인 대표 전부) ② 국세 완납증명: `{userError:ADDR_VIEWYN:undefined}` ③ 폐업 사업장은 사업자등록증명 「신청가능한 계속사업장이 없습니다」(정상 — 폐업사실증명 대상).
 - 수정: tax 에 `isAddrViewYn:"0"`. fs 가 ①로 거절되면 다른 서류에서 알아낸 사업자번호마다 같은 세션 id 로 `applicationType:"01"`·`identity` 붙여 1회 재요청. 실패 시 서버 로그 `simple_auth_fail`(서류·기관·CODEF 코드만).
 - 검증: pglite 시험(재요청 사업자번호 2곳·같은 세션 id, tax 파라미터). 실제 CODEF 로 재무제표 재요청이 승인 없이 통과하는지는 NOT_RUN — 다음 실제 요청으로 확인.
+
+## 2026-11-10 · 폐업사실증명 추가
+- belie 「폐업사실증명도 같이」 → `SimpleAuthDocKey` 에 `closed` 추가, CODEF `nt/certificate/business-discontinuance`(같은 홈택스 세션), 요약 = 폐업일·개업일·휴업기간·업태(업체정보 칸 없음), 원문 PDF. 칩 꼬리 「토스 제외」(CODEF 간편인증 목록 1~7).
+- 검증: 파서·요청 파라미터 시험, 라이브 셸 390 칩 확인. 실제 CODEF 응답 NOT_RUN.
