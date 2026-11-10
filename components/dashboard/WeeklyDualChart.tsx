@@ -86,11 +86,10 @@ export default function WeeklyDualChart({ points, period, onRetry, currentWeek }
     .join(" ");
 
   return (
-    <section className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+    <section className="flex h-full flex-col">
       {/* 섹션 제목 + 범례 */}
-      <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="h-5 w-1 rounded-full bg-slate-500" />
-        <h2 className="text-base font-extrabold text-slate-900">{title}</h2>
+      <div className="section-head mb-3 flex-wrap">
+        <h2>{title}</h2>
         <span className="text-xs font-semibold tabular-nums text-slate-700" data-testid="weekly-trend-summary">{summary}</span>
         {!recent && <span className="text-xs text-slate-600">코스 {weeks}주 기준</span>}
         <div className="ml-auto flex items-center gap-3 text-xs">

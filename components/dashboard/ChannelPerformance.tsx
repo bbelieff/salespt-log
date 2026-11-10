@@ -161,11 +161,10 @@ export default function ChannelPerformance({ costBreakdown, matrix, weeks = STAT
   // 높이 압축(2026-09-28 belie): 도넛 제목은 도넛 왼쪽에 붙이고, 도넛별 범례 2개 +
   // 계약단가 카드 4개를 채널 1행짜리 표 하나로 합쳤다(채널 색이 같아 범례가 중복이었다).
   return (
-    <section className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+    <section className="flex h-full flex-col">
       {/* 섹션 제목 */}
-      <div className="mb-2 flex items-center gap-2">
-        <span className="h-5 w-1 rounded-full bg-red-500" />
-        <h2 className="text-base font-extrabold text-slate-900">채널별 성과</h2>
+      <div className="section-head mb-3">
+        <h2>채널별 성과</h2>
         <span className="ml-auto text-xs text-slate-400">{weeks}주 누적</span>
       </div>
 

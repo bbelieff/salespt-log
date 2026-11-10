@@ -83,8 +83,8 @@ export default function DashboardFinance({ contractChannels, onRefreshChannels, 
   const label = range ? `${PERIOD_LABEL[period]} ${range[0].slice(5).replace("-", "/")}~${range[1].slice(5).replace("-", "/")}` : PERIOD_LABEL.all;
 
   return (
-    <section aria-label="매출·비용·영업이익" className="rounded-2xl border border-slate-200 bg-slate-100 p-2">
-      <div className="mb-2 flex flex-wrap items-center gap-1.5 px-1">
+    <section aria-label="매출·비용·영업이익">
+      <div className="mb-2 flex flex-wrap items-center gap-1.5">
         <strong className="mr-1 whitespace-nowrap text-sm text-slate-700">매출·비용·영업이익</strong>
         <PeriodPicker
           period={period}
@@ -97,14 +97,15 @@ export default function DashboardFinance({ contractChannels, onRefreshChannels, 
         />
       </div>
       {failed ? (
-        <div className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-3 text-xs text-slate-600">
+        <div className="flex items-center justify-between gap-3 py-3 text-xs text-slate-600">
           <span>매출·비용을 불러오지 못했어요.</span>
           <button type="button" onClick={() => { void contracts.refetch(); void db.refetch(); }} className="shrink-0 rounded-lg border border-slate-200 px-2 py-1 font-semibold text-blue-700">다시 시도</button>
         </div>
       ) : !totals || ledger.isLoading ? (
-        <div role="status" aria-busy="true" className="grid grid-cols-3 gap-2">
+        <div role="status" aria-busy="true" className="stat-split grid grid-cols-3">
+          {/* stat-split 이 「앞 칸 다음 칸」에 세로 선을 긋으므로 sr-only 안내는 맨 뒤(absolute 라 칸을 차지하지 않음). */}
+          {[0, 1, 2].map((i) => <div key={i} aria-hidden="true" className="space-y-2 py-3 pr-3"><div className="fx-skeleton h-3 w-10 rounded-md" /><div className="fx-skeleton h-5 w-full rounded-md" /></div>)}
           <span className="sr-only">불러오는 중…</span>
-          {[0, 1, 2].map((i) => <div key={i} aria-hidden="true" className="space-y-2 rounded-xl border border-slate-200 bg-white p-3"><div className="fx-skeleton h-3 w-10 rounded-md" /><div className="fx-skeleton h-5 w-full rounded-md" /></div>)}
         </div>
       ) : (
         <FinanceSummaryBoxes

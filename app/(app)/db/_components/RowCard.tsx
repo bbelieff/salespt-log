@@ -299,7 +299,7 @@ export default function RowCard({
     const rightCls = channel.isCost ? "text-red-600" : "text-slate-900";
     return (
       <div
-        className="row-card flex cursor-pointer items-center gap-2.5 rounded-xl border border-slate-200 bg-white p-3 transition-all hover:border-slate-300"
+        className="row-card flex cursor-pointer items-center gap-2.5 px-1 py-3 transition-colors hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-400"
         onClick={onExpand}
         role="button" tabIndex={0} aria-expanded={false}
         onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onExpand(); } }}
@@ -377,7 +377,7 @@ export default function RowCard({
   // 펼침
   return (
     <div
-      className="row-card expanded rounded-xl border border-blue-300 bg-white p-3 shadow-md"
+      className="row-card expanded my-2 rounded-xl border border-blue-300 bg-white p-3"
       onFocus={(e) => {
         // 금액·날짜 입력에 들어오면 텍스트 디바운스를 묶는다(조기 유출 방지).
         const key = fieldKeyOfElement(channel, e.target);
@@ -483,7 +483,7 @@ export default function RowCard({
             type="button"
             onClick={() => void flush().catch(() => {})}
             disabled={!dirty || saveStatus === "pending"}
-            className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white hover:bg-blue-800 disabled:bg-slate-200 disabled:text-slate-400"
+            className="btn-depth-blue rounded-lg px-4 py-2 text-sm font-bold"
           >
             {saveStatus === "pending" ? "저장중.." : "저장"}
           </button>

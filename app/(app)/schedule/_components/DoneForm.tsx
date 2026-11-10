@@ -44,7 +44,7 @@ export default function DoneForm({
   });
 
   return (
-    <div className="space-y-2.5 rounded-lg border-2 border-orange-300 bg-orange-50 p-3">
+    <div className="space-y-2.5 border-t border-orange-200 pt-3">
       <div className="flex items-center gap-1 text-xs font-bold text-orange-800">
         🟠 완료 (계약X) — 사유 기록
       </div>

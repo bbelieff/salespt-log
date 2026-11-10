@@ -72,7 +72,7 @@ export default function RescheduleForm({
   });
 
   return (
-    <div className="space-y-2.5 rounded-lg border-2 border-purple-300 bg-purple-50 p-3">
+    <div className="space-y-2.5 border-t border-purple-200 pt-3">
       <div className="flex items-center gap-1 text-xs font-bold text-purple-800">
         📅 일정 변경
       </div>
@@ -119,7 +119,7 @@ export default function RescheduleForm({
       </div>
 
       {warn && (
-        <div className="rounded-md bg-red-100 px-2 py-1.5 text-xs font-medium text-red-700">
+        <div className="border-l-2 border-red-500 py-0.5 pl-2 text-xs font-medium text-red-700">
           ⚠ {warn}
         </div>
       )}
@@ -133,7 +133,7 @@ export default function RescheduleForm({
         {pending ? "저장중.." : "📅 일정 변경 확정"}
       </button>
 
-      <div className="rounded-md bg-white/60 px-2 py-1.5 text-px-11 text-slate-500">
+      <div className="text-px-11 text-slate-500">
         💡 이전 카드는 보라색 &ldquo;변경됨&rdquo;으로 보존 · 새 카드가 새 날짜에 생성
       </div>
     </div>

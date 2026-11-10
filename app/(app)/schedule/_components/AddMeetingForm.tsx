@@ -64,7 +64,7 @@ export default function AddMeetingForm({
   );
 
   return (
-    <div className="space-y-2.5 rounded-lg border-2 border-blue-300 bg-blue-50 p-3">
+    <div className="space-y-2.5 border-t border-blue-200 pt-3">
       <div className="flex items-center gap-1 text-xs font-bold text-blue-800">
         ➕ 추가 미팅 — {vendor}
       </div>
@@ -84,7 +84,7 @@ export default function AddMeetingForm({
       </div>
 
       {warn && (
-        <div className="rounded-md bg-red-100 px-2 py-1.5 text-xs font-medium text-red-700">
+        <div className="border-l-2 border-red-500 py-0.5 pl-2 text-xs font-medium text-red-700">
           ⚠ {warn}
         </div>
       )}
@@ -102,7 +102,7 @@ export default function AddMeetingForm({
           type="button"
           onClick={submit}
           disabled={pending}
-          className="rounded-lg bg-blue-700 py-2 text-sm font-bold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="btn-depth-blue rounded-lg py-2 text-sm font-bold disabled:cursor-not-allowed"
         >
           {pending ? "저장중.." : "➕ 추가 확정"}
         </button>

@@ -53,18 +53,9 @@ export default function DaySection({
   const isWeekend = dow === 0 || dow === 6;
   const isToday = date === todayISO;
 
-  // 페이지 배경(bg-slate-100)과 명확히 분리:
-  //  - 오늘: 파란 그라데이션 + 강한 좌측 보더 + shadow
-  //  - 주말(토/일): 빨강 좌측 보더 (휴일 강조)
-  //  - 평일: 회색 좌측 보더
-  const todayBorder = isToday
-    ? "border-l-[5px] border-blue-600 shadow-md shadow-blue-600/20"
-    : isWeekend
-      ? "border-l-[5px] border-red-300 shadow-sm"
-      : "border-l-[5px] border-slate-300 shadow-sm";
-  const sectionBg = isToday
-    ? "bg-gradient-to-b from-blue-100 to-blue-50"
-    : "bg-white";
+  // 화면 마감 v2(2026-11-10): 하루 = 상자 대신 제목 줄(.section-head) + 미팅 줄 목록.
+  //  - 오늘: 파란 제목 글자 + 「오늘」 칩 + 제목 줄 파란 밑줄(꼭 봐야 하는 날 하나만 강조)
+  //  - 주말(토/일): 요일 빨강 글자
   const dayNameCls = isToday
     ? "text-blue-700"
     : isWeekend
@@ -76,21 +67,19 @@ export default function DaySection({
     <section
       // scroll-margin-top: WeekHeader(top-24=96px) + WeekHeader 내부 + SummaryBar 합산 ~280px
       // 위로 스크롤(앞 요일 클릭) 시 sticky 헤더에 가려지지 않도록 여유 확보.
-      className={`mb-3 rounded-xl px-3 pb-2 pt-3 scroll-mt-[280px] ${sectionBg} ${todayBorder}`}
+      className="mb-5 pt-1 scroll-mt-[280px]"
     >
       <header
-        className={`mb-2.5 flex items-center gap-2 border-b ${
-          isToday
-            ? "border-blue-600/25"
-            : "border-dashed border-slate-200"
-        } pb-2`}
+        className={`section-head !items-center !justify-start ${
+          isToday ? "!border-b-2 !border-blue-600" : ""
+        }`}
       >
         <span className={`text-sm font-bold ${dateCls}`}>{fmtMD(d)}</span>
         <span className={`text-sm font-semibold ${dayNameCls}`}>
           ({dayLabelKO(d)})
         </span>
         {isToday && (
-          <span className="inline-flex items-center rounded-full bg-blue-700 px-2 py-0.5 text-px-10 font-bold text-white shadow">
+          <span className="inline-flex items-center rounded-full bg-blue-700 px-2 py-0.5 text-px-10 font-bold text-white">
             오늘
           </span>
         )}
@@ -104,11 +93,12 @@ export default function DaySection({
       </header>
 
       {meetings.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-2 text-center">
+        <div className="py-2.5 text-center">
           <span className="text-px-11 text-slate-400">미팅 없음</span>
         </div>
       ) : (
-        meetings.map((m) => (
+        <div>
+        {meetings.map((m) => (
           <MeetingResultCard
             key={m.id}
             meeting={m}
@@ -124,7 +114,8 @@ export default function DaySection({
             hasFollowUp={followUpParentIds?.has(m.id) ?? false}
             onReviveCase={onReviveCase ? () => onReviveCase(m) : undefined}
           />
-        ))
+        ))}
+        </div>
       )}
     </section>
   );

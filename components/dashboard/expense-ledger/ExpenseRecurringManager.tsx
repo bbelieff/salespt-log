@@ -115,7 +115,7 @@ function RecurringRuleRow({ rule, month, amountWon, onPause, onResume, onSkip, o
                 {deleteError && <p role="alert" className="mt-2 rounded-lg bg-white p-2 font-semibold text-red-800">{deleteError}</p>}
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <button type="button" disabled={deleting} onClick={() => { setConfirmingDelete(false); setDeleteError(null); }} className="min-h-11 rounded-lg border border-slate-300 bg-white font-bold text-slate-700 disabled:opacity-40">취소</button>
-                  <button type="button" disabled={deleting} onClick={() => { void deleteRule(); }} className="min-h-11 rounded-lg bg-red-600 px-2 font-bold text-white disabled:opacity-50">{deleting ? "종료 중…" : deleteError ? "종료 다시 시도" : "삭제/종료 확인"}</button>
+                  <button type="button" disabled={deleting} onClick={() => { void deleteRule(); }} className="btn-depth-red min-h-11 rounded-lg px-2 font-bold">{deleting ? "종료 중…" : deleteError ? "종료 다시 시도" : "삭제/종료 확인"}</button>
                 </div>
               </div>
             )}

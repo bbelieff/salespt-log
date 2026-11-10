@@ -228,8 +228,10 @@ const amountStyle: CSSProperties = {
   wordBreak: "normal",
 };
 
+/** 화면 마감 v2: 칸은 상자 없이 .stat-split 세로 선으로 나눈다 — 왼쪽 여백은 stat-split(둘째 칸부터)·첫 칸 pl-* 가 맡는다. */
 const columnStyle: CSSProperties = {
-  padding: "clamp(0.375rem, 2.5cqi, 0.75rem)",
+  paddingBlock: "clamp(0.375rem, 2.5cqi, 0.75rem)",
+  paddingRight: "clamp(0.375rem, 2.5cqi, 0.75rem)",
 };
 
 /** 상세 이익표 숫자 셀 — 320px·8자리까지 분할 없이 한 줄. */
@@ -265,12 +267,13 @@ export default function FinanceSummaryBoxes({
   const profitAmountRef = useRef<HTMLSpanElement | null>(null);
   useUniformSingleLineFit(containerRef, [revenueAmountRef, costAmountRef, profitAmountRef], `${revenue}|${cost}|${profit}`);
 
+  // 상자 없이 칸만 — 고른 칸은 옅은 흰 바탕으로 표시(화면 마감 v2, belie 2026-11-10).
   const columnClass = (selected: boolean, ring: string) =>
-    `flex min-w-0 flex-col gap-1 rounded-xl border bg-white text-left transition focus-visible:outline-none focus-visible:ring-2 ${selected ? `border-slate-400 ${ring}` : "border-slate-200"} ${ring}`;
+    `flex min-w-0 flex-col gap-1 text-left transition hover:bg-white/50 focus-visible:outline-none focus-visible:ring-2 ${selected ? "bg-white/70" : ""} ${ring}`;
 
   return (
     <div ref={containerRef} style={{ containerType: "inline-size" }}>
-      <div role="group" aria-label="매출·비용·영업이익" className="grid min-w-0 grid-cols-3 gap-2 pc:grid-cols-4">
+      <div role="group" aria-label="매출·비용·영업이익" className="stat-split grid min-w-0 grid-cols-3 pc:grid-cols-4">
         {/* 매출 컬럼 */}
         <button
           type="button"
@@ -279,7 +282,7 @@ export default function FinanceSummaryBoxes({
           aria-controls="fin-detail-panel"
           onClick={() => toggle("revenue")}
           style={columnStyle}
-          className={`${columnClass(open === "revenue", "focus-visible:ring-slate-500")} pc:col-span-2`}
+          className={`${columnClass(open === "revenue", "focus-visible:ring-slate-500")} pl-2 pc:col-span-2`}
         >
           <span className="flex min-w-0 items-center gap-1">
             <span aria-hidden="true" className="hidden h-4 w-4 shrink-0 items-center sm:flex justify-center rounded-full bg-slate-200 text-xs font-bold leading-none text-slate-700">
@@ -350,7 +353,7 @@ export default function FinanceSummaryBoxes({
         role="region"
         aria-labelledby={open ? `fin-col-${open}` : undefined}
         hidden={open === null}
-        className="mt-2 rounded-xl border border-slate-200 bg-white p-3"
+        className="mt-2 border-t border-slate-200/80 px-2 pt-3"
       >
         {open === "revenue" && (
           <div className="space-y-1 text-xs leading-relaxed text-slate-500" style={{ fontVariantNumeric: "tabular-nums" }}>

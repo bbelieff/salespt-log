@@ -10,7 +10,7 @@ import CountUp from "@/components/motion/CountUp";
  * 변경 (2026-09-11):
  *   1. 매출/비용 박스 분리 — 본문 상단 "재무 한 세트"로 이동
  *   2. D-day 통합 — TopHeader 슬림바에서 빠지고 우측에 배치
- *   3. 페이지의 full-width sticky 래퍼가 배너 아래에 붙인다. 재무 카드는 본문에 둔다.
+ *   3. (화면 마감 v2, 2026-11-10) 페이지 맨 위 .surface-hero 띠 안에 재무 3종과 함께 놓인다 — 자체 바탕·선 없음.
  *
  * SSOT: docs/design/components.md §9-1
  */
@@ -47,7 +47,7 @@ export default function DashboardProgressBanner({
   if (!hasDates) {
     // 진행도 데이터가 없으면 헤더만 보여주고 D-day는 그대로 표시 (R4 W1-3 — 매출/비용·경비장부 진입점 보호)
     return (
-      <div className="border-b border-slate-100 bg-white px-4 py-2.5">
+      <div className="px-3 py-2.5">
         <div className="flex items-center justify-between gap-2">
           <div className="text-sm text-slate-500"><div>현재 {today} ({weekday})</div><div>수강 일정을 확인하고 있어요</div></div>
           <DDayBadge graduationISO={graduationISO} />
@@ -57,10 +57,10 @@ export default function DashboardProgressBanner({
   }
 
   return (
-    <div className="border-b border-slate-100 bg-white">
+    <div>
       {/* PC(1024+)는 한 줄: 날짜·주차 | 시작 | 진행바 | 진행률 | 종강총회 | D-day (belie 2026-10-24 「풀사이즈면 한 줄」).
           좁은 화면은 지금처럼 세 줄 — 묶음 div 를 pc:contents 로 풀고 order 로 순서만 바꾼다. */}
-      <div className="px-4 pb-2.5 pt-3 pc:flex pc:items-center pc:gap-4 pc:py-2.5">
+      <div className="px-3 pb-2.5 pt-3 pc:flex pc:items-center pc:gap-4 pc:py-2.5">
         {/* 상단 라벨 — 현재 날짜·주차 + D-day (요청 [6] — D-day 진행표 우측) */}
         <div className={`${graduated ? "" : "mb-3 "}flex items-center justify-between gap-2.5 pc:contents`}>
           <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-1 pc:order-1 pc:shrink-0 pc:flex-nowrap pc:whitespace-nowrap">
@@ -84,9 +84,9 @@ export default function DashboardProgressBanner({
         {/* 수료하면 진행바·시작·진행률·종강총회는 뺀다 — 날짜·「수료 후 N주」·배지만(belie 2026-11-08) */}
         {!graduated && <>
         {/* 진행바 + amber 5겹 끝점 */}
-        <div className="relative mb-3 h-1.5 rounded-full bg-slate-100 pc:order-3 pc:mb-0 pc:min-w-0 pc:flex-1">
+        <div className="relative mb-3 h-1.5 rounded-full bg-slate-200/70 pc:order-3 pc:mb-0 pc:min-w-0 pc:flex-1">
           <div
-            className={`absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-blue-400 to-blue-600 ${play ? "fx-grow-x" : ""}`}
+            className={`bar-brand absolute left-0 top-0 h-full rounded-full ${play ? "fx-grow-x" : ""}`}
             style={{ width: `${pct}%` }}
           />
           <svg
@@ -115,7 +115,7 @@ export default function DashboardProgressBanner({
         <div className="flex items-center justify-between text-xs pc:contents">
           <span className="text-slate-400 pc:order-2 pc:shrink-0 pc:whitespace-nowrap pc:text-xs">{startDate} 시작</span>
           <span
-            className="font-bold text-blue-600 pc:order-4 pc:shrink-0 pc:whitespace-nowrap pc:text-xs"
+            className="font-bold text-red-700 pc:order-4 pc:shrink-0 pc:whitespace-nowrap pc:text-xs"
             style={{ fontVariantNumeric: "tabular-nums" }}
           >
             <CountUp value={Math.round(pct)} play={play} format={(n) => `${n}%`} /> 진행

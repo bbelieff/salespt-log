@@ -40,20 +40,21 @@ export default function RowList({
   if (loading) return null; // 전역 오버레이가 처리
   if (error) {
     return (
-      <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <div role="alert" className="border-l-4 border-red-400 bg-red-50 px-3 py-3 text-sm text-red-700">
         불러오지 못했어요. 잠시 후 다시 시도해 주세요.
       </div>
     );
   }
   if (rows.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-400">
+      <div className="py-6 text-center text-sm text-slate-400">
         아직 {ch.recordsLabel}이 없어요
       </div>
     );
   }
   return (
-    <div className="space-y-2">
+    // 화면 마감 v2 · 상자 다이어트 2: 목록은 상자 묶음 대신 줄 + 구분선.
+    <div className="divide-y divide-slate-100">
       {rows.map((r, i) => (
         <RowCard
           key={dbRowKey(chKey, r.row)}
