@@ -10,6 +10,7 @@ import {useGuardedRouter} from '@/components/DirtyGuard';
 import TopHeader from '@/components/TopHeader';
 import DbManagementTabs from '@/components/DbManagementTabs';
 import PageContainer from '@/components/PageContainer';
+import FirstStepTourOffer from '@/components/onboarding/FirstStepTourOffer';
 import {useMe} from '@/query/me-hook';
 import {InflowPeriod} from './_components/InflowPeriod';
 import {inflowPeriodBounds,type InflowPeriodId} from './_components/inflow-period';
@@ -104,6 +105,7 @@ export default function DbSheetPage(){
  const quickFilters=<div className="sheet-quick-filters">{dateFilter}{statusFilter}</div>;
  const columnSettings=settings&&<div id="db-visible-fields" className="sheet-column-settings"><strong>목록에서 보고 싶은 항목</strong><div>{columns.map(c=><label key={c.key}><input type="checkbox" checked={visible.includes(c.key)} onChange={e=>setVisible(e.target.checked?[...visible,c.key]:visible.filter(k=>k!==c.key))}/>{c.label}</label>)}</div><button className="sheet-text-btn" onClick={()=>{setVisible([...defaults]);window.dispatchEvent(new Event('db-sheet-reset-view'));}}>기본 항목으로 되돌리기</button></div>;
  return <SupplierOptions.Provider value={data.suppliers}><div className="db-sheet-frame has-today-activity" data-db-sheet-frame><TopHeader pageEmoji="📋" pageTitle="DB관리" pageNavigation={<DbManagementTabs current="/db-sheet"/>}/><PageContainer width="fluid" className="sheet-page px-3 py-3">
+ {!data.loading&&!data.error&&<FirstStepTourOffer tour="db-add" alreadyDone={rows.length>0}/>}
  {data.error&&<div role="alert" className="rounded border border-red-300 bg-red-50 p-3 mb-2 text-sm text-red-700">{data.error} <button onClick={()=>window.location.reload()}>새로고침</button></div>}
  <section className="sheet-panel db-sheet-panel">
  <div className="sheet-panel-head">

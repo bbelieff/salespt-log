@@ -769,6 +769,12 @@ function getTimeValue(hourId, minuteId) {
 </div>
 ```
 
+### Spotlight · 첫걸음 안내 (2026-11-11)
+- `components/onboarding/Spotlight.tsx`: 화면 위 한 곳만 밝히고 나머지는 `--ui-scrim` 음영(누르기 막지 않음, `pointer-events-none`). 단계 `{target(CSS 선택자), title, body, advance: click|gone|next, skipIf?}` — 보이는 첫 요소를 0.2초마다 따라가고, 아직 없으면 「안내할 칸이 화면에 나오면…」. 다른 모달(`dialog[open]`·`[role=dialog][aria-modal=true]`)이 떠 있으면 숨는다. 말풍선: 좁은 화면(<640px) 아래 고정, 넓으면 밝힌 곳 아래(공간 없으면 위) 360px. 「나중에」·Esc = 이번만 닫기, 「다시 보지 않기」 = 부르는 쪽이 기억. 끝나면 마무리 말풍선(선택 링크). 음영 z-[1000]·말풍선 z-[1001].
+- `FirstStepTourOffer`(DB관리시트 `db-add` · 컨택 `meeting`): 아직 안 한 수강생 본인 화면에만 노란 제안 줄 「처음이시죠? … 30초 안내」 + [안내 보기]·[다시 보지 않기]. 대시보드 카드에서 `?tour=` 로 오면 바로 켠다. 미팅 안내 대상: `컨택진행 증가`(미팅예약 ＋가 잠겼을 때만) → `미팅예약 증가` → `[data-first-steps=new-meeting]`(등록되면 끝).
+- `FirstStepsCard`(대시보드 맨 위): 「첫걸음 N / 7」 진행 막대 + 일곱 단계(`@/util/first-steps` FIRST_STEPS), 다음 단계 굵게, 안내 있는 단계는 「해 보기 →」 그 밖은 「바로 가기 →」, 마지막 「차트 보기 →」. 다 하면·「숨기기」면 사라진다. 판정은 대시보드 숫자·계약 행(새 조회 없음). 관리자·트레이너·대리 보기에서는 안 보인다.
+- 기억(숨김·다시 보지 않기·끝냄)은 1차에서 이 브라우저 localStorage `salespt-first-steps:v1:<이메일>`. 계정별 저장은 2차.
+
 ### Bottom Sheet
 하단에서 올라오는 모달.
 
