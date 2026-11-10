@@ -89,14 +89,14 @@ function TrainerFixture() {
         <a
           data-qa="weekly-goal"
           href="/trainer/weekly-goals"
-          className="flex items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3 hover:bg-gray-50"
+          className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 hover:bg-slate-50"
         >
           <span aria-hidden className="text-lg">📋</span>
           <span className="min-w-0 flex-1">
-            <span className="block text-sm font-bold text-gray-900">담당 수강생 주간 목표·PT과제</span>
-            <span className="block text-xs text-gray-500">이번 주 목표와 PT과제 확인</span>
+            <span className="block text-sm font-bold text-slate-900">담당 수강생 주간 목표·PT과제</span>
+            <span className="block text-xs text-slate-500">이번 주 목표와 PT과제 확인</span>
           </span>
-          <span aria-hidden className="shrink-0 text-gray-400">→</span>
+          <span aria-hidden className="shrink-0 text-slate-400">→</span>
         </a>
       </div>
       <div className="mx-auto max-w-3xl px-6">

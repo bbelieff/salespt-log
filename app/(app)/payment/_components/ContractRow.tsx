@@ -294,14 +294,14 @@ export default function ContractRow({
   };
 
   const actionButtons = <div className="flex gap-2 pt-1">
-    {!isTerminated && <button type="button" onClick={onTerminateRequest} disabled={pending} className="h-11 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 active:scale-95 disabled:opacity-50">계약해지</button>}
+    {!isTerminated && <button type="button" onClick={onTerminateRequest} disabled={pending} className="h-11 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 active:scale-95 disabled:opacity-50">계약해지</button>}
     <button type="button" onClick={onDeleteRequest} disabled={pending} className="h-11 rounded-lg border border-red-300 bg-white px-4 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 active:scale-95 disabled:opacity-50">🗑 삭제</button>
   </div>;
   const pcStatus = !inline && (status !== "idle" || canUndo || ciState.error || ciState.saving) ? (
     <div data-payment-pc-status data-payment-feedback-dock data-payment-feedback-owner={dirtyEntryId} className="flex min-w-0 flex-col items-end gap-1">
       <AutosaveStatus status={status} error={error} savedAt={savedAt} onRetry={retryAll} canUndo={canUndo} onUndo={undo} />
       {ciState.error && status !== "error" && <button type="button" onClick={retryAll} className="min-h-11 text-px-11 underline underline-offset-2">다시 시도</button>}
-      {ciState.saving && status === "idle" && !ciState.error && <span className="text-px-11 text-gray-400" aria-live="polite">저장중..</span>}
+      {ciState.saving && status === "idle" && !ciState.error && <span className="text-px-11 text-slate-400" aria-live="polite">저장중..</span>}
     </div>
   ) : null;
 
@@ -317,7 +317,7 @@ export default function ContractRow({
           : `mb-3 overflow-hidden rounded-xl bg-white transition-all duration-200 ${
               showBody
                 ? `border-2 shadow-md ${accent.border}`
-                : `border border-gray-200 shadow-sm ${leftBar}`
+                : `border border-slate-200 shadow-sm ${leftBar}`
             }`
       }
     >
@@ -332,7 +332,7 @@ export default function ContractRow({
         }
         className={`flex w-full items-center gap-2 p-3 text-left transition-colors ${
           showBody ? accent.tint : ""
-        } ${forceOpen ? "" : "hover:bg-gray-50 active:bg-gray-100"} ${
+        } ${forceOpen ? "" : "hover:bg-slate-50 active:bg-slate-100"} ${
           // 이월(아레나 시작 전) 계약은 흐리게 하지 않는다 — 해지만 흐림(2026-10-08 belie).
           isTerminated ? "opacity-60" : ""
         }`}
@@ -344,7 +344,7 @@ export default function ContractRow({
           {ordinal}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-gray-900">
+          <div className="flex min-w-0 items-center gap-1.5 text-sm font-semibold text-slate-900">
             {isCarryover && <CarryoverBadge 구분="이월" variant="badge" />}
             {isTerminated && (
               <span className="rounded bg-red-50 px-1.5 py-0.5 text-xs font-medium text-red-600">해지</span>
@@ -355,7 +355,7 @@ export default function ContractRow({
             {(activity || activityState) && <WorkActivityBadge activity={activity} state={activityState} />}
           </div>
           <div
-            className="mt-0.5 text-xs text-gray-500"
+            className="mt-0.5 text-xs text-slate-500"
             style={{ fontVariantNumeric: "tabular-nums" }}
           >
             {fmtDate(cp.계약일)} · 수임비 ₩{fmtMoney(cp.수임비)}
@@ -395,7 +395,7 @@ export default function ContractRow({
         </div>
         {!forceOpen && (
           <>{selectable ? (<svg
-            className={`h-4 w-4 shrink-0 text-gray-400 transition-transform ${
+            className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${
               !selectable && open ? "rotate-180" : ""
             } ${selectable ? "-rotate-90" : ""}`}
             fill="none"
@@ -408,7 +408,7 @@ export default function ContractRow({
               strokeWidth={2}
               d="M19 9l-7 7-7-7"
             />
-          </svg>) : <DisclosureChevron open={open} className="text-gray-400" />}</>
+          </svg>) : <DisclosureChevron open={open} className="text-slate-400" />}</>
         )}
       </button>}
 

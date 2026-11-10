@@ -120,12 +120,12 @@ function ConfirmLeaveModal({
       size="xs"
       className="rounded-2xl bg-white p-5 shadow-xl"
     >
-        <h3 className="text-base font-black text-gray-900">저장하지 않고 나갈까요?</h3>
-        <p className="mt-1.5 text-sm leading-relaxed text-gray-600">
+        <h3 className="text-base font-black text-slate-900">저장하지 않고 나갈까요?</h3>
+        <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
           저장하지 않으면 입력한 내용이 사라져요.
         </p>
         {labels.length > 0 && (
-          <ul className="mt-2 max-h-28 overflow-auto rounded-lg bg-slate-50 px-3 py-2 text-xs text-gray-600">
+          <ul className="mt-2 max-h-28 overflow-auto rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">
             {labels.map((l, i) => (
               <li key={i} className="truncate">
                 · {l}
@@ -140,7 +140,7 @@ function ConfirmLeaveModal({
             data-autofocus
             onClick={onSave}
             disabled={saving}
-            className="rounded-lg bg-blue-500 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
+            className="rounded-lg bg-blue-700 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-800 disabled:opacity-50"
           >
             {saving ? "저장중.." : "💾 저장하고 이동"}
           </button>
@@ -149,7 +149,7 @@ function ConfirmLeaveModal({
               type="button"
               onClick={onDiscard}
               disabled={saving}
-              className="flex-1 rounded-lg border border-gray-200 bg-gray-50 py-2.5 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-100 disabled:opacity-50"
+              className="flex-1 rounded-lg border border-slate-200 bg-slate-50 py-2.5 text-sm font-bold text-slate-700 transition-colors hover:bg-slate-100 disabled:opacity-50"
             >
               무시하고 이동
             </button>
@@ -157,7 +157,7 @@ function ConfirmLeaveModal({
               type="button"
               onClick={onCancel}
               disabled={saving}
-              className="flex-1 rounded-lg border border-gray-200 bg-white py-2.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-50 disabled:opacity-50"
+              className="flex-1 rounded-lg border border-slate-200 bg-white py-2.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-50 disabled:opacity-50"
             >
               취소
             </button>

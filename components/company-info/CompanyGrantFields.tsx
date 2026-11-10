@@ -16,7 +16,7 @@ import { grantProfile, 대분류_목록, 공고특성_목록, splitFeatures } fr
 
 type CI = CompanyInfo;
 /** 고르기 칸은 글자 길이만큼(좁은 칸에서도 늘어나거나 잘리지 않게, 너무 길면 칸 안에서 줄임). */
-const selCls = "min-w-0 max-w-full shrink rounded-md border border-gray-300 bg-white px-1.5 py-1 text-xs text-gray-900 focus:border-brand-red focus:outline-none";
+const selCls = "min-w-0 max-w-full shrink rounded-md border border-slate-300 bg-white px-1.5 py-1 text-xs text-slate-900 focus:border-brand-red focus:outline-none";
 const AUTO = "자동으로";
 
 export function AutoTag() {
@@ -62,7 +62,7 @@ export function IndustryLine({ draft, className, onPatch }: { draft: CI; classNa
         {대분류_목록.map((s) => <option key={s} value={s}>{s}</option>)}
       </select>
       {p.industryAuto && p.industry && <AutoTag />}
-      <label className="ml-1 inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-px-11 text-gray-600">
+      <label className="ml-1 inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-px-11 text-slate-600">
         <input type="checkbox" className="h-3.5 w-3.5 accent-brand-red" checked={p.excluded} onChange={(e) => onPatch({ 제외업종: e.target.checked ? "예" : "아니오" })} />
         제외 업종
       </label>
@@ -84,7 +84,7 @@ export function FeatureChips({ draft, className, onPatch }: { draft: CI; classNa
         const auto = p.autoFeatures.includes(f);
         return (
           <button key={f} type="button" aria-pressed={on} disabled={auto} title={auto ? "특허 및 인증에서 읽음" : undefined} onClick={() => toggle(f)}
-            className={`min-h-6 whitespace-nowrap rounded-full border px-2 text-px-11 font-semibold ${on ? "border-blue-300 bg-blue-50 text-blue-800" : "border-gray-200 bg-white text-gray-500 hover:bg-gray-50"} ${auto ? "cursor-default" : ""}`}>
+            className={`min-h-6 whitespace-nowrap rounded-full border px-2 text-px-11 font-semibold ${on ? "border-blue-300 bg-blue-50 text-blue-800" : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"} ${auto ? "cursor-default" : ""}`}>
             {f}{auto && <span className="ml-0.5 text-px-10 text-blue-600">·자동</span>}
           </button>
         );

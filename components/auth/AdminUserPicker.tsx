@@ -340,20 +340,20 @@ export default function AdminUserPicker({
   }
 
   return (
-    <main className="min-h-dvh bg-gray-50">
-      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4 pc:hidden">
+    <main className="min-h-dvh bg-slate-50">
+      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white px-6 py-4 pc:hidden">
         <div className="mx-auto flex max-w-3xl pc:max-w-none items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-xs font-bold uppercase tracking-wider text-red-600">
               Master · 수강생 관리
             </div>
-            <div className="mt-0.5 truncate text-sm font-semibold text-gray-900">
+            <div className="mt-0.5 truncate text-sm font-semibold text-slate-900">
               {sessionEmail}
             </div>
           </div>
           <Link
             href="/admin"
-            className="shrink-0 rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
+            className="shrink-0 rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50"
           >
             ← 마스터 메뉴
           </Link>
@@ -363,10 +363,10 @@ export default function AdminUserPicker({
       <div className="mx-auto max-w-3xl pc:max-w-none px-6 py-8">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="text-2xl font-black tracking-tight text-gray-900">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900">
               수강생 관리
             </h1>
-            <p className="mt-1.5 text-sm text-gray-500">
+            <p className="mt-1.5 text-sm text-slate-500">
               기수별 등록된 수강생 ({users.length}명)
             </p>
           </div>
@@ -394,7 +394,7 @@ export default function AdminUserPicker({
           placeholder="이름 / 기수 / 이메일 검색"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          className="mt-6 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100"
+          className="mt-6 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100"
         />
 
         {error && (
@@ -408,7 +408,7 @@ export default function AdminUserPicker({
             archivedGroups.length === 0 &&
             shownReserved.length === 0 &&
             shownPending.length === 0 && (
-              <p className="text-sm text-gray-400">검색 결과 없음.</p>
+              <p className="text-sm text-slate-400">검색 결과 없음.</p>
             )}
 
           {!viewOnly && (
@@ -447,14 +447,14 @@ export default function AdminUserPicker({
 
           {archivedGroups.length > 0 && (
             // 검색 중엔 펼쳐서 결과가 접힌 상자 안에 숨지 않게. key 로 검색 시작·끝에 다시 그린다.
-            <details key={searching ? "search" : "browse"} open={searching || undefined} className="group overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 open:bg-white">
-              <summary className="disclosure-summary flex cursor-pointer items-center justify-between gap-2 px-4 py-3 hover:bg-gray-100">
-                <span className="text-sm font-bold text-gray-700">
+            <details key={searching ? "search" : "browse"} open={searching || undefined} className="group overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 open:bg-white">
+              <summary className="disclosure-summary flex cursor-pointer items-center justify-between gap-2 px-4 py-3 hover:bg-slate-100">
+                <span className="text-sm font-bold text-slate-700">
                   📦 보관된 기수 ({archivedGroups.reduce((s, [, l]) => s + l.length, 0)}명)
                 </span>
-                <DisclosureChevron className="text-gray-400" />
+                <DisclosureChevron className="text-slate-400" />
               </summary>
-              <div className={`${COHORT_GRID} border-t border-gray-200 px-4 py-4`}>
+              <div className={`${COHORT_GRID} border-t border-slate-200 px-4 py-4`}>
                 {archivedGroups.map(([cohort, list]) => (
                   <CohortSection
                     key={cohort}

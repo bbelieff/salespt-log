@@ -154,7 +154,7 @@ export default function MeetingLinkDialog({ row, meetingId, onClose, onLinked, o
             <button type="button" onClick={onClose} disabled={link.isPending} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700">취소</button>
           )}
           <button type="button" onClick={() => void submit()} disabled={!view || link.isPending}
-            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
+            className="rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
             {link.isPending ? "연결하는 중…" : "연결하기"}
           </button>
         </div>

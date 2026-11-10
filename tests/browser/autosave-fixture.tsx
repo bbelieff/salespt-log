@@ -21,7 +21,7 @@ function Fixture() {
     <header className="sticky top-0 z-50 flex h-app-header items-center justify-between border-b bg-white px-4 text-sm font-bold">
       <span>세일즈PT · 가상 데이터 검증</span><nav className="flex gap-3"><a href="/">목표</a><a href="/?page=db">DB</a><button onClick={() => setExpense(true)}>비용</button></nav>
     </header>
-    <div className="sticky top-app-header z-40 flex h-12 items-center border-b bg-gray-100 px-4 text-sm">{page === "db" ? "DB 생산" : "주간 목표·PT과제"}</div>
+    <div className="sticky top-app-header z-40 flex h-12 items-center border-b bg-slate-100 px-4 text-sm">{page === "db" ? "DB 생산" : "주간 목표·PT과제"}</div>
     <main className="mx-auto max-w-5xl px-4" style={{paddingBottom:112}}>
       {page === "db" ? <div className="py-4"><RowCard channelKey="purchase" channel={CHANNELS.purchase} index={0}
         row={{ row: 2, 업체명: "가상 구매처", 구매일: "2026-09-21", 주문개수: 10, 개당단가: 1000, 주문금액: 10000, 기타: '', 부가세여부: false }}

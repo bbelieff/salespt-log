@@ -75,7 +75,7 @@ export default function ScoreboardView({ data }: { data: ScoreboardViewData }) {
   return (
     <div>
       {/* 모드 전환 */}
-      <div className="mb-4 inline-flex rounded-full bg-gray-100 p-1">
+      <div className="mb-4 inline-flex rounded-full bg-slate-100 p-1">
         {(["dashboard", "capture"] as const).map((m) => (
           <button
             key={m}
@@ -83,8 +83,8 @@ export default function ScoreboardView({ data }: { data: ScoreboardViewData }) {
             onClick={() => setMode(m)}
             className={`rounded-full px-4 py-1.5 text-xs font-bold transition-colors ${
               mode === m
-                ? "bg-white text-gray-900 shadow"
-                : "text-gray-500 hover:text-gray-700"
+                ? "bg-white text-slate-900 shadow"
+                : "text-slate-500 hover:text-slate-700"
             }`}
           >
             {m === "dashboard" ? "관리자 대시보드" : "캡쳐 모드"}
@@ -111,60 +111,60 @@ function DashboardMode({ data }: { data: ScoreboardViewData }) {
   return (
     <div className="space-y-6">
       <section>
-        <h2 className="mb-2 text-sm font-black text-gray-800">기수 종합</h2>
+        <h2 className="mb-2 text-sm font-black text-slate-800">기수 종합</h2>
         <CohortSummaryBoard cohorts={data.byCohort} />
       </section>
 
       <section>
-        <h2 className="mb-2 text-sm font-black text-gray-800">
+        <h2 className="mb-2 text-sm font-black text-slate-800">
           기수별 주차 상세
         </h2>
         <div className="space-y-4">
           {data.byCohort.map((c) => (
             <div key={c.cohort}>
               <div className="mb-1 flex items-baseline gap-2">
-                <h3 className="text-xs font-black text-gray-700">
+                <h3 className="text-xs font-black text-slate-700">
                   {c.cohort}기
                 </h3>
-                <span className="text-px-11 text-gray-400">
+                <span className="text-px-11 text-slate-400">
                   입금자 {c.paidMembers}명
                 </span>
               </div>
               {c.paidMembers === 0 ? (
-                <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-px-11 text-gray-400">
+                <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-px-11 text-slate-400">
                   입금자 없음
                 </div>
               ) : (
-                <div className="overflow-x-auto rounded-xl border border-gray-100">
+                <div className="overflow-x-auto rounded-xl border border-slate-100">
                   <table className="w-full min-w-[560px] border-collapse text-center text-px-11">
                     <thead>
-                      <tr className="bg-gray-50 text-gray-500">
+                      <tr className="bg-slate-50 text-slate-500">
                         <th className="px-2 py-1 text-left font-bold">지표</th>
                         {c.weekly.map((w) => (
                           <th key={w.week} className="px-1.5 py-1 font-bold">
                             {w.week}주
                           </th>
                         ))}
-                        <th className="px-1.5 py-1 font-black text-gray-700">
+                        <th className="px-1.5 py-1 font-black text-slate-700">
                           총합
                         </th>
                       </tr>
                     </thead>
                     <tbody>
                       {METRICS.map((m) => (
-                        <tr key={m} className="border-t border-gray-50">
-                          <td className="px-2 py-1 text-left font-bold text-gray-700">
+                        <tr key={m} className="border-t border-slate-50">
+                          <td className="px-2 py-1 text-left font-bold text-slate-700">
                             {m}
                           </td>
                           {c.weekly.map((w) => (
                             <td
                               key={w.week}
-                              className="px-1.5 py-1 tabular-nums text-gray-700"
+                              className="px-1.5 py-1 tabular-nums text-slate-700"
                             >
                               {w[m].toFixed(1)}
                             </td>
                           ))}
-                          <td className="px-1.5 py-1 font-black tabular-nums text-gray-900">
+                          <td className="px-1.5 py-1 font-black tabular-nums text-slate-900">
                             {c.total[m].toFixed(1)}
                           </td>
                         </tr>
@@ -179,7 +179,7 @@ function DashboardMode({ data }: { data: ScoreboardViewData }) {
       </section>
 
       <section>
-        <h2 className="mb-2 text-sm font-black text-gray-800">개인 랭킹</h2>
+        <h2 className="mb-2 text-sm font-black text-slate-800">개인 랭킹</h2>
         <div className="grid gap-4 md:grid-cols-2">
           {RANK_TABS.map((t) => (
             <RankingTable
@@ -205,29 +205,29 @@ function RankingTable({
   entries: ViewEntry[];
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-100">
-      <div className="bg-gray-50 px-3 py-1.5 text-xs font-black text-gray-700">
+    <div className="overflow-hidden rounded-xl border border-slate-100">
+      <div className="bg-slate-50 px-3 py-1.5 text-xs font-black text-slate-700">
         {title}
       </div>
       {entries.length === 0 ? (
-        <div className="px-3 py-3 text-px-11 text-gray-400">데이터 없음</div>
+        <div className="px-3 py-3 text-px-11 text-slate-400">데이터 없음</div>
       ) : (
         <ul>
           {entries.map((e) => (
             <li
               key={`${e.name}-${e.rank}`}
-              className="flex items-center gap-2 border-t border-gray-50 px-3 py-1.5 text-xs"
+              className="flex items-center gap-2 border-t border-slate-50 px-3 py-1.5 text-xs"
             >
-              <span className="w-5 font-black text-gray-400">{e.rank}</span>
-              <span className="min-w-0 flex-1 truncate font-bold text-gray-900">
+              <span className="w-5 font-black text-slate-400">{e.rank}</span>
+              <span className="min-w-0 flex-1 truncate font-bold text-slate-900">
                 {e.name}
-                <span className="ml-1 text-px-10 font-bold text-gray-400">
+                <span className="ml-1 text-px-10 font-bold text-slate-400">
                   {e.cohort}기
                 </span>
               </span>
-              <span className="font-black tabular-nums text-gray-800">
+              <span className="font-black tabular-nums text-slate-800">
                 {Math.round(e.value).toLocaleString("ko-KR")}
-                <span className="ml-0.5 text-px-10 text-gray-400">{unit}</span>
+                <span className="ml-0.5 text-px-10 text-slate-400">{unit}</span>
               </span>
             </li>
           ))}
@@ -266,8 +266,8 @@ function CaptureMode({
             onClick={() => setTab(k)}
             className={`rounded-full px-3 py-1.5 text-xs font-bold transition-colors ${
               tab === k
-                ? "bg-gray-900 text-white"
-                : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                ? "bg-slate-900 text-white"
+                : "bg-slate-100 text-slate-500 hover:bg-slate-200"
             }`}
           >
             {k === "메인" ? "메인" : `${k}왕`}
@@ -276,13 +276,13 @@ function CaptureMode({
       </div>
 
       {/* 캡쳐 카드 — 고정폭(모바일 캡쳐 친화) */}
-      <div className="mx-auto max-w-md rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
+      <div className="mx-auto max-w-md rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
         <div className="mb-4 text-center">
-          <p className="text-xs font-bold text-gray-400">
+          <p className="text-xs font-bold text-slate-400">
             {seasonLabel}
             {weekLabel && ` · ${weekLabel}`}
           </p>
-          <h2 className="text-xl font-black text-gray-900">{headTitle}</h2>
+          <h2 className="text-xl font-black text-slate-900">{headTitle}</h2>
         </div>
 
         {tab === "메인" ? (
@@ -296,7 +296,7 @@ function CaptureMode({
           />
         ) : null}
 
-        <p className="mt-4 text-center text-px-11 text-gray-400">
+        <p className="mt-4 text-center text-px-11 text-slate-400">
           {CAPTION[tab] ?? ""}
         </p>
       </div>

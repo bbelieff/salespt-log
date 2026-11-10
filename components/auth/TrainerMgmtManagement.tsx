@@ -18,12 +18,12 @@ export function SectionManagement({
   onRemove?: (email: string) => void;
 }) {
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-4">
-      <h2 className="mb-2 text-base font-bold text-gray-900">
+    <section className="rounded-2xl border border-slate-200 bg-white p-4">
+      <h2 className="mb-2 text-base font-bold text-slate-900">
         관리부서 명단 ({staff.length})
       </h2>
       {staff.length === 0 ? (
-        <p className="rounded-xl border border-gray-100 bg-white p-6 text-center text-sm text-gray-400">
+        <p className="rounded-xl border border-slate-100 bg-white p-6 text-center text-sm text-slate-400">
           관리부서 인원 없음.
         </p>
       ) : (
@@ -34,13 +34,13 @@ export function SectionManagement({
             return (
               <li
                 key={m.email}
-                className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4"
+                className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4"
               >
                 <div className="min-w-0">
-                  <div className="truncate text-sm font-bold text-gray-900">
+                  <div className="truncate text-sm font-bold text-slate-900">
                     {m.name || m.email}
                   </div>
-                  <div className="truncate text-px-11 text-gray-500">{m.email}</div>
+                  <div className="truncate text-px-11 text-slate-500">{m.email}</div>
                 </div>
                 <div className="flex shrink-0 gap-2">
                   {onMoveToTrainer && (

@@ -28,15 +28,15 @@ export default function DeleteConfirmModal({
       dismissOnBackdrop
       className="rounded-xl bg-white p-5 shadow-xl"
     >
-      <h3 className="mb-1 text-base font-semibold text-gray-900">
+      <h3 className="mb-1 text-base font-semibold text-slate-900">
         이 계약수납을 지울까요?
       </h3>
-      <p className="mb-3 text-sm leading-relaxed text-gray-600">
+      <p className="mb-3 text-sm leading-relaxed text-slate-600">
         <b>{label}</b> 계약수납 기록을 지워요.
         <br />
         입력한 내용이 모두 사라져요.
       </p>
-      <label className="mb-4 flex cursor-pointer items-start gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs leading-relaxed text-gray-700">
+      <label className="mb-4 flex cursor-pointer items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs leading-relaxed text-slate-700">
         <input
           type="checkbox"
           checked={cascadeOpt}
@@ -46,7 +46,7 @@ export default function DeleteConfirmModal({
         <span>
           <b>이 계약의 미팅도 ‘예약’ 상태로 되돌리기</b>
           <br />
-          <span className="text-gray-500">
+          <span className="text-slate-500">
             일정·계약 탭의 해당 미팅이 계약 전(예약)으로 돌아가고,
             <br />
             수임비·계약조건이 비워져요.
@@ -56,7 +56,7 @@ export default function DeleteConfirmModal({
       <div className="flex gap-2">
         <AppDialogClose
           data-autofocus
-          className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           취소
         </AppDialogClose>

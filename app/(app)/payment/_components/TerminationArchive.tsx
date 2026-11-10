@@ -19,36 +19,36 @@ export default function TerminationArchive({ contracts }: Props) {
   const [open, setOpen] = useState(false);
   if (contracts.length === 0) return null;
   return (
-    <div className="mb-3 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+    <div className="mb-3 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between p-3 text-left text-sm text-gray-600 hover:bg-gray-50"
+        className="flex w-full items-center justify-between p-3 text-left text-sm text-slate-600 hover:bg-slate-50"
         aria-expanded={open}
       >
         <span className="font-medium">
           🗂 해지 보관함{" "}
           <span className="text-red-500">{contracts.length}건</span>
         </span>
-        <span className="text-xs text-gray-400">{open ? "접기" : "펼치기"} <DisclosureChevron open={open} /></span>
+        <span className="text-xs text-slate-400">{open ? "접기" : "펼치기"} <DisclosureChevron open={open} /></span>
       </button>
       {open && (
-        <ul className="divide-y divide-gray-100 border-t border-gray-100">
+        <ul className="divide-y divide-slate-100 border-t border-slate-100">
           {contracts.map((cp) => (
-            <li key={cp.row} className="px-3 py-2 text-xs text-gray-600">
+            <li key={cp.row} className="px-3 py-2 text-xs text-slate-600">
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate font-medium text-gray-800">
+                <span className="truncate font-medium text-slate-800">
                   {cp.업체명 || "(업체명 없음)"}
                 </span>
                 <span
-                  className="shrink-0 text-gray-400"
+                  className="shrink-0 text-slate-400"
                   style={{ fontVariantNumeric: "tabular-nums" }}
                 >
                   해지 {cp.해지일 || "—"}
                 </span>
               </div>
               <div className="mt-0.5 flex items-center justify-between gap-2">
-                <span className="truncate text-gray-500">
+                <span className="truncate text-slate-500">
                   {cp.해지사유 || "(사유 없음)"}
                 </span>
                 {cp.반환액 > 0 && (

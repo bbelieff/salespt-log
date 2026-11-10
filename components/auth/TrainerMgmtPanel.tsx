@@ -134,20 +134,20 @@ export default function TrainerMgmtPanel({
   }
 
   return (
-    <main className="min-h-dvh bg-gray-50">
-      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4 pc:hidden">
+    <main className="min-h-dvh bg-slate-50">
+      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white px-6 py-4 pc:hidden">
         <div className="mx-auto flex max-w-3xl pc:max-w-5xl items-center justify-between gap-3">
           <div>
             <div className="text-xs font-bold uppercase tracking-wider text-red-600">
               Master · 트레이너 관리
             </div>
-            <div className="mt-0.5 text-sm font-semibold text-gray-900">
+            <div className="mt-0.5 text-sm font-semibold text-slate-900">
               {sessionEmail}
             </div>
           </div>
           <Link
             href="/admin"
-            className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
+            className="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50"
           >
             ← 마스터 메뉴
           </Link>
@@ -168,8 +168,8 @@ export default function TrainerMgmtPanel({
         )}
 
         {/* 1. 트레이너 명단 및 담당부여 (admin) — viewOnly 면 액션 핸들러 미전달. */}
-        <section aria-labelledby="trainer-management-title" className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4">
-          <h2 id="trainer-management-title" className="text-base font-bold text-gray-900">트레이너 관리 ({activeTrainers.length})</h2>
+        <section aria-labelledby="trainer-management-title" className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
+          <h2 id="trainer-management-title" className="text-base font-bold text-slate-900">트레이너 관리 ({activeTrainers.length})</h2>
           <CollapsibleSection title="담당부여" persistKey="admin-trainers:assign" defaultOpen>
         <SectionAssign
           trainers={activeTrainers}

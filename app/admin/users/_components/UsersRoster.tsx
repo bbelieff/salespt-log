@@ -137,14 +137,14 @@ function UsersRosterPreview({
   );
 
   return (
-    <main className="min-h-dvh bg-gray-50">
-      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4 pc:hidden">
+    <main className="min-h-dvh bg-slate-50">
+      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white px-6 py-4 pc:hidden">
         <div className="mx-auto flex max-w-3xl pc:max-w-5xl items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="text-xs font-bold uppercase tracking-wider text-red-600">
               Master · 수강생 관리
             </div>
-            <div className="mt-0.5 truncate text-sm font-semibold text-gray-900">
+            <div className="mt-0.5 truncate text-sm font-semibold text-slate-900">
               {sessionEmail}
             </div>
           </div>
@@ -152,37 +152,37 @@ function UsersRosterPreview({
       </header>
 
       <div className="mx-auto max-w-3xl pc:max-w-5xl px-6 py-8">
-        <h1 className="text-2xl font-black tracking-tight text-gray-900">
+        <h1 className="text-2xl font-black tracking-tight text-slate-900">
           수강생 관리
         </h1>
-        <p className="mt-1.5 text-sm text-gray-500">
+        <p className="mt-1.5 text-sm text-slate-500">
           기수별 등록된 수강생 ({regularTrainees.length}명)
           {pendingCount > 0 && ` · 승인 대기 ${pendingCount}명`}
           {reservedCount > 0 && ` · 유보 ${reservedCount}명`}
         </p>
-        <div className="mt-6 h-11 w-full rounded-xl border border-gray-200 bg-gray-100" />
+        <div className="mt-6 h-11 w-full rounded-xl border border-slate-200 bg-slate-100" />
 
         <div className="mt-8 space-y-6">
           {sortedGroups.map(([cohort, list]) => (
             <section key={cohort}>
-              <h2 className="mb-2 text-sm font-bold text-gray-700">
+              <h2 className="mb-2 text-sm font-bold text-slate-700">
                 {cohort} ({list.length}명)
               </h2>
               <div className="space-y-2">
                 {list.map((u) => (
                   <div
                     key={u.email}
-                    className="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3"
+                    className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3"
                   >
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-bold text-gray-900">
+                      <div className="truncate text-sm font-bold text-slate-900">
                         {u.name || u.email}
                       </div>
-                      <div className="truncate text-xs text-gray-400">
+                      <div className="truncate text-xs text-slate-400">
                         {u.email}
                       </div>
                     </div>
-                    <div className="shrink-0 animate-pulse text-xs text-gray-300">
+                    <div className="shrink-0 animate-pulse text-xs text-slate-300">
                       통계 불러오는 중…
                     </div>
                   </div>

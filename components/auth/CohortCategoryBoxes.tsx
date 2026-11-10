@@ -13,7 +13,7 @@ import ArenaSeasonGroups from "./ArenaSeasonGroups";
 const STYLE: Record<string, [string, string]> = {
   수강생: ["border-blue-200", "text-blue-800"],
   아레나: ["border-purple-200", "text-purple-800"],
-  테스트: ["border-gray-200", "text-gray-600"],
+  테스트: ["border-slate-200", "text-slate-600"],
 };
 
 export default function CohortCategoryBoxes({

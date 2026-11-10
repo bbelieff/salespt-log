@@ -12,8 +12,8 @@ import type { CompanyInfoKey } from "@/lib/document-ocr/types";
 import type { CompanyInfo } from "@/types";
 import { docLabel, type AuthRequest, type Biz } from "./view";
 
-const BTN2 = "inline-flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:text-gray-400";
-const BTN1 = "rounded-lg bg-blue-500 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500";
+const BTN2 = "inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:text-slate-400";
+const BTN1 = "rounded-lg bg-blue-700 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500";
 
 export type LinkTo = { to: "db"; dbId: string } | { to: "new" } | { to: "later" };
 
@@ -26,9 +26,9 @@ function DbLinkPanel({ biz, busy, onLink }: { biz: Biz; busy: boolean; onLink: (
   if ((l.state === "linked" || l.state === "later") && !changing) {
     const text = l.state === "later" ? <>등록 안 함</> : <>{l.why === "created" ? "새 DB 생성 · " : "DB: "}<b>{l.company}</b></>;
     return (
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
-        <Link2 className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
-        <span className="min-w-0 flex-1 truncate text-gray-800">{text}</span>
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+        <Link2 className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+        <span className="min-w-0 flex-1 truncate text-slate-800">{text}</span>
         <button type="button" onClick={() => setChanging(true)} className="text-xs font-medium text-blue-700 hover:underline">바꾸기</button>
       </div>
     );
@@ -41,10 +41,10 @@ function DbLinkPanel({ biz, busy, onLink }: { biz: Biz; busy: boolean; onLink: (
         <ul className="flex flex-col gap-1">
           {cands.map((c) => (
             <li key={c.dbId}>
-              <label className="flex cursor-pointer items-center gap-2 rounded-md bg-white px-2 py-1.5 text-sm text-gray-800">
+              <label className="flex cursor-pointer items-center gap-2 rounded-md bg-white px-2 py-1.5 text-sm text-slate-800">
                 <input type="radio" name={`${id}-db`} value={c.dbId} checked={pick === c.dbId} onChange={() => setPick(c.dbId)} className="accent-blue-600" />
                 <span className="min-w-0 flex-1 truncate" title={c.company}>{c.company}</span>
-                <span className="shrink-0 text-xs text-gray-500">{[c.owner, c.phone].filter(Boolean).join(" · ")}</span>
+                <span className="shrink-0 text-xs text-slate-500">{[c.owner, c.phone].filter(Boolean).join(" · ")}</span>
               </label>
             </li>
           ))}
@@ -53,8 +53,8 @@ function DbLinkPanel({ biz, busy, onLink }: { biz: Biz; busy: boolean; onLink: (
       <div className="flex flex-wrap gap-2">
         {cands.length > 0 && <button type="button" disabled={!pick || busy} onClick={() => onLink({ to: "db", dbId: pick })} className={BTN1}>이 DB에 연결</button>}
         <button type="button" disabled={busy} onClick={() => onLink({ to: "new" })} className={cands.length ? BTN2 : BTN1}>{cands.length ? "새 DB로 등록" : "DB 등록"}</button>
-        <button type="button" disabled={busy} onClick={() => onLink({ to: "later" })} className="px-2 text-sm text-gray-600 hover:underline">등록 안 함</button>
-        {changing && <button type="button" onClick={() => setChanging(false)} className="px-2 text-sm text-gray-600 hover:underline">그대로 두기</button>}
+        <button type="button" disabled={busy} onClick={() => onLink({ to: "later" })} className="px-2 text-sm text-slate-600 hover:underline">등록 안 함</button>
+        {changing && <button type="button" onClick={() => setChanging(false)} className="px-2 text-sm text-slate-600 hover:underline">그대로 두기</button>}
       </div>
     </fieldset>
   );
@@ -111,11 +111,11 @@ export default function DocBox({ req, biz, busy, onLink, onApply }: Props) {
 
       <ul className="flex flex-col gap-2">
         {biz.results.map((d) => (
-          <li key={d.key} className={`rounded-lg border px-3 py-2.5 ${d.ok ? "border-gray-200" : "border-red-200 bg-red-50"}`}>
+          <li key={d.key} className={`rounded-lg border px-3 py-2.5 ${d.ok ? "border-slate-200" : "border-red-200 bg-red-50"}`}>
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               {d.ok ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden /> : <XCircle className="h-4 w-4 shrink-0 text-red-600" aria-hidden />}
-              <span className="min-w-0 flex-1 truncate font-medium text-gray-900">{docLabel(d.key)}</span>
-              {d.ok && d.issuedAt && <span className="hidden text-xs text-gray-500 tabular-nums 2xl:inline">{d.issuedAt} 발급</span>}
+              <span className="min-w-0 flex-1 truncate font-medium text-slate-900">{docLabel(d.key)}</span>
+              {d.ok && d.issuedAt && <span className="hidden text-xs text-slate-500 tabular-nums 2xl:inline">{d.issuedAt} 발급</span>}
               {d.ok && d.hasOriginal && originals(req, biz, d.key, d.facts).map((o) => (
                 <a key={o.href} href={o.href} download className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500">
                   <Download className="h-3.5 w-3.5" aria-hidden />{o.label}
@@ -123,19 +123,19 @@ export default function DocBox({ req, biz, busy, onLink, onApply }: Props) {
               ))}
             </div>
             {d.ok
-              ? <ul className="mt-1 pl-6 text-base text-gray-700">{d.facts.map((f) => <li key={f} className="tabular-nums">{f}</li>)}</ul>
+              ? <ul className="mt-1 pl-6 text-base text-slate-700">{d.facts.map((f) => <li key={f} className="tabular-nums">{f}</li>)}</ul>
               : <p className="mt-1 pl-6 text-base text-red-700">{d.reason}</p>}
           </li>
         ))}
       </ul>
 
       {canApply && (applying ? (
-        <div className="flex flex-col gap-3 rounded-lg border border-gray-200 p-3">
-          <h3 className="text-sm font-semibold text-gray-900">업체정보에 반영</h3>
+        <div className="flex flex-col gap-3 rounded-lg border border-slate-200 p-3">
+          <h3 className="text-sm font-semibold text-slate-900">업체정보에 반영</h3>
           {loadError ? <p className="text-sm text-red-700">{loadError}</p>
-            : !current ? <p className="text-sm text-gray-500">지금 업체정보를 불러오는 중…</p>
+            : !current ? <p className="text-sm text-slate-500">지금 업체정보를 불러오는 중…</p>
             : current.readOnly ? <p className="text-sm text-amber-800">미팅에 연결된 DB예요. 업체정보는 미팅 화면에서 고쳐 주세요.</p>
-            : rows.length === 0 ? <p className="text-sm text-gray-500">반영할 칸이 없어요.</p>
+            : rows.length === 0 ? <p className="text-sm text-slate-500">반영할 칸이 없어요.</p>
             : <div className="overflow-x-auto">
                 <CompanyDocDiffTable rows={rows} labelOf={labelOf} checked={checked} choice={choice}
                   onCheck={(k, v) => setChecked((c) => ({ ...c, [k]: v }))} onChoose={(k, i) => setChoice((c) => ({ ...c, [k]: i }))} />
@@ -149,7 +149,7 @@ export default function DocBox({ req, biz, busy, onLink, onApply }: Props) {
       ) : (
         <div className="flex items-center gap-2">
           <button type="button" disabled={!linked} onClick={() => setApplying(true)} className={BTN2}>업체정보에 반영…</button>
-          {!linked && <span className="text-xs text-gray-500">DB 연결 후 가능</span>}
+          {!linked && <span className="text-xs text-slate-500">DB 연결 후 가능</span>}
         </div>
       ))}
     </section>

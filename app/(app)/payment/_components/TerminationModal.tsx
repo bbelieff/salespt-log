@@ -62,16 +62,16 @@ export default function TerminationModal({ cp, pending, onClose, onConfirm }: Pr
       dirty={dirty}
       className="rounded-xl bg-white p-5 shadow-xl"
     >
-        <h3 className="mb-1 text-base font-semibold text-gray-900">
+        <h3 className="mb-1 text-base font-semibold text-slate-900">
           이 계약을 해지할까요?
         </h3>
-        <p className="mb-3 text-sm leading-relaxed text-gray-600">
+        <p className="mb-3 text-sm leading-relaxed text-slate-600">
           <b>{cp.업체명 || "(업체명 없음)"}</b> 계약을 해지 처리해요.
           <br />
-          <span className="text-gray-500">반환한 금액만 매출에서 빠져요.</span>
+          <span className="text-slate-500">반환한 금액만 매출에서 빠져요.</span>
         </p>
 
-        <label className="mb-1 block text-xs font-medium text-gray-700">
+        <label className="mb-1 block text-xs font-medium text-slate-700">
           해지 사유 <span className="text-red-500">*</span>
         </label>
         <textarea
@@ -79,11 +79,11 @@ export default function TerminationModal({ cp, pending, onClose, onConfirm }: Pr
           onChange={(e) => set사유(e.target.value)}
           rows={2}
           placeholder="예: 고객 요청으로 계약 취소, 환불 완료"
-          className="mb-3 w-full rounded-lg border border-gray-300 p-2 text-sm focus:border-gray-500 focus:outline-none"
+          className="mb-3 w-full rounded-lg border border-slate-300 p-2 text-sm focus:border-slate-500 focus:outline-none"
         />
 
-        <div className="mb-1 text-xs font-medium text-gray-700">반환(환불)</div>
-        <div className="mb-3 space-y-1.5 text-sm text-gray-700">
+        <div className="mb-1 text-xs font-medium text-slate-700">반환(환불)</div>
+        <div className="mb-3 space-y-1.5 text-sm text-slate-700">
           {(
             [
               ["none", "없음"],
@@ -108,13 +108,13 @@ export default function TerminationModal({ cp, pending, onClose, onConfirm }: Pr
               onChange={setPartial}
               placeholder="반환 금액 (원)"
               aria-label="반환 금액"
-              className="ml-6 w-40 rounded-lg border border-gray-300 p-2 text-sm focus:border-gray-500 focus:outline-none"
+              className="ml-6 w-40 rounded-lg border border-slate-300 p-2 text-sm focus:border-slate-500 focus:outline-none"
             />
           )}
         </div>
 
-        <div className="mb-1 text-xs font-medium text-gray-700">처리 방법</div>
-        <div className="mb-4 space-y-1.5 text-sm text-gray-700">
+        <div className="mb-1 text-xs font-medium text-slate-700">처리 방법</div>
+        <div className="mb-4 space-y-1.5 text-sm text-slate-700">
           <label className="flex cursor-pointer items-start gap-2">
             <input
               type="radio"
@@ -126,7 +126,7 @@ export default function TerminationModal({ cp, pending, onClose, onConfirm }: Pr
             <span>
               해지 상태로 보관
               <br />
-              <span className="text-xs text-gray-500">카드가 ‘해지’ 표시로 남아요</span>
+              <span className="text-xs text-slate-500">카드가 ‘해지’ 표시로 남아요</span>
             </span>
           </label>
           <label className="flex cursor-pointer items-start gap-2">
@@ -140,7 +140,7 @@ export default function TerminationModal({ cp, pending, onClose, onConfirm }: Pr
             <span>
               목록에서 숨기기
               <br />
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-slate-500">
                 기록·반환 금액 반영은 유지되고 카드만 숨겨요
               </span>
             </span>
@@ -151,7 +151,7 @@ export default function TerminationModal({ cp, pending, onClose, onConfirm }: Pr
 
         <div className="flex gap-2">
           <AppDialogClose
-            className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             취소
           </AppDialogClose>

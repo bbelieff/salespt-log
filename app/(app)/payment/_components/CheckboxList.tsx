@@ -58,7 +58,7 @@ function renderItem(
       className={`flex cursor-pointer items-center gap-1.5 rounded-lg border px-2 py-2 transition-all ${
         checked
           ? "border-blue-300 bg-blue-50"
-          : "border-gray-200 bg-white hover:border-gray-300"
+          : "border-slate-200 bg-white hover:border-slate-300"
       }`}
     >
       <input
@@ -70,7 +70,7 @@ function renderItem(
       <span className="shrink-0 text-base leading-none">{it.emoji}</span>
       <span
         className={`flex-1 truncate text-xs ${
-          checked ? "font-semibold text-blue-800" : "text-gray-700"
+          checked ? "font-semibold text-blue-800" : "text-slate-700"
         }`}
       >
         {it.label}
@@ -91,7 +91,7 @@ export default function CheckboxList({ draft, onChange, compact = false }: Props
   return (
     <div className="grid gap-2.5 min-[1500px]:grid-cols-2">
       <div className="min-w-0">
-        <div className="mb-1.5 text-px-11 font-semibold uppercase tracking-wider text-gray-500">
+        <div className="mb-1.5 text-px-11 font-semibold uppercase tracking-wider text-slate-500">
           수집
         </div>
         <div className="grid grid-cols-3 gap-1.5">
@@ -99,7 +99,7 @@ export default function CheckboxList({ draft, onChange, compact = false }: Props
         </div>
       </div>
       <div className="min-w-0">
-        <div className="mb-1.5 text-px-11 font-semibold uppercase tracking-wider text-gray-500">
+        <div className="mb-1.5 text-px-11 font-semibold uppercase tracking-wider text-slate-500">
           진행
         </div>
         <div className="grid grid-cols-3 gap-1.5">

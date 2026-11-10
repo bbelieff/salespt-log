@@ -54,7 +54,7 @@ export default function MonthGrid({
           <div
             key={h}
             className={`py-1.5 text-center text-xs font-semibold ${
-              i === 0 ? "text-red-500" : i === 6 ? "text-blue-500" : "text-gray-500"
+              i === 0 ? "text-red-500" : i === 6 ? "text-blue-500" : "text-slate-500"
             }`}
           >
             {h}
@@ -91,15 +91,15 @@ export default function MonthGrid({
               ? "bg-blue-50/60 ring-1 ring-blue-300"
               : hasItems
                 ? "bg-white"
-                : "bg-gray-50";
+                : "bg-slate-50";
 
           const dayCls = dimmed
-            ? "text-gray-300"
+            ? "text-slate-300"
             : c.dow === 0
               ? "text-red-500"
               : c.dow === 6
                 ? "text-blue-500"
-                : "text-gray-800";
+                : "text-slate-800";
 
           return (
             <button
@@ -149,7 +149,7 @@ export default function MonthGrid({
                     );
                   })}
                   {overflow > 0 && (
-                    <div className="text-center text-px-10 font-semibold leading-tight text-gray-500">
+                    <div className="text-center text-px-10 font-semibold leading-tight text-slate-500">
                       +{overflow}
                     </div>
                   )}

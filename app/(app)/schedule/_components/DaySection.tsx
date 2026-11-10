@@ -69,8 +69,8 @@ export default function DaySection({
     ? "text-blue-700"
     : isWeekend
       ? "text-red-500"
-      : "text-gray-500";
-  const dateCls = isToday ? "text-blue-900" : "text-gray-900";
+      : "text-slate-500";
+  const dateCls = isToday ? "text-blue-900" : "text-slate-900";
 
   return (
     <section
@@ -82,7 +82,7 @@ export default function DaySection({
         className={`mb-2.5 flex items-center gap-2 border-b ${
           isToday
             ? "border-blue-600/25"
-            : "border-dashed border-gray-200"
+            : "border-dashed border-slate-200"
         } pb-2`}
       >
         <span className={`text-sm font-bold ${dateCls}`}>{fmtMD(d)}</span>
@@ -90,13 +90,13 @@ export default function DaySection({
           ({dayLabelKO(d)})
         </span>
         {isToday && (
-          <span className="inline-flex items-center rounded-full bg-blue-600 px-2 py-0.5 text-px-10 font-bold text-white shadow">
+          <span className="inline-flex items-center rounded-full bg-blue-700 px-2 py-0.5 text-px-10 font-bold text-white shadow">
             오늘
           </span>
         )}
         <span
           className={`ml-auto text-xs ${
-            isToday ? "font-semibold text-blue-700" : "text-gray-400"
+            isToday ? "font-semibold text-blue-700" : "text-slate-400"
           }`}
         >
           {meetings.length > 0 ? `${meetings.length}건` : ""}
@@ -104,8 +104,8 @@ export default function DaySection({
       </header>
 
       {meetings.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-200 bg-gray-50 px-4 py-2 text-center">
-          <span className="text-px-11 text-gray-400">미팅 없음</span>
+        <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-2 text-center">
+          <span className="text-px-11 text-slate-400">미팅 없음</span>
         </div>
       ) : (
         meetings.map((m) => (

@@ -115,7 +115,7 @@ export default function LinkedFieldsEditor({ cp, initiallyEditing = false, compa
         <button
           type="button"
           onClick={() => setEditing(true)}
-          className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+          className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
         >
           ✎ 계약정보 수정
         </button>
@@ -123,9 +123,9 @@ export default function LinkedFieldsEditor({ cp, initiallyEditing = false, compa
     );
   }
 
-  const label = "mb-1 block text-xs font-medium text-gray-600";
+  const label = "mb-1 block text-xs font-medium text-slate-600";
   const input =
-    "w-full rounded-lg border border-gray-300 bg-white px-2.5 py-1.5 text-sm focus:border-blue-500 focus:outline-none";
+    "w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm focus:border-blue-500 focus:outline-none";
   return (
     <div
       data-payment-linked-compact={compactMobile ? "" : undefined}
@@ -154,7 +154,7 @@ export default function LinkedFieldsEditor({ cp, initiallyEditing = false, compa
             onClick={() => setEditing(false)}
             disabled={dirty}
             title={dirty ? "저장되지 않은 변경이 있어요" : "접기"}
-            className="rounded px-1.5 py-0.5 text-px-11 font-medium text-gray-400 hover:bg-white hover:text-gray-600 disabled:opacity-40"
+            className="rounded px-1.5 py-0.5 text-px-11 font-medium text-slate-400 hover:bg-white hover:text-slate-600 disabled:opacity-40"
           >
             접기
           </button>}
@@ -190,7 +190,7 @@ export default function LinkedFieldsEditor({ cp, initiallyEditing = false, compa
           />
         </div>
       </div>
-      <p data-payment-linked-note className="mt-2 text-px-11 leading-tight text-gray-500">
+      <p data-payment-linked-note className="mt-2 text-px-11 leading-tight text-slate-500">
         업체명·수임비는 일정·계약 미팅과 시트에 함께 반영돼요. 계약일은 이 계약카드에만 적용돼요
         (미팅 날짜·달력·주차 통계는 그대로).
       </p>

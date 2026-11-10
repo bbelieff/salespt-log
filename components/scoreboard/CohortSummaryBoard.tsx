@@ -29,17 +29,17 @@ export default function CohortSummaryBoard({
 
   if (ranked.length === 0) {
     return (
-      <div className="rounded-xl border border-gray-100 bg-gray-50 p-8 text-center text-sm text-gray-400">
+      <div className="rounded-xl border border-slate-100 bg-slate-50 p-8 text-center text-sm text-slate-400">
         집계할 입금자가 없어요.
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-100">
+    <div className="overflow-hidden rounded-2xl border border-slate-100">
       <table className="w-full border-collapse text-center text-sm">
         <thead>
-          <tr className="bg-gray-50 text-gray-500">
+          <tr className="bg-slate-50 text-slate-500">
             <th className="px-2 py-2 text-left font-bold">순위 · 기수</th>
             {METRICS.map((m) => (
               <th
@@ -59,7 +59,7 @@ export default function CohortSummaryBoard({
             return (
               <tr
                 key={c.cohort}
-                className={`border-t border-gray-50 ${
+                className={`border-t border-slate-50 ${
                   top ? "bg-purple-50" : ""
                 }`}
               >
@@ -68,19 +68,19 @@ export default function CohortSummaryBoard({
                     className={`mr-1.5 inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-black ${
                       top
                         ? "bg-purple-600 text-white"
-                        : "bg-gray-100 text-gray-500"
+                        : "bg-slate-100 text-slate-500"
                     }`}
                   >
                     {i + 1}
                   </span>
                   <span
                     className={`font-black ${
-                      top ? "text-purple-800" : "text-gray-800"
+                      top ? "text-purple-800" : "text-slate-800"
                     }`}
                   >
                     {c.cohort}기
                   </span>
-                  <span className="ml-1 text-px-11 font-bold text-gray-400">
+                  <span className="ml-1 text-px-11 font-bold text-slate-400">
                     {c.paidMembers}명
                   </span>
                 </td>
@@ -90,7 +90,7 @@ export default function CohortSummaryBoard({
                     className={`px-2 py-2.5 tabular-nums ${
                       m === "계약"
                         ? "text-base font-black text-purple-700"
-                        : "font-bold text-gray-700"
+                        : "font-bold text-slate-700"
                     }`}
                   >
                     {c.total[m].toFixed(1)}

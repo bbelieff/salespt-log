@@ -18,7 +18,7 @@ export default function GoalCompactMetrics({ goals, actuals, metrics }: {
     const percent = goal === null || goal === 0 ? null : Math.round(actual / goal * 100);
     const status = goal === null ? "미설정" : goal === 0 ? "목표 0" : actual >= goal ? (actual > goal ? `+${actual - goal} 초과` : "달성") : `${percent}%`;
     return <div key={key} aria-label={`${GOAL_LABELS[key]} 실적 ${actual}, 목표 ${goal ?? "미설정"}, ${status}`}
-      className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 ${goal === null ? "border-gray-200 bg-gray-50 text-gray-500" : tones[key]}`}>
+      className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 ${goal === null ? "border-slate-200 bg-slate-50 text-slate-500" : tones[key]}`}>
       <span className="font-medium">{GOAL_LABELS[key]}</span>
       <span className="tabular-nums"><strong className="font-bold">{actual}</strong><span className="opacity-60"> / {goal ?? "—"}</span></span>
       <span className="flex items-center gap-0.5 border-l border-current pl-1.5 font-semibold tabular-nums">

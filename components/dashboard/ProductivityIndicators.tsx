@@ -61,7 +61,7 @@ export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS, cl
     <section className={`rounded-2xl border border-slate-200 bg-white p-3 shadow-sm ${className}`}>
       <div className="mb-2 flex items-center gap-2">
         <span className="h-5 w-1 rounded-full bg-indigo-500" />
-        <h2 className="text-base font-extrabold text-gray-900">생산성 지표</h2>
+        <h2 className="text-base font-extrabold text-slate-900">생산성 지표</h2>
         <HintTooltip label="생산성 지표 계산 안내" text="각 항목의 도착 단계 건수 ÷ 시작 단계 건수입니다. 아래에 실제 건수를 표시하며, 분모가 0이면 계산할 기록이 없어 —로 표시합니다." />
         <span className="ml-auto text-px-11 text-slate-600">{weeks}주 누적</span>
       </div>
@@ -168,7 +168,7 @@ function Row({
       <div className="mb-1 flex items-center justify-between gap-2">
         {/* 좁은 화면에서는 흐름 설명이 이름 아래로 내려간다(잘림 방지, 2026-11-07). */}
         <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5">
-          <span className="shrink-0 whitespace-nowrap text-px-12 font-semibold text-gray-700">{label}</span>
+          <span className="shrink-0 whitespace-nowrap text-px-12 font-semibold text-slate-700">{label}</span>
           <span className="min-w-0 truncate text-px-11 text-slate-500" title={formula}>{formula}</span>
         </div>
         <span
@@ -179,7 +179,7 @@ function Row({
         </span>
       </div>
       <div className="flex items-center gap-2">
-        <div className="h-1 min-w-0 flex-1 rounded-full bg-gray-100">
+        <div className="h-1 min-w-0 flex-1 rounded-full bg-slate-100">
           <div
             className={`h-full rounded-full ${barCls} ${play ? "fx-grow-x" : ""}`}
             style={{ width: `${Math.max(0, Math.min(100, value))}%`, animationDelay: `${order * 120}ms` }}

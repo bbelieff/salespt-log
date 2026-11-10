@@ -86,8 +86,8 @@ export default function FunnelChart({ matrix, weeks = STATS_WEEKS }: Props) {
       {/* 섹션 제목 */}
       <div className="mb-2 flex items-center gap-2">
         <span className="h-5 w-1 rounded-full bg-blue-500" />
-        <h2 className="text-base font-extrabold text-gray-900">영업 퍼널</h2>
-        <span className="ml-auto text-xs text-gray-400">{weeks}주 누적</span>
+        <h2 className="text-base font-extrabold text-slate-900">영업 퍼널</h2>
+        <span className="ml-auto text-xs text-slate-400">{weeks}주 누적</span>
       </div>
 
       {/* chart-fill: 데스크탑(.desktop-shell, globals.css ④)에서는 카드의 남은 높이를 차트가
@@ -201,7 +201,7 @@ export default function FunnelChart({ matrix, weeks = STATS_WEEKS }: Props) {
       </div>
 
       {/* 채널 범례 */}
-      <div className="mt-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-gray-600">
+      <div className="mt-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs text-slate-600">
         {CH_ORDER.map((ch) => (
           <span key={ch} className="flex items-center gap-1">
             <span

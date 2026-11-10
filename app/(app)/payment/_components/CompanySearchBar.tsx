@@ -30,11 +30,11 @@ export default function CompanySearchBar({ value, onChange, matchCount, total, p
   </div>;
   return (
     <div className="sticky top-app-content z-30 mb-3 min-[1280px]:static min-[1280px]:mb-0 min-[1280px]:min-w-[180px] min-[1280px]:max-w-[360px] min-[1280px]:flex-1">
-      <div className="rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm min-[1280px]:py-1">
+      <div className="rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-sm min-[1280px]:py-1">
         <div className="flex items-center gap-2">
           {/* 돋보기 — 기존 인라인 svg 아이콘 세트 패턴 */}
           <svg
-            className="h-4 w-4 shrink-0 text-gray-400"
+            className="h-4 w-4 shrink-0 text-slate-400"
             fill="none"
             stroke="currentColor"
             strokeWidth={2}
@@ -52,25 +52,25 @@ export default function CompanySearchBar({ value, onChange, matchCount, total, p
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
             aria-label={placeholder}
-            className="h-8 min-w-0 flex-1 bg-transparent text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none min-[1280px]:h-6"
+            className="h-8 min-w-0 flex-1 bg-transparent text-sm text-slate-900 placeholder:text-slate-300 focus:outline-none min-[1280px]:h-6"
           />
           {active && (
             <>
-              <span className="shrink-0 text-xs font-semibold text-gray-500">
+              <span className="shrink-0 text-xs font-semibold text-slate-500">
                 {matchCount}{matchUnit} 일치
               </span>
               <button
                 type="button"
                 onClick={() => onChange("")}
                 aria-label="검색 초기화"
-                className="shrink-0 rounded-full px-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                className="shrink-0 rounded-full px-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
               >
                 ✕
               </button>
             </>
           )}
           {!active && total > 0 && (
-            <span className="shrink-0 text-xs text-gray-300">{total}{unit}</span>
+            <span className="shrink-0 text-xs text-slate-300">{total}{unit}</span>
           )}
         </div>
       </div>

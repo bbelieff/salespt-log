@@ -82,7 +82,7 @@ const api = {
 const html = '<!doctype html><html lang="ko"><meta charset="utf-8">'
   + '<meta name="viewport" content="width=device-width, initial-scale=1">'
   + '<link rel="stylesheet" href="/font.css"><link rel="stylesheet" href="/style.css">'
-  + '<body class="min-h-dvh bg-gray-50 font-sans text-slate-900 antialiased">'
+  + '<body class="min-h-dvh bg-slate-50 font-sans text-slate-900 antialiased">'
   + '<div id="root"></div><script src="/app.js"></script></body></html>';
 
 const server = createServer(async (req, res) => {

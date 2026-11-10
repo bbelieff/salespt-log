@@ -68,17 +68,17 @@ export default function AddMeetingForm({
       <div className="flex items-center gap-1 text-xs font-bold text-blue-800">
         ➕ 추가 미팅 — {vendor}
       </div>
-      <div className="text-xs text-gray-600">
+      <div className="text-xs text-slate-600">
         같은 업체로 새 예약 카드 생성 (채널/장소 동일, 상태=예약).
       </div>
 
       <div className="flex gap-2">
         <div className="shrink-0" style={{ width: 130 }}>
-          <label className="mb-1 block text-xs text-gray-600">새 날짜</label>
+          <label className="mb-1 block text-xs text-slate-600">새 날짜</label>
           <DateInputCustom value={newDate} min={minDate} onChange={setNewDate} ariaLabel="새 날짜" compact />
         </div>
         <div className="min-w-0 flex-1">
-          <label className="mb-1 block text-xs text-gray-600">새 시간</label>
+          <label className="mb-1 block text-xs text-slate-600">새 시간</label>
           <TimePicker15 value={newTime} onChange={setNewTime} />
         </div>
       </div>
@@ -94,7 +94,7 @@ export default function AddMeetingForm({
           type="button"
           onClick={onCancel}
           disabled={pending}
-          className="rounded-lg border border-gray-300 bg-white py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          className="rounded-lg border border-slate-300 bg-white py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
         >
           취소
         </button>
@@ -102,7 +102,7 @@ export default function AddMeetingForm({
           type="button"
           onClick={submit}
           disabled={pending}
-          className="rounded-lg bg-blue-500 py-2 text-sm font-bold text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-gray-300"
+          className="rounded-lg bg-blue-700 py-2 text-sm font-bold text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
           {pending ? "저장중.." : "➕ 추가 확정"}
         </button>

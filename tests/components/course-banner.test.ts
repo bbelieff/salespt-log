@@ -62,7 +62,7 @@ describe("DashboardProgressBanner — 수료 후 N주 표시", () => {
     const html = renderToStaticMarkup(React.createElement(DashboardProgressBanner, { ...base, graduated: true, weeksAfterGraduation: 2 }));
     expect(html).toContain("수료 후 2주");
     // 수료하면 진행바·시작·진행률·종강총회 줄은 뺀다(belie 2026-11-08)
-    for (const gone of ["8/7 시작", "진행</span>", "종강총회", "bg-slate-100"]) expect(html).not.toContain(gone);
+    for (const gone of ["8/7 시작", "진행</span>", "종강총회", "h-1.5 rounded-full bg-slate-100"]) expect(html).not.toContain(gone);
   });
   it("수료 전에는 'N주차 진행중'", () => {
     const html = renderToStaticMarkup(React.createElement(DashboardProgressBanner, { ...base, graduated: false, weeksAfterGraduation: 0 }));

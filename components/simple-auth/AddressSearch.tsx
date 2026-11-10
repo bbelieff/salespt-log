@@ -43,7 +43,7 @@ export default function AddressSearch({ id, value, onChange, invalid }: { id: st
   }
   if (!value) return (
     <div className="mt-1">
-      <button id={id} type="button" onClick={open} className="flex w-full items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-left text-base text-gray-500 hover:bg-gray-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500" {...invalid}>
+      <button id={id} type="button" onClick={open} className="flex w-full items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-base text-slate-500 hover:bg-slate-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500" {...invalid}>
         <MapPin className="h-4 w-4 shrink-0" aria-hidden />도로명주소 검색
       </button>
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
@@ -57,7 +57,7 @@ export default function AddressSearch({ id, value, onChange, invalid }: { id: st
         <button type="button" onClick={() => onChange(null)} aria-label="주소 지우고 다시 찾기" className="rounded p-0.5 text-blue-700 hover:bg-blue-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"><X className="h-4 w-4" aria-hidden /></button>
       </div>
       <input value={value.detail} onChange={(e) => onChange({ ...value, detail: e.target.value.slice(0, 100) })} placeholder="상세주소 (동·호수)" aria-label="상세주소"
-        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base focus:border-blue-500 focus:outline-none" />
+        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base focus:border-blue-500 focus:outline-none" />
     </div>
   );
 }

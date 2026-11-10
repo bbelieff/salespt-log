@@ -195,7 +195,7 @@ export default function DriveLinkBar({ renderTrigger, mobileExpanded }: Props = 
               </p>
               {saEmail && (
                 <div className="mb-2 flex items-center gap-1.5">
-                  <code className="min-w-0 flex-1 truncate rounded bg-white px-2 py-1 text-px-11 text-gray-800">
+                  <code className="min-w-0 flex-1 truncate rounded bg-white px-2 py-1 text-px-11 text-slate-800">
                     {saEmail}
                   </code>
                   <button

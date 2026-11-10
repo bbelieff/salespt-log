@@ -64,7 +64,7 @@ export function SectionPending({
   return (
     <section>
       {pending.length === 0 ? (
-        <p className="rounded-xl border border-gray-100 bg-white p-3 text-center text-sm text-gray-400">
+        <p className="rounded-xl border border-slate-100 bg-white p-3 text-center text-sm text-slate-400">
           대기 중 요청 없음.
         </p>
       ) : (
@@ -75,10 +75,10 @@ export function SectionPending({
               className="flex items-center justify-between rounded-xl border border-amber-200 bg-amber-50 p-4"
             >
               <div className="min-w-0">
-                <div className="truncate text-sm font-bold text-gray-900">
+                <div className="truncate text-sm font-bold text-slate-900">
                   {t.name || t.email}
                 </div>
-                <div className="truncate text-px-11 text-gray-500">{t.email}</div>
+                <div className="truncate text-px-11 text-slate-500">{t.email}</div>
               </div>
               <div className="flex shrink-0 gap-2">
                 <button
@@ -93,7 +93,7 @@ export function SectionPending({
                   type="button"
                   disabled={busy !== null}
                   onClick={() => onReject(t.email)}
-                  className="rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                 >
                   {busy === `reject:${t.email}` ? "..." : "거절"}
                 </button>
@@ -134,7 +134,7 @@ export function SectionAssign({
   return (
     <section>
       {trainers.length === 0 ? (
-        <p className="rounded-xl border border-gray-100 bg-white p-3 text-center text-sm text-gray-400">
+        <p className="rounded-xl border border-slate-100 bg-white p-3 text-center text-sm text-slate-400">
           활성 트레이너가 없습니다. 요청관리에서 먼저 승인하세요.
         </p>
       ) : (
@@ -187,35 +187,35 @@ export function SectionTraineeList({
   const resolveTrainerName = (e: string) =>
     nameByEmail.get(e.toLowerCase()) ?? e;
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-4">
-      <h2 className="mb-4 text-base font-bold text-gray-900">
+    <section className="rounded-2xl border border-slate-200 bg-white p-4">
+      <h2 className="mb-4 text-base font-bold text-slate-900">
         수강생 명단확인 ({trainees.length})
       </h2>
       <div className="space-y-2">
         {grouped.map(([cohort, list]) => (
           <details
             key={cohort}
-            className="group overflow-hidden rounded-xl border border-gray-200 bg-white open:bg-gray-50"
+            className="group overflow-hidden rounded-xl border border-slate-200 bg-white open:bg-slate-50"
           >
-            <summary className="disclosure-summary flex cursor-pointer items-center justify-between gap-3 px-4 py-3 hover:bg-gray-50">
-              <span className="text-sm font-bold text-gray-900">
+            <summary className="disclosure-summary flex cursor-pointer items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50">
+              <span className="text-sm font-bold text-slate-900">
                 {cohort === "—" ? "미분류" : `${cohort}기`} · {list.length}명
               </span>
-              <DisclosureChevron className="text-gray-400" />
+              <DisclosureChevron className="text-slate-400" />
             </summary>
-            <div className="border-t border-gray-100 p-3">
+            <div className="border-t border-slate-100 p-3">
               <ul className="ml-3 space-y-1 text-xs">
                 {list.map((s) => {
                   const assigned = parseAssigned(s.assignedTrainer);
                   const names = assigned.map(resolveTrainerName);
                   return (
                     <li key={s.email}>
-                      <div className="text-gray-800">
+                      <div className="text-slate-800">
                         ㄴ <span className="font-semibold">{s.name || s.email}</span>
                         {s.captainOf ? <span title="회장"> 👑</span> : null}{" "}
-                        <span className="text-gray-400">({s.email})</span>
+                        <span className="text-slate-400">({s.email})</span>
                       </div>
-                      <div className="ml-4 text-px-10 text-gray-500">
+                      <div className="ml-4 text-px-10 text-slate-500">
                         {names.length > 0 ? `담당: ${names.join(", ")}` : "미배정"}
                       </div>
                     </li>

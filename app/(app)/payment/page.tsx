@@ -380,7 +380,7 @@ export default function PaymentPage() {
             불러오지 못했어요. 잠시 후 다시 시도해 주세요.
           </div>
         ) : rows.length === 0 ? (<div className="space-y-3 min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:overflow-y-auto">{standaloneAdd}
-          <div className="rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-gray-400">
+          <div className="rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-400">
             아직 계약이 없어요. 일정·계약 탭에서 미팅을 ‘계약’으로 처리하면 자동으로 추가되고, 위 버튼으로 바로 추가할 수도 있어요.
           </div>
           <TerminationArchive contracts={archivedRows} />

@@ -43,12 +43,12 @@ export default function AdminSideNav({
     href === "/admin" ? pathname === "/admin" : pathname === href || pathname.startsWith(`${href}/`);
 
   return (
-    <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col border-r border-gray-200 bg-white pc:flex">
-      <div className="border-b border-gray-100 px-5 py-4">
+    <aside className="sticky top-0 hidden h-dvh w-56 shrink-0 flex-col border-r border-slate-200 bg-white pc:flex">
+      <div className="border-b border-slate-100 px-5 py-4">
         <div className="text-xs font-bold uppercase tracking-wider text-red-600">
           {isMaster ? "Master" : "관리부서"}
         </div>
-        <div className="mt-0.5 truncate text-sm font-semibold text-gray-900" title={sessionEmail}>
+        <div className="mt-0.5 truncate text-sm font-semibold text-slate-900" title={sessionEmail}>
           {sessionEmail}
         </div>
       </div>
@@ -63,7 +63,7 @@ export default function AdminSideNav({
                 href={it.href}
                 aria-current={on ? "page" : undefined}
                 className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold ${
-                  on ? "bg-red-50 text-red-700" : "text-gray-700 hover:bg-gray-50"
+                  on ? "bg-red-50 text-red-700" : "text-slate-700 hover:bg-slate-50"
                 }`}
               >
                 <span aria-hidden>{it.icon}</span>
@@ -81,10 +81,10 @@ export default function AdminSideNav({
           })}
         {isMaster && (
           <>
-            <div className="px-3 pb-1 pt-4 text-px-11 font-bold text-gray-400">바로가기</div>
+            <div className="px-3 pb-1 pt-4 text-px-11 font-bold text-slate-400">바로가기</div>
             <Link
               href="/trainer"
-              className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50"
+              className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
             >
               <span aria-hidden>📊</span>
               <span>트레이너 페이지</span>
@@ -92,7 +92,7 @@ export default function AdminSideNav({
           </>
         )}
       </nav>
-      <div className="border-t border-gray-100 px-5 py-3">
+      <div className="border-t border-slate-100 px-5 py-3">
         <LogoutButton />
       </div>
     </aside>

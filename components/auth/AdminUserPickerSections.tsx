@@ -149,25 +149,25 @@ export function CohortSection({
     >
       <summary className="disclosure-summary flex cursor-pointer flex-wrap items-baseline gap-x-2 gap-y-0.5 border-l-4 border-indigo-500 bg-slate-50 px-4 py-3 group-open:bg-white hover:bg-slate-100">
         <DisclosureChevron className="text-indigo-500" />
-        <span className="text-base font-black tracking-tight text-gray-900">
+        <span className="text-base font-black tracking-tight text-slate-900">
           {cohort === "—" ? "미분류" : `${cohort}기`}
         </span>
         <span className="text-xs font-bold text-indigo-700">
           · {list.length}명
         </span>
         {archived && (
-          <span className="ml-0.5 rounded-full bg-gray-200 px-1.5 py-0.5 text-px-10 font-bold text-gray-600">
+          <span className="ml-0.5 rounded-full bg-slate-200 px-1.5 py-0.5 text-px-10 font-bold text-slate-600">
             보관
           </span>
         )}
         {start && end && (
-          <span className="ml-1 text-xs font-medium text-gray-500">
-            개강 <span className="font-bold text-gray-800">{start}</span>{" "}
-            ~ 종강 <span className="font-bold text-gray-800">{end}</span>
+          <span className="ml-1 text-xs font-medium text-slate-500">
+            개강 <span className="font-bold text-slate-800">{start}</span>{" "}
+            ~ 종강 <span className="font-bold text-slate-800">{end}</span>
             {pct !== null && (
               <>
                 {" · "}진행률{" "}
-                <span className="font-bold text-gray-800">{pct}%</span>
+                <span className="font-bold text-slate-800">{pct}%</span>
                 {dday !== null && (
                   <span className="ml-1 rounded-md bg-red-50 px-1.5 py-0.5 font-black text-brand-red">
                     D{dday >= 0 ? "-" : "+"}
@@ -237,7 +237,7 @@ function CohortBody({
 }) {
   const { unassigned, teamGroups } = groupByTeam(list);
   return (
-    <div className="space-y-2 border-t border-gray-100 px-4 py-2">
+    <div className="space-y-2 border-t border-slate-100 px-4 py-2">
       {/* 미배정 trainees — 팀 제목 없이 줄 목록. PR C-1: 박스 단위 dnd. */}
       <SortableTraineeBox
         members={unassigned}
@@ -265,7 +265,7 @@ function CohortBody({
         >
           {/* 2026-10-26 박스 다이어트: 팀은 상자 대신 제목 줄 + 아래 선(상자 2단 = 기수 박스까지). */}
           <summary className="cursor-pointer border-b border-indigo-200 py-1.5 text-px-11 font-bold text-indigo-700 hover:text-indigo-900">
-            {teamName} <span className="font-medium text-gray-400">{members.length}명</span>
+            {teamName} <span className="font-medium text-slate-400">{members.length}명</span>
           </summary>
           <div>
             <SortableTraineeBox
@@ -328,7 +328,7 @@ export function ReservedSection({
         <DisclosureChevron className="text-amber-500" />
       </summary>
       <div className="space-y-2 border-t border-amber-200 px-4 py-4">
-        <p className="mb-2 text-px-11 text-gray-500">
+        <p className="mb-2 text-px-11 text-slate-500">
           명단에서 숨겨진 수강생. 복귀 시 정규 기수 그룹으로 돌아갑니다.
           퇴출하면 등록 정보만 완전히 지워져요(개인 시트·권한은 그대로).
         </p>
@@ -346,14 +346,14 @@ export function ReservedSection({
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                  <span className="text-sm font-black text-gray-900">
+                  <span className="text-sm font-black text-slate-900">
                     {u.name || "(이름 없음)"}
                   </span>
-                  <span className="text-px-11 text-gray-400">{u.email}</span>
+                  <span className="text-px-11 text-slate-400">{u.email}</span>
                   <LinkedAccountsBadge siblings={siblingEmails(u, linkedBySheet)} />
                 </div>
-                <div className="mt-1.5 text-px-11 text-gray-600">
-                  <span className="text-gray-400">담당</span>{" "}
+                <div className="mt-1.5 text-px-11 text-slate-600">
+                  <span className="text-slate-400">담당</span>{" "}
                   <span className="font-semibold">{trainerNames}</span>
                 </div>
               </div>
@@ -362,7 +362,7 @@ export function ReservedSection({
                   <Link
                     href={adminGoalHref}
                     title="주간 목표·PT과제 열기"
-                    className="rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
+                    className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50"
                   >
                     주간목표
                   </Link>
@@ -389,7 +389,7 @@ export function ReservedSection({
                       onClick={() => onPick(u.email)}
                       disabled={busy !== null}
                       title="이 수강생 화면으로 보기"
-                      className="rounded-full bg-gray-900 px-3 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
+                      className="rounded-full bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
                     >
                       {busy === u.email ? "여는 중..." : "웹앱 →"}
                     </button>
@@ -453,14 +453,14 @@ export function PendingTraineesSection({
           >
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                <span className="text-sm font-black text-gray-900">
+                <span className="text-sm font-black text-slate-900">
                   {u.name || "(이름 없음)"}
                 </span>
-                <span className="text-px-11 text-gray-400">{u.email}</span>
+                <span className="text-px-11 text-slate-400">{u.email}</span>
                 <LinkedAccountsBadge siblings={siblingEmails(u, linkedBySheet)} />
               </div>
-              <div className="mt-1.5 text-px-11 text-gray-600">
-                <span className="text-gray-400">기수</span>{" "}
+              <div className="mt-1.5 text-px-11 text-slate-600">
+                <span className="text-slate-400">기수</span>{" "}
                 <span className="font-semibold">{u.cohort || "—"}</span>
               </div>
             </div>
@@ -478,7 +478,7 @@ export function PendingTraineesSection({
                   type="button"
                   onClick={() => onReject(u.email, u.name)}
                   disabled={busy !== null}
-                  className="rounded-full border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  className="rounded-full border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                 >
                   거절
                 </button>

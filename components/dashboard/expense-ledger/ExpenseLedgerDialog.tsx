@@ -41,7 +41,7 @@ interface Props {
 type Workspace = "record" | "view";
 type CostKind = "one_time" | "recurring";
 
-const fieldClass = "mt-1 min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-sm text-gray-900 focus:border-blue-500 focus:outline-none";
+const fieldClass = "mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none";
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const currentMonth = () => today().slice(0, 7);
 const shiftMonth = (month: string, delta: number) => {
@@ -255,9 +255,9 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/40 pc:items-start pc:overflow-y-auto pc:p-6" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}>
       <section role="dialog" aria-modal="true" aria-labelledby="expense-ledger-title" className="flex h-screen w-full max-w-3xl flex-col overflow-hidden bg-slate-50 shadow-xl pc:my-4 pc:h-auto pc:max-h-screen pc:rounded-2xl">
-        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-gray-100 bg-white px-4 py-3 pc:px-6">
-          <div className="min-w-0"><h2 id="expense-ledger-title" className="text-base font-black text-gray-900">비용 원장</h2><p className="truncate text-xs text-gray-500">부가세 제외 금액 · {periodLabel ? `요약 기간: ${periodLabel}` : "기록부터 관리까지 한곳에서"}</p></div>
-          <button ref={closeRef} type="button" onClick={onClose} aria-label="비용 원장 닫기" className="min-h-11 min-w-11 rounded-full text-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700">×</button>
+        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-100 bg-white px-4 py-3 pc:px-6">
+          <div className="min-w-0"><h2 id="expense-ledger-title" className="text-base font-black text-slate-900">비용 원장</h2><p className="truncate text-xs text-slate-500">부가세 제외 금액 · {periodLabel ? `요약 기간: ${periodLabel}` : "기록부터 관리까지 한곳에서"}</p></div>
+          <button ref={closeRef} type="button" onClick={onClose} aria-label="비용 원장 닫기" className="min-h-11 min-w-11 rounded-full text-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700">×</button>
         </header>
 
         <div className="shrink-0 bg-white px-3 pb-3 pc:px-6">
@@ -268,7 +268,7 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
           </div>
           <nav role="tablist" aria-label="비용 원장 작업" className="mt-3 grid grid-cols-2 rounded-xl bg-slate-100 p-1">
             {(["record", "view"] as const).map((value) => (
-              <button key={value} type="button" role="tab" aria-selected={workspace === value} aria-controls={value === "record" ? "expense-record-panel" : "expense-view-panel"} onClick={() => setWorkspace(value)} className={`min-h-11 rounded-lg text-sm font-bold ${workspace === value ? "bg-white text-blue-700 shadow-sm" : "text-gray-500"}`}>
+              <button key={value} type="button" role="tab" aria-selected={workspace === value} aria-controls={value === "record" ? "expense-record-panel" : "expense-view-panel"} onClick={() => setWorkspace(value)} className={`min-h-11 rounded-lg text-sm font-bold ${workspace === value ? "bg-white text-blue-700 shadow-sm" : "text-slate-500"}`}>
                 {value === "record" ? "기록" : "조회"}
               </button>
             ))}
@@ -292,12 +292,12 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
                 }
               }}
             >
-              <div className="grid grid-cols-2 rounded-xl border border-gray-200 bg-white p-1" aria-label="비용 발생 방식">
-                {(["one_time", "recurring"] as const).map((value) => <button key={value} type="button" aria-pressed={kind === value} onClick={() => setKind(value)} className={`min-h-11 rounded-lg text-sm font-bold ${kind === value ? "bg-slate-900 text-white" : "text-gray-500"}`}>{value === "one_time" ? "일회성" : "매월 반복"}</button>)}
+              <div className="grid grid-cols-2 rounded-xl border border-slate-200 bg-white p-1" aria-label="비용 발생 방식">
+                {(["one_time", "recurring"] as const).map((value) => <button key={value} type="button" aria-pressed={kind === value} onClick={() => setKind(value)} className={`min-h-11 rounded-lg text-sm font-bold ${kind === value ? "bg-slate-900 text-white" : "text-slate-500"}`}>{value === "one_time" ? "일회성" : "매월 반복"}</button>)}
               </div>
 
-              <div className="rounded-xl border border-gray-200 bg-white p-3">
-                <label className="text-xs font-bold text-gray-700">카테고리</label>
+              <div className="rounded-xl border border-slate-200 bg-white p-3">
+                <label className="text-xs font-bold text-slate-700">카테고리</label>
                 <div className="mt-1">
                   <ExpenseCategoryPicker
                     categories={categoryList}
@@ -318,12 +318,12 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
                   />
                 </div>
                 <div className="mt-3 grid gap-3 pc:grid-cols-2">
-                  <label className="text-xs font-bold text-gray-700">항목<input value={itemName} onChange={(event) => { oneTimeAuto.markTouched(); setItemName(event.target.value); }} className={fieldClass} maxLength={100} placeholder="예: 사무실 임차료" /></label>
-                  <label className="text-xs font-bold text-gray-700">금액 (부가세 제외)<MoneyInput value={amountWon} onChange={(value) => { oneTimeAuto.markTouched(); setAmountWon(value); }} aria-label="부가세 제외 비용 금액" className={fieldClass} placeholder="0" /></label>
+                  <label className="text-xs font-bold text-slate-700">항목<input value={itemName} onChange={(event) => { oneTimeAuto.markTouched(); setItemName(event.target.value); }} className={fieldClass} maxLength={100} placeholder="예: 사무실 임차료" /></label>
+                  <label className="text-xs font-bold text-slate-700">금액 (부가세 제외)<MoneyInput value={amountWon} onChange={(value) => { oneTimeAuto.markTouched(); setAmountWon(value); }} aria-label="부가세 제외 비용 금액" className={fieldClass} placeholder="0" /></label>
                 </div>
               </div>
               {kind === "one_time" && (
-                <p aria-live="polite" className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs">
+                <p aria-live="polite" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs">
                   {oneTimeAuto.status === "pending" ? (
                     <span className="text-slate-500">기록 중…</span>
                   ) : oneTimeAuto.status === "error" ? (
@@ -334,32 +334,32 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
                       </button>
                     </span>
                   ) : (
-                    <span className="text-gray-400">입력이 완성되면 입력 그룹을 벗어날 때 자동으로 기록돼요.</span>
+                    <span className="text-slate-400">입력이 완성되면 입력 그룹을 벗어날 때 자동으로 기록돼요.</span>
                   )}
                 </p>
               )}
 
               {kind === "one_time" ? (
-                <section className="rounded-xl border border-gray-200 bg-white p-3" aria-label="일회성 비용 기간">
+                <section className="rounded-xl border border-slate-200 bg-white p-3" aria-label="일회성 비용 기간">
                   <div className="grid grid-cols-2 rounded-lg bg-slate-100 p-1">
-                    <button type="button" aria-pressed={!oneTimeRange} onClick={() => { oneTimeAuto.markTouched(); setOneTimeRange(false); }} className={`min-h-11 rounded-md text-xs font-bold ${!oneTimeRange ? "bg-white text-blue-700 shadow-sm" : "text-gray-500"}`}>당일</button>
-                    <button type="button" aria-pressed={oneTimeRange} onClick={() => { oneTimeAuto.markTouched(); setOneTimeRange(true); }} className={`min-h-11 rounded-md text-xs font-bold ${oneTimeRange ? "bg-white text-blue-700 shadow-sm" : "text-gray-500"}`}>기간</button>
+                    <button type="button" aria-pressed={!oneTimeRange} onClick={() => { oneTimeAuto.markTouched(); setOneTimeRange(false); }} className={`min-h-11 rounded-md text-xs font-bold ${!oneTimeRange ? "bg-white text-blue-700 shadow-sm" : "text-slate-500"}`}>당일</button>
+                    <button type="button" aria-pressed={oneTimeRange} onClick={() => { oneTimeAuto.markTouched(); setOneTimeRange(true); }} className={`min-h-11 rounded-md text-xs font-bold ${oneTimeRange ? "bg-white text-blue-700 shadow-sm" : "text-slate-500"}`}>기간</button>
                   </div>
                   <div className={`mt-3 grid gap-3 ${oneTimeRange ? "grid-cols-2" : "grid-cols-1"}`}>
-                    <label className="text-xs font-bold text-gray-700">발생일<input type="date" required value={oneTimeStart} aria-invalid={!isValidISODate(oneTimeStart)} aria-describedby="one-time-date-preview" onChange={(event) => { oneTimeAuto.markTouched(); setOneTimeStart(event.target.value); }} className={fieldClass} /></label>
-                    {oneTimeRange && <label className="text-xs font-bold text-gray-700">종료일<input type="date" required value={oneTimeEnd} min={isValidISODate(oneTimeStart) ? oneTimeStart : undefined} aria-invalid={!isValidISODate(oneTimeEnd) || (isValidISODate(oneTimeStart) && oneTimeEnd < oneTimeStart)} aria-describedby="one-time-date-preview" onChange={(event) => { oneTimeAuto.markTouched(); setOneTimeEnd(event.target.value); }} className={fieldClass} /></label>}
+                    <label className="text-xs font-bold text-slate-700">발생일<input type="date" required value={oneTimeStart} aria-invalid={!isValidISODate(oneTimeStart)} aria-describedby="one-time-date-preview" onChange={(event) => { oneTimeAuto.markTouched(); setOneTimeStart(event.target.value); }} className={fieldClass} /></label>
+                    {oneTimeRange && <label className="text-xs font-bold text-slate-700">종료일<input type="date" required value={oneTimeEnd} min={isValidISODate(oneTimeStart) ? oneTimeStart : undefined} aria-invalid={!isValidISODate(oneTimeEnd) || (isValidISODate(oneTimeStart) && oneTimeEnd < oneTimeStart)} aria-describedby="one-time-date-preview" onChange={(event) => { oneTimeAuto.markTouched(); setOneTimeEnd(event.target.value); }} className={fieldClass} /></label>}
                   </div>
-                  <div id="one-time-date-preview" role="status" className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-gray-600"><p className="font-bold text-gray-800">일할 인식 미리보기</p>{allocation ? <><p className="mt-1">{allocation.days}일 × ₩{formatMoney(allocation.daily)}{allocation.remainder > 0 ? ` + 잔여 ₩${formatMoney(allocation.remainder)} (시작일 우선)` : ""}</p><p className="mt-1 text-xs text-gray-400">시작일과 종료일을 모두 포함해 일별로 배분합니다.</p></> : <p className="mt-1 font-semibold text-amber-700">{oneTimeDateError}</p>}</div>
+                  <div id="one-time-date-preview" role="status" className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600"><p className="font-bold text-slate-800">일할 인식 미리보기</p>{allocation ? <><p className="mt-1">{allocation.days}일 × ₩{formatMoney(allocation.daily)}{allocation.remainder > 0 ? ` + 잔여 ₩${formatMoney(allocation.remainder)} (시작일 우선)` : ""}</p><p className="mt-1 text-xs text-slate-400">시작일과 종료일을 모두 포함해 일별로 배분합니다.</p></> : <p className="mt-1 font-semibold text-amber-700">{oneTimeDateError}</p>}</div>
                 </section>
               ) : (
-                <section className="rounded-xl border border-gray-200 bg-white p-3" aria-label="반복 비용 일정">
-                  <h3 className="text-sm font-black text-gray-900">반복 일정</h3>
-                  <p className="mt-0.5 text-xs text-gray-500">당일/기간 토글 없이 시작·종료 경계와 매월 반영일을 각각 정합니다.</p>
+                <section className="rounded-xl border border-slate-200 bg-white p-3" aria-label="반복 비용 일정">
+                  <h3 className="text-sm font-black text-slate-900">반복 일정</h3>
+                  <p className="mt-0.5 text-xs text-slate-500">당일/기간 토글 없이 시작·종료 경계와 매월 반영일을 각각 정합니다.</p>
                   <div className="mt-3 grid grid-cols-2 gap-3">
-                    <label className="text-xs font-bold text-gray-700">반복 시작일<input type="date" required value={recurringStart} aria-invalid={!isValidISODate(recurringStart)} aria-describedby="recurring-date-preview" onChange={(event) => setRecurringStart(event.target.value)} className={fieldClass} /></label>
-                    <label className="text-xs font-bold text-gray-700">반복 종료일 (선택)<input type="date" value={recurringEnd} min={isValidISODate(recurringStart) ? recurringStart : undefined} aria-invalid={Boolean(recurringEnd && (!isValidISODate(recurringEnd) || recurringEnd < recurringStart))} aria-describedby="recurring-date-preview" onChange={(event) => setRecurringEnd(event.target.value)} className={fieldClass} /></label>
+                    <label className="text-xs font-bold text-slate-700">반복 시작일<input type="date" required value={recurringStart} aria-invalid={!isValidISODate(recurringStart)} aria-describedby="recurring-date-preview" onChange={(event) => setRecurringStart(event.target.value)} className={fieldClass} /></label>
+                    <label className="text-xs font-bold text-slate-700">반복 종료일 (선택)<input type="date" value={recurringEnd} min={isValidISODate(recurringStart) ? recurringStart : undefined} aria-invalid={Boolean(recurringEnd && (!isValidISODate(recurringEnd) || recurringEnd < recurringStart))} aria-describedby="recurring-date-preview" onChange={(event) => setRecurringEnd(event.target.value)} className={fieldClass} /></label>
                   </div>
-                  <label className="mt-3 block text-xs font-bold text-gray-700">매월 반영일<select value={anchorDay} onChange={(event) => setAnchorDay(event.target.value)} className={fieldClass}>{Array.from({ length: 31 }, (_, index) => index + 1).map((day) => <option key={day} value={day}>{day}일</option>)}</select></label>
+                  <label className="mt-3 block text-xs font-bold text-slate-700">매월 반영일<select value={anchorDay} onChange={(event) => setAnchorDay(event.target.value)} className={fieldClass}>{Array.from({ length: 31 }, (_, index) => index + 1).map((day) => <option key={day} value={day}>{day}일</option>)}</select></label>
                   <div id="recurring-date-preview" role="status" className="mt-3 rounded-lg bg-blue-50 p-3 text-xs text-blue-900">{firstOccurrence ? <><p className="font-bold">첫 반영 예정일 {firstOccurrence}</p><p className="mt-1 text-xs text-blue-700">29~31일이 없는 달은 그 달의 말일로 자동 보정합니다. 종료일이 있으면 해당 날짜 이후에는 발생하지 않습니다.</p></> : <p className="font-semibold text-amber-800">{recurringDateError}</p>}</div>
                   <button
                     type="button"
@@ -397,9 +397,9 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
           {workspace === "view" && (
             <section id="expense-view-panel" role="tabpanel" className="space-y-3">
               <div role="tablist" aria-label="비용 조회 방식" className="grid grid-cols-3 rounded-xl bg-slate-200 p-1">
-                {(["month", "all", "category"] as const).map((value) => <button key={value} type="button" role="tab" aria-selected={view === value} onClick={() => setView(value)} className={`min-h-11 rounded-lg text-xs font-bold ${view === value ? "bg-white text-blue-700 shadow-sm" : "text-gray-500"}`}>{value === "month" ? "월별" : value === "all" ? "전체" : "카테고리"}</button>)}
+                {(["month", "all", "category"] as const).map((value) => <button key={value} type="button" role="tab" aria-selected={view === value} onClick={() => setView(value)} className={`min-h-11 rounded-lg text-xs font-bold ${view === value ? "bg-white text-blue-700 shadow-sm" : "text-slate-500"}`}>{value === "month" ? "월별" : value === "all" ? "전체" : "카테고리"}</button>)}
               </div>
-              {view === "month" && <div className="flex items-center justify-center gap-2 rounded-xl bg-white p-2"><button type="button" aria-label="이전 달" onClick={() => setMonth((value) => shiftMonth(value, -1))} className="min-h-11 min-w-11 rounded-lg border border-gray-200">‹</button><strong className="min-w-24 text-center text-sm">{month.replace("-", ".")}</strong><button type="button" aria-label="다음 달" onClick={() => setMonth((value) => shiftMonth(value, 1))} className="min-h-11 min-w-11 rounded-lg border border-gray-200">›</button></div>}
+              {view === "month" && <div className="flex items-center justify-center gap-2 rounded-xl bg-white p-2"><button type="button" aria-label="이전 달" onClick={() => setMonth((value) => shiftMonth(value, -1))} className="min-h-11 min-w-11 rounded-lg border border-slate-200">‹</button><strong className="min-w-24 text-center text-sm">{month.replace("-", ".")}</strong><button type="button" aria-label="다음 달" onClick={() => setMonth((value) => shiftMonth(value, 1))} className="min-h-11 min-w-11 rounded-lg border border-slate-200">›</button></div>}
               {view === "category" && <p className="rounded-lg bg-blue-50 p-3 text-xs text-blue-800">현재 조회 범위의 모든 카테고리를 비용 내림차순으로 비교합니다. 미분류와 보관 카테고리도 빠지지 않습니다.</p>}
               <ExpenseLedgerTable data={ledger.data} loading={ledger.isLoading} error={ledger.error} mode={view} onOpenRecord={() => setWorkspace("record")} />
             </section>
@@ -414,6 +414,6 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
 }
 
 function SummaryCard({ label, value, tone = "plain" }: { label: string; value: string; tone?: "plain" | "red" | "dark" }) {
-  const style = tone === "dark" ? "bg-slate-900 text-white" : tone === "red" ? "border border-red-100 bg-red-50 text-red-700" : "border border-gray-200 bg-white text-gray-900";
-  return <div className={`min-w-0 rounded-lg px-2 py-2 ${style}`}><p className={`truncate text-xs ${tone === "dark" ? "text-slate-300" : "text-gray-500"}`}>{label}</p><strong className="mt-0.5 block truncate text-xs pc:text-sm">{value}</strong></div>;
+  const style = tone === "dark" ? "bg-slate-900 text-white" : tone === "red" ? "border border-red-100 bg-red-50 text-red-700" : "border border-slate-200 bg-white text-slate-900";
+  return <div className={`min-w-0 rounded-lg px-2 py-2 ${style}`}><p className={`truncate text-xs ${tone === "dark" ? "text-slate-300" : "text-slate-500"}`}>{label}</p><strong className="mt-0.5 block truncate text-xs pc:text-sm">{value}</strong></div>;
 }

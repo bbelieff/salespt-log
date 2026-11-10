@@ -92,17 +92,17 @@ export default function ArenaSeasonGroups({
           >
             <summary className="disclosure-summary flex cursor-pointer flex-wrap items-baseline gap-x-2 gap-y-0.5 border-l-4 border-purple-500 bg-purple-50 px-4 py-3 group-open/season:bg-white hover:bg-purple-100">
               <DisclosureChevron className="text-purple-500" />
-              <span className="text-base font-black tracking-tight text-gray-900">
+              <span className="text-base font-black tracking-tight text-slate-900">
                 시즌{s.season}
               </span>
               <span className="text-xs font-bold text-purple-700">· {s.count}명</span>
-              <span className="text-px-11 font-medium text-gray-400">
+              <span className="text-px-11 font-medium text-slate-400">
                 · {s.groups.length}개 기수
               </span>
               {start && end && (
-                <span className="ml-1 text-xs font-medium text-gray-500">
-                  · <span className="font-bold text-gray-800">{start}</span> ~{" "}
-                  <span className="font-bold text-gray-800">{end}</span>
+                <span className="ml-1 text-xs font-medium text-slate-500">
+                  · <span className="font-bold text-slate-800">{start}</span> ~{" "}
+                  <span className="font-bold text-slate-800">{end}</span>
                   {dday !== null && (
                     <span className="ml-1 rounded-md bg-red-50 px-1.5 py-0.5 font-black text-brand-red">
                       D{dday >= 0 ? "-" : "+"}

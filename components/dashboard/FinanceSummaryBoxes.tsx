@@ -283,7 +283,7 @@ export default function FinanceSummaryBoxes({
           className={`${columnClass(open === "revenue", "focus-visible:ring-slate-500")} pc:col-span-2`}
         >
           <span className="flex min-w-0 items-center gap-1">
-            <span aria-hidden="true" className="hidden h-4 w-4 shrink-0 items-center sm:flex justify-center rounded-full bg-gray-200 text-xs font-bold leading-none text-gray-700">
+            <span aria-hidden="true" className="hidden h-4 w-4 shrink-0 items-center sm:flex justify-center rounded-full bg-slate-200 text-xs font-bold leading-none text-slate-700">
               ＋
             </span>
             <span className="min-w-0 whitespace-nowrap text-base font-extrabold text-slate-600">매출</span>

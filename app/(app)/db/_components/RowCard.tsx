@@ -296,10 +296,10 @@ export default function RowCard({
 
   if (!expanded) {
     const s = makeSummary(channelKey, row);
-    const rightCls = channel.isCost ? "text-red-600" : "text-gray-900";
+    const rightCls = channel.isCost ? "text-red-600" : "text-slate-900";
     return (
       <div
-        className="row-card flex cursor-pointer items-center gap-2.5 rounded-xl border border-gray-200 bg-white p-3 transition-all hover:border-slate-300"
+        className="row-card flex cursor-pointer items-center gap-2.5 rounded-xl border border-slate-200 bg-white p-3 transition-all hover:border-slate-300"
         onClick={onExpand}
         role="button" tabIndex={0} aria-expanded={false}
         onKeyDown={(event) => { if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onExpand(); } }}
@@ -308,10 +308,10 @@ export default function RowCard({
           {displayNum}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-sm font-semibold text-gray-900">
+          <div className="truncate text-sm font-semibold text-slate-900">
             {s.title}
           </div>
-          <div className="mt-0.5 line-clamp-2 break-keep text-xs text-gray-500">{s.sub}</div>
+          <div className="mt-0.5 line-clamp-2 break-keep text-xs text-slate-500">{s.sub}</div>
         </div>
         {s.right && (
           <div
@@ -324,7 +324,7 @@ export default function RowCard({
         {s.rightBadge && (
           <span className={`badge ${badgeCls} shrink-0`}>{s.rightBadge}</span>
         )}
-        <DisclosureChevron open={false} className="text-gray-300" />
+        <DisclosureChevron open={false} className="text-slate-300" />
       </div>
     );
   }
@@ -416,7 +416,7 @@ export default function RowCard({
             {displayNum}
           </span>
           <span className={`badge ${badgeCls}`}>{channel.name}</span>
-          <DisclosureChevron open className="text-gray-400" />
+          <DisclosureChevron open className="text-slate-400" />
         </button>
         <div className="flex items-center gap-2">
           <button
@@ -432,7 +432,7 @@ export default function RowCard({
             type="button"
             onClick={finishEditing}
             aria-label="접기"
-            className="hit-44 h-8 w-8 text-xl leading-none text-gray-400 hover:text-gray-700"
+            className="hit-44 h-8 w-8 text-xl leading-none text-slate-400 hover:text-slate-700"
           >
             ×
           </button>
@@ -483,7 +483,7 @@ export default function RowCard({
             type="button"
             onClick={() => void flush().catch(() => {})}
             disabled={!dirty || saveStatus === "pending"}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400"
+            className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white hover:bg-blue-800 disabled:bg-slate-200 disabled:text-slate-400"
           >
             {saveStatus === "pending" ? "저장중.." : "저장"}
           </button>

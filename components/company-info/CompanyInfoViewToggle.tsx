@@ -50,7 +50,7 @@ export default function CompanyInfoViewToggle({ mode, onChange, counts, compactM
   return (
     <>
     {compactMobile && <select className="payment-ci-native" aria-label="업체정보 항목 보기" value={mode} onChange={(e) => onChange(e.target.value as ViewMode)}>{VIEW_MODES.map(m => <option key={m} value={m}>{VIEW_LABEL[m]}{countOf[m] === null ? "" : ` ${countOf[m]}`}</option>)}</select>}
-    <div data-payment-ci-segmented className="flex w-full rounded-lg border border-gray-200 bg-white p-0.5 sm:w-auto" role="group" aria-label="업체정보 보기">
+    <div data-payment-ci-segmented className="flex w-full rounded-lg border border-slate-200 bg-white p-0.5 sm:w-auto" role="group" aria-label="업체정보 보기">
       {VIEW_MODES.map((m) => (
         <button
           key={m}
@@ -58,11 +58,11 @@ export default function CompanyInfoViewToggle({ mode, onChange, counts, compactM
           aria-pressed={mode === m}
           onClick={() => onChange(m)}
           className={`flex-1 whitespace-nowrap rounded-md px-2.5 py-1 text-xs font-semibold sm:flex-none ${
-            mode === m ? "bg-slate-800 text-white shadow-sm" : "text-gray-600 hover:bg-gray-50"
+            mode === m ? "bg-slate-800 text-white shadow-sm" : "text-slate-600 hover:bg-slate-50"
           }`}
         >
           {VIEW_LABEL[m]}
-          {countOf[m] !== null && <span className={`ml-1 tabular-nums ${mode === m ? "text-white/80" : "text-gray-400"}`}>{countOf[m]}</span>}
+          {countOf[m] !== null && <span className={`ml-1 tabular-nums ${mode === m ? "text-white/80" : "text-slate-400"}`}>{countOf[m]}</span>}
         </button>
       ))}
     </div>

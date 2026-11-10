@@ -76,7 +76,7 @@ export function MillionWonInput({ id, value, signed, onChange, describedBy, bare
           }}
         />
         {showUnit && (
-          <span aria-hidden className={`pointer-events-none absolute inset-y-0 flex items-center text-xs ${bare ? "right-1.5 text-gray-300" : "right-2 text-gray-400"}`}>
+          <span aria-hidden className={`pointer-events-none absolute inset-y-0 flex items-center text-xs ${bare ? "right-1.5 text-slate-300" : "right-2 text-slate-400"}`}>
             {bare ? "백만" : "백만원"}
           </span>
         )}
@@ -86,7 +86,7 @@ export function MillionWonInput({ id, value, signed, onChange, describedBy, bare
           {CUT_MSG}
         </p>
       ) : (
-        hint && <p className="mt-0.5 truncate text-xs text-gray-500">{hint}</p>
+        hint && <p className="mt-0.5 truncate text-xs text-slate-500">{hint}</p>
       )}
     </div>
   );
@@ -189,7 +189,7 @@ export function RatioField({
       <FieldLabel htmlFor={id} label={label} hint={hint} tag="(자동)" />
       <input
         id={id}
-        className={`${readOnlyCls} placeholder:text-gray-400`}
+        className={`${readOnlyCls} placeholder:text-slate-400`}
         readOnly
         aria-readonly="true"
         aria-describedby={hintIdOf(id, label, hint)}
@@ -197,7 +197,7 @@ export function RatioField({
         value={computed}
       />
       {legacy && (
-        <p className="mt-0.5 break-words text-xs text-gray-500" role="note">
+        <p className="mt-0.5 break-words text-xs text-slate-500" role="note">
           이전에 적은 값: {legacy}
         </p>
       )}

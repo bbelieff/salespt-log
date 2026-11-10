@@ -10,14 +10,14 @@ import { useState } from "react";
 import { useContactScript, useSaveContactScript } from "@/query/contact-script-hooks";
 import { smsHref } from "@/util/sms-link";
 
-const boxCls = "min-w-0 space-y-1.5 rounded-md border border-gray-100 bg-white p-2.5 shadow-sm";
-const btnCls = "rounded-md border border-gray-300 bg-white px-2.5 py-1 text-xs font-semibold text-gray-600 hover:bg-gray-50 disabled:opacity-50";
-const areaCls = "w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm leading-relaxed focus:border-slate-500 focus:outline-none";
+const boxCls = "min-w-0 space-y-1.5 rounded-md border border-slate-100 bg-white p-2.5 shadow-sm";
+const btnCls = "rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-50";
+const areaCls = "w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm leading-relaxed focus:border-slate-500 focus:outline-none";
 
 function Title({ text, children }: { text: string; children?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between gap-2 border-b border-gray-100 pb-1.5">
-      <span className="flex items-center gap-1.5 text-xs font-bold text-gray-900">
+    <div className="flex items-center justify-between gap-2 border-b border-slate-100 pb-1.5">
+      <span className="flex items-center gap-1.5 text-xs font-bold text-slate-900">
         <span className="h-3 w-1 rounded-sm bg-brand-red" aria-hidden />[{text}]
       </span>
       {children}
@@ -36,7 +36,7 @@ export default function ContactScriptPanel({ phone = "" }: { phone?: string }) {
   const [edit, setEdit] = useState<{ field: Field; value: string } | null>(null);
   const [copied, setCopied] = useState<"ok" | "fail" | null>(null);
 
-  if (q.isPending) return <p className="py-6 text-center text-xs text-gray-400">대본 불러오는 중…</p>;
+  if (q.isPending) return <p className="py-6 text-center text-xs text-slate-400">대본 불러오는 중…</p>;
   if (q.isError) {
     return (
       <div className="py-6 text-center text-xs text-red-600">
@@ -80,14 +80,14 @@ export default function ContactScriptPanel({ phone = "" }: { phone?: string }) {
               </button>
               <button type="button" disabled={save.isPending} onClick={() => { save.reset(); setEdit(null); }} className={btnCls}>취소</button>
               {data.custom && (
-                <button type="button" disabled={save.isPending} onClick={() => submit(null)} className="ml-auto text-xs text-gray-500 underline hover:text-gray-800 disabled:opacity-50">
+                <button type="button" disabled={save.isPending} onClick={() => submit(null)} className="ml-auto text-xs text-slate-500 underline hover:text-slate-800 disabled:opacity-50">
                   대본·문자 모두 기본으로 되돌리기
                 </button>
               )}
             </div>
           </>
         ) : (
-          <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-800">{data[field]}</p>
+          <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-800">{data[field]}</p>
         )}
       </div>
     );
@@ -105,7 +105,7 @@ export default function ContactScriptPanel({ phone = "" }: { phone?: string }) {
     <div className="space-y-2">
       {card("script", 18)}
       {card("sms", 14, copyButton)}
-      {!data.custom && !edit && <p className="text-xs text-gray-400">기본 대본이에요. 칸마다 「수정」으로 고치면 내 계정에 저장돼요.</p>}
+      {!data.custom && !edit && <p className="text-xs text-slate-400">기본 대본이에요. 칸마다 「수정」으로 고치면 내 계정에 저장돼요.</p>}
     </div>
   );
 }

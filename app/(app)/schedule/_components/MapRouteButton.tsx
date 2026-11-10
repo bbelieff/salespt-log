@@ -34,13 +34,13 @@ export default function MapRouteButton({ place, address }: { place?: string; add
   return (
     <>
       <div className="flex items-center gap-2">
-        <span className="min-w-0 flex-1 truncate text-xs text-gray-500">📍 {query}</span>
+        <span className="min-w-0 flex-1 truncate text-xs text-slate-500">📍 {query}</span>
         <button type="button" onClick={() => (saved ? launch(saved, query) : setPicking(true))}
           className="shrink-0 rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800 active:bg-amber-100">
           🧭 길찾기
         </button>
         {saved && (
-          <button type="button" onClick={() => setPicking(true)} className="shrink-0 text-xs text-gray-400 underline">
+          <button type="button" onClick={() => setPicking(true)} className="shrink-0 text-xs text-slate-400 underline">
             지도 바꾸기
           </button>
         )}
@@ -50,24 +50,24 @@ export default function MapRouteButton({ place, address }: { place?: string; add
           <div role="dialog" aria-modal="true" aria-label="어느 지도로 갈까요?" onClick={e => e.stopPropagation()}
             className="w-full max-w-sm space-y-3 rounded-t-2xl bg-white p-4 shadow-xl sm:rounded-2xl">
             <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold text-gray-900">어느 지도로 갈까요?</h2>
-              <button type="button" aria-label="닫기" onClick={() => setPicking(false)} className="px-2 text-gray-400">✕</button>
+              <h2 className="text-base font-bold text-slate-900">어느 지도로 갈까요?</h2>
+              <button type="button" aria-label="닫기" onClick={() => setPicking(false)} className="px-2 text-slate-400">✕</button>
             </div>
-            <p className="truncate text-xs text-gray-500">{query}</p>
+            <p className="truncate text-xs text-slate-500">{query}</p>
             <div className="grid gap-2" role="group" aria-label="지도 앱">
               {MAP_APPS.map(a => (
                 <button key={a.id} type="button" onClick={() => go(a.id)}
-                  className="rounded-xl border border-gray-200 px-4 py-3 text-left text-sm font-bold text-gray-800 active:bg-gray-50">
+                  className="rounded-xl border border-slate-200 px-4 py-3 text-left text-sm font-bold text-slate-800 active:bg-slate-50">
                   {a.name}
                 </button>
               ))}
               {saved && (
-                <button type="button" onClick={() => { saveApp(null); setPicking(false); }} className="rounded-xl px-4 py-2 text-left text-xs text-gray-500">
+                <button type="button" onClick={() => { saveApp(null); setPicking(false); }} className="rounded-xl px-4 py-2 text-left text-xs text-slate-500">
                   매번 묻기
                 </button>
               )}
             </div>
-            <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
               <input type="checkbox" checked={keep} onChange={e => setKeep(e.target.checked)} className="h-4 w-4" />
               다음에도 이 앱으로
             </label>

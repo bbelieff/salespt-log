@@ -295,11 +295,11 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
     ordered = false,
   ) => (
     <div
-      data-company-info-group className="min-w-0 space-y-1.5 rounded-md border border-gray-100 bg-white p-2.5 shadow-sm"
+      data-company-info-group className="min-w-0 space-y-1.5 rounded-md border border-slate-100 bg-white p-2.5 shadow-sm"
       role="group"
       aria-label={title}
     >
-      <div className="flex items-center gap-1.5 border-b border-gray-100 pb-1.5 text-xs font-bold text-gray-900">
+      <div className="flex items-center gap-1.5 border-b border-slate-100 pb-1.5 text-xs font-bold text-slate-900">
         <span className="h-3 w-1 rounded-sm bg-brand-red" aria-hidden />
         [{title}]
       </div>
@@ -309,7 +309,7 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
         {/* 기본보기(ordered)는 컨택가이드 순서 그대로 — 적은 것 위로 올리기·거르기를 하지 않는다. */}
         {(ordered ? items.map((_, i) => i) : visibleItems(items, view.snap, view.mode)).map((i) => item(items[i]!, i, inline, where))}
         {!ordered && view.mode !== "all" && visibleItems(items, view.snap, view.mode).length === 0 && (
-          <p className="text-xs text-gray-400 sm:col-span-2">{view.mode === "empty" ? "다 적었어요 ✓" : "아직 적은 칸이 없어요"}</p>
+          <p className="text-xs text-slate-400 sm:col-span-2">{view.mode === "empty" ? "다 적었어요 ✓" : "아직 적은 칸이 없어요"}</p>
         )}
         {g && Object.entries(customOf(g)).filter(([label]) => {
           const had = String(view.snap.커스텀?.[g]?.[label] ?? "").trim() !== "";
@@ -322,7 +322,7 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
                 type="button"
                 onClick={() => removeCustom(g, label)}
                 aria-label={`${label} 칸 지우기`} title="칸 지우기 (지운 뒤 되돌릴 수 있어요)"
-                className="text-gray-300 hover:text-red-500"
+                className="text-slate-300 hover:text-red-500"
               >
                 ✕
               </button>
@@ -399,10 +399,10 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
   const ciSaving = busy || (auto && status === "pending");
   const paymentHeading = desktopHeading || compactMobile;
   return (
-    <div data-payment-company-header={paymentHeading ? "" : undefined} data-payment-company-compact={compactMobile ? "" : undefined} data-payment-ci-expanded={paymentHeading ? String(open) : undefined} className="rounded-lg border border-gray-200 bg-white" style={{ ["--font-scale" as string]: String(fontScaleOf(fontStep)) }}>
+    <div data-payment-company-header={paymentHeading ? "" : undefined} data-payment-company-compact={compactMobile ? "" : undefined} data-payment-ci-expanded={paymentHeading ? String(open) : undefined} className="rounded-lg border border-slate-200 bg-white" style={{ ["--font-scale" as string]: String(fontScaleOf(fontStep)) }}>
       <CompanyInfoHeader open={open} onToggle={() => setOpen(value => !value)} controlsId={`${uid}-body`}
         desktopHeading={desktopHeading} payment={paymentHeading} summary={summary} fontControl={fontControl} badge={<GrantReadyChip matchCount={grantMatchCount} />}
-        status={auto && ciSaving ? <span className="text-px-11 text-gray-400" aria-live="polite">저장중..</span> : auto && status === "error" ? <span className="text-px-11 font-medium text-red-500" aria-live="polite">저장 실패</span> : null}
+        status={auto && ciSaving ? <span className="text-px-11 text-slate-400" aria-live="polite">저장중..</span> : auto && status === "error" ? <span className="text-px-11 font-medium text-red-500" aria-live="polite">저장 실패</span> : null}
         tools={[
               <CompanyDocAutofillButton key="document"
                 compactMobile={paymentHeading}
@@ -417,7 +417,7 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
                   onClick={exportTxt}
                   data-payment-ci-action="txt" aria-label={paymentHeading ? "업체정보 TXT 생성" : undefined} title={paymentHeading ? "업체정보 TXT 생성" : undefined}
                   disabled={txtBusy}
-                  className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                  className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-50"
                 >
                   {paymentHeading && <FileDown className="payment-ci-icon" size={18} strokeWidth={1.75} aria-hidden />}<span className={paymentHeading ? "payment-ci-action-label" : undefined}>{txtBusy ? "생성 중…" : paymentHeading ? "TXT 생성" : "업체정보생성(TXT)"}</span>{paymentHeading && <span className="payment-ci-short" aria-hidden>{txtBusy ? "생성 중" : "TXT"}</span>}
                 </button>
@@ -427,7 +427,7 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
                 type="button"
                 onClick={() => setModal(true)}
                 data-payment-ci-action="popup" aria-label={paymentHeading ? "업체정보 팝업" : undefined} title={paymentHeading ? "업체정보 팝업" : undefined}
-                className="rounded-md border border-gray-300 bg-white px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+                className="rounded-md border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
               >
                 {paymentHeading && <Maximize2 className="payment-ci-icon" size={18} strokeWidth={1.75} aria-hidden />}<span className={paymentHeading ? "payment-ci-action-label" : undefined}>팝업</span>{paymentHeading && <span className="payment-ci-short" aria-hidden>팝업</span>}
               </button>
@@ -435,7 +435,7 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
 
       {open && (
         <div
-          id={`${uid}-body`} data-company-info-body className="space-y-3 border-t border-gray-100 bg-slate-50 px-2.5 py-2"
+          id={`${uid}-body`} data-company-info-body className="space-y-3 border-t border-slate-100 bg-slate-50 px-2.5 py-2"
           onBlur={(e) => {
             if (auto && !e.currentTarget.contains(e.relatedTarget as Node | null)) {
               commit(true);
@@ -476,12 +476,12 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
           <div data-payment-company-compact-modal={compactMobile ? "" : undefined} className="fixed inset-0 z-[300] flex items-start justify-center overflow-y-auto bg-black/40 p-4" style={{ ["--font-scale" as string]: String(fontScaleOf(fontStep)) }}>
           <div className="mt-8 mb-8 w-full max-w-md rounded-2xl bg-white p-4 shadow-xl 2xl:max-w-3xl">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-black text-gray-900">업체정보 편집</h3>
-              <button type="button" onClick={closeModal} aria-label="닫기" className="rounded-full px-2 text-gray-400 hover:bg-gray-100">✕</button>
+              <h3 className="text-sm font-black text-slate-900">업체정보 편집</h3>
+              <button type="button" onClick={closeModal} aria-label="닫기" className="rounded-full px-2 text-slate-400 hover:bg-slate-100">✕</button>
             </div>
             {body(false, "modal")}
             {vaultTarget && !script && <div className="mt-3"><CompanyVaultSection target={vaultTarget} idBase={`${uid}-vault-modal`} incoming={vaultIncoming} onIncomingDone={() => setVaultIncoming([])} /></div>}
-            <div className="mt-3 flex gap-2"><button type="button" onClick={closeModal} className="flex-1 rounded-lg bg-gray-900 py-2 text-sm font-bold text-white hover:bg-black">닫기</button></div>
+            <div className="mt-3 flex gap-2"><button type="button" onClick={closeModal} className="flex-1 rounded-lg bg-slate-900 py-2 text-sm font-bold text-white hover:bg-black">닫기</button></div>
           </div>
           </div>,
           document.body,

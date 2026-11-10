@@ -113,7 +113,7 @@ export default function AwardPodium({
 
   if (entries.length === 0) {
     return (
-      <div className="rounded-xl border border-gray-100 bg-gray-50 p-8 text-center text-sm text-gray-400">
+      <div className="rounded-xl border border-slate-100 bg-slate-50 p-8 text-center text-sm text-slate-400">
         {metric}왕 집계할 데이터가 없어요.
       </div>
     );
@@ -165,15 +165,15 @@ export default function AwardPodium({
               <span className={`w-6 text-sm font-black ${c.text}`}>
                 {e.rank}
               </span>
-              <span className="min-w-0 flex-1 truncate text-sm font-bold text-gray-900">
+              <span className="min-w-0 flex-1 truncate text-sm font-bold text-slate-900">
                 {e.name}
-                <span className="ml-1 text-px-11 font-bold text-gray-400">
+                <span className="ml-1 text-px-11 font-bold text-slate-400">
                   {e.cohort}기
                 </span>
               </span>
-              <span className="text-sm font-black tabular-nums text-gray-800">
+              <span className="text-sm font-black tabular-nums text-slate-800">
                 {fmt(e.value)}
-                <span className="ml-0.5 text-px-11 font-bold text-gray-400">
+                <span className="ml-0.5 text-px-11 font-bold text-slate-400">
                   {unit}
                 </span>
               </span>

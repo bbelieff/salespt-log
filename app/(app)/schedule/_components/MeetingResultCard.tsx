@@ -67,9 +67,9 @@ export default function MeetingResultCard({
   const { ref: rootRef, ring } = useFocusScroll<HTMLDivElement>(!!focus);
 
   const isCanceled = state === "canceled";
-  const titleCls = isCanceled ? "line-through text-gray-400" : "text-gray-900";
-  const timeCls = isCanceled ? "line-through text-gray-400" : "text-gray-700";
-  const placeCls = isCanceled ? "line-through text-gray-400" : "text-gray-500";
+  const titleCls = isCanceled ? "line-through text-slate-400" : "text-slate-900";
+  const timeCls = isCanceled ? "line-through text-slate-400" : "text-slate-700";
+  const placeCls = isCanceled ? "line-through text-slate-400" : "text-slate-500";
 
   const feeSummary = state === "contract" && meeting.수임비 > 0
     ? <span className="shrink-0 text-xs font-bold text-green-700" style={{ fontVariantNumeric: "tabular-nums" }}>₩{fmtMoney(meeting.수임비)}</span>
@@ -138,7 +138,7 @@ export default function MeetingResultCard({
         ring ? "animate-pulse ring-2 ring-inset ring-blue-400" : ""
       }`}
     >
-      <span className="absolute -left-2 top-1/2 h-px w-2 -translate-y-1/2 border-t-2 border-gray-200" />
+      <span className="absolute -left-2 top-1/2 h-px w-2 -translate-y-1/2 border-t-2 border-slate-200" />
 
       <button
         type="button"
@@ -166,10 +166,10 @@ export default function MeetingResultCard({
       </button>
 
       {open && (
-        <div className="space-y-3 border-t border-gray-200/60 px-3 py-3">
+        <div className="space-y-3 border-t border-slate-200/60 px-3 py-3">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-gray-500">📅 예약일 <b className="text-gray-800">{meeting.예약일 || "—"}</b></span>
-            <span className="text-gray-400">현재상태: <b className="text-gray-700">{CARD_LABEL[state]}</b></span>
+            <span className="text-slate-500">📅 예약일 <b className="text-slate-800">{meeting.예약일 || "—"}</b></span>
+            <span className="text-slate-400">현재상태: <b className="text-slate-700">{CARD_LABEL[state]}</b></span>
           </div>
           {/* 🧭 길찾기(2026-11-07 belie) — 장소가 주소가 아니면 업체 소재지로. 검색어가 없으면 안 보임. */}
           <MapRouteButton place={meeting.장소} address={meeting.업체정보?.소재지} />
@@ -178,11 +178,11 @@ export default function MeetingResultCard({
           <CompanyInfoEditor key={meeting.id} value={meeting.업체정보} busy={pending} txtCompanyName={meeting.업체명} identityKey={meeting.id} vaultTarget={{ meetingId: meeting.id }} hideSave onChange={(ci) => { setCiDraft(ci); setCiTouched(true); }} onSave={(ci) => onPatch({ 업체정보: ci })} />
 
           {state !== "reserved" && (state === "contract" || meeting.미팅사유) && !editMode && (
-            <div className="rounded-lg border border-gray-200 bg-white/60 px-2.5 py-1.5 text-xs">
+            <div className="rounded-lg border border-slate-200 bg-white/60 px-2.5 py-1.5 text-xs">
               {state === "contract" && (
                 <>
                   <div className="flex items-center justify-between gap-2">
-                    <div className="text-gray-500">
+                    <div className="text-slate-500">
                       수임비:{" "}
                       <b
                         className="text-green-700"
@@ -200,14 +200,14 @@ export default function MeetingResultCard({
                     </button>
                   </div>
                   {meeting.계약조건 && (
-                    <div className="mt-0.5 text-gray-600">
+                    <div className="mt-0.5 text-slate-600">
                       조건: {meeting.계약조건}
                     </div>
                   )}
                 </>
               )}
               {(state === "done" || state === "canceled") && meeting.미팅사유 && (
-                <div className="whitespace-pre-wrap text-gray-600">
+                <div className="whitespace-pre-wrap text-slate-600">
                   사유: {meeting.미팅사유}
                 </div>
               )}
@@ -223,8 +223,8 @@ export default function MeetingResultCard({
                 pending={pending}
                 bindSubmit={bindSubmit}
               />
-              <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                <div className="mb-2 text-xs font-medium text-gray-600">
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                <div className="mb-2 text-xs font-medium text-slate-600">
                   상태 변경 (취소·환수·보류 등은 취소로 사유와 함께 기록)
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -271,7 +271,7 @@ export default function MeetingResultCard({
               <button
                 type="button"
                 onClick={() => { setEditMode(false); setAction(null); }}
-                className="w-full rounded-md border border-gray-300 bg-white py-1.5 text-xs text-gray-600 hover:bg-gray-50"
+                className="w-full rounded-md border border-slate-300 bg-white py-1.5 text-xs text-slate-600 hover:bg-slate-50"
               >
                 ↩ 수정 취소
               </button>
@@ -385,7 +385,7 @@ export default function MeetingResultCard({
                 }
               }}
               disabled={pending}
-              className="w-full rounded-md border border-gray-300 bg-white py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              className="w-full rounded-md border border-slate-300 bg-white py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
             >
               ↩️ 미팅 결과 되돌리기
             </button>
@@ -410,10 +410,10 @@ export default function MeetingResultCard({
           )}
 
           {!showActions && hasFollowUp && (state === "done" || state === "canceled" || state === "contract") && (
-            <div className="flex items-center justify-between gap-2 rounded-md bg-gray-100 px-2 py-1.5 text-xs text-gray-600">
+            <div className="flex items-center justify-between gap-2 rounded-md bg-slate-100 px-2 py-1.5 text-xs text-slate-600">
               <span>🔚 케이스 종료 — 추가 미팅 카드에서 진행</span>
               {onReviveCase && (
-                <button type="button" onClick={onReviveCase} disabled={pending} className="shrink-0 rounded border border-gray-300 bg-white px-2 py-0.5 text-px-11 font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50">↩️ 되살리기</button>
+                <button type="button" onClick={onReviveCase} disabled={pending} className="shrink-0 rounded border border-slate-300 bg-white px-2 py-0.5 text-px-11 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">↩️ 되살리기</button>
               )}
             </div>
           )}
@@ -453,7 +453,7 @@ export default function MeetingResultCard({
             <div className="rounded-md bg-purple-50 px-2 py-1.5 text-xs text-purple-700">
               📅 일정이 변경되었습니다. 새 일정의 카드를 확인하세요.
               {meeting.미팅사유 && (
-                <div className="mt-0.5 whitespace-pre-wrap text-gray-600">
+                <div className="mt-0.5 whitespace-pre-wrap text-slate-600">
                   사유: {meeting.미팅사유}
                 </div>
               )}

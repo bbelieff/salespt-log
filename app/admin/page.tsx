@@ -42,14 +42,14 @@ export default async function AdminLandingPage() {
   ]);
 
   return (
-    <main className="min-h-dvh bg-gray-50">
-      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4 pc:hidden">
+    <main className="min-h-dvh bg-slate-50">
+      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white px-6 py-4 pc:hidden">
         <div className="mx-auto flex max-w-3xl pc:max-w-5xl items-center justify-between gap-3">
           <div>
             <div className="text-xs font-bold uppercase tracking-wider text-red-600">
               {isMaster ? "Master" : "관리부서"}
             </div>
-            <div className="mt-0.5 text-sm font-semibold text-gray-900">
+            <div className="mt-0.5 text-sm font-semibold text-slate-900">
               {sessionEmail}
             </div>
           </div>
@@ -60,10 +60,10 @@ export default async function AdminLandingPage() {
       <div className="mx-auto max-w-3xl pc:max-w-5xl px-6 py-10">
         {impersonating && <ImpersonationBanner impersonating={impersonating} />}
 
-        <h1 className="text-2xl font-black tracking-tight text-gray-900">
+        <h1 className="text-2xl font-black tracking-tight text-slate-900">
           {isMaster ? "마스터 메뉴" : "관리부서 메뉴"}
         </h1>
-        <p className="mt-1.5 text-sm text-gray-500">
+        <p className="mt-1.5 text-sm text-slate-500">
           {isMaster
             ? "어떤 작업을 할까요?"
             : "수강생 관리·트레이너 관리·기수 조회 가능 (변경 권한 X)."}
@@ -72,7 +72,7 @@ export default async function AdminLandingPage() {
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Link
             href="/admin/users"
-            className="group relative rounded-2xl border border-gray-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
+            className="group relative rounded-2xl border border-slate-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
           >
             {pendingTrainees.length > 0 && (
               <span className="absolute right-4 top-4 inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-px-11 font-bold text-amber-800">
@@ -80,17 +80,17 @@ export default async function AdminLandingPage() {
               </span>
             )}
             <div className="text-3xl">🗂️</div>
-            <div className="mt-4 text-base font-black text-gray-900 group-hover:text-red-600">
+            <div className="mt-4 text-base font-black text-slate-900 group-hover:text-red-600">
               수강생 관리
             </div>
-            <div className="mt-1 text-xs text-gray-500 leading-relaxed">
+            <div className="mt-1 text-xs text-slate-500 leading-relaxed">
               등록 수강생 현황 — 담당 트레이너·시작일·종강일 + 시트 진입.
             </div>
           </Link>
 
           <Link
             href="/admin/trainers"
-            className="group relative rounded-2xl border border-gray-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
+            className="group relative rounded-2xl border border-slate-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
           >
             {pendingTrainers.length > 0 && (
               <span className="absolute right-4 top-4 inline-flex items-center rounded-full border border-amber-300 bg-amber-100 px-2 py-0.5 text-px-11 font-bold text-amber-800">
@@ -98,36 +98,36 @@ export default async function AdminLandingPage() {
               </span>
             )}
             <div className="text-3xl">👥</div>
-            <div className="mt-4 text-base font-black text-gray-900 group-hover:text-red-600">
+            <div className="mt-4 text-base font-black text-slate-900 group-hover:text-red-600">
               트레이너 관리
             </div>
-            <div className="mt-1 text-xs text-gray-500 leading-relaxed">
+            <div className="mt-1 text-xs text-slate-500 leading-relaxed">
               요청 승인/거절, 수강생 담당 부여.
             </div>
           </Link>
 
           <Link
             href="/admin/cohorts"
-            className="group rounded-2xl border border-gray-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
+            className="group rounded-2xl border border-slate-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
           >
             <div className="text-3xl">📅</div>
-            <div className="mt-4 text-base font-black text-gray-900 group-hover:text-red-600">
+            <div className="mt-4 text-base font-black text-slate-900 group-hover:text-red-600">
               기수 관리
             </div>
-            <div className="mt-1 text-xs text-gray-500 leading-relaxed">
+            <div className="mt-1 text-xs text-slate-500 leading-relaxed">
               기수별 활성/보관 토글. 보관 기수도 언제든 열어볼 수 있습니다.
             </div>
           </Link>
 
           <Link
             href="/admin/arena"
-            className="group rounded-2xl border border-gray-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-purple-300 hover:shadow-lg"
+            className="group rounded-2xl border border-slate-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-purple-300 hover:shadow-lg"
           >
             <div className="text-3xl">🏆</div>
-            <div className="mt-4 text-base font-black text-gray-900 group-hover:text-purple-600">
+            <div className="mt-4 text-base font-black text-slate-900 group-hover:text-purple-600">
               아레나 관리
             </div>
-            <div className="mt-1 text-xs text-gray-500 leading-relaxed">
+            <div className="mt-1 text-xs text-slate-500 leading-relaxed">
               회장(기수임원) 지정 + 기수별 전광판(주차 평균).
             </div>
           </Link>
@@ -136,13 +136,13 @@ export default async function AdminLandingPage() {
           {isMaster && (
             <Link
               href="/admin/popup"
-              className="group rounded-2xl border border-gray-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
+              className="group rounded-2xl border border-slate-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
             >
               <div className="text-3xl">📢</div>
-              <div className="mt-4 text-base font-black text-gray-900 group-hover:text-red-600">
+              <div className="mt-4 text-base font-black text-slate-900 group-hover:text-red-600">
                 팝업관리
               </div>
-              <div className="mt-1 text-xs text-gray-500 leading-relaxed">
+              <div className="mt-1 text-xs text-slate-500 leading-relaxed">
                 새소식 팝업 — 공지 작성(MD·이미지·노출 옵션) + 업데이트 문구 보정.
               </div>
             </Link>
@@ -152,13 +152,13 @@ export default async function AdminLandingPage() {
           {isMaster && (
             <Link
               href="/trainer"
-              className="group rounded-2xl border border-gray-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
+              className="group rounded-2xl border border-slate-200 bg-white p-6 transition-all hover:-translate-y-1 hover:border-red-300 hover:shadow-lg"
             >
               <div className="text-3xl">📊</div>
-              <div className="mt-4 text-base font-black text-gray-900 group-hover:text-red-600">
+              <div className="mt-4 text-base font-black text-slate-900 group-hover:text-red-600">
                 트레이너 페이지
               </div>
-              <div className="mt-1 text-xs text-gray-500 leading-relaxed">
+              <div className="mt-1 text-xs text-slate-500 leading-relaxed">
                 마스터 시트 + 내 담당 수강생(있다면).
               </div>
             </Link>
@@ -171,7 +171,7 @@ export default async function AdminLandingPage() {
           <div
             className={`mt-6 flex flex-wrap items-center gap-2 rounded-2xl border px-4 py-3 text-xs font-semibold ${
               !dbStatus.enabled
-                ? "border-gray-200 bg-gray-50 text-gray-500"
+                ? "border-slate-200 bg-slate-50 text-slate-500"
                 : dbStatus.ok
                   ? "border-emerald-200 bg-emerald-50 text-emerald-800"
                   : "border-red-200 bg-red-50 text-red-700"

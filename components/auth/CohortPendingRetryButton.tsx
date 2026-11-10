@@ -72,7 +72,7 @@ export default function CohortPendingRetryButton({
       </button>
       {err && <span className="text-px-11 text-red-600">{err}</span>}
       {result && (
-        <span className="text-px-11 text-gray-600">
+        <span className="text-px-11 text-slate-600">
           완료 {result.done.length} · 대기 {result.stillPending.length}
           {result.remaining != null && ` · 남음 ${result.remaining}`}
         </span>

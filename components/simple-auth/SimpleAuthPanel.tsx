@@ -103,11 +103,11 @@ export default function SimpleAuthPanel() {
                 onResend={(id) => void act(id, { action: "resend" }, "인증을 다시 보냈어요")}
                 onCancel={(id) => { if (window.confirm("보낸 인증을 취소할까요?\n대표 휴대폰의 승인 요청도 더 이상 쓸 수 없어요.")) void act(id, { action: "cancel" }, "취소했어요"); }}
                 onDelete={(id) => void act(id, { action: "delete" }, "기록을 삭제했어요")} />
-            : <p className="rounded-xl border border-gray-200 bg-white px-4 py-10 text-center text-sm text-gray-500">불러오는 중…</p>}
+            : <p className="rounded-xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">불러오는 중…</p>}
         </div>
       </div>
       <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-20 z-50 flex justify-center px-4">
-        {toast && <p role={toastError ? "alert" : undefined} className={`pointer-events-auto flex max-w-md items-start gap-2 rounded-lg px-4 py-2 text-sm text-white shadow-lg ${toastError ? "bg-red-700" : "bg-gray-900"}`}>{toast}{toastError && <button type="button" aria-label="안내 닫기" className="-my-1 -mr-2 min-h-8 min-w-8 rounded text-white/80 hover:text-white" onClick={() => setToast("")}>✕</button>}</p>}
+        {toast && <p role={toastError ? "alert" : undefined} className={`pointer-events-auto flex max-w-md items-start gap-2 rounded-lg px-4 py-2 text-sm text-white shadow-lg ${toastError ? "bg-red-700" : "bg-slate-900"}`}>{toast}{toastError && <button type="button" aria-label="안내 닫기" className="-my-1 -mr-2 min-h-8 min-w-8 rounded text-white/80 hover:text-white" onClick={() => setToast("")}>✕</button>}</p>}
       </div>
     </>
   );

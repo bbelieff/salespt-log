@@ -21,10 +21,10 @@ export default async function ShareScoresPage() {
   return (
     <main className="mx-auto min-h-dvh max-w-2xl bg-white px-4 py-6">
       <div className="mb-5 flex items-center justify-between">
-        <h1 className="text-lg font-black text-gray-900">공유왕 집계</h1>
+        <h1 className="text-lg font-black text-slate-900">공유왕 집계</h1>
         <Link
           href="/admin/arena"
-          className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-600 hover:bg-gray-50"
+          className="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-600 hover:bg-slate-50"
         >
           ← 아레나 관리
         </Link>

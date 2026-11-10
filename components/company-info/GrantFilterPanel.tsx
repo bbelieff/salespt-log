@@ -37,7 +37,7 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
       {/* 줄이 여러 겹(업종 + 산업분류 목록·특성 칩)이어도 라벨은 첫 줄 높이(select 한 칸)에 맞춰 위에 붙는다. */}
-      <span className="w-10 shrink-0 self-start text-px-11 font-semibold leading-7 text-gray-500">{label}</span>
+      <span className="w-10 shrink-0 self-start text-px-11 font-semibold leading-7 text-slate-500">{label}</span>
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">{children}</div>
     </div>
   );
@@ -57,7 +57,7 @@ export function GrantFilterPanel({ draft, id, onPatch, onFill }: { draft: CI; id
     );
   };
   return (
-    <section id={id} aria-label="공고필터" data-grant-filter-panel className="space-y-2 rounded-md border border-gray-100 bg-white p-2.5 shadow-sm">
+    <section id={id} aria-label="공고필터" data-grant-filter-panel className="space-y-2 rounded-md border border-slate-100 bg-white p-2.5 shadow-sm">
       <Row label="지역"><RegionSelects draft={draft} onPatch={onPatch} />{missing(0)}</Row>
       <Row label="업종">
         <IndustryLine draft={draft} className="" onPatch={onPatch} />
@@ -65,7 +65,7 @@ export function GrantFilterPanel({ draft, id, onPatch, onFill }: { draft: CI; id
         <KsicLine draft={draft} onPatch={onPatch} />
       </Row>
       <Row label="규모">
-        {p.smallBusiness !== null && <span className="text-xs text-gray-800">{p.smallBusiness ? "소상공인" : "소상공인 아님"}</span>}
+        {p.smallBusiness !== null && <span className="text-xs text-slate-800">{p.smallBusiness ? "소상공인" : "소상공인 아님"}</span>}
         {missing(2)}
       </Row>
       <Row label="특성"><FeatureChips draft={draft} className="" onPatch={onPatch} /></Row>

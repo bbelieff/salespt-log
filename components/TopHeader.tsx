@@ -179,7 +179,7 @@ export default function TopHeader({
 
   return (
     <>
-      <header className="desktop-glass-header sticky top-0 z-50 h-app-header border-b border-gray-100 bg-white">
+      <header className="desktop-glass-header sticky top-0 z-50 h-app-header border-b border-slate-100 bg-white">
         <PageContainer width="wide" className="flex h-full flex-nowrap items-center gap-x-1 px-2 sm:gap-x-2 sm:px-3">
           <button ref={logoRef} type="button" onClick={()=>{ positionPopup(); setPopupOpen(v=>!v); }} className="order-1 flex h-14 shrink-0 items-center" aria-label="계정 메뉴 열기" aria-expanded={popupOpen}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -188,8 +188,8 @@ export default function TopHeader({
           </button>
           {/* 남은 폭은 이름에 배분하고 긴 이름만 말줄임 */}
           <div data-header-info className="order-2 flex h-14 min-w-0 flex-1 items-center">
-            {!sessionIdentity && me.data?.spreadsheetId && hasRealSheet(me.data.spreadsheetId) ? <a href={`https://docs.google.com/spreadsheets/d/${me.data.spreadsheetId}/edit`} target="_blank" rel="noopener noreferrer" className="min-w-8 truncate text-xs font-black text-gray-900 hover:underline sm:text-sm">{display}</a>
-              : <span className="min-w-8 truncate text-xs font-black text-gray-900 sm:text-sm">{trainer.data?.name && display === "—" ? trainer.data.name : display}</span>}
+            {!sessionIdentity && me.data?.spreadsheetId && hasRealSheet(me.data.spreadsheetId) ? <a href={`https://docs.google.com/spreadsheets/d/${me.data.spreadsheetId}/edit`} target="_blank" rel="noopener noreferrer" className="min-w-8 truncate text-xs font-black text-slate-900 hover:underline sm:text-sm">{display}</a>
+              : <span className="min-w-8 truncate text-xs font-black text-slate-900 sm:text-sm">{trainer.data?.name && display === "—" ? trainer.data.name : display}</span>}
 
 
           </div>
@@ -214,15 +214,15 @@ export default function TopHeader({
             className="fixed inset-0 z-[55]"
             onClick={() => setPopupOpen(false)}
           />
-          <div style={popupPosition} className="fixed z-[56] w-64 max-w-[calc(100vw-16px)] overflow-hidden rounded-xl border border-gray-100 bg-white shadow-xl">
-            <div className="border-b border-gray-100 px-4 py-3">
+          <div style={popupPosition} className="fixed z-[56] w-64 max-w-[calc(100vw-16px)] overflow-hidden rounded-xl border border-slate-100 bg-white shadow-xl">
+            <div className="border-b border-slate-100 px-4 py-3">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-sm font-bold text-brand-red">
                   {(sessionIdentity?.name ?? me.data?.name)?.[0] ?? "?"}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-bold text-gray-900">{display}</div>
-                  <div className="truncate text-px-11 text-gray-500">
+                  <div className="truncate text-sm font-bold text-slate-900">{display}</div>
+                  <div className="truncate text-px-11 text-slate-500">
                     {sessionIdentity?.email ?? me.data?.email ?? ""}
                   </div>
                 </div>
@@ -232,7 +232,7 @@ export default function TopHeader({
             <Link
               href="/updates"
               onClick={() => setPopupOpen(false)}
-              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
@@ -247,7 +247,7 @@ export default function TopHeader({
               <Link
                 href="/badges"
                 onClick={() => setPopupOpen(false)}
-                className="flex w-full items-center gap-3 border-t border-gray-100 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-amber-100"
+                className="flex w-full items-center gap-3 border-t border-slate-100 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-amber-100"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/badges/trophy.png" alt="" className="h-5 w-5" />
@@ -264,7 +264,7 @@ export default function TopHeader({
               <Link
                 href="/inbox"
                 onClick={() => setPopupOpen(false)}
-                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859M2.25 13.5V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.5M2.25 13.5l2.4-7.2A2.25 2.25 0 016.79 4.75h10.42a2.25 2.25 0 012.14 1.55l2.4 7.2"/>
@@ -278,7 +278,7 @@ export default function TopHeader({
               <Link
                 href="/settings/notifications"
                 onClick={() => setPopupOpen(false)}
-                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                className="flex w-full items-center gap-3 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/>
@@ -290,7 +290,7 @@ export default function TopHeader({
             <Link
               href="/trash"
               onClick={() => setPopupOpen(false)}
-              className="flex w-full items-center gap-3 border-t border-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/>
@@ -302,7 +302,7 @@ export default function TopHeader({
             <a
               href="/api/export"
               onClick={() => setPopupOpen(false)}
-              className="flex w-full items-center gap-3 border-t border-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+              className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H8a2 2 0 01-2-2V5a2 2 0 012-2h6l6 6v11a2 2 0 01-2 2z"/>
@@ -316,7 +316,7 @@ export default function TopHeader({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setPopupOpen(false)}
-                className="flex w-full items-center gap-3 border-t border-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
@@ -325,7 +325,7 @@ export default function TopHeader({
               </a>
             )}
             {nav.showTrainerApply && (
-              <Link href="/trainer/apply" onClick={()=>setPopupOpen(false)} className="flex h-11 items-center border-t border-gray-100 px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+              <Link href="/trainer/apply" onClick={()=>setPopupOpen(false)} className="flex h-11 items-center border-t border-slate-100 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
                 {nav.trainerApplyPending ? "승인 대기 · 신청 확인" : "트레이너 신청"}
               </Link>
             )}
@@ -333,7 +333,7 @@ export default function TopHeader({
               <Link
                 href="/admin"
                 onClick={() => setPopupOpen(false)}
-                className="flex w-full items-center gap-3 border-t border-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
@@ -345,7 +345,7 @@ export default function TopHeader({
               <Link
                 href="/trainer"
                 onClick={() => setPopupOpen(false)}
-                className="flex w-full items-center gap-3 border-t border-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
@@ -359,7 +359,7 @@ export default function TopHeader({
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setPopupOpen(false)}
-                className="flex w-full items-center gap-3 border-t border-gray-100 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
@@ -374,7 +374,7 @@ export default function TopHeader({
               <Link
                 href="/captain"
                 onClick={() => setPopupOpen(false)}
-                className="flex w-full items-center gap-3 border-t border-gray-100 px-4 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-50"
+                className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-2.5 text-sm font-semibold text-amber-700 hover:bg-amber-50"
               >
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.196-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
@@ -390,14 +390,14 @@ export default function TopHeader({
                 await forgetPushOnThisDevice(); // 이 기기 알림 끄기 — 다른 기기는 그대로
                 signOut({ callbackUrl: "/" });
               }}
-              className="flex w-full items-center gap-3 border-t border-gray-100 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50"
+              className="flex w-full items-center gap-3 border-t border-slate-100 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-50"
             >
               <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
               </svg>
               <span>로그아웃</span>
             </button>
-            <div className="border-t border-gray-100 bg-gray-50 px-4 py-2 text-px-10 text-gray-400">
+            <div className="border-t border-slate-100 bg-slate-50 px-4 py-2 text-px-10 text-slate-400">
               © SalesPT · v1.0
             </div>
           </div>

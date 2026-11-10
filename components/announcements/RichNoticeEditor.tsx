@@ -71,7 +71,7 @@ function Btn({
       className={`h-8 min-w-8 rounded-md px-2 text-sm font-bold transition-colors disabled:opacity-40 ${
         active
           ? "bg-brand-red text-white"
-          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
       }`}
     >
       {label}
@@ -132,7 +132,7 @@ export default function RichNoticeEditor({
     editorProps: {
       attributes: {
         class:
-          "notice-rich min-h-32 rounded-b-lg border border-t-0 border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none",
+          "notice-rich min-h-32 rounded-b-lg border border-t-0 border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none",
       },
       // 클립보드 붙여넣기 — 이미지면 우리 API 로 업로드 후 임베드, 아니면 기본(텍스트) 유지.
       handlePaste(_view, event) {
@@ -220,18 +220,18 @@ export default function RichNoticeEditor({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-1 rounded-t-lg border border-gray-200 bg-gray-50 p-1.5">
+      <div className="flex flex-wrap items-center gap-1 rounded-t-lg border border-slate-200 bg-slate-50 p-1.5">
         <Btn label="B" title="굵게" active={editor.isActive("bold")} on={() => editor.chain().focus().toggleBold().run()} />
         <Btn label="I" title="기울임" active={editor.isActive("italic")} on={() => editor.chain().focus().toggleItalic().run()} />
         <Btn label="U" title="밑줄" active={editor.isActive("underline")} on={() => editor.chain().focus().toggleUnderline().run()} />
         <Btn label="S" title="취소선" active={editor.isActive("strike")} on={() => editor.chain().focus().toggleStrike().run()} />
 
-        <span className="mx-0.5 h-5 w-px bg-gray-200" />
+        <span className="mx-0.5 h-5 w-px bg-slate-200" />
 
         {/* 글씨색 */}
         <label
           title="글씨색"
-          className="flex h-8 cursor-pointer items-center gap-1 rounded-md bg-gray-100 px-2 text-sm font-bold text-gray-700 hover:bg-gray-200"
+          className="flex h-8 cursor-pointer items-center gap-1 rounded-md bg-slate-100 px-2 text-sm font-bold text-slate-700 hover:bg-slate-200"
           onMouseDown={(e) => e.preventDefault()}
         >
           A
@@ -251,20 +251,20 @@ export default function RichNoticeEditor({
             title="형광펜"
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => editor.chain().focus().toggleHighlight({ color: c }).run()}
-            className="h-8 w-8 rounded-md border border-gray-200"
+            className="h-8 w-8 rounded-md border border-slate-200"
             style={{ backgroundColor: c }}
             aria-label={`형광펜 ${c}`}
           />
         ))}
         <Btn label="형광해제" title="형광펜 해제" on={() => editor.chain().focus().unsetHighlight().run()} />
 
-        <span className="mx-0.5 h-5 w-px bg-gray-200" />
+        <span className="mx-0.5 h-5 w-px bg-slate-200" />
 
         <Btn label="• 목록" title="글머리 목록" active={editor.isActive("bulletList")} on={() => editor.chain().focus().toggleBulletList().run()} />
         <Btn label="1. 목록" title="번호 목록" active={editor.isActive("orderedList")} on={() => editor.chain().focus().toggleOrderedList().run()} />
         <Btn label="제목" title="제목(H2)" active={editor.isActive("heading", { level: 2 })} on={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} />
 
-        <span className="mx-0.5 h-5 w-px bg-gray-200" />
+        <span className="mx-0.5 h-5 w-px bg-slate-200" />
 
         <Btn
           label="링크"
@@ -280,7 +280,7 @@ export default function RichNoticeEditor({
         />
         <label
           title="이미지"
-          className="flex h-8 cursor-pointer items-center rounded-md bg-gray-100 px-2 text-sm font-bold text-gray-700 hover:bg-gray-200"
+          className="flex h-8 cursor-pointer items-center rounded-md bg-slate-100 px-2 text-sm font-bold text-slate-700 hover:bg-slate-200"
           onMouseDown={(e) => e.preventDefault()}
         >
           🖼
@@ -296,7 +296,7 @@ export default function RichNoticeEditor({
           />
         </label>
 
-        <span className="mx-0.5 h-5 w-px bg-gray-200" />
+        <span className="mx-0.5 h-5 w-px bg-slate-200" />
 
         <Btn label="지움" title="서식 지우기" on={() => editor.chain().focus().unsetAllMarks().clearNodes().run()} />
         <Btn label="↶" title="실행 취소" disabled={!editor.can().undo()} on={() => editor.chain().focus().undo().run()} />
@@ -308,7 +308,7 @@ export default function RichNoticeEditor({
         <div
           role="status"
           aria-live="polite"
-          className="mt-1 inline-block rounded-md bg-gray-900/90 px-3 py-1.5 text-xs font-bold text-white"
+          className="mt-1 inline-block rounded-md bg-slate-900/90 px-3 py-1.5 text-xs font-bold text-white"
         >
           {toast}
         </div>

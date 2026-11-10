@@ -52,14 +52,14 @@ export default function CompanyInfoLayoutToggle({ layout, onChange, compactMobil
   return (
     <>
     {compactMobile && <select className="payment-ci-native" aria-label="업체정보 보기 범위 선택" value={current} onChange={(e) => pick(e.target.value as InfoLayout | "script")}>{keys.map(l => <option key={l} value={l}>{label(l)}</option>)}</select>}
-    <div data-payment-ci-segmented className="inline-flex shrink-0 rounded-lg border border-gray-300 bg-white p-0.5" role="group" aria-label="업체정보 보기 범위">
+    <div data-payment-ci-segmented className="inline-flex shrink-0 rounded-lg border border-slate-300 bg-white p-0.5" role="group" aria-label="업체정보 보기 범위">
       {keys.map((l) => (
         <button
           key={l}
           type="button"
           aria-pressed={current === l}
           onClick={() => pick(l)}
-          className={`whitespace-nowrap rounded-md px-3 py-1 text-xs font-semibold ${current === l ? "bg-slate-800 text-white shadow-sm" : "text-gray-600 hover:bg-gray-50"}`}
+          className={`whitespace-nowrap rounded-md px-3 py-1 text-xs font-semibold ${current === l ? "bg-slate-800 text-white shadow-sm" : "text-slate-600 hover:bg-slate-50"}`}
         >
           {label(l)}
         </button>
@@ -81,7 +81,7 @@ export function HiddenFilledNotice({ draft, onOpen }: { draft: CompanyInfo; onOp
     <button
       type="button"
       onClick={onOpen}
-      className="w-full rounded-md border border-dashed border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-600 hover:border-slate-500 hover:text-slate-800"
+      className="w-full rounded-md border border-dashed border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:border-slate-500 hover:text-slate-800"
     >
       <DisclosureChevron open={false} /> 확장보기에 적힌 항목 {n}개 더 있어요 · 보기
     </button>

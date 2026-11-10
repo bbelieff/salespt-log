@@ -43,7 +43,7 @@ export default function ArenaCaptainToggle({ email, cohort, initialOn }: Props) 
 
   if (!claimed) {
     return (
-      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-px-10 text-gray-400">
+      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-px-10 text-slate-400">
         미클레임
       </span>
     );
@@ -57,7 +57,7 @@ export default function ArenaCaptainToggle({ email, cohort, initialOn }: Props) 
       className={`rounded-full px-2.5 py-0.5 text-px-11 font-bold transition-colors disabled:opacity-50 ${
         on
           ? "bg-amber-100 text-amber-800 hover:bg-amber-200"
-          : "border border-gray-200 text-gray-500 hover:bg-gray-50"
+          : "border border-slate-200 text-slate-500 hover:bg-slate-50"
       }`}
     >
       {on ? "★ 회장" : "회장 지정"}

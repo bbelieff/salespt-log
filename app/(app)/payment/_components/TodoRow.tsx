@@ -4,7 +4,7 @@ import { forwardRef, useRef, useState } from "react";
 import type { Todo, TodoType } from "@/types";
 import DateInputCustom from "@/components/ui/DateInputCustom";
 
-const TYPE_BADGE: Record<TodoType, string> = { 미팅: "bg-blue-100 text-blue-700", 전화: "bg-green-100 text-green-700", 메시지: "bg-violet-100 text-violet-700", 기타: "bg-gray-100 text-gray-600", 일반: "bg-teal-100 text-teal-700" };
+const TYPE_BADGE: Record<TodoType, string> = { 미팅: "bg-blue-100 text-blue-700", 전화: "bg-green-100 text-green-700", 메시지: "bg-violet-100 text-violet-700", 기타: "bg-slate-100 text-slate-600", 일반: "bg-teal-100 text-teal-700" };
 /** 「+ 결과」·「+ 다음」 점선 태그 — 부모(group) hover 때 실선·옅은 파랑. */
 const TAG = "inline-block whitespace-nowrap rounded border border-dashed border-slate-300 bg-white px-1.5 text-px-11 font-semibold leading-5 text-blue-600 group-hover:border-solid group-hover:border-blue-300";
 const INPUT = "h-9 rounded-md border border-slate-300 bg-white px-2 text-xs focus:border-blue-500 focus:outline-none";

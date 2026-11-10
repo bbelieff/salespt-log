@@ -30,12 +30,12 @@ export default function ConfirmModal({
       dismissOnBackdrop
       className="rounded-xl bg-white p-5 shadow-xl"
     >
-      <h3 className="mb-1 text-base font-semibold text-gray-900">{title}</h3>
-      <p className="mb-4 text-sm leading-relaxed text-gray-600">{message}</p>
+      <h3 className="mb-1 text-base font-semibold text-slate-900">{title}</h3>
+      <p className="mb-4 text-sm leading-relaxed text-slate-600">{message}</p>
       <div className="flex gap-2">
         <AppDialogClose
           data-autofocus
-          className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >
           취소
         </AppDialogClose>

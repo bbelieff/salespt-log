@@ -77,17 +77,17 @@ export default function RescheduleForm({
         📅 일정 변경
       </div>
 
-      <div className="text-xs text-gray-500">
-        기존: <b className="text-gray-700">{initialDate} {initialTime}</b>
+      <div className="text-xs text-slate-500">
+        기존: <b className="text-slate-700">{initialDate} {initialTime}</b>
       </div>
 
       <div className="flex gap-2">
         <div className="shrink-0" style={{ width: 130 }}>
-          <label className="mb-1 block text-xs text-gray-600">새 날짜</label>
+          <label className="mb-1 block text-xs text-slate-600">새 날짜</label>
           <DateInputCustom value={newDate} min={todayISO} onChange={setNewDate} ariaLabel="새 날짜" compact />
         </div>
         <div className="min-w-0 flex-1">
-          <label className="mb-1 block text-xs text-gray-600">새 시간</label>
+          <label className="mb-1 block text-xs text-slate-600">새 시간</label>
           <TimePicker15 value={newTime} onChange={setNewTime} />
         </div>
       </div>
@@ -106,7 +106,7 @@ export default function RescheduleForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-xs text-gray-600">
+        <label className="mb-1 block text-xs text-slate-600">
           변경 사유
         </label>
         <textarea
@@ -114,7 +114,7 @@ export default function RescheduleForm({
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder={`예: ${vendor}, 사장님 출장으로 다음 주 이동`}
-          className="w-full resize-none rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-purple-500 focus:outline-none"
+          className="w-full resize-none rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm focus:border-purple-500 focus:outline-none"
         />
       </div>
 
@@ -128,12 +128,12 @@ export default function RescheduleForm({
         type="button"
         onClick={submit}
         disabled={pending}
-        className="w-full rounded-lg bg-purple-500 py-2.5 text-sm font-bold text-white transition-all hover:bg-purple-600 disabled:cursor-not-allowed disabled:bg-gray-300"
+        className="w-full rounded-lg bg-purple-500 py-2.5 text-sm font-bold text-white transition-all hover:bg-purple-600 disabled:cursor-not-allowed disabled:bg-slate-300"
       >
         {pending ? "저장중.." : "📅 일정 변경 확정"}
       </button>
 
-      <div className="rounded-md bg-white/60 px-2 py-1.5 text-px-11 text-gray-500">
+      <div className="rounded-md bg-white/60 px-2 py-1.5 text-px-11 text-slate-500">
         💡 이전 카드는 보라색 &ldquo;변경됨&rdquo;으로 보존 · 새 카드가 새 날짜에 생성
       </div>
     </div>

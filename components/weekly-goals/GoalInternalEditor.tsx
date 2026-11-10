@@ -160,7 +160,7 @@ export default function GoalInternalEditor({ view, onDirty, onRecord, children }
   });
   // Routine inputs stay editable while a save is queued/in-flight — only the
   // semantic overwrite mutation disables its own button while running.
-  return <section aria-label="트레이너 내부 기록" className="space-y-4 rounded-2xl border border-gray-200 bg-gray-50 p-4 ph-no-capture">
+  return <section aria-label="트레이너 내부 기록" className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 ph-no-capture">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h2 className="font-bold">PT과제 성과·트레이너 기록</h2>
       <span className="inline-flex items-center gap-2">
@@ -184,11 +184,11 @@ export default function GoalInternalEditor({ view, onDirty, onRecord, children }
       <fieldset className="space-y-3">
         {view.previous && <div className="space-y-2">
           <p className="text-sm font-semibold">{view.previous.week}주차 PT과제 성과</p>
-          {outcomes.map((row, i) => <label key={i} className="grid items-start gap-2 rounded-xl border border-gray-200 bg-white p-3 text-sm pc:grid-cols-2">
+          {outcomes.map((row, i) => <label key={i} className="grid items-start gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm pc:grid-cols-2">
             <span className="break-words font-medium">{i + 1}. {row.task || "과제 기록 없음"}</span>
             <textarea aria-label={`지난주 PT과제 성과 ${i + 1}번`} rows={2} maxLength={2000} value={row.outcome}
               placeholder="실행한 내용, 결과, 다음에 보완할 점을 기록해 주세요."
-              onChange={e => setOutcome(i, e.target.value)} className="mt-1 w-full rounded-xl border border-gray-300 p-3" />
+              onChange={e => setOutcome(i, e.target.value)} className="mt-1 w-full rounded-xl border border-slate-300 p-3" />
           </label>)}
         </div>}
       </fieldset>}
@@ -196,8 +196,8 @@ export default function GoalInternalEditor({ view, onDirty, onRecord, children }
     {loaded && <fieldset>
         <label className="block text-sm font-semibold">트레이닝 후 특이사항<textarea aria-label="트레이닝 후 특이사항" aria-describedby="goal-internal-special-notes-help" rows={4} maxLength={10000} value={auto.draft.specialNotes}
           placeholder={"예: 컨택 스크립트 보완 필요\n예: 다음 주 미팅 준비 점검"}
-          onChange={e => deferInternal({ ...auto.draft, specialNotes: e.target.value })} className="mt-1 w-full rounded-xl border border-gray-300 p-3" /></label>
-        <p id="goal-internal-special-notes-help" className="text-xs text-gray-500">내용별로 줄을 나눠 작성해 주세요. 입력한 줄바꿈은 복사할 때도 유지됩니다.</p>
+          onChange={e => deferInternal({ ...auto.draft, specialNotes: e.target.value })} className="mt-1 w-full rounded-xl border border-slate-300 p-3" /></label>
+        <p id="goal-internal-special-notes-help" className="text-xs text-slate-500">내용별로 줄을 나눠 작성해 주세요. 입력한 줄바꿈은 복사할 때도 유지됩니다.</p>
       </fieldset>}
   </section>;
 }

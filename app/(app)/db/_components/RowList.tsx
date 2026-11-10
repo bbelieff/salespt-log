@@ -47,7 +47,7 @@ export default function RowList({
   }
   if (rows.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center text-sm text-gray-400">
+      <div className="rounded-xl border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-400">
         아직 {ch.recordsLabel}이 없어요
       </div>
     );

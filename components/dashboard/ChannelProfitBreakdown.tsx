@@ -41,13 +41,13 @@ const NUM = "whitespace-nowrap py-1 pl-1.5 text-right align-top";
 // 굵기는 줄마다 따로 준다 — 같은 칸에 font-normal·font-bold 를 겹치면 CSS 순서로 normal 이 이긴다.
 const NAME_BASE = "py-1 pr-1 text-left align-top";
 const NAME = `${NAME_BASE} font-normal`;
-const SUB = "block text-px-11 font-normal text-gray-400";
+const SUB = "block text-px-11 font-normal text-slate-400";
 // 이름과 「계약 N건」을 한 덩어리로 세운다 — 누르는 자리(24px 이상)가 둘을 함께 덮고, 첫 줄이 숫자 칸과 나란하다.
 const ACTION = "flex min-h-6 flex-col items-start break-keep rounded text-left font-semibold text-slate-600 focus-visible:outline-none focus-visible:ring-2";
 
 function Money({ won, tone = false, dashIfZero = false }: { won: number; tone?: boolean; dashIfZero?: boolean }) {
   if (dashIfZero && won === 0) return <Dash />;
-  const color = tone ? (won < 0 ? "text-violet-600" : "text-blue-700") : "text-gray-700";
+  const color = tone ? (won < 0 ? "text-violet-600" : "text-blue-700") : "text-slate-700";
   const full = formatWonFull(won);
   return (
     <td className={`${NUM} ${color}`} title={full}>
@@ -59,7 +59,7 @@ function Money({ won, tone = false, dashIfZero = false }: { won: number; tone?: 
 
 function Dash() {
   return (
-    <td className={`${NUM} text-gray-400`}>
+    <td className={`${NUM} text-slate-400`}>
       <span aria-hidden="true">—</span>
       <span className="sr-only">없음</span>
     </td>
@@ -91,7 +91,7 @@ export default function ChannelProfitBreakdown({ table, revenue, dbCost, additio
       <table data-testid="fin-channel-profit" className="mt-1 w-full text-xs tabular-nums pc:max-w-lg">
         <caption className="sr-only">채널별 남은 돈</caption>
         <thead>
-          <tr className="text-gray-400">
+          <tr className="text-slate-400">
             <th scope="col" className="pb-0.5 text-left font-medium">채널</th>
             <th scope="col" className="pb-0.5 pl-1.5 text-right font-medium">매출</th>
             <th scope="col" className="pb-0.5 pl-1.5 text-right font-medium">비용</th>
@@ -104,7 +104,7 @@ export default function ChannelProfitBreakdown({ table, revenue, dbCost, additio
               <th scope="row" className={NAME}>
                 <span className="flex items-center gap-1.5">
                   <span aria-hidden="true" className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: CH_COLOR[c.key] }} />
-                  <span className="break-keep font-semibold text-gray-700">{c.key}</span>
+                  <span className="break-keep font-semibold text-slate-700">{c.key}</span>
                 </span>
                 <Count n={c.contracts} indent />
               </th>
@@ -170,12 +170,12 @@ export default function ChannelProfitBreakdown({ table, revenue, dbCost, additio
           </tr>
         </tfoot>
       </table>
-      <p className="mt-1 break-keep text-px-11 text-gray-400">추가 비용은 채널에 나누지 않았어요 · 만원 단위로 반올림했어요</p>
+      <p className="mt-1 break-keep text-px-11 text-slate-400">추가 비용은 채널에 나누지 않았어요 · 만원 단위로 반올림했어요</p>
       {hasActivity(table.unknown) && (
-        <p className="break-keep text-px-11 text-gray-400">채널 모름: 영업기록과 이어지지 않은 계약이에요(예: 이전 계약 직접등록)</p>
+        <p className="break-keep text-px-11 text-slate-400">채널 모름: 영업기록과 이어지지 않은 계약이에요(예: 이전 계약 직접등록)</p>
       )}
       {hasActivity(table.pending) && (
-        <p className="break-keep text-px-11 text-gray-400">
+        <p className="break-keep text-px-11 text-slate-400">
           {refreshing ? "확인 중: 방금 바뀐 계약이라 채널을 다시 맞춰 보고 있어요" : "확인 못 함: 새로고침하면 채널을 다시 맞춰 봐요"}
         </p>
       )}

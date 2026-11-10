@@ -95,12 +95,12 @@ export default function SimpleAuthMock({ live = false }: { live?: boolean }) {
   const skipTime = () => setItems(l => l.map(r => (r.status === "waiting" ? { ...r, deadline: Date.now() + 5000 } : r)));
 
   const controls = (
-    <div role="region" aria-label="목업 조작" className={`flex flex-wrap items-center gap-2 text-xs text-gray-700 ${live ? "fixed bottom-4 right-4 z-50 rounded-lg border border-dashed border-gray-400 bg-gray-100/95 px-3 py-2 shadow-md" : "border-b border-dashed border-gray-400 bg-gray-200 px-4 py-2"}`}>
+    <div role="region" aria-label="목업 조작" className={`flex flex-wrap items-center gap-2 text-xs text-slate-700 ${live ? "fixed bottom-4 right-4 z-50 rounded-lg border border-dashed border-slate-400 bg-slate-100/95 px-3 py-2 shadow-md" : "border-b border-dashed border-slate-400 bg-slate-200 px-4 py-2"}`}>
       <b>목업 조작(제품에 없음)</b>
-      <select value={scenario} onChange={e => pickScenario(e.target.value as Scenario)} aria-label="합성 시나리오" className="rounded border border-gray-400 bg-white px-1.5 py-0.5">
+      <select value={scenario} onChange={e => pickScenario(e.target.value as Scenario)} aria-label="합성 시나리오" className="rounded border border-slate-400 bg-white px-1.5 py-0.5">
         {SCENARIOS.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
       </select>
-      <button type="button" onClick={skipTime} className="rounded border border-gray-400 bg-white px-2 py-0.5 hover:bg-gray-50">대기 5초 남기기</button>
+      <button type="button" onClick={skipTime} className="rounded border border-slate-400 bg-white px-2 py-0.5 hover:bg-slate-50">대기 5초 남기기</button>
     </div>
   );
   // 2단(belie 2026-11-09): ① 보내기·가져오기 | ② 보낸 인증. 받은 서류·DB 연결·업체정보 반영은 ② 의 업체 바로 밑에 펼친다.
@@ -123,14 +123,14 @@ export default function SimpleAuthMock({ live = false }: { live?: boolean }) {
   );
   const toastEl = (
     <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-16 z-50 flex justify-center px-4">
-      {toast && <p className="rounded-lg bg-gray-900 px-4 py-2 text-sm text-white shadow-lg">{toast}</p>}
+      {toast && <p className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white shadow-lg">{toast}</p>}
     </div>
   );
   if (live) return <>{body}{controls}{toastEl}</>;
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-50">
       {controls}
-      <header className="mx-auto max-w-6xl px-4 pb-4 pt-6"><h1 className="text-xl font-bold text-gray-900">간편인증 서류 조회</h1></header>
+      <header className="mx-auto max-w-6xl px-4 pb-4 pt-6"><h1 className="text-xl font-bold text-slate-900">간편인증 서류 조회</h1></header>
       <main className="mx-auto max-w-6xl px-4 pb-10">{body}</main>
       {toastEl}
     </div>

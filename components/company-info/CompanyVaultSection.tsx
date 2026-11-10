@@ -18,7 +18,7 @@ const LABEL_PH: Record<VaultKind, string> = { login: "홈택스", bank: "농협 
 const ID_PH: Record<VaultKind, string> = { login: "아이디", bank: "은행·예금주", rrn: "이름", other: "항목" };
 const SECRET_PH: Record<VaultKind, string> = { login: "비밀번호", bank: "계좌번호", rrn: "000000-0000000", other: "값" };
 
-const btnCls = "shrink-0 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs text-gray-700 hover:bg-gray-50";
+const btnCls = "shrink-0 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50";
 const primaryCls = "rounded-md bg-brand-red px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50";
 const pinInputCls = `${inputCls} w-28 tabular-nums`;
 /** 종류 select — inputCls 의 w-full 을 빼야 w-24 로 좁아진다(둘 다 있으면 w-full 이 이겨 한 줄을 다 썼다). */
@@ -226,10 +226,10 @@ export default function CompanyVaultSection({ target, idBase, incoming = [], onI
   const ready = !loading && !loadError && view;
 
   return (
-    <section aria-label="계정 보관함" className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+    <section aria-label="계정 보관함" className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
       {/* 제목 한 줄: 「계정 보관함 · 열림 · mm:ss 뒤 잠겨요」 + PIN 바꾸기(belie 2026-10-09 — 잠금 저장 배지·지금 잠그기 뺌). */}
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h3 className="min-w-0 text-sm font-bold text-gray-900">
+        <h3 className="min-w-0 text-sm font-bold text-slate-900">
           계정 보관함
           {ready && view.unlocked && (
             <span className="ml-1.5 text-xs font-semibold text-emerald-700">
@@ -242,12 +242,12 @@ export default function CompanyVaultSection({ target, idBase, incoming = [], onI
         )}
       </div>
 
-      {loading && !view && <p className="animate-pulse text-xs text-gray-400">보관함 불러오는 중…</p>}
+      {loading && !view && <p className="animate-pulse text-xs text-slate-400">보관함 불러오는 중…</p>}
       {loadError && <p role="alert" className="text-xs text-red-600">{loadError}</p>}
 
       {ready && !view.hasPin && (
         <form onSubmit={(e) => submitNewPin(e)} className="space-y-2">
-          <p className="text-xs text-gray-600">고객 계정·계좌·주민번호를 잠가서 보관해요. 먼저 PIN(숫자 4~8자리)을 만들어 주세요.</p>
+          <p className="text-xs text-slate-600">고객 계정·계좌·주민번호를 잠가서 보관해요. 먼저 PIN(숫자 4~8자리)을 만들어 주세요.</p>
           <div className="flex flex-wrap items-center gap-2">
             <PinInput id={`${idBase}-pin1`} label="PIN" value={pin1} onChange={setPin1} auto="new-password" />
             <PinInput id={`${idBase}-pin2`} label="PIN 확인" value={pin2} onChange={setPin2} auto="new-password" />
@@ -259,14 +259,14 @@ export default function CompanyVaultSection({ target, idBase, incoming = [], onI
 
       {ready && view.hasPin && !view.unlocked && (
         <form onSubmit={unlock} className="space-y-2">
-          <p className="text-xs font-semibold text-gray-700">
+          <p className="text-xs font-semibold text-slate-700">
             보관 항목 <span className="tabular-nums">{view.count}</span>개 · 잠김
           </p>
           <div className="flex flex-wrap items-center gap-2">
             <PinInput id={`${idBase}-unlock`} label="PIN" value={pin1} onChange={setPin1} auto="current-password" />
             <button type="submit" disabled={busy || pin1.length < 4} className={primaryCls}>{busy ? "여는 중…" : "열기"}</button>
           </div>
-          <p className="text-xs text-gray-500">한 번 열면 모든 업체 보관함이 30분 동안 열려요.</p>
+          <p className="text-xs text-slate-500">한 번 열면 모든 업체 보관함이 30분 동안 열려요.</p>
           {incoming.length > 0 && (
             <p className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800">
               메모에서 가져온 {incoming.length}건 — PIN을 넣으면 보관함에 들어가요.
@@ -279,7 +279,7 @@ export default function CompanyVaultSection({ target, idBase, incoming = [], onI
       {ready && view.unlocked && (
         <div className="space-y-2">
           {pinEdit && (
-            <form onSubmit={(e) => submitNewPin(e, curPin)} className="flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 p-2">
+            <form onSubmit={(e) => submitNewPin(e, curPin)} className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 p-2">
               <PinInput id={`${idBase}-cur`} label="지금 PIN" value={curPin} onChange={setCurPin} auto="current-password" />
               <PinInput id={`${idBase}-next`} label="새 PIN" value={pin1} onChange={setPin1} auto="new-password" />
               <PinInput id={`${idBase}-next2`} label="새 PIN 확인" value={pin2} onChange={setPin2} auto="new-password" />
@@ -290,18 +290,18 @@ export default function CompanyVaultSection({ target, idBase, incoming = [], onI
           )}
 
           {removed && (
-            <p className="flex items-center justify-between gap-2 rounded-md bg-gray-100 px-2 py-1 text-xs text-gray-700" role="status">
+            <p className="flex items-center justify-between gap-2 rounded-md bg-slate-100 px-2 py-1 text-xs text-slate-700" role="status">
               <span className="min-w-0 truncate">「{removed.item.label || "이름 없는 항목"}」을 지웠어요</span>
               <button type="button" onClick={restore} className="shrink-0 font-semibold underline underline-offset-2">되돌리기</button>
             </p>
           )}
           {addedNote && <p className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-800">{addedNote}</p>}
           {items.length === 0 && (
-            <p className="rounded-lg bg-gray-50 p-3 text-xs text-gray-500">아직 보관한 항목이 없어요. 아래 [+ 항목 추가]로 넣어 주세요.</p>
+            <p className="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">아직 보관한 항목이 없어요. 아래 [+ 항목 추가]로 넣어 주세요.</p>
           )}
 
           {items.map((it, i) => (
-            <div key={i} className="space-y-1.5 rounded-lg border border-gray-200 bg-white p-2">
+            <div key={i} className="space-y-1.5 rounded-lg border border-slate-200 bg-white p-2">
               {/* 어디 계정인지(이름)가 먼저, 종류는 옆에 좁게 — 한 줄을 종류 칸이 다 쓰지 않게(belie 2026-10-09). */}
               <div className="flex items-center gap-1.5">
                 <label htmlFor={`${idBase}-label-${i}`} className="sr-only">항목 {i + 1} 이름</label>
@@ -313,7 +313,7 @@ export default function CompanyVaultSection({ target, idBase, incoming = [], onI
                 </select>
                 {/* 삭제 — 손가락으로 누를 수 있는 크기(h-8)·테두리로 분명하게(belie 2026-10-09 「삭제가 안 됨」). */}
                 <button type="button" onClick={() => remove(i)}
-                  aria-label={`항목 ${i + 1} 삭제`} className="h-8 shrink-0 rounded-md border border-gray-300 bg-white px-2 text-xs font-semibold text-gray-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600">삭제</button>
+                  aria-label={`항목 ${i + 1} 삭제`} className="h-8 shrink-0 rounded-md border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600">삭제</button>
               </div>
               {/* 아이디 | 비밀번호 한 줄 + 보기(복사 없음, belie 2026-10-09). */}
               <div className="flex items-center gap-1.5">
@@ -336,11 +336,11 @@ export default function CompanyVaultSection({ target, idBase, incoming = [], onI
           ))}
 
           <button type="button" onClick={() => edit([...items, { kind: "login", label: "", id: "", secret: "", note: "" }])}
-            className="w-full rounded-lg border border-dashed border-gray-300 bg-white p-2 text-xs font-semibold text-gray-600 hover:border-brand-red hover:text-brand-red">
+            className="w-full rounded-lg border border-dashed border-slate-300 bg-white p-2 text-xs font-semibold text-slate-600 hover:border-brand-red hover:text-brand-red">
             + 항목 추가
           </button>
 
-          <p aria-live="polite" className="text-xs text-gray-500">
+          <p aria-live="polite" className="text-xs text-slate-500">
             {saveState === "saving" && "저장중.."}
             {saveState === "saved" && "저장됨"}
             {saveState === "error" && <span className="text-red-600">{saveError}</span>}

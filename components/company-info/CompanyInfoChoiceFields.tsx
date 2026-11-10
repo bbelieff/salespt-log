@@ -107,7 +107,7 @@ function UnitInput({ id, label, hint, unit, stored, thousand, onChange }: {
           onChange={live.onChange}
           onBlur={() => setTyping(null)}
         />
-        {showUnit && <span aria-hidden className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-xs text-gray-400">{unit}</span>}
+        {showUnit && <span aria-hidden className="pointer-events-none absolute inset-y-0 right-2 flex items-center text-xs text-slate-400">{unit}</span>}
       </div>
     </div>
   );

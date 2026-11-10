@@ -129,11 +129,11 @@ export default function BasicEditDetails({
   );
 
   return (
-    <details className="rounded-lg border border-gray-200 bg-white/60 px-3 py-2">
-      <summary className="flex cursor-pointer select-none items-center gap-1 text-xs font-semibold text-gray-600">
-        ✏️ 일정 수정 <span className="font-normal text-gray-400">· 날짜·시간·업체·장소·비고</span>
+    <details className="rounded-lg border border-slate-200 bg-white/60 px-3 py-2">
+      <summary className="flex cursor-pointer select-none items-center gap-1 text-xs font-semibold text-slate-600">
+        ✏️ 일정 수정 <span className="font-normal text-slate-400">· 날짜·시간·업체·장소·비고</span>
         {saving && (
-          <span className="font-normal text-gray-400" aria-live="polite">· 저장중..</span>
+          <span className="font-normal text-slate-400" aria-live="polite">· 저장중..</span>
         )}
         {!saving && status === "error" && (
           <span className="font-normal text-red-500" aria-live="polite">· 저장 실패</span>
@@ -160,7 +160,7 @@ export default function BasicEditDetails({
         )}
         <div className="flex gap-2">
           <div className="shrink-0" style={{ width: 130 }}>
-            <label className="mb-1 block text-xs text-gray-500">미팅 날짜</label>
+            <label className="mb-1 block text-xs text-slate-500">미팅 날짜</label>
             <DateInputCustom
               value={draft.미팅날짜}
               onChange={(v) => setGroup((d) => ({ ...d, 미팅날짜: v }))}
@@ -169,7 +169,7 @@ export default function BasicEditDetails({
             />
           </div>
           <div className="min-w-0 flex-1">
-            <label className="mb-1 block text-xs text-gray-500">시간</label>
+            <label className="mb-1 block text-xs text-slate-500">시간</label>
             <TimePicker15
               value={draft.미팅시간}
               onChange={(v) => setGroup((d) => ({ ...d, 미팅시간: v }))}
@@ -178,27 +178,27 @@ export default function BasicEditDetails({
         </div>
 
         <div>
-          <label className="mb-1 block text-xs text-gray-500">업체명</label>
+          <label className="mb-1 block text-xs text-slate-500">업체명</label>
           <input
             type="text"
             value={draft.업체명}
             onChange={(e) => setText((d) => ({ ...d, 업체명: e.target.value }))}
-            className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-xs text-gray-500">장소</label>
+          <label className="mb-1 block text-xs text-slate-500">장소</label>
           <input
             type="text"
             value={draft.장소}
             onChange={(e) => setText((d) => ({ ...d, 장소: e.target.value }))}
-            className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
           />
         </div>
 
         <div>
-          <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-gray-600">
+          <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-slate-600">
             <span>📝 예약비고</span>
           </label>
           <textarea
@@ -206,7 +206,7 @@ export default function BasicEditDetails({
             value={draft.예약비고}
             onChange={(e) => setText((d) => ({ ...d, 예약비고: e.target.value }))}
             placeholder="예: 사장님 부재 시간, 지참서류 등"
-            className="w-full resize-none rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+            className="w-full resize-none rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
           />
         </div>
 

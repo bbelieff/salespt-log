@@ -24,12 +24,12 @@ import { bizNoTyping } from "@/util/live-format";
 import { looksLikeContactEmail, tidyContactEmail } from "@/util/contact-email";
 import { useLiveInput } from "./useLiveInput";
 
-/** 위계(§3-2 contrast): 값 gray-900 / 테두리 gray-300 / 예시(placeholder)만 gray-300 옅게. */
+/** 위계(§3-2 contrast): 값 slate-900 / 테두리 slate-300 / 예시(placeholder)만 slate-300 옅게. */
 export const inputCls =
-  "w-full rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-900 placeholder:text-gray-300 focus:border-brand-red focus:outline-none";
+  "w-full rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-900 placeholder:text-slate-300 focus:border-brand-red focus:outline-none";
 /** 자동 계산 칸 — 입력칸과 같은 크기, 회색 바탕(직접 고칠 수 없음). */
 export const readOnlyCls =
-  "w-full rounded-md border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-900 focus:outline-none";
+  "w-full rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-900 focus:outline-none";
 
 const RRN_CUT_MSG = "주민등록번호는 13자리까지만 적을 수 있어요.";
 const RRN_SHORT_MSG = "앞 6자리를 모두 입력해야 저장돼요.";
@@ -49,10 +49,10 @@ export function FieldLabel({ htmlFor, label, hint, tag }: { htmlFor: string; lab
   return (
     <>
       <div className="flex items-center gap-1">
-        <label htmlFor={htmlFor} className="text-xs font-medium text-gray-800">
+        <label htmlFor={htmlFor} className="text-xs font-medium text-slate-800">
           {label}
         </label>
-        {tag && <span className="text-xs text-gray-500">{tag}</span>}
+        {tag && <span className="text-xs text-slate-500">{tag}</span>}
         {hintId && <HintTooltip label={label} text={hint!} />}
       </div>
       {hintId && (

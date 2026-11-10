@@ -266,7 +266,7 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
       <div className="min-[1440px]:grid min-[1440px]:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] min-[1440px]:items-start min-[1440px]:gap-4">
         <div className="min-w-0">
           {/* 목록을 접어도 채널별 건수를 확인할 수 있다. */}
-          <h3 className="mb-2 text-sm font-semibold text-gray-700">
+          <h3 className="mb-2 text-sm font-semibold text-slate-700">
             <button
               type="button"
               aria-expanded={listOpen}
@@ -322,7 +322,7 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
           >
             <div className="mb-3 flex items-center gap-2">
               <span className={`badge ${BADGE_CLS[activeCh]}`}>{ch.name}</span>
-              <span className="text-sm font-semibold text-gray-700">
+              <span className="text-sm font-semibold text-slate-700">
                 {ch.recordsLabel} 추가
               </span>
             </div>
@@ -350,7 +350,7 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
                 type="button"
                 // 수동 저장 채널은 닫을 때 몰래 추가하지 않는다 — 미저장이면 가드 모달이 묻는다.
                 onClick={ch.manualSave ? closeAddForm : requestCloseAdd}
-                className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-gray-400 hover:bg-gray-50 hover:text-gray-600"
+                className="shrink-0 rounded-lg px-2 py-1 text-xs font-medium text-slate-400 hover:bg-slate-50 hover:text-slate-600"
               >
                 닫기
               </button>
@@ -359,7 +359,7 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
                   type="button"
                   onClick={() => void flushAdd().catch(() => {})}
                   disabled={!addDirty || addStatus === "pending"}
-                  className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400"
+                  className="shrink-0 rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white hover:bg-blue-800 disabled:bg-slate-200 disabled:text-slate-400"
                 >
                   {addStatus === "pending" ? "추가 중…" : "저장"}
                 </button>
@@ -378,7 +378,7 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
                 setExpandedRow(null);
               })
             }
-            className="mt-3 w-full rounded-xl border-2 border-dashed border-gray-300 bg-white py-3 text-sm font-medium text-gray-500 transition-colors hover:border-blue-400 hover:text-blue-600 min-[1440px]:mt-0"
+            className="mt-3 w-full rounded-xl border-2 border-dashed border-slate-300 bg-white py-3 text-sm font-medium text-slate-500 transition-colors hover:border-blue-400 hover:text-blue-600 min-[1440px]:mt-0"
           >
             + {ch.recordsLabel} 추가
           </button>

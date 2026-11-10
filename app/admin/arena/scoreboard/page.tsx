@@ -25,8 +25,8 @@ export default async function ScoreboardPage() {
     <main className="mx-auto min-h-dvh max-w-5xl bg-white px-4 py-6">
       <div className="mb-5 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-black text-gray-900">아레나 전광판</h1>
-          <p className="text-xs text-gray-500">
+          <h1 className="text-lg font-black text-slate-900">아레나 전광판</h1>
+          <p className="text-xs text-slate-500">
             기수 종합 + 개인 랭킹 · 부부 1시트=1명 · 매주 캡쳐 공지용
           </p>
         </div>
@@ -34,7 +34,7 @@ export default async function ScoreboardPage() {
           <ScoreboardRefreshButton />
           <Link
             href="/admin/arena"
-            className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-600 hover:bg-gray-50"
+            className="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-600 hover:bg-slate-50"
           >
             ← 아레나 관리
           </Link>
@@ -42,7 +42,7 @@ export default async function ScoreboardPage() {
       </div>
 
       {bundle.byCohort.length === 0 ? (
-        <div className="rounded-xl border border-gray-100 bg-gray-50 p-6 text-center text-sm text-gray-400">
+        <div className="rounded-xl border border-slate-100 bg-slate-50 p-6 text-center text-sm text-slate-400">
           아레나 참가자가 없습니다.
         </div>
       ) : (

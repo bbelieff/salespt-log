@@ -48,7 +48,7 @@ const SLOT_STYLES = {
     head: "bg-blue-50",
     pctText: "text-blue-700",
     chip: "bg-blue-100 text-blue-800",
-    chipFull: "bg-blue-600 text-white",
+    chipFull: "bg-blue-700 text-white",
     segLow: "bg-blue-300",
     segMid: "bg-blue-500",
     segHigh: "bg-blue-700",
@@ -86,7 +86,7 @@ function pctToProgress(pct: number): Progress {
 const styleOf = (slotIdx: number) => SLOT_STYLES[(((slotIdx - 1) % 3) + 1) as 1 | 2 | 3];
 
 function getSegClass(slotIdx: number, pct: number): string {
-  if (pct === 0) return "bg-gray-300";
+  if (pct === 0) return "bg-slate-300";
   const s = styleOf(slotIdx);
   if (pct <= 40) return s.segLow;
   if (pct <= 80) return s.segMid;
@@ -157,7 +157,7 @@ export default function PaymentSlotForm({
   const waiting = slot.진행률 === WAITING_PROGRESS;
   const [open, setOpen] = useState(autoOpen);
   useEffect(() => { if (autoOpen) setOpen(true); }, [autoOpen, focusRequestId]);
-  const pctColor = pct === 0 ? "text-gray-400" : style.pctText;
+  const pctColor = pct === 0 ? "text-slate-400" : style.pctText;
   // 이 진행건의 기록(번호로, 옛 기록은 기관 이름으로) · 다음 할 일 배지 = 미완료 Todo 가장 이른 예정일(2026-10-31 belie, 접혀도 보이게).
   const slotTodos = (todos ?? []).filter((t) => savedContract ? todoSlotOf(savedContract, t).slot === index : sameInstitution(t.institutionRef, savedInstitution));
   const nextTodo = slotTodos.filter((t) => (t.기록종류 ?? "todo") !== "history" && !t.완료여부 && isValidISODate(t.예정일자)).map((t) => t.예정일자).sort()[0];
@@ -182,13 +182,13 @@ export default function PaymentSlotForm({
           >
             {index}
           </div>
-          <span className="min-w-0 truncate text-sm font-semibold text-gray-800">
+          <span className="min-w-0 truncate text-sm font-semibold text-slate-800">
             {`진행 ${index}`}{slot.진행상품 ? ` : ${slot.진행상품}` : ""}
           </span>
           {/* 접힘 요약: 진행기관 · 진행률 · 수납/승인 */}
           {!open && (
-            <span className="ml-1 flex min-w-0 items-center gap-1.5 truncate text-xs text-gray-500">
-              <span className="truncate font-medium text-gray-600">
+            <span className="ml-1 flex min-w-0 items-center gap-1.5 truncate text-xs text-slate-500">
+              <span className="truncate font-medium text-slate-600">
                 {slot.진행기관 || "기관 미입력"}
               </span>
               {halted ? <span className={HALTED_BADGE}>중도중지</span> : waiting ? <WaitBadge slot={slot} /> : <span className={`shrink-0 font-semibold ${pctColor}`}>· {pct}%</span>}
@@ -209,7 +209,7 @@ export default function PaymentSlotForm({
           {/* [10] 주제 = 진행기관명 (펼침 시만; 접힘 땐 좌측 요약에 표시). */}
           {open && slot.진행기관 && (
             <span
-              className="max-w-[140px] truncate text-xs font-semibold text-gray-600"
+              className="max-w-[140px] truncate text-xs font-semibold text-slate-600"
               title={slot.진행기관}
             >
               {slot.진행기관}
@@ -219,7 +219,7 @@ export default function PaymentSlotForm({
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onRemove(); }}
-              className="shrink-0 text-xs text-gray-400 hover:text-red-500"
+              className="shrink-0 text-xs text-slate-400 hover:text-red-500"
               aria-label="수납 제거"
               title="이 수납 제거"
             >
@@ -237,10 +237,10 @@ export default function PaymentSlotForm({
       {/* 진행도 볼륨바 (5등분 클릭) */}
       <div className={`mb-3 ${halted ? "opacity-60" : ""}`} data-halted={halted || undefined}>
         <div className="mb-1.5 flex items-center justify-between">
-          <span className="text-xs text-gray-500">진행도</span>
+          <span className="text-xs text-slate-500">진행도</span>
           {halted ? <span className={HALTED_BADGE}>중도중지</span> : waiting ? <WaitBadge slot={slot} /> : <span className={`text-xs font-semibold ${pctColor}`}>{pct}%</span>}
         </div>
-        <div className="relative h-3 overflow-hidden rounded-full bg-gray-200">
+        <div className="relative h-3 overflow-hidden rounded-full bg-slate-200">
           <div
             className={`absolute inset-y-0 left-0 rounded-full ${fillClass}`}
             style={{
@@ -264,7 +264,7 @@ export default function PaymentSlotForm({
             })}
           </div>
         </div>
-        <div className="mt-1 flex justify-between px-0.5 text-px-11 text-gray-400">
+        <div className="mt-1 flex justify-between px-0.5 text-px-11 text-slate-400">
           <span>0</span>
           <span>20</span>
           <span>40</span>
@@ -324,7 +324,7 @@ export default function PaymentSlotForm({
           />
         </div>
         {waiting && <ProgressWaitFields slot={slot} onChange={(patch) => onChange({ ...slot, ...patch })} />}
-        <div className="grid grid-cols-2 gap-2 border-t border-gray-100 pt-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2 border-t border-slate-100 pt-2 lg:grid-cols-3">
           <FieldMoney
             label="승인금액 (원)"
             value={slot.승인금액}
@@ -353,9 +353,9 @@ export default function PaymentSlotForm({
 // ── 필드 프리미티브 ──────────────────────────────────────────
 
 const FIELD_INPUT_CLASS =
-  "h-9 w-full rounded-md border border-gray-300 bg-white px-2 text-sm text-gray-900 transition-colors placeholder:text-gray-400 focus:border-blue-500 focus:outline-none";
+  "h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900 transition-colors placeholder:text-slate-400 focus:border-blue-500 focus:outline-none";
 
-const FIELD_LABEL_CLASS = "mb-0.5 block text-xs text-gray-500";
+const FIELD_LABEL_CLASS = "mb-0.5 block text-xs text-slate-500";
 
 function FieldText({
   label,
@@ -383,7 +383,7 @@ function FieldText({
 }
 
 function FieldTextarea({ label, value, placeholder, onChange }: { label: string; value: string; placeholder?: string; onChange: (v: string) => void }) { const id = useId();
-  return <div><label htmlFor={id} className={FIELD_LABEL_CLASS}>{label}</label><textarea id={id} data-payment-draft-input rows={Math.max(2, value.split("\n").length)} value={value} placeholder={placeholder ?? "-"} onChange={(e) => onChange(e.target.value)} className="min-h-[64px] w-full resize-y rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"/></div>;
+  return <div><label htmlFor={id} className={FIELD_LABEL_CLASS}>{label}</label><textarea id={id} data-payment-draft-input rows={Math.max(2, value.split("\n").length)} value={value} placeholder={placeholder ?? "-"} onChange={(e) => onChange(e.target.value)} className="min-h-[64px] w-full resize-y rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none"/></div>;
 }
 
 /** [3] 자유입력 + 과거값 자동완성(구글시트 드롭다운형). native datalist 사용. */

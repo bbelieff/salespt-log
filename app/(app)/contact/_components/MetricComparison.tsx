@@ -6,9 +6,9 @@ export default function MetricComparison({ before, after }: {
   after: ChannelDailyRowMetrics;
 }) {
   return (
-    <div className="mt-3 overflow-hidden rounded-lg border border-gray-200">
+    <div className="mt-3 overflow-hidden rounded-lg border border-slate-200">
       <table className="w-full text-center text-xs tabular-nums">
-        <thead className="bg-gray-50 text-gray-500"><tr>
+        <thead className="bg-slate-50 text-slate-500"><tr>
           <th scope="col" className="p-2">채널 숫자</th>
           {KEYS.map((k) => <th scope="col" key={k}>{METRIC_LABEL[k]}</th>)}
         </tr></thead>

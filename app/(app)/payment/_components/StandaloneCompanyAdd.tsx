@@ -114,7 +114,7 @@ export default function StandaloneCompanyAdd({ listMode, onCreated, className = 
             취소
           </button>
           <button type="submit" disabled={!canSubmit}
-            className="h-9 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50">
+            className="h-9 rounded-lg bg-blue-700 px-4 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50">
             {pending ? "추가 중…" : "추가"}
           </button>
         </div>

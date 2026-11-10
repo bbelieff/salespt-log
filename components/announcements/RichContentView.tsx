@@ -11,7 +11,7 @@ export default function RichContentView({ html }: { html: string }) {
   const clean = sanitizeNoticeHtml(html);
   return (
     <div
-      className="notice-rich text-sm text-gray-800"
+      className="notice-rich text-sm text-slate-800"
       dangerouslySetInnerHTML={{ __html: clean }}
     />
   );

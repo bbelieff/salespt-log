@@ -56,7 +56,7 @@ export default function ContractForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-xs text-gray-600">
+        <label className="mb-1 block text-xs text-slate-600">
           수임비 (원) <span className="text-red-500">*</span>
         </label>
         <div className="flex items-center gap-2">
@@ -65,25 +65,25 @@ export default function ContractForm({
             onChange={setFeeNum}
             placeholder="5,000,000"
             aria-label="수임비"
-            className="w-full rounded-lg border border-gray-200 bg-white px-2.5 py-2 text-base font-semibold focus:border-green-500 focus:outline-none"
+            className="w-full rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-base font-semibold focus:border-green-500 focus:outline-none"
           />
-          <span className="shrink-0 text-sm font-semibold text-gray-600">
+          <span className="shrink-0 text-sm font-semibold text-slate-600">
             원
           </span>
         </div>
       </div>
 
       <div>
-        <label className="mb-1 block text-xs text-gray-600">
+        <label className="mb-1 block text-xs text-slate-600">
           계약 조건{" "}
-          <span className="font-normal text-gray-400">· 특이사항</span>
+          <span className="font-normal text-slate-400">· 특이사항</span>
         </label>
         <textarea
           rows={2}
           value={terms}
           onChange={(e) => setTerms(e.target.value)}
           placeholder="예: 6개월 분할, 부가세 별도, 출판물 포함"
-          className="w-full resize-none rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-green-500 focus:outline-none"
+          className="w-full resize-none rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm focus:border-green-500 focus:outline-none"
         />
       </div>
 
@@ -97,7 +97,7 @@ export default function ContractForm({
         type="button"
         onClick={submit}
         disabled={pending}
-        className="w-full rounded-lg bg-green-600 py-2.5 text-sm font-bold text-white transition-all hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+        className="w-full rounded-lg bg-green-600 py-2.5 text-sm font-bold text-white transition-all hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-slate-300"
       >
         {pending ? "저장중.." : "💵 계약 확정"}
       </button>

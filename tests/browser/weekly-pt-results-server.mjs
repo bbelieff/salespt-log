@@ -23,7 +23,7 @@ assert.equal(css.status,0,css.stderr);
 let record={specialNotes:"테스트 특이사항",priorOutcome:"분석 완료\n\n점검 진행",revision:1,updatedAt:null};
 // <style> reproduces production constraint html,body{height:100%} extended to #root
 // so the fixture does not conceal the sticky-containment bug with root auto height.
-const html='<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>주간 PT 검증</title><link rel="stylesheet" href="/style.css"><style>html,body,#root{height:100%}</style><body class="bg-gray-50"><div id="root"></div><script src="/app.js"></script></body></html>';
+const html='<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>주간 PT 검증</title><link rel="stylesheet" href="/style.css"><style>html,body,#root{height:100%}</style><body class="bg-slate-50"><div id="root"></div><script src="/app.js"></script></body></html>';
 const server=createServer(async(req,res)=>{
  const path=req.url.split('?')[0];
  if(path.startsWith('/api/')){

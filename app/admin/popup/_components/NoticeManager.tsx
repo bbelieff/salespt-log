@@ -34,7 +34,7 @@ import {
 // tiptap 은 SSR 비호환 → 클라 전용 동적 로드.
 const RichNoticeEditor = dynamic(
   () => import("@/components/announcements/RichNoticeEditor"),
-  { ssr: false, loading: () => <div className="min-h-32 rounded-lg border border-gray-200 bg-gray-50" /> },
+  { ssr: false, loading: () => <div className="min-h-32 rounded-lg border border-slate-200 bg-slate-50" /> },
 );
 
 const EMPTY = {
@@ -56,11 +56,11 @@ const LAST_SLOT = "notice:__last__";
 const slotFor = (id: string): string => (id ? `notice:${id}` : NEW_SLOT);
 
 const inputCls =
-  "h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 placeholder:text-gray-300 focus:border-red-300 focus:outline-none";
+  "h-10 w-full rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-300 focus:border-red-300 focus:outline-none";
 
 /** 발행 버튼 — UpdatesManager 일괄 버튼과 같은 compact production 클래스. */
 const publishCls =
-  "shrink-0 rounded-full bg-brand-red px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-600 disabled:bg-gray-200 disabled:text-gray-400";
+  "shrink-0 rounded-full bg-brand-red px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-600 disabled:bg-slate-200 disabled:text-slate-400";
 
 function sessionStore(): Storage | null {
   try {
@@ -243,9 +243,9 @@ export default function NoticeManager({
   }
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-4">
+    <section className="rounded-2xl border border-slate-200 bg-white p-4">
       <div className="mb-1 flex items-center gap-2">
-        <h2 className="text-sm font-black text-gray-900">공지 작성/수정</h2>
+        <h2 className="text-sm font-black text-slate-900">공지 작성/수정</h2>
         {/* truthful 상태 — 보관 성공시에만 '초안 보관됨', ACK 직후 '게시됨'. */}
         {justPublished && !dirty ? (
           <span className="text-px-11 font-bold text-green-600">게시됨</span>
@@ -261,7 +261,7 @@ export default function NoticeManager({
             type="button"
             disabled={!form.title.trim() && !form.bodyMd.trim()}
             onClick={() => setPreview(true)}
-            className="rounded-full border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-50 disabled:text-gray-300"
+            className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:text-slate-300"
           >
             미리보기
           </button>
@@ -276,7 +276,7 @@ export default function NoticeManager({
           <button
             type="button"
             onClick={newNotice}
-            className="rounded-full border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-50"
+            className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50"
           >
             + 새 공지
           </button>
@@ -290,21 +290,21 @@ export default function NoticeManager({
 
       {/* 기존 공지 목록 */}
       {initialNotices.length > 0 && (
-        <ul className="mb-4 divide-y divide-gray-50 rounded-xl border border-gray-100">
+        <ul className="mb-4 divide-y divide-slate-50 rounded-xl border border-slate-100">
           {initialNotices.map((n) => (
             <li key={n.id}>
               <button
                 type="button"
                 onClick={() => loadNotice(n)}
-                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 ${
+                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-50 ${
                   form.id === n.id ? "bg-red-50" : ""
                 }`}
               >
-                <span className={`h-2 w-2 shrink-0 rounded-full ${n.active ? "bg-green-500" : "bg-gray-300"}`} />
-                <span className="min-w-0 flex-1 truncate font-semibold text-gray-800">
+                <span className={`h-2 w-2 shrink-0 rounded-full ${n.active ? "bg-green-500" : "bg-slate-300"}`} />
+                <span className="min-w-0 flex-1 truncate font-semibold text-slate-800">
                   {n.pinned && "📌 "}{n.title}
                 </span>
-                <span className="shrink-0 text-xs text-gray-400">
+                <span className="shrink-0 text-xs text-slate-400">
                   {n.audience} · {n.displayMode}
                 </span>
               </button>
@@ -327,7 +327,7 @@ export default function NoticeManager({
 
         {/* 노출 옵션 */}
         <div className="grid grid-cols-2 gap-2 2xl:grid-cols-4">
-          <label className="text-xs font-semibold text-gray-500">
+          <label className="text-xs font-semibold text-slate-500">
             대상
             <select
               className={inputCls}
@@ -339,7 +339,7 @@ export default function NoticeManager({
               <option value="regular">일반 기수만</option>
             </select>
           </label>
-          <label className="text-xs font-semibold text-gray-500">
+          <label className="text-xs font-semibold text-slate-500">
             빈도
             <select
               className={inputCls}
@@ -351,7 +351,7 @@ export default function NoticeManager({
               <option value="always">매 접속</option>
             </select>
           </label>
-          <label className="text-xs font-semibold text-gray-500">
+          <label className="text-xs font-semibold text-slate-500">
             시작일 (빈값 = 즉시)
             <input
               type="date"
@@ -360,7 +360,7 @@ export default function NoticeManager({
               onChange={(e) => update({ start: e.target.value })}
             />
           </label>
-          <label className="text-xs font-semibold text-gray-500">
+          <label className="text-xs font-semibold text-slate-500">
             종료일 (빈값 = 무제한)
             <input
               type="date"
@@ -372,7 +372,7 @@ export default function NoticeManager({
         </div>
 
         <div className="flex items-center gap-4">
-          <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
+          <label className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
             <input
               type="checkbox"
               checked={form.pinned}
@@ -380,11 +380,11 @@ export default function NoticeManager({
             />
             📌 상단 고정
           </label>
-          <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
+          <div className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
             수강생에게
             <span
               data-testid="notice-active-state"
-              className={`rounded-full px-2 py-0.5 text-px-11 font-bold ${form.active ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"}`}
+              className={`rounded-full px-2 py-0.5 text-px-11 font-bold ${form.active ? "bg-green-50 text-green-700" : "bg-slate-100 text-slate-500"}`}
             >
               {form.active ? "켜짐" : "꺼짐"}
             </span>
@@ -392,17 +392,17 @@ export default function NoticeManager({
               type="button"
               aria-pressed={form.active}
               onClick={() => update({ active: !form.active })}
-              className="rounded-full border border-gray-200 px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
+              className="rounded-full border border-slate-200 px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50"
             >
               {form.active ? "끄기" : "켜기"}
             </button>
           </div>
         </div>
         {!form.active && (
-          <p className="text-xs text-gray-500">꺼져 있으면 게시해도 수강생에게 안 떠요. 미리보기로 확인한 뒤 「켜기」를 누르고 게시하세요.</p>
+          <p className="text-xs text-slate-500">꺼져 있으면 게시해도 수강생에게 안 떠요. 미리보기로 확인한 뒤 「켜기」를 누르고 게시하세요.</p>
         )}
 
-        {msg && <p className="text-xs font-semibold text-gray-500">{msg}</p>}
+        {msg && <p className="text-xs font-semibold text-slate-500">{msg}</p>}
       </div>
       {/* 수강생 화면과 같은 팝업 — 지금 입력 그대로, 저장·게시·읽음 기록 없이 이 창만 닫는다. */}
       {preview && (

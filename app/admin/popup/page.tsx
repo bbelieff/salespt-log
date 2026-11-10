@@ -21,13 +21,13 @@ export default async function AdminPopupPage() {
 
   return (
     <div className="min-h-dvh bg-slate-100 pb-16">
-      <header className="sticky top-0 z-50 border-b border-gray-100 bg-white">
+      <header className="sticky top-0 z-50 border-b border-slate-100 bg-white">
         <div className="mx-auto flex h-12 max-w-4xl items-center gap-3 px-4">
-          <Link href="/admin" className="text-sm font-bold text-gray-400 hover:text-gray-700 pc:hidden">
+          <Link href="/admin" className="text-sm font-bold text-slate-400 hover:text-slate-700 pc:hidden">
             ← 메뉴
           </Link>
-          <h1 className="text-sm font-black text-gray-900">📢 팝업관리</h1>
-          <span className="ml-auto text-xs text-gray-400">
+          <h1 className="text-sm font-black text-slate-900">📢 팝업관리</h1>
+          <span className="ml-auto text-xs text-slate-400">
             새소식 팝업 — 공지 작성·업데이트 문구 보정
           </span>
         </div>

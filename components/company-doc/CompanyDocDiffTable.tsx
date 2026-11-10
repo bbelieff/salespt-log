@@ -37,7 +37,7 @@ export default function CompanyDocDiffTable({ rows, labelOf, checked, choice, on
     <table className="w-full table-fixed border-collapse text-xs">
       <caption className="sr-only">문서에서 읽은 값과 지금 값 비교</caption>
       <thead>
-        <tr className="border-b border-gray-200 text-left text-gray-500">
+        <tr className="border-b border-slate-200 text-left text-slate-500">
           <th scope="col" className="w-14 py-1.5 pr-1 font-medium sm:w-1/5">항목</th>
           <th scope="col" className="w-16 py-1.5 pr-1 font-medium sm:w-1/4">지금 값</th>
           <th scope="col" className="py-1.5 pr-1 font-medium">문서에서 읽은 값</th>
@@ -56,14 +56,14 @@ export default function CompanyDocDiffTable({ rows, labelOf, checked, choice, on
           const note = checkState(row.current, c).note;
           const warn = [...c.warnings, ...(row.conflict ? ["문서마다 값이 달라요. 맞는 값을 골라 주세요."] : [])];
           return (
-            <tr key={row.key} className="border-b border-gray-100 align-top" data-row={row.key}>
-              <th scope="row" className="break-words py-1.5 pr-1 text-left font-medium text-gray-800">
+            <tr key={row.key} className="border-b border-slate-100 align-top" data-row={row.key}>
+              <th scope="row" className="break-words py-1.5 pr-1 text-left font-medium text-slate-800">
                 <label htmlFor={boxId}>{label}</label>
               </th>
-              <td className="whitespace-pre-line break-words py-1.5 pr-1 text-gray-500">
-                {displayValue(row.key, row.current) || <span className="text-gray-300">비어 있음</span>}
+              <td className="whitespace-pre-line break-words py-1.5 pr-1 text-slate-500">
+                {displayValue(row.key, row.current) || <span className="text-slate-300">비어 있음</span>}
               </td>
-              <td className="break-words py-1.5 pr-1 text-gray-900">
+              <td className="break-words py-1.5 pr-1 text-slate-900">
                 {row.conflict ? (
                   <>
                     <select
@@ -84,13 +84,13 @@ export default function CompanyDocDiffTable({ rows, labelOf, checked, choice, on
                 ) : (
                   <span className="whitespace-pre-line">{displayValue(row.key, c.value)}</span>
                 )}
-                {sourceNote(c) && <span className="ml-1 text-gray-500">({sourceNote(c)})</span>}
+                {sourceNote(c) && <span className="ml-1 text-slate-500">({sourceNote(c)})</span>}
                 {warn.map((w) => (
                   <p key={w} className="mt-0.5 text-amber-700">
                     ⚠ {w}
                   </p>
                 ))}
-                {note && <p className="mt-0.5 text-gray-400">{note}</p>}
+                {note && <p className="mt-0.5 text-slate-400">{note}</p>}
               </td>
               <td className="py-1.5 pr-1">
                 <span className={`rounded px-1 py-0.5 font-medium ${ACC_CLS[acc]}`}>{acc}</span>
@@ -99,7 +99,7 @@ export default function CompanyDocDiffTable({ rows, labelOf, checked, choice, on
                 <input
                   id={boxId}
                   type="checkbox"
-                  className="h-4 w-4 accent-gray-900"
+                  className="h-4 w-4 accent-slate-900"
                   checked={Boolean(checked[row.key])}
                   onChange={(e) => onCheck(row.key, e.target.checked)}
                 />
