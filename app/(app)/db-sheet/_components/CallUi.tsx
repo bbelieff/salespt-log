@@ -67,7 +67,7 @@ export function useCallUi(rows: DbSheetLead[], onSaved: () => void | Promise<voi
 
   const layer = <>
     {dial && <CallDialDialog row={dial} onDialed={p => { dialedRow.current = dial; calls.dialed(p); }} onClose={closeDial} />}
-    {script && <CallScriptSheet company={script.company || "이 업체"} onClose={() => setScript(null)} />}
+    {script && <CallScriptSheet company={script.company || "이 업체"} phone={script.phone} onClose={() => setScript(null)} />}
     {upload && <CallUploadDialog row={upload.row} call={upload.call} asked={upload.asked} onUploaded={id => calls.uploaded(id, upload.row.id)} onClose={() => setUpload(null)} />}
     {asking && <CallUploadDialog row={asking.row} call={asking.call} asked onUploaded={id => calls.uploaded(id, asking.row.id)} onClose={calls.clearReturned} />}
     {confirming?.lead && confirming.call && <CallConfirmScreen lead={confirming.lead} call={confirming.call} onClose={() => setConfirm(null)} onSaved={async () => {
