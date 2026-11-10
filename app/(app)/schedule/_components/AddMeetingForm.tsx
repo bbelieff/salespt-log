@@ -109,7 +109,7 @@ export default function AddMeetingForm({
           disabled={pending}
           className="rounded-lg bg-blue-500 py-2 text-sm font-bold text-white hover:bg-blue-600 disabled:cursor-not-allowed disabled:bg-gray-300"
         >
-          {pending ? "저장중..." : "➕ 추가 확정"}
+          {pending ? "저장중.." : "➕ 추가 확정"}
         </button>
       </div>
     </div>

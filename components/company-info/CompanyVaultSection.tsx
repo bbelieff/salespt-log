@@ -341,7 +341,7 @@ export default function CompanyVaultSection({ target, idBase, incoming = [], onI
           </button>
 
           <p aria-live="polite" className="text-xs text-gray-500">
-            {saveState === "saving" && "저장 중…"}
+            {saveState === "saving" && "저장중.."}
             {saveState === "saved" && "저장됨"}
             {saveState === "error" && <span className="text-red-600">{saveError}</span>}
           </p>

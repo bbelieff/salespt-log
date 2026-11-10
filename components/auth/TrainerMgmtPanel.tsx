@@ -52,6 +52,11 @@ export default function TrainerMgmtPanel({
   inviteSlot?: ReactNode;
 }) {
   const router = useRouter();
+  // 확인창엔 이메일 대신 이름(이메일)으로 — 누구인지 바로 알아보게(2026-11-10 UI 점검).
+  const who = (email: string) => {
+    const u = [...pendingTrainers, ...activeTrainers, ...managementStaff].find((x) => x.email === email);
+    return u?.name ? `${u.name}(${email})` : email;
+  };
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -179,9 +184,9 @@ export default function TrainerMgmtPanel({
               : (email) => {
                   if (
                     !confirm(
-                      `${email} 을 관리부서로 이동시키시겠습니까?\n\n` +
-                        `· 담당 매핑은 자동 정리됩니다.\n` +
-                        `· 언제든 트레이너로 다시 이동 가능합니다.`,
+                      `${who(email)} 님을 관리부서로 옮길까요?\n\n` +
+                        `· 맡던 수강생 배정은 자동으로 정리돼요.\n` +
+                        `· 언제든 트레이너로 다시 옮길 수 있어요.`,
                     )
                   )
                     return;
@@ -198,9 +203,9 @@ export default function TrainerMgmtPanel({
               : (email) => {
                   if (
                     !confirm(
-                      `${email} 트레이너를 퇴출시키시겠습니까?\n\n` +
-                        `· 그가 담당하던 모든 수강생의 배정에서 자동 제거됩니다.\n` +
-                        `· trainer row 자체가 삭제됩니다.`,
+                      `${who(email)} 트레이너를 내보낼까요?\n\n` +
+                        `· 맡던 모든 수강생 배정에서 빠져요.\n` +
+                        `· 트레이너 등록 정보도 삭제돼요.`,
                     )
                   )
                     return;
@@ -225,7 +230,7 @@ export default function TrainerMgmtPanel({
               call("/api/admin/approve-trainer", { email }, `approve:${email}`)
             }
             onReject={(email) => {
-              if (!confirm(`${email} 거절하시겠습니까? row가 삭제됩니다.`)) return;
+              if (!confirm(`${who(email)} 님의 신청을 거절할까요?\n신청 정보가 삭제돼요.`)) return;
               call("/api/admin/reject-trainer", { email }, `reject:${email}`);
             }}
           />
@@ -260,7 +265,7 @@ export default function TrainerMgmtPanel({
             viewOnly
               ? undefined
               : (email) => {
-                  if (!confirm(`${email} row 를 삭제하시겠습니까?`)) return;
+                  if (!confirm(`${who(email)} 님의 등록 정보를 삭제할까요?`)) return;
                   call("/api/admin/remove-trainer", { email }, `remove:${email}`);
                 }
           }

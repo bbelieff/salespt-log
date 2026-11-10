@@ -13,6 +13,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { matchesTrainee } from "./trainee-search";
 import DisclosureChevron from "@/components/ui/DisclosureChevron";
 import PageContainer from "@/components/PageContainer";
 import { useMe } from "@/query/me-hook";
@@ -52,6 +53,9 @@ export default function TrainerCohortView({
   const [error, setError] = useState<string | null>(null);
   /** "내 수강생만 보기" 토글. 기본 true (내 담당만). */
   const [showOnlyMine, setShowOnlyMine] = useState(true);
+  // 검색(2026-11-10): 검색 중엔 내 담당·전체 토글과 상관없이 전체 명단에서 찾고, 기수·보관 상자를 펼친다.
+  const [q, setQ] = useState("");
+  const searching = q.trim() !== "";
 
   const trainerEmailLc = sessionEmail.toLowerCase();
   /** 활성 기수(아레나·테스트·보관 기수 제외) 수강생 중 관리자·트레이너 본인 페이지(0기 GM·0기 코스텝)가 아닌 사람. */
@@ -73,11 +77,12 @@ export default function TrainerCohortView({
 
   /** showOnlyMine 토글에 따라 전체 명단 or 본인 담당만. */
   const visibleTrainees = useMemo(() => {
+    if (searching) return trainees.filter((u) => matchesTrainee(u, q));
     if (!showOnlyMine) return trainees;
     return trainees.filter((u) =>
       parseAssigned(u.assignedTrainer).includes(trainerEmailLc),
     );
-  }, [trainees, showOnlyMine, trainerEmailLc]);
+  }, [trainees, showOnlyMine, trainerEmailLc, searching, q]);
 
   /**
    * 웹앱 버튼 — 2026-05-17 정정: 시트 버튼처럼 새 탭으로 열기.
@@ -192,6 +197,16 @@ export default function TrainerCohortView({
           </div>
         </section>
 
+        <input
+          type="search"
+          aria-label="수강생 검색"
+          placeholder="이름 / 기수 / 이메일 검색"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100"
+        />
+        {searching && visibleTrainees.length === 0 && <p className="text-sm text-gray-400">검색 결과 없음.</p>}
+
         {error && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
             {error}
@@ -223,6 +238,7 @@ export default function TrainerCohortView({
             linkedBySheet={linkedBySheet}
             viewOnly
             trainerEmailLc={trainerEmailLc}
+            forceOpen={searching}
           />
         ))}
         {arenaSeasons.map(([season, groups]) => (
@@ -248,6 +264,7 @@ export default function TrainerCohortView({
                   linkedBySheet={linkedBySheet}
                   viewOnly
                   trainerEmailLc={trainerEmailLc}
+                  forceOpen={searching}
                 />
               ))}
             </div>
@@ -256,7 +273,7 @@ export default function TrainerCohortView({
 
         {/* 보관된 기수 — collapsed (details) */}
         {archivedGroups.length > 0 && (
-          <details className="group overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 open:bg-white">
+          <details key={searching ? "search" : "browse"} open={searching || undefined} className="group overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 open:bg-white">
             <summary className="disclosure-summary flex cursor-pointer items-center justify-between gap-2 px-4 py-3 hover:bg-gray-100">
               <span className="text-sm font-bold text-gray-700">
                 📦 보관된 기수 ({archivedGroups.reduce((s, [, l]) => s + l.length, 0)}명)
@@ -279,6 +296,7 @@ export default function TrainerCohortView({
                   archived
                   viewOnly
                   trainerEmailLc={trainerEmailLc}
+                  forceOpen={searching}
                 />
               ))}
             </div>

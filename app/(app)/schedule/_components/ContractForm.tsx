@@ -99,7 +99,7 @@ export default function ContractForm({
         disabled={pending}
         className="w-full rounded-lg bg-green-600 py-2.5 text-sm font-bold text-white transition-all hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
       >
-        {pending ? "저장중..." : "💵 계약 확정"}
+        {pending ? "저장중.." : "💵 계약 확정"}
       </button>
     </div>
   );

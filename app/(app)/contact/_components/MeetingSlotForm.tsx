@@ -4,6 +4,7 @@
  */
 "use client";
 
+import { useId } from "react";
 import DateInputCustom from "@/components/ui/DateInputCustom";
 import TimeSelectPair from "@/components/ui/TimeSelectPair";
 
@@ -75,10 +76,12 @@ export function FieldText({
   onChange: (v: string) => void;
   placeholder?: string;
 }) {
+  const id = useId();
   return (
     <div>
-      <label className="mb-1 block text-xs text-gray-500">{label}</label>
+      <label htmlFor={id} className="mb-1 block text-xs text-gray-500">{label}</label>
       <input
+        id={id}
         type="text"
         className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
         placeholder={placeholder}
@@ -96,13 +99,15 @@ export function FieldNote({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const id = useId();
   return (
     <div>
-      <label className="mb-1 flex items-center gap-1 text-xs font-semibold text-gray-600">
+      <label htmlFor={id} className="mb-1 flex items-center gap-1 text-xs font-semibold text-gray-600">
         <span>📝 예약비고</span>
         <span className="font-normal text-gray-400">· 미팅 전 준비정보</span>
       </label>
       <textarea
+        id={id}
         rows={2}
         className="w-full resize-none rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
         placeholder="예: 사장님 부재 시간, 지참서류"

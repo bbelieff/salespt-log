@@ -32,7 +32,7 @@ describe("기존 noncompact inline 상태 줄과 compact 대체 표현", () => {
     expect(row).toContain('<PaymentMobileSaveFeedback ownerId={dirtyEntryId} status={status}');
   });
   it("noncompact 상태/compact 지속 오류와 명시 retry를 모두 보존한다", () => {
-    for (const word of ["저장됨", "저장 중…", "입력 중", "저장 실패", "다시 시도"]) expect(row).toContain(word);
+    for (const word of ["저장됨", "저장중..", "입력 중", "저장 실패", "다시 시도"]) expect(row).toContain(word);
     expect(row).toContain('<span data-payment-bar-status aria-live="polite" className="shrink-0 text-xs">{barStatus}</span>');
     // inline 에서는 예전 상태 블록을 그리지 않는다(두 번 보이지 않게).
     expect(row).toContain('const pcStatus = !inline && (status !== "idle" || canUndo || ciState.error || ciState.saving) ? (');

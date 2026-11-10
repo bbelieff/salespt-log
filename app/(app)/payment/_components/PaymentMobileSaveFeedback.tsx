@@ -117,7 +117,7 @@ export default function PaymentMobileSaveFeedback(props: Props) {
       <span aria-live="polite" aria-atomic="true">
         {notice && <span className="payment-mobile-save-notice" data-payment-save-toast data-kind={notice.kind} data-phase={notice.phase} aria-hidden={notice.phase === "leaving" ? true : undefined}>
           {notice.kind === "saved" && <span className="payment-save-check" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="m5 12 4 4 10-10" /></svg></span>}
-          <span>{notice.kind === "saving" ? "저장중" : "저장완료"}</span>
+          <span>{notice.kind === "saving" ? "저장중.." : "저장완료"}</span>
         </span>}
       </span>
       {props.canUndo && <button type="button" data-payment-feedback-undo disabled={busy} onMouseDown={(event) => event.preventDefault()} onClick={props.onUndo} className="h-11 rounded-lg border border-slate-300 bg-white px-2 text-xs font-medium text-slate-600 shadow-sm disabled:opacity-50" aria-label="계약 입력 되돌리기">되돌리기</button>}

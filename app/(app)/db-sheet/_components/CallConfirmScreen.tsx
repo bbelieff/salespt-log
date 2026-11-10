@@ -130,7 +130,7 @@ export function CallConfirmScreen({ lead, call, onSaved, onClose }: { lead: DbSh
     <footer className="dbs-cc-foot"><div className="dbs-cc-foot-in">
       <p role="status">{error ? <span className="dbs-cc-err">{error}</span> : blocker ? <span className="dbs-cc-block">{blocker}</span> : null}</p>
       <button type="button" className="dbs-button" disabled={busy} onClick={close}>나중에</button>
-      <button type="button" className="dbs-button primary" disabled={busy || !!blocker} onClick={() => void save()}>{busy ? "저장 중…" : "저장하기"}</button>
+      <button type="button" className="dbs-button primary" disabled={busy || !!blocker} onClick={() => void save()}>{busy ? "저장중.." : "저장하기"}</button>
     </div></footer>
   </div>;
 }

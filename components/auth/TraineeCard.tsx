@@ -305,7 +305,7 @@ export default function TraineeCard({
               type="button"
               onClick={() => onPick(u.email)}
               disabled={busy !== null}
-              title="웹앱 (5탭 UI) 으로 진입 — impersonation"
+              title="이 수강생 화면으로 보기"
               className="rounded-full bg-gray-900 px-3 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
             >
               {busy === u.email ? "여는 중..." : "웹앱 →"}

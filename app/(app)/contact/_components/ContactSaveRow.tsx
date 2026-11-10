@@ -71,7 +71,7 @@ export default function ContactSaveRow({ status, error, savedAt, dirty, onSave, 
               dirty ? "bg-brand-red text-white shadow-sm" : "border border-slate-300 bg-white text-slate-700"
             }`}
           >
-            {busy ? "저장 중…" : dirty ? "💾 저장" : "저장됨 ✓"}
+            {busy ? "저장중.." : dirty ? "💾 저장" : "저장됨 ✓"}
           </button>
         </div>
       </div>

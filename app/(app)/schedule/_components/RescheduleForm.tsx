@@ -135,7 +135,7 @@ export default function RescheduleForm({
         disabled={pending}
         className="w-full rounded-lg bg-purple-500 py-2.5 text-sm font-bold text-white transition-all hover:bg-purple-600 disabled:cursor-not-allowed disabled:bg-gray-300"
       >
-        {pending ? "저장중..." : "📅 일정 변경 확정"}
+        {pending ? "저장중.." : "📅 일정 변경 확정"}
       </button>
 
       <div className="rounded-md bg-white/60 px-2 py-1.5 text-px-11 text-gray-500">

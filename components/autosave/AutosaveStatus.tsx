@@ -30,7 +30,7 @@ export default function AutosaveStatus({
       : null;
   return (
     <span aria-live="polite" className="inline-flex min-w-0 flex-wrap items-center justify-end gap-1 text-right text-xs text-gray-400">
-      {status === "pending" && <span>저장 중…</span>}
+      {status === "pending" && <span>저장중..</span>}
       {status === "saved" && <span>저장됨{time ? ` ${time}` : ""}</span>}
       {status === "error" && (
         <span title={error || undefined} aria-label={error ? `저장 실패: ${error}` : "저장 실패"} className="inline-flex items-center gap-1 whitespace-nowrap font-semibold text-red-600">

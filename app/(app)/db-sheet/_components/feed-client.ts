@@ -16,9 +16,10 @@ export async function feedRequest(body: FeedAction): Promise<{ feeds?: FeedView[
 }
 
 /** 가져오기 창에서 「자동 확인」을 켜고 추가했을 때. 결과 안내는 이벤트로 연결 막대에 띄운다. */
-export async function connectFeed(input: { url:string; supplier:string; channel:string; rules:Record<string,string> }) {
+/** added=false 는 「자동 확인만 연결」(새 DB 0건) — 실패 문구에 「DB는 추가했지만」을 붙이지 않는다(2026-11-10). */
+export async function connectFeed(input: { url:string; supplier:string; channel:string; rules:Record<string,string> }, added = true) {
   try { await feedRequest({ action:'connect', ...input }); window.dispatchEvent(new CustomEvent(FEEDS_CHANGED, { detail:{ message:`${input.supplier} 시트를 연결했어요. 07~21시 매시간 새 DB만 들어와요.` } })); }
-  catch (e) { window.dispatchEvent(new CustomEvent(FEEDS_CHANGED, { detail:{ message:`DB는 추가했지만 자동 확인은 연결하지 못했어요. ${(e as Error).message}`, error:true } })); }
+  catch (e) { window.dispatchEvent(new CustomEvent(FEEDS_CHANGED, { detail:{ message:`${added ? 'DB는 추가했지만 ' : ''}자동 확인은 연결하지 못했어요. ${(e as Error).message}`, error:true } })); }
 }
 
 export function useDbSheetFeeds() {

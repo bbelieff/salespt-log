@@ -32,7 +32,7 @@ export default function InflowStatusCell({row,compact=false,iconOnly=false,onOpe
     event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('button')[next?0:1]?.focus();void change(next);
    }}>{value?'반영':'미반영'}</button>)}
   </div>
-  {pending&&<small role="status">저장 중…</small>}
+  {pending&&<small role="status">저장중..</small>}
   {!pending&&saved&&!error&&<small role="status">저장됨</small>}
   {error&&<small role="alert">{error}</small>}
  </div>;

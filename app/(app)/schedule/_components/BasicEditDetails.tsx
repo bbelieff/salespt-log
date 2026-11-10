@@ -132,7 +132,7 @@ export default function BasicEditDetails({
       <summary className="flex cursor-pointer select-none items-center gap-1 text-xs font-semibold text-gray-600">
         ✏️ 일정 수정 <span className="font-normal text-gray-400">· 날짜·시간·업체·장소·비고</span>
         {saving && (
-          <span className="font-normal text-gray-400" aria-live="polite">· 저장 중…</span>
+          <span className="font-normal text-gray-400" aria-live="polite">· 저장중..</span>
         )}
         {!saving && status === "error" && (
           <span className="font-normal text-red-500" aria-live="polite">· 저장 실패</span>
