@@ -14,6 +14,7 @@
 
 import { useEffect, useRef } from "react";
 import TimePicker15 from "@/components/ui/TimePicker15";
+import DateInputCustom from "@/components/ui/DateInputCustom";
 import { useDirtyEntry } from "@/components/DirtyGuard";
 import { useAutosave } from "@/components/autosave/useAutosave";
 import AutosaveStatus from "@/components/autosave/AutosaveStatus";
@@ -160,11 +161,11 @@ export default function BasicEditDetails({
         <div className="flex gap-2">
           <div className="shrink-0" style={{ width: 130 }}>
             <label className="mb-1 block text-xs text-gray-500">미팅 날짜</label>
-            <input
-              type="date"
+            <DateInputCustom
               value={draft.미팅날짜}
-              onChange={(e) => setGroup((d) => ({ ...d, 미팅날짜: e.target.value }))}
-              className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+              onChange={(v) => setGroup((d) => ({ ...d, 미팅날짜: v }))}
+              ariaLabel="미팅 날짜"
+              compact
             />
           </div>
           <div className="min-w-0 flex-1">

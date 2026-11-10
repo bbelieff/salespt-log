@@ -5,6 +5,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Todo } from "@/types";
 import TodoSection from "@/app/(app)/payment/_components/TodoSection";
+import { pickDate } from "./pick-date";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 const mocks = vi.hoisted(() => ({ seeds: [] as unknown[], create: vi.fn(), patch: vi.fn(), pending: false }));
@@ -29,7 +30,7 @@ afterEach(() => { act(() => root?.unmount()); el?.remove(); root = undefined; el
 
 describe("Todo 및 History 바로 추가", () => {
   it("Enter 로 팝업 없이 바로 저장하고(진행건·기관·계약 연결) 입력칸에 다시 포커스", async () => {
-    const node = render(); setValue(input("기록 제목"), "담당자 통화"); setValue(input("기록 날짜"), "2026-09-28");
+    const node = render(); setValue(input("기록 제목"), "담당자 통화"); pickDate(input("기록 날짜"), "2026-09-28");
     await pressEnter(input("기록 제목"));
     expect(node.querySelector('[data-testid="detail-modal"]')).toBeNull();
     expect(mocks.create).toHaveBeenCalledTimes(1);
@@ -37,14 +38,16 @@ describe("Todo 및 History 바로 추가", () => {
     expect(input("기록 제목").value).toBe("");
     expect(document.activeElement).toBe(input("기록 제목"));
   });
-  it("「추가」 버튼도 같은 바로 저장 · 날짜를 비우면 내일(KST)", async () => {
-    render(); setValue(input("기록 제목"), "재무제표 받기"); setValue(input("기록 날짜"), "");
+  it("「추가」 버튼도 같은 바로 저장 · 날짜를 안 고르면 내일(KST)", async () => {
+    // 2026-11-10: 날짜 칸이 직접 그리는 달력이라 「비우기」가 없다 — 기본값(내일) 그대로 저장되는지 본다.
+    render(); setValue(input("기록 제목"), "재무제표 받기");
+    expect(input("기록 날짜").textContent).toContain(kst(1));
     await act(async () => { button("추가").click(); });
     expect(mocks.create.mock.calls[0]?.[0]).toMatchObject({ 예정일자: kst(1), 기록종류: "todo" });
   });
   it("History 는 기본 날짜가 오늘이고 같은 바로 저장 경로를 쓴다", async () => {
     render(); act(() => button("History").click());
-    expect(input("기록 날짜").value).toBe(kst(0));
+    expect(input("기록 날짜").textContent).toContain(kst(0));
     setValue(input("기록 제목"), "현장 미팅 완료"); await pressEnter(input("기록 제목"));
     expect(mocks.create.mock.calls[0]?.[0]).toMatchObject({ 기록종류: "history", 예정일자: kst(0) });
   });
@@ -55,7 +58,7 @@ describe("Todo 및 History 바로 추가", () => {
     expect(node.querySelector('[role="alert"]')?.textContent).toContain("네트워크 오류");
   });
   it("「자세히」는 적은 제목·날짜로 상세 팝업을 연다(바로 저장 안 함)", () => {
-    const node = render(); setValue(input("기록 제목"), "담당자 통화"); setValue(input("기록 날짜"), "2026-09-28");
+    const node = render(); setValue(input("기록 제목"), "담당자 통화"); pickDate(input("기록 날짜"), "2026-09-28");
     act(() => button("자세히").click());
     expect(node.querySelector('[data-testid="detail-modal"]')).not.toBeNull();
     expect(mocks.seeds.at(-1)).toMatchObject({ 기록종류: "todo", 제목: "담당자 통화", 예정일자: "2026-09-28", hour: "09", minute: "00" });

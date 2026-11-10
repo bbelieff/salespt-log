@@ -16,6 +16,7 @@ import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useEffect, useId, useState } from "react";
 import { HALTED_PROGRESS, WAITING_PROGRESS, type ContractPayment, type PaymentSlot, type Progress, type Todo } from "@/types";
 import MoneyInput from "@/components/ui/MoneyInput";
+import DateInputCustom from "@/components/ui/DateInputCustom";
 import { formatMoneyInput } from "@/lib/format/money";
 import TodoSection from "./TodoSection";
 import ProgressWaitFields, { WaitBadge } from "./ProgressWaitFields";
@@ -434,12 +435,7 @@ function FieldDate({
   return (
     <div className="min-w-0">
       <label htmlFor={id} className={FIELD_LABEL_CLASS}>{label}</label>
-      <input id={id}
-        type="date"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`${FIELD_INPUT_CLASS} min-w-0 appearance-none`}
-      />
+      <DateInputCustom id={id} value={value} onChange={onChange} ariaLabel={label} compact className="h-9" />
     </div>
   );
 }

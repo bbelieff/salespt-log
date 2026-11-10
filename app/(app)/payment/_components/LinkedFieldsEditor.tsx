@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { ContractPayment } from "@/types";
 import MoneyInput from "@/components/ui/MoneyInput";
+import DateInputCustom from "@/components/ui/DateInputCustom";
 import { useEditContractLinkedFields } from "@/query/contract-payment-hooks";
 import { useDirtyEntry } from "@/components/DirtyGuard";
 import { useAutosave } from "@/components/autosave/useAutosave";
@@ -171,11 +172,11 @@ export default function LinkedFieldsEditor({ cp, initiallyEditing = false, compa
         </div>
         <div>
           <label className={label}>계약일</label>
-          <input
-            type="date"
+          <DateInputCustom
             value={draft.계약일}
-            onChange={(e) => stage({ ...draft, 계약일: e.target.value })}
-            className={`${input} appearance-none`}
+            onChange={(v) => stage({ ...draft, 계약일: v })}
+            ariaLabel="계약일"
+            compact
           />
         </div>
         <div>

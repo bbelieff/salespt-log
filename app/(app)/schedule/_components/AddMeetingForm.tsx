@@ -11,6 +11,7 @@
 
 import { useState } from "react";
 import TimePicker15 from "@/components/ui/TimePicker15";
+import DateInputCustom from "@/components/ui/DateInputCustom";
 import { useDirtyEntry } from "@/components/DirtyGuard";
 
 interface Props {
@@ -74,13 +75,7 @@ export default function AddMeetingForm({
       <div className="flex gap-2">
         <div className="shrink-0" style={{ width: 130 }}>
           <label className="mb-1 block text-xs text-gray-600">새 날짜</label>
-          <input
-            type="date"
-            value={newDate}
-            min={minDate}
-            onChange={(e) => setNewDate(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
-          />
+          <DateInputCustom value={newDate} min={minDate} onChange={setNewDate} ariaLabel="새 날짜" compact />
         </div>
         <div className="min-w-0 flex-1">
           <label className="mb-1 block text-xs text-gray-600">새 시간</label>

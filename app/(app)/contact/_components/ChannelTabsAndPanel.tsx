@@ -310,10 +310,10 @@ export default function ChannelTabsAndPanel({
                   {/* 설명 없으면 아래 「유입」에 적는 사고가 난다 — 2026-09-19 실제 발생. */}
                   <div className="break-keep text-xs text-gray-400">{ch.helps.production} · 재고 {bannerStock}개</div>
                 </div>
-                <div className="flex shrink-0 items-center gap-1">
+                <div className="flex shrink-0 items-center gap-2">
                   <button
                     type="button"
-                    className="stepper-btn bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    className="stepper-btn hit-44 bg-gray-100 text-gray-600 hover:bg-gray-200"
                     onClick={() => onStep("production", -1)}
                     aria-label="게시 감소"
                   >
@@ -333,7 +333,7 @@ export default function ChannelTabsAndPanel({
                   />
                   <button
                     type="button"
-                    className={`stepper-btn ${
+                    className={`stepper-btn hit-44 ${
                       bannerStock <= 0
                         ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                         : `${cls.bg500} text-white ${cls.hover}`
@@ -422,10 +422,10 @@ export default function ChannelTabsAndPanel({
                 </div>
               ) : (
                 /* 스테퍼 */
-                <div className="flex shrink-0 items-center gap-1">
+                <div className="flex shrink-0 items-center gap-2">
                   <button
                     type="button"
-                    className="stepper-btn bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    className="stepper-btn hit-44 bg-gray-100 text-gray-600 hover:bg-gray-200"
                     disabled={cell[m.key] <= minimum}
                     title={minimum > 0 ? "DB 목록에서 잡힌 숫자는 DB 목록에서 바꿔 주세요" : undefined}
                     onClick={() => onStep(m.key, -1)}
@@ -447,7 +447,7 @@ export default function ChannelTabsAndPanel({
                   />
                   <button
                     type="button"
-                    className={`stepper-btn ${plusClass}`}
+                    className={`stepper-btn hit-44 ${plusClass}`}
                     onClick={() => onStep(m.key, 1)}
                     aria-disabled={atLimit ? true : undefined}
                     aria-label={`${m.label} 증가`}

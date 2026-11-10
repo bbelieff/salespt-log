@@ -188,10 +188,10 @@ describe("payment Todo 고치기(수정 모드, 2026-10-27)", () => {
     const z = Number(/z-\[(\d+)\]/.exec(overlay!.className)?.[1]);
     expect(z).toBeLessThan(350);
   });
-  it("iPhone 날짜 칸 글자를 가운데로 — 줄 높이 = 칸 높이(2026-10-29)", () => {
+  it("날짜 칸은 직접 그리는 달력(요일 표시) — 옆 시·분 칸과 같은 높이(2026-11-10, 옛 iPhone 가운데 맞춤 대체)", () => {
     const { dialog } = mountModal();
-    const date = dialog!.querySelector<HTMLInputElement>('input[type="date"]')!;
+    expect(dialog!.querySelector('input[type="date"]')).toBeNull();
+    const date = dialog!.querySelector<HTMLButtonElement>('button.custom-date-wrapper[aria-label="날짜"]')!;
     expect(date.className).toContain("h-10");
-    expect(date.className).toContain("leading-10");
   });
 });

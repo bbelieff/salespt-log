@@ -16,6 +16,7 @@ vi.mock("@/query/contract-payment-hooks", () => ({ useAddStandaloneContract: () 
 
 import StandaloneCompanyAdd, { STANDALONE_ADD_ERROR } from "@/app/(app)/payment/_components/StandaloneCompanyAdd";
 import { todayKST } from "@/util/week";
+import { pickDate } from "./pick-date";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -67,7 +68,7 @@ describe("StandaloneCompanyAdd", () => {
     const node = render({ listMode: "company", onCreated });
     act(() => q<HTMLButtonElement>(node, "[data-standalone-add]").click());
     type(q(node, 'input[name="업체명"]'), "  예시상사 ");
-    type(q(node, 'input[name="계약일"]'), "2026-09-10");
+    pickDate(q(node, '[aria-label="계약일"]'), "2026-09-10");
     type(q(node, 'input[name="수임비"]'), "3000000");
     expect(q<HTMLInputElement>(node, 'input[name="수임비"]').value).toBe("3,000,000");
     await submit(node);

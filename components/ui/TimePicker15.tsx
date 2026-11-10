@@ -56,7 +56,7 @@ export default function TimePicker15({ value, onChange }: Props) {
           </option>
         ))}
       </select>
-      <div className="flex flex-1 overflow-hidden rounded-lg border border-gray-200 bg-white">
+      <div className="flex flex-1 rounded-lg border border-gray-200 bg-white">
         {MINUTES.map((mm) => {
           const active = mm === mSnap;
           return (
@@ -64,7 +64,7 @@ export default function TimePicker15({ value, onChange }: Props) {
               key={mm}
               type="button"
               onClick={() => setM(mm)}
-              className={`flex-1 px-1 py-1.5 text-xs font-semibold transition-colors ${
+              className={`hit-44-y flex-1 px-1 py-1.5 text-xs font-semibold transition-colors first:rounded-l-md last:rounded-r-md ${
                 active
                   ? "bg-blue-500 text-white"
                   : "bg-white text-gray-600 hover:bg-gray-50"

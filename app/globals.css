@@ -9,6 +9,37 @@
 @tailwind components;
 @tailwind utilities;
 
+/* 터치 타깃 44×44 (2026-11-10 결정 2-A) — 보이는 크기는 그대로, 보이지 않는 누름 영역만 넓힌다.
+   ::after 를 가운데 맞춰 최소 44px 로 펼친다. 이웃 버튼과 누름 영역이 겹치지 않도록
+   작은 버튼 사이 간격은 8px 이상 둔다(docs/design/tokens.md §터치 타깃). */
+@layer utilities {
+  .hit-44 {
+    position: relative;
+  }
+  .hit-44::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+  /* 세그먼트(붙어 있는 버튼 줄)용 — 세로만 44px 로 넓히고 가로는 제 폭 그대로(이웃과 안 겹치게). */
+  .hit-44-y {
+    position: relative;
+  }
+  .hit-44-y::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: max(100%, 44px);
+    transform: translateY(-50%);
+  }
+}
+
 /* ── 대시보드 움직임(belie 2026-10-09, 스크롤 인터랙션 도감 1~3순위) ──────────────────────
  * 등장은 화면을 열 때마다(usePlayOnOpen 가 클래스를 붙일 때만), 1초 안. transform·opacity·stroke 만 움직인다.
  * 동작 줄이기면 전부 끈다. 지연은 요소의 style animation-delay 로 준다. */
@@ -302,9 +333,41 @@ body {
   background: white;
   user-select: none;
   position: relative;
+  /* 겉 칸은 진짜 <button> (label htmlFor·disabled 지원) — 버튼 기본 모양을 지운다 */
+  width: 100%;
+  min-width: 0;
+  font: inherit;
+  text-align: left;
+  color: inherit;
 }
-.custom-date-wrapper:hover {
+.custom-date-wrapper:hover:not(:disabled) {
   border-color: #9ca3af;
+}
+.custom-date-wrapper:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+/* 좁은 칸(일정 변경 130px·할 일 줄 128px) — 옆 입력칸 높이에 맞추고 📅 는 숨긴다 */
+.custom-date-wrapper.is-compact {
+  padding: 6px 8px;
+  gap: 4px;
+}
+.custom-date-wrapper.is-compact .custom-date-display {
+  font-size: calc(13 * var(--app-px, 1px) * var(--font-scale, 1));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.custom-date-wrapper.is-compact .custom-date-icon {
+  display: none;
+}
+/* required·name 용 숨은 입력 — 화면·탭 순서에서 빠지고 브라우저 검사만 받는다 */
+.custom-date-proxy {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 .custom-date-wrapper:focus-within {
   border-color: #3b82f6;

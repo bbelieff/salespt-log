@@ -11,6 +11,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useAddStandaloneContract } from "@/query/contract-payment-hooks";
 import { formatMoneyInput, parseMoney } from "@/lib/format/money";
 import { todayKST } from "@/util/week";
+import DateInputCustom from "@/components/ui/DateInputCustom";
 
 interface Props {
   listMode: "company" | "institution";
@@ -96,8 +97,8 @@ export default function StandaloneCompanyAdd({ listMode, onCreated, className = 
         <div className="grid grid-cols-2 gap-2">
           <label className="block text-xs font-semibold text-slate-600">
             계약일
-            <input className={`mt-1 ${inputCls}`} type="date" value={계약일} required
-              onChange={(e) => set계약일(e.target.value)} name="계약일" />
+            <DateInputCustom className="mt-1 h-10" compact value={계약일} required
+              onChange={set계약일} name="계약일" ariaLabel="계약일" />
           </label>
           <label className="block text-xs font-semibold text-slate-600">
             수임비(원)

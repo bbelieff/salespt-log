@@ -18,6 +18,7 @@
 "use client";
 
 import AppToast from "@/components/ui/AppToast";
+import DateInputCustom from "@/components/ui/DateInputCustom";
 import { useState } from "react";
 import { ContractPayment } from "@/types";
 import { useAddPriorContract } from "@/query/contract-payment-hooks";
@@ -138,12 +139,7 @@ export default function PriorContractRegister({
                     <label className="mb-1 block text-xs text-gray-600">
                       계약일 <span className="text-red-500">*</span>
                     </label>
-                    <input
-                      type="date"
-                      value={계약일}
-                      onChange={(e) => set계약일(e.target.value)}
-                      className="w-full rounded-lg border border-gray-200 px-2.5 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                    />
+                    <DateInputCustom value={계약일} onChange={set계약일} ariaLabel="계약일" required />
                   </div>
                   <div>
                     <label className="mb-1 block text-xs text-gray-600">
