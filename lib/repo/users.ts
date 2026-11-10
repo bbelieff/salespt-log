@@ -6,7 +6,7 @@ import { readRange, sheetsClient } from "./sheets-client";
 import { nextRegistryRowNumber } from "./registry-row";
 import { nameMatches } from "./name-match";
 import { pickPreferredRow } from "./user-priority";
-import { cachedRegistryRows, invalidateRegistry } from "./users-rows";
+import { cachedRegistryRows, invalidateRegistry, registryRowsWithSource } from "./users-rows";
 import {
   mirrorUserCells,
   mirrorUserRekey,
@@ -17,7 +17,7 @@ import {
 import { applyTrainerQualifications, pickCrmUser } from "./trainer-qualification";
 import { listTrainerQualifications } from "./db/trainer-recruitment";
 import { logRegistryCellWrite } from "@/lib/analytics/save-observability";
-import { registryDbReadEnabled } from "./db/registry-read";
+import { readUserRowsFromDb, registryDbReadEnabled } from "./db/registry-read";
 import { updateDriveLinkInDb } from "./users-drive-db";
 
 const HEADER_RANGE = (tab: string) => `${tab}!A1:T1`;
@@ -89,7 +89,22 @@ export async function findUserByEmail(
   opts?: { fresh?: boolean },
 ): Promise<User | null> {
   // fresh 는 시트 캐시 우회용 — DB 경로는 애초에 캐시를 타지 않아 항상 최신이다.
-  const rows = await cachedRegistryRows({ fresh: opts?.fresh });
+  const { rows, fromDb } = await registryRowsWithSource({ fresh: opts?.fresh });
+  const found = await pickUserFromRows(rows, email);
+  if (found || fromDb || !registryDbReadEnabled()) return found;
+  // ADR-0038: DB 명단 읽기가 실패해 시트 명단을 봤는데 없다 = 시트 명단에 없는 사람(시트 없는 수강생 등).
+  // 시트에 있는 수강생은 여기 오지 않으므로 영향 0. 잠깐 기다렸다 DB 를 다시 읽는다(최대 2회).
+  for (const waitMs of RETRY_DB_WAIT_MS) {
+    await new Promise((r) => setTimeout(r, waitMs));
+    const again = await readUserRowsFromDb();
+    if (again) return pickUserFromRows(again, email);
+  }
+  return null;
+}
+
+const RETRY_DB_WAIT_MS = [300, 1000];
+
+async function pickUserFromRows(rows: string[][], email: string): Promise<User | null> {
   const mine: User[] = [];
   for (const r of rows) {
     if (typeof r[0] !== "string" || r[0].toLowerCase() !== email.toLowerCase()) continue;

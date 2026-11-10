@@ -42,9 +42,15 @@ const cachedRegistryDbRows = unstable_cache(
 );
 
 export async function cachedRegistryRows(opts?: { fresh?: boolean }): Promise<string[][]> {
+  return (await registryRowsWithSource(opts)).rows;
+}
+
+/** cachedRegistryRows + 어디서 읽었는지(DB 면 true). 로그인 경로가 「DB 실패로 시트 명단을 본 경우」를
+ *  가려 시트 없는 수강생(ADR-0038)만 DB 를 다시 읽게 할 때 쓴다(users.ts findUserByEmail). */
+export async function registryRowsWithSource(opts?: { fresh?: boolean }): Promise<{ rows: string[][]; fromDb: boolean }> {
   const fromDb = opts?.fresh ? await readUserRowsFromDb() : await cachedRegistryDbRows();
-  if (fromDb) return fromDb;
-  return opts?.fresh ? readRegistrySheetRows() : cachedRegistrySheetRows();
+  if (fromDb) return { rows: fromDb, fromDb: true };
+  return { rows: await (opts?.fresh ? readRegistrySheetRows() : cachedRegistrySheetRows()), fromDb: false };
 }
 
 // sibling 파일에서도 사용 — claimRegistry (users-claim.ts).
