@@ -348,7 +348,8 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
         )}
         </div>
         <div className="min-w-0">
-          {/* 목록을 접어도 채널별 건수를 확인할 수 있다. */}
+          {/* 화면 마감 v2 구역 판(2026-11-11 belie 「섹션 구분은 있어야」): 목록 = 흰 판 하나. 목록을 접어도 채널별 건수를 확인할 수 있다. */}
+          <div className="surface-panel">
           <h3 className="section-head">
             <button
               type="button"
@@ -383,8 +384,9 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
               onDeleteRequest={requestDelete}
             />
           </div>
+          </div>
           {/* 합계 카드 (선택 채널) — 구매목록 아래. 1440px 이상은 오른쪽 칸(목록 밑). */}
-          <div className="mb-3 mt-5">{/* 화면 마감 v2: 색 띠 상자 대신 제목 줄 + 숫자 칸 세로 선. 채널 색은 배지로만. */}
+          <div className="surface-panel mb-3 mt-4">{/* 화면 마감 v2: 합계 = 흰 판 하나(색 띠 없이, 채널 색은 배지로만). */}
             {ch.isCost && summary ? (
               <CostSummary
                 channel={ch}

@@ -24,7 +24,7 @@ import FirstStepsCard from '@/components/onboarding/FirstStepsCard';
 import {hasDashboardChartRecords} from '@/components/dashboard/chart-records';
 
 /** 모바일 차트 카드: 다음 카드가 살짝 보이는 폭 + 한 장씩 멈춤. PC 는 그리드 칸(폭 자동). */
-const CHART_SLIDE = "min-w-0 shrink-0 basis-5/6 snap-start pc:shrink pc:basis-auto";
+const CHART_SLIDE = "surface-panel min-w-0 shrink-0 basis-5/6 snap-start pc:shrink pc:basis-auto";
 const CHART_LABELS = ["영업 퍼널", "주차 추이", "채널별 성과"] as const;
 
 function fmtMD(iso: string): string {
@@ -125,7 +125,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="flex flex-col gap-6 p-3 pt-6">
+      <div className="flex flex-col gap-4 p-3 pt-4">
         {/* 로딩은 전역 오버레이(LoadingProvider)가 자동 표시 — 수동 렌더 제거.
             에러 안내는 상단 카드 1곳으로 통합 (P1 2026-07-28 — 이중 표시·상충 문구 제거). */}
         {/* 불러오는 동안 카드 자리를 먼저 잡아 둔다(belie 2026-10-09). */}
@@ -139,11 +139,7 @@ export default function DashboardPage() {
             {/* [3] 매출·비용·영업이익(기간 선택, ADR-0034)은 맨 위 .surface-hero 띠로 옮겼다(화면 마감 v2).
                 상세는 컬럼 클릭 시 행 아래 공용 패널(SSOT: docs/design/components.md §9-2). */}
 
-            {/* 위 매출·비용은 기간 선택을 따르고, 아래 차트는 코스 전체 기준이다 — 같은 화면에서 비용이 두 가지로 보여 헷갈리지 않게(2026-11-10 UI 점검). */}
-            {hasDashboardChartRecords(dash.data) && <p className="-mb-3 px-1 text-xs text-slate-500" data-testid="dashboard-chart-basis">
-              아래 차트는 위 기간 선택과 별개로 <b className="font-semibold text-slate-700">코스 전체 누적</b> 기준이에요{dash.data.weeklyTrendPeriod?.kind === 'recent' ? ' (추이는 최근 8주)' : ''}.
-            </p>}
-            {hasDashboardChartRecords(dash.data) ? <div className="space-y-3 pc:grid pc:grid-cols-3 pc:items-stretch pc:gap-8 pc:space-y-0">
+            {hasDashboardChartRecords(dash.data) ? <div className="space-y-3 pc:grid pc:grid-cols-3 pc:items-stretch pc:gap-4 pc:space-y-0">
               {/* 1024 미만: 차트 3종을 옆으로 넘기는 카드(인터랙션 ②, 2026-10-09). PC 는 래퍼가 풀려 그리드 칸 그대로. */}
               <MobileChartCarousel labels={dash.data.weeklyTrendPeriod?.kind === 'recent' ? ['영업 퍼널', '지난 8주간 추이', '채널별 성과'] : CHART_LABELS}>
                 <div className={CHART_SLIDE}><FunnelChart weeks={weeks} matrix={dash.data.channelMatrix} /></div>
@@ -155,9 +151,9 @@ export default function DashboardPage() {
                   />
                 </div>
               </MobileChartCarousel>
-            </div> : <section className="flex flex-wrap items-center justify-between gap-3 border-y border-slate-200/80 py-4" aria-label="영업 분석 시작하기"><div><h2 className="text-sm font-bold text-slate-900">{dash.data.weeklyTrendPeriod?.kind === 'recent' ? '최근 8주간 분석할 영업 기록이 없어요' : '아직 분석할 영업 기록이 없어요'}</h2><p className="mt-1 text-xs text-slate-600">DB를 등록하고 활동을 기록하면 퍼널·추이·채널별 성과가 표시됩니다.</p></div><Link href="/db-sheet" className="btn-depth-blue rounded-lg px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">DB 등록하기</Link></section>}
+            </div> : <section className="surface-panel flex flex-wrap items-center justify-between gap-3" aria-label="영업 분석 시작하기"><div><h2 className="text-sm font-bold text-slate-900">{dash.data.weeklyTrendPeriod?.kind === 'recent' ? '최근 8주간 분석할 영업 기록이 없어요' : '아직 분석할 영업 기록이 없어요'}</h2><p className="mt-1 text-xs text-slate-600">DB를 등록하고 활동을 기록하면 퍼널·추이·채널별 성과가 표시됩니다.</p></div><Link href="/db-sheet" className="btn-depth-blue rounded-lg px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">DB 등록하기</Link></section>}
             {/* 수료생 모바일: 주간 목표는 맨 아래, 기본 접힘(belie 2026-11-05). PC 는 위 개요 자리. */}
-            {graduated && <div className="dashboard-goals-bottom"><CollapsibleGoalCard layout="mobile" /></div>}
+            {graduated && <div className="dashboard-goals-bottom surface-panel"><CollapsibleGoalCard layout="mobile" /></div>}
           </>
         )}
       </div>

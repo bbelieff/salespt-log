@@ -42,7 +42,7 @@ describe("대시보드 배치", () => {
     expect(page).toContain('CHART_LABELS = ["영업 퍼널", "주차 추이", "채널별 성과"]');
   });
   it("슬라이드는 모바일에서 5/6 폭·스냅, PC 에서 원래 칸 크기", () => {
-    expect(page).toContain('CHART_SLIDE = "min-w-0 shrink-0 basis-5/6 snap-start pc:shrink pc:basis-auto"');
+    expect(page).toContain('CHART_SLIDE = "surface-panel min-w-0 shrink-0 basis-5/6 snap-start pc:shrink pc:basis-auto"');
     expect(page.match(/className=\{CHART_SLIDE/g)?.length).toBe(3);
   });
 });
