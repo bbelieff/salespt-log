@@ -19,6 +19,7 @@ import { listTrainerQualifications } from "./db/trainer-recruitment";
 import { logRegistryCellWrite } from "@/lib/analytics/save-observability";
 import { readUserRowsFromDb, registryDbReadEnabled } from "./db/registry-read";
 import { updateDriveLinkInDb } from "./users-drive-db";
+import { updateSheetlessUserCell } from "./users-sheetless";
 
 const HEADER_RANGE = (tab: string) => `${tab}!A1:T1`;
 const DATA_RANGE = (tab: string) => `${tab}!A2:T`;
@@ -207,6 +208,11 @@ export async function updateUserCell(
     }
   }
   if (rawRows.length === 0) {
+    // ADR-0038: 시트 명단에 없는 시트 없는 수강생 — DB 명단에만 쓴다.
+    if (await updateSheetlessUserCell(email, colLetter, value, parseRow)) {
+      invalidateRegistry();
+      return;
+    }
     throw new Error(`[users] email ${email} 을 registry 에서 찾을 수 없습니다.`);
   }
   // 읽기(findUserByEmail=pickPreferredUser)와 동일 우선순위 행에 write — 다행 계정

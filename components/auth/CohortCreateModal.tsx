@@ -51,6 +51,8 @@ export default function CohortCreateModal() {
   const [rootFolderId, setRootFolderId] = useState("");
   const [rosterSheetId, setRosterSheetId] = useState("");
   const [courseStartISO, setCourseStartISO] = useState("");
+  // ADR-0038 4단계: 시트 없이 만들기(숫자 기수·DB 정본 기수만 — 서버가 최종 판정).
+  const [noSheet, setNoSheet] = useState(false);
   const [membersText, setMembersText] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -119,6 +121,11 @@ export default function CohortCreateModal() {
         : "";
     // 보이는 값 = 보낸 값. 폴백으로 찾은 날짜는 화면에도 반영한다.
     if (resolvedStart !== courseStartISO) setCourseStartISO(resolvedStart);
+    const sheetless = mode === "create" && noSheet && !isArena;
+    if (sheetless && !resolvedStart) {
+      setErr("시트 없이 만들 때는 수강시작일이 꼭 필요해요.");
+      return;
+    }
     // 날짜 없이 생성 = 새 시트에 템플릿(이전 기수) 날짜가 그대로 남는 경로 → 1회 확인.
     if (mode === "create" && !resolvedStart && !noDateAck) {
       setNoDateAck(true);
@@ -135,8 +142,9 @@ export default function CohortCreateModal() {
           members,
           // 수강시작일은 생성(create) 모드에서만 — link(기존 시트 연동)엔 날짜 미전송.
           courseStartISO: resolvedStart || undefined,
+          noSheet: sheetless || undefined,
           config:
-            mode === "create"
+            mode === "create" && !sheetless
               ? { templateSheetId, rootFolderId, rosterSheetId }
               : undefined,
         }),
@@ -231,6 +239,23 @@ export default function CohortCreateModal() {
           {/* create 설정 */}
           {mode === "create" && (
             <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
+              {!isArena && (
+                <label className="flex items-start gap-2 text-xs text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={noSheet}
+                    onChange={(e) => setNoSheet(e.target.checked)}
+                    className="mt-0.5"
+                  />
+                  <span>
+                    <b>시트 없이 만들기</b>
+                    <span className="block text-slate-500">
+                      구글 시트를 복제하지 않고 앱 DB 에만 만들어요. 수강시작일이 꼭 필요해요.
+                    </span>
+                  </span>
+                </label>
+              )}
+              {!(noSheet && !isArena) && (<>
               <div>
                 <label className="mb-1 block text-xs font-bold text-slate-700">
                   템플릿 시트 ID
@@ -266,9 +291,10 @@ export default function CohortCreateModal() {
                   />
                 </div>
               )}
+              </>)}
               <div>
                 <label className="mb-1 block text-xs font-bold text-slate-700">
-                  수강시작일 <span className="font-normal text-slate-400">(선택)</span>
+                  수강시작일 <span className="font-normal text-slate-400">{noSheet && !isArena ? "(필수)" : "(선택)"}</span>
                 </label>
                 <input
                   ref={startInputRef}
@@ -304,7 +330,9 @@ export default function CohortCreateModal() {
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
             />
             <p className="mt-1 text-xs text-slate-500">
-              {mode === "create"
+              {mode === "create" && noSheet && !isArena
+                ? "이름만 적으면 돼요. 본인이 로그인해 기수·이름을 입력하면 연결돼요."
+                : mode === "create"
                 ? "이름과 같은 폴더가 루트 폴더 안에 있어야 합니다."
                 : "형식: 이름, 시트URL"}
             </p>

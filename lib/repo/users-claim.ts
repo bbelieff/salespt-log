@@ -22,6 +22,7 @@ import { readRange, sheetsClient } from "./sheets-client";
 import { nextRegistryRowNumber } from "./registry-row";
 import { invalidateRegistry } from "./users";
 import { nameMatches } from "./name-match";
+import { claimSheetlessRegistry } from "./users-sheetless";
 import {
   mirrorUserRekey,
   mirrorUserRow,
@@ -99,6 +100,11 @@ export async function claimRegistry(
   status: User["status"] = "active",
   cached: CachedLabels = EMPTY_CACHED,
 ): Promise<void> {
+  // ADR-0038: 같은 (기수, 이름)의 시트 없는 사전등록 행이면 DB 명단에만 쓴다(시트 명단엔 그 행이 없다).
+  if (await claimSheetlessRegistry(email, cohort, name, role, status)) {
+    invalidateRegistry();
+    return;
+  }
   const reg = registry();
   // 쓰기 직전 → 캐시 우회 (직접 readRange).
   const rows = await readRange(reg.spreadsheetId, DATA_RANGE(reg.tab));

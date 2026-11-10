@@ -12,6 +12,8 @@
 import { registry } from "@/config";
 import { readRange, sheetsClient } from "./sheets-client";
 import { mirrorUserDelete } from "./db/registry-mirror";
+import { deleteSheetlessUser } from "./users-sheetless";
+import { parseRow } from "./users";
 import {
   invalidateRegistry,
   listAllUsers,
@@ -37,6 +39,11 @@ export async function deleteUserByEmail(email: string): Promise<void> {
     }
   }
   if (matchIdx < 0) {
+    // ADR-0038: 시트 명단에 없는 시트 없는 수강생 — DB 명단에서만 지운다.
+    if (await deleteSheetlessUser(email, parseRow)) {
+      invalidateRegistry();
+      return;
+    }
     throw new Error(`[users] email ${email} 을 registry 에서 찾을 수 없습니다.`);
   }
   // Sheets API batchUpdate — 행 삭제는 sheetId 가 필요. 메타로 조회.
