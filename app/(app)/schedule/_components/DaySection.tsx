@@ -53,7 +53,7 @@ export default function DaySection({
   const isWeekend = dow === 0 || dow === 6;
   const isToday = date === todayISO;
 
-  // 화면 마감 v2(2026-11-10): 하루 = 상자 대신 제목 줄(.section-head) + 미팅 줄 목록.
+  // 화면 마감 v2(2026-11-10·11): 하루 = 흰 판 하나(.surface-panel) + 제목 줄(.section-head) + 미팅 줄 목록.
   //  - 오늘: 파란 제목 글자 + 「오늘」 칩 + 제목 줄 파란 밑줄(꼭 봐야 하는 날 하나만 강조)
   //  - 주말(토/일): 요일 빨강 글자
   const dayNameCls = isToday
@@ -67,7 +67,7 @@ export default function DaySection({
     <section
       // scroll-margin-top: WeekHeader(top-24=96px) + WeekHeader 내부 + SummaryBar 합산 ~280px
       // 위로 스크롤(앞 요일 클릭) 시 sticky 헤더에 가려지지 않도록 여유 확보.
-      className="mb-5 pt-1 scroll-mt-[280px]"
+      className={`surface-panel scroll-mt-[280px] !py-3 ${isToday ? "!border-blue-300 ring-1 ring-blue-200" : ""}`}
     >
       <header
         className={`section-head !items-center !justify-start ${

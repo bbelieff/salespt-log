@@ -108,7 +108,7 @@ export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS, cl
         />
 
         {/* 영업생산성 — 종합 강조 */}
-        <div className="col-span-2 rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 to-purple-50 p-2.5">
+        <div className="col-span-2 border-t border-slate-100 pt-2.5">
           <div className="mb-1.5 flex items-center justify-between gap-2">
             <div className="flex min-w-0 items-center gap-1 text-px-11">
               <span className="font-bold text-indigo-900">영업생산성</span>
