@@ -32,7 +32,14 @@ const POS = [
 const depth = (px: number) => `calc(var(--lp-x, 0) * ${px}px) calc(var(--lp-y, 0) * ${px}px)`;
 const PARALLAX_EASE = "translate 0.6s cubic-bezier(.22,1,.36,1)";
 
-export default function LoginScene({ returnTo = "/" }: { returnTo?: string }) {
+export default function LoginScene({
+  returnTo = "/",
+  loginError = false,
+}: {
+  returnTo?: string;
+  /** /login?error=… 로 들어왔을 때(app/login) — 버튼 위 한 줄 안내. */
+  loginError?: boolean;
+}) {
   return (
     <main className="relative min-h-dvh overflow-hidden bg-white">
       {/* in-app 웹뷰(카톡·네이버·인스타 등) 감지 시 오버레이로 외부 브라우저 유도. */}
@@ -177,6 +184,12 @@ export default function LoginScene({ returnTo = "/" }: { returnTo?: string }) {
             오신 걸 환영합니다
           </h1>
         </div>
+
+        {loginError && (
+          <p role="alert" className="mt-6 rounded-xl bg-red-50 px-4 py-3 text-center text-sm text-red-700">
+            로그인이 끝나지 않았어요. 아래 버튼으로 다시 시도해 주세요.
+          </p>
+        )}
 
         {/* google button */}
         <button

@@ -77,7 +77,7 @@ export function ImportDialog({rows,onClose,onApply,onExisting,onListTrash,onDire
  const connectOnly=!!review&&!!sheetUrl&&!linked&&follow&&!selected.length;
  const feedSource=items[0]?corrected(items[0]):{supplier,channel};
  const connectReady=!!feedSource.supplier.trim()&&validChannel(feedSource.channel);
- async function connectOnlyNow(){setBusy(true);await connectFeed({url:sheetUrl,supplier:feedSource.supplier,channel:feedSource.channel,rules:Object.fromEntries(Object.entries(rules).map(([k,v])=>[k,String(v)]))});setBusy(false);onClose();}
+ async function connectOnlyNow(){setBusy(true);await connectFeed({url:sheetUrl,supplier:feedSource.supplier,channel:feedSource.channel,rules:Object.fromEntries(Object.entries(rules).map(([k,v])=>[k,String(v)]))},false);setBusy(false);onClose();}
  const close=()=>{if(confirmDiscard(!!review||!!text.trim()||!!sheetInput.trim()))onClose();};
  const start=()=>void (sheetInput.trim()?paste(sheetInput):paste());
  function trap(e:React.KeyboardEvent){if(e.key==='Escape'&&!busy&&!duplicateRow&&!serverDuplicate){e.stopPropagation();close();}if(e.key!=='Tab')return;const nodes=[...dialog.current!.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),textarea:not(:disabled),select:not(:disabled),summary,[tabindex="0"]')].filter(x=>x.offsetParent!==null).sort((a,b)=>a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING?-1:1);const first=nodes[0],last=nodes[nodes.length-1];if(!first){e.preventDefault();dialog.current?.focus();return;}if(e.shiftKey&&(document.activeElement===first||document.activeElement===dialog.current)){e.preventDefault();last?.focus();}else if(!e.shiftKey&&(document.activeElement===last||document.activeElement===dialog.current)){e.preventDefault();first.focus();}}

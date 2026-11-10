@@ -152,7 +152,7 @@ export default function GeneralEventModal({ defaultDate, onClose, onCreated }: P
             className="w-full rounded-lg py-2.5 text-sm font-bold text-white disabled:opacity-40"
             style={{ background: "#0d9488" }} // tokens 일반이벤트 teal
           >
-            {busy ? "저장 중…" : "캘린더에 추가"}
+            {busy ? "저장중.." : "캘린더에 추가"}
           </button>
         </div>
       </div>

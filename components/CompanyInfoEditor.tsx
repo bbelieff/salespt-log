@@ -402,7 +402,7 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
     <div data-payment-company-header={paymentHeading ? "" : undefined} data-payment-company-compact={compactMobile ? "" : undefined} data-payment-ci-expanded={paymentHeading ? String(open) : undefined} className="rounded-lg border border-gray-200 bg-white" style={{ ["--font-scale" as string]: String(fontScaleOf(fontStep)) }}>
       <CompanyInfoHeader open={open} onToggle={() => setOpen(value => !value)} controlsId={`${uid}-body`}
         desktopHeading={desktopHeading} payment={paymentHeading} summary={summary} fontControl={fontControl} badge={<GrantReadyChip matchCount={grantMatchCount} />}
-        status={auto && ciSaving ? <span className="text-px-11 text-gray-400" aria-live="polite">저장 중…</span> : auto && status === "error" ? <span className="text-px-11 font-medium text-red-500" aria-live="polite">저장 실패</span> : null}
+        status={auto && ciSaving ? <span className="text-px-11 text-gray-400" aria-live="polite">저장중..</span> : auto && status === "error" ? <span className="text-px-11 font-medium text-red-500" aria-live="polite">저장 실패</span> : null}
         tools={[
               <CompanyDocAutofillButton key="document"
                 compactMobile={paymentHeading}

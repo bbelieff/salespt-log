@@ -48,6 +48,9 @@ type Job = {
   pending: number;
   finished: boolean;
   doneAt?: number;
+  /** CODEF 세션 id(기관별). 승인된 세션으로 재무제표를 사업자번호별로 다시 받을 때 쓴다. */
+  ids?: Record<Call["group"], string>;
+  fsRetried?: boolean;
 };
 const jobs = new Map<string, Job>();
 const KEEP_JOB_MS = 30 * 60_000;
@@ -94,7 +97,8 @@ function buildCalls(input: SimpleAuthStart, ids: Record<Call["group"], string>, 
         calls.push(c);
       }
     }
-    if (doc === "tax") calls.push(nt("tax", CODEF_PATH.tax, { proofType: "B0007", submitTargets: "99", isIdentityViewYN: "0", originDataYN1: "1" }));
+    // isAddrViewYn 를 빼면 CODEF 가 {userError:ADDR_VIEWYN:undefined} 로 거절한다(2026-11-10 운영 실측).
+    if (doc === "tax") calls.push(nt("tax", CODEF_PATH.tax, { proofType: "B0007", submitTargets: "99", isIdentityViewYN: "0", isAddrViewYn: "0", originDataYN1: "1" }));
     if (doc === "income") calls.push(nt("income", CODEF_PATH.income, { startYear: String(y - SIMPLE_AUTH_YEARS), endYear: String(y - 1), usePurposes: "99", submitTargets: "99", isIdentityViewYn: "0", isAddrViewYn: "0", originDataYN1: "1" }));
     if (doc === "localTax") {
       const addr = input.address!;
@@ -144,13 +148,31 @@ async function settle(job: Job, call: Call, r: CodefResult) {
     list.push(r.data);
     job.datas.set(call.doc, list);
     await keepOriginals(job, call.doc, r.data);
-  } else if (!job.datas.get(call.doc)?.length && !job.errors.has(call.doc)) {
-    job.errors.set(call.doc, failText(r));
+  } else {
+    // 원인 찾기용 — 서류·기관·CODEF 코드만(이름·번호 등 개인정보 없음).
+    console.log(JSON.stringify({ t: "simple_auth_fail", doc: call.doc, group: call.group, code: r.code }));
+    if (!job.datas.get(call.doc)?.length && !job.errors.has(call.doc)) job.errors.set(call.doc, failText(r));
   }
   job.pending -= 1;
   const done = new Set([...job.datas.keys(), ...job.errors.keys()]).size;
   await persist(job, { progress: done });
-  if (job.pending <= 0) await finish(job);
+  if (job.pending <= 0 && !(await retryFsByBizNo(job))) await finish(job);
+}
+
+/** 사업장이 여럿인 개인사업자는 홈택스가 재무제표에 사업자번호를 요구한다(「사용자 주민번호/사업자 번호를 입력하지 않았습니다」, 2026-11-10 운영 실측).
+ *  다른 서류에서 알아낸 사업자번호마다 같은 세션으로 한 번 더 받는다. 다시 보냈으면 true. */
+const FS_NEEDS_BIZ = /사업자\s*번호를 입력/;
+async function retryFsByBizNo(job: Job): Promise<boolean> {
+  if (job.fsRetried || !job.ids || job.datas.get("fs")?.length || !FS_NEEDS_BIZ.test(job.errors.get("fs") ?? "")) return false;
+  const known = new Set<string>();
+  for (const [doc, datas] of job.datas) if (doc !== "fs") for (const b of PARSERS[doc](datas, baseYear()).keys()) if (b) known.add(b);
+  if (!known.size) return false;
+  job.fsRetried = true;
+  job.errors.delete("fs");
+  const calls = [...known].flatMap((b) => buildCalls(job.input, job.ids!, false, ["fs"]).map((c) => ({ ...c, params: { ...c.params, applicationType: "01", identity: digitsOnly(b) } })));
+  job.pending = calls.length;
+  for (const c of calls) { if (job.finished) break; await fire(job, c); }
+  return true;
 }
 
 /** 요청 하나 보내기. 2차 인증을 요구하면 lead 로 잡아 두고(승인 확인 대기), 아니면 결과를 정리한다. */
@@ -198,6 +220,7 @@ function startCertJob(job: Job) {
   jobs.set(job.reqId, job);
   void (async () => {
     const ids = { nt: randomUUID(), mw: randomUUID(), pp: randomUUID() };
+    job.ids = ids;
     // 요청 수는 법인 여부와 상관없이 같다 — 끝 판정(pending 0)은 처음부터 전체 수로.
     job.pending = buildCalls(job.input, ids, false).length;
     for (const c of buildCalls(job.input, ids, false, ["biz"])) await fire(job, c);
@@ -324,7 +347,7 @@ export async function startSimpleAuth(who: SimpleAuthWho, raw: unknown): Promise
   await store.insertSimpleAuthRequest(who, req);
   const job: Job = { reqId: req.id, owner: who, input, leads: [], datas: new Map(), errors: new Map(), saved: new Set(), pending: 0, finished: false };
   if (input.mode === "cert") startCertJob(job);
-  else startJob(job, buildCalls(input, { nt: randomUUID(), mw: randomUUID(), pp: randomUUID() }, false));
+  else { job.ids = { nt: randomUUID(), mw: randomUUID(), pp: randomUUID() }; startJob(job, buildCalls(input, job.ids, false)); }
   return req;
 }
 
@@ -397,7 +420,8 @@ export async function resendSimpleAuth(who: SimpleAuthWho, id: string): Promise<
     status: "waiting", deadline: now + SIMPLE_AUTH_WAIT_MS, resends: r.resends + 1, progress: 0, businesses: [], error: undefined,
   });
   const job: Job = { reqId: id, owner: who, input: old.input, leads: [], datas: new Map(), errors: new Map(), saved: new Set(), pending: 0, finished: false };
-  startJob(job, buildCalls(old.input, { nt: randomUUID(), mw: randomUUID(), pp: randomUUID() }, false));
+  job.ids = { nt: randomUUID(), mw: randomUUID(), pp: randomUUID() };
+  startJob(job, buildCalls(old.input, job.ids, false));
   return updated ?? r;
 }
 

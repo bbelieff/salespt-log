@@ -193,7 +193,7 @@ describe("weekly-goals pending save never locks typing", () => {
         expect(btn.disabled).toBe(false);
       }
     }
-    expect(el!.textContent).toContain("저장 중…");
+    expect(el!.textContent).toContain("저장중..");
 
     await advance(800);
     expect(net.puts).toHaveLength(1);

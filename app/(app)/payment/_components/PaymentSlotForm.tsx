@@ -366,11 +366,11 @@ function FieldText({
   value: string;
   placeholder?: string;
   onChange: (v: string) => void;
-}) {
+}) { const id = useId();
   return (
     <div>
-      <label className={FIELD_LABEL_CLASS}>{label}</label>
-      <input
+      <label htmlFor={id} className={FIELD_LABEL_CLASS}>{label}</label>
+      <input id={id}
         data-payment-draft-input type="text"
         value={value}
         placeholder={placeholder ?? "-"}
@@ -381,8 +381,8 @@ function FieldText({
   );
 }
 
-function FieldTextarea({ label, value, placeholder, onChange }: { label: string; value: string; placeholder?: string; onChange: (v: string) => void }) {
-  return <div><label className={FIELD_LABEL_CLASS}>{label}</label><textarea data-payment-draft-input rows={Math.max(2, value.split("\n").length)} value={value} placeholder={placeholder ?? "-"} onChange={(e) => onChange(e.target.value)} className="min-h-[64px] w-full resize-y rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"/></div>;
+function FieldTextarea({ label, value, placeholder, onChange }: { label: string; value: string; placeholder?: string; onChange: (v: string) => void }) { const id = useId();
+  return <div><label htmlFor={id} className={FIELD_LABEL_CLASS}>{label}</label><textarea id={id} data-payment-draft-input rows={Math.max(2, value.split("\n").length)} value={value} placeholder={placeholder ?? "-"} onChange={(e) => onChange(e.target.value)} className="min-h-[64px] w-full resize-y rounded-md border border-gray-300 bg-white px-2 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none"/></div>;
 }
 
 /** [3] 자유입력 + 과거값 자동완성(구글시트 드롭다운형). native datalist 사용. */
@@ -398,12 +398,12 @@ function FieldCombo({
   placeholder?: string;
   options: string[];
   onChange: (v: string) => void;
-}) {
+}) { const id = useId();
   const listId = useId();
   return (
     <div>
-      <label className={FIELD_LABEL_CLASS}>{label}</label>
-      <input
+      <label htmlFor={id} className={FIELD_LABEL_CLASS}>{label}</label>
+      <input id={id}
         data-payment-draft-input type="text"
         list={listId}
         value={value}
@@ -430,10 +430,11 @@ function FieldDate({
   onChange: (v: string) => void;
 }) {
   // iOS Safari date input intrinsic width(yyyy/mm/dd)가 grid 뚫는 것 → 감싼 div·input 둘 다 min-w-0 + appearance-none(globals.css 날짜 칸 규칙도 함께).
+  const id = useId();
   return (
     <div className="min-w-0">
-      <label className={FIELD_LABEL_CLASS}>{label}</label>
-      <input
+      <label htmlFor={id} className={FIELD_LABEL_CLASS}>{label}</label>
+      <input id={id}
         type="date"
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -453,11 +454,11 @@ function FieldSelect({
   value: string;
   options: readonly string[];
   onChange: (v: string) => void;
-}) {
+}) { const id = useId();
   return (
     <div>
-      <label className={FIELD_LABEL_CLASS}>{label}</label>
-      <select
+      <label htmlFor={id} className={FIELD_LABEL_CLASS}>{label}</label>
+      <select id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         className={FIELD_INPUT_CLASS}
@@ -483,11 +484,11 @@ function FieldMoney({
   value: number;
   placeholder?: string;
   onChange: (v: number) => void;
-}) {
+}) { const id = useId();
   return (
     <div>
-      <label className={FIELD_LABEL_CLASS}>{label}</label>
-      <MoneyInput
+      <label htmlFor={id} className={FIELD_LABEL_CLASS}>{label}</label>
+      <MoneyInput id={id}
         value={value}
         onChange={onChange}
         placeholder={placeholder}

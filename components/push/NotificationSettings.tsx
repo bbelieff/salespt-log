@@ -197,7 +197,7 @@ export default function NotificationSettings() {
     </section>
 
     <p className="push-status" role="status" aria-live="polite">
-      {saved === "saving" ? "저장 중…" : saved === "saved" ? "저장했어요" : saved === "error" ? "저장하지 못했어요. 다시 바꿔 주세요." : ""}
+      {saved === "saving" ? "저장중.." : saved === "saved" ? "저장했어요" : saved === "error" ? "저장하지 못했어요. 다시 바꿔 주세요." : ""}
     </p>
   </div>;
 }

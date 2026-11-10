@@ -75,7 +75,7 @@ export default function CancelForm({
         disabled={pending}
         className="w-full rounded-lg bg-red-500 py-2.5 text-sm font-bold text-white transition-all hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-gray-300"
       >
-        {pending ? "저장중..." : "🔴 취소 확정"}
+        {pending ? "저장중.." : "🔴 취소 확정"}
       </button>
     </div>
   );

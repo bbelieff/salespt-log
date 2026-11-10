@@ -176,12 +176,13 @@ export default function ClaimPage() {
         <div className="mt-7 space-y-5">
           {mode === "cohort" ? (
             <div>
-              <label className="mb-1.5 block text-px-11 font-extrabold uppercase tracking-wider text-gray-500">
+              <label htmlFor="claim-cohort" className="mb-1.5 block text-px-11 font-extrabold uppercase tracking-wider text-gray-500">
                 기수
               </label>
               {/* inputMode=text: 숫자 기수 외에 "T"(트레이너)·"연습"(온보딩)도
                   모바일에서 입력 가능해야 함. numeric 키패드는 문자를 막았음. */}
               <input
+                id="claim-cohort"
                 type="text"
                 inputMode="text"
                 maxLength={3}
@@ -196,7 +197,7 @@ export default function ClaimPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1.5 block text-px-11 font-extrabold uppercase tracking-wider text-gray-500">
+                <label htmlFor="claim-season" className="mb-1.5 block text-px-11 font-extrabold uppercase tracking-wider text-gray-500">
                   시즌
                 </label>
                 <div
@@ -207,6 +208,7 @@ export default function ClaimPage() {
                     A
                   </span>
                   <input
+                id="claim-season"
                     type="text"
                     inputMode="numeric"
                     maxLength={2}
@@ -219,10 +221,11 @@ export default function ClaimPage() {
                 </div>
               </div>
               <div>
-                <label className="mb-1.5 block text-px-11 font-extrabold uppercase tracking-wider text-gray-500">
+                <label htmlFor="claim-gisu" className="mb-1.5 block text-px-11 font-extrabold uppercase tracking-wider text-gray-500">
                   본인 기수
                 </label>
                 <input
+                id="claim-gisu"
                   type="text"
                   inputMode="numeric"
                   maxLength={3}
@@ -238,10 +241,11 @@ export default function ClaimPage() {
           )}
 
           <div>
-            <label className="mb-1.5 block text-px-11 font-extrabold uppercase tracking-wider text-gray-500">
+            <label htmlFor="claim-name" className="mb-1.5 block text-px-11 font-extrabold uppercase tracking-wider text-gray-500">
               본인 이름
             </label>
             <input
+                id="claim-name"
               type="text"
               placeholder={
                 mode === "arena"

@@ -37,9 +37,9 @@ export default function MigrateCacheButton() {
   async function migrate() {
     if (
       !window.confirm(
-        "registry I~L 캐시(기수라벨/이름라벨/시작일/종강일) 를 모든 row 에 일괄 동기화합니다.\n" +
-          "이미 채워진 row 는 건드리지 않고, 빈 row 만 시트에서 읽어 backfill 합니다.\n" +
-          "약 30초 ~ 1분 소요. 계속하시겠습니까?",
+        "모든 수강생의 기수·이름·시작일·종강일 표시를 시트에서 다시 불러옵니다.\n" +
+          "이미 채워진 칸은 그대로 두고, 빈 칸만 채워요.\n" +
+          "30초~1분쯤 걸려요. 계속할까요?",
       )
     )
       return;
@@ -67,7 +67,7 @@ export default function MigrateCacheButton() {
               .slice(0, 10)
               .map(
                 (f) =>
-                  `  · row ${f.row} ${f.cohort}기 ${f.name}: ${f.error.slice(0, 60)}`,
+                  `  · ${f.row}번째 줄 ${f.cohort}기 ${f.name}: ${f.error.slice(0, 60)}`,
               )
               .join("\n") +
             (result.failed.length > 10
@@ -90,7 +90,7 @@ export default function MigrateCacheButton() {
       type="button"
       onClick={migrate}
       disabled={busy}
-      title="registry I~L 캐시 컬럼 일괄 backfill (멱등)"
+      title="수강생 표시 정보 빈 칸 채우기 (여러 번 눌러도 안전)"
       className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-px-11 font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
     >
       {busy ? "동기화 중..." : "🔄 동기화"}

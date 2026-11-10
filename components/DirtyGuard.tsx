@@ -138,7 +138,7 @@ function ConfirmLeaveModal({
             disabled={saving}
             className="rounded-lg bg-blue-500 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
           >
-            {saving ? "저장 중…" : "💾 저장하고 이동"}
+            {saving ? "저장중.." : "💾 저장하고 이동"}
           </button>
           <div className="flex gap-2">
             <button

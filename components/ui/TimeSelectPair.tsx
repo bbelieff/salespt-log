@@ -52,6 +52,8 @@ export default function TimeSelectPair({
 
   const hours: string[] = [];
   for (let h = hourMin; h <= hourMax; h++) hours.push(pad2(h));
+  // 범위 밖에 저장된 시각(예: 07:30·22:00)도 「--」 대신 그대로 보이게(2026-11-10 UI 점검).
+  if (hh && !hours.includes(hh)) hours.push(hh), hours.sort();
 
   return (
     <div className="time-select-wrapper" aria-label={ariaLabel}>

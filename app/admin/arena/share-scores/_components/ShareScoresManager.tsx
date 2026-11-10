@@ -76,7 +76,7 @@ export default function ShareScoresManager({
           onClick={() => void saveAll()}
           className="shrink-0 rounded-full bg-brand-red px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-600 disabled:bg-gray-200 disabled:text-gray-400"
         >
-          {busy ? "저장 중…" : `변경사항 저장 (${dirtyRows.length})`}
+          {busy ? "저장중.." : `변경사항 저장 (${dirtyRows.length})`}
         </button>
       </div>
       <p className="mb-3 text-xs text-gray-400">

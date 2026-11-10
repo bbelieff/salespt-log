@@ -92,7 +92,7 @@ export default function SeasonStartInput({
           disabled={busy}
           className="rounded-full bg-purple-600 px-3 py-1 text-px-11 font-bold text-white hover:bg-purple-700 disabled:opacity-50"
         >
-          {busy ? "저장중…" : "저장"}
+          {busy ? "저장중.." : "저장"}
         </button>
       )}
       {!disabled && value !== "" && !dirty && (

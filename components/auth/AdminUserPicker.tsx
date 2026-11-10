@@ -1,6 +1,7 @@
 /** AdminUserPicker — 수강생 관리 화면 (Admin 전용). 카드 click → impersonation. */
 "use client";
 
+import { matchesTrainee } from "./trainee-search";
 import { useMemo, useState } from "react";
 import DisclosureChevron from "@/components/ui/DisclosureChevron";
 import Link from "next/link";
@@ -273,17 +274,14 @@ export default function AdminUserPicker({
     [archivedCohorts],
   );
 
+  // 검색은 승인 대기·유보 명단에도 건다(2026-11-10 UI 점검: 활성 수강생에만 걸리던 문제).
+  const searching = q.trim() !== "";
+  const shownPending = useMemo(() => pendingUsers.filter((u) => matchesTrainee(u, q)), [pendingUsers, q]);
+  const shownReserved = useMemo(() => reservedUsers.filter((u) => matchesTrainee(u, q)), [reservedUsers, q]);
+
   /** active + archived 두 그룹으로 분리 후 각각 기수별 정렬. */
   const { activeGroups, archivedGroups } = useMemo(() => {
-    const filtered = users.filter((u) => {
-      if (!q.trim()) return true;
-      const k = q.trim().toLowerCase();
-      return (
-        u.name.toLowerCase().includes(k) ||
-        u.email.toLowerCase().includes(k) ||
-        String(u.cohort).includes(k)
-      );
-    });
+    const filtered = users.filter((u) => matchesTrainee(u, q));
     const activeMap = new Map<string, Trainee[]>();
     const archivedMap = new Map<string, Trainee[]>();
     for (const u of filtered) {
@@ -408,8 +406,8 @@ export default function AdminUserPicker({
         <div className="mt-8 space-y-8">
           {activeGroups.length === 0 &&
             archivedGroups.length === 0 &&
-            reservedUsers.length === 0 &&
-            pendingUsers.length === 0 && (
+            shownReserved.length === 0 &&
+            shownPending.length === 0 && (
               <p className="text-sm text-gray-400">검색 결과 없음.</p>
             )}
 
@@ -422,7 +420,7 @@ export default function AdminUserPicker({
           )}
 
           <PendingTraineesSection
-            list={pendingUsers}
+            list={shownPending}
             busy={busy}
             onApprove={approve}
             onApproveAll={approveAll}
@@ -448,7 +446,8 @@ export default function AdminUserPicker({
           />
 
           {archivedGroups.length > 0 && (
-            <details className="group overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 open:bg-white">
+            // 검색 중엔 펼쳐서 결과가 접힌 상자 안에 숨지 않게. key 로 검색 시작·끝에 다시 그린다.
+            <details key={searching ? "search" : "browse"} open={searching || undefined} className="group overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 open:bg-white">
               <summary className="disclosure-summary flex cursor-pointer items-center justify-between gap-2 px-4 py-3 hover:bg-gray-100">
                 <span className="text-sm font-bold text-gray-700">
                   📦 보관된 기수 ({archivedGroups.reduce((s, [, l]) => s + l.length, 0)}명)
@@ -480,9 +479,10 @@ export default function AdminUserPicker({
 
           {/* 유보 수강생 — collapsed. 정규 명단·기수 그룹에서 빠진 trainee.
               관리자는 여기서 "복귀" 또는 "퇴출"(row 삭제) 선택 가능. */}
-          {reservedUsers.length > 0 && (
+          {shownReserved.length > 0 && (
             <ReservedSection
-              list={reservedUsers}
+              list={shownReserved}
+              forceOpen={searching}
               busy={busy}
               nameByEmail={nameByEmail}
               onRestore={restore}

@@ -1315,6 +1315,7 @@ app/(app)/dashboard/page.tsx
 | **SkeletonBars** | `components/ui/SkeletonBars.tsx` | 불러오는 동안 글자 대신 회색 줄(`fx-skeleton`) n줄 + 화면 읽기용 `label`(sr-only, role=status·aria-busy). Props: `label`, `rows`(기본 2), `className`. 사용: 대시보드 진행 현황·비용 내역, 업체정보, 공급처 요약. 대시보드 매출 3칸·실무/수납 성과 요약은 같은 클래스로 칸 모양 그대로 자리표시. |
 | **LoadingOverlay** | `components/ui/LoadingOverlay.tsx` | 전역 로딩 팝업(loading-overlay/v3 글로우 링). Props: `message?`(기본 "불러오고 있어요"). **라이트 프로스트 글래스 카드**+회전 conic 링(96px)+궤도 점+**세일즈PT 로고 원본 호흡**(`/salespt-logo.png`, 무가공·`alt=""` 장식)+문구 페이드(다크 잉크)+하단 sweep. fixed z-[400] 중앙·dim(어둡게 유지), role=status, prefers-reduced-motion 정적 폴백. 스타일=globals.css `.lo-*`(tokens.md overlay 토큰). ※2026-07-15 이전: 다크 카드 + 가운데 'S' 글자. |
 | **confirmDiscard** | `components/ui/confirm-discard.ts` | 적던 내용이 있는 창을 닫을 때 한 번 묻는 공용 문구 「작성 중인 내용이 있어요. 저장하지 않고 닫을까요?」(`window.confirm`). 바꾼 게 없으면 묻지 않는다. 쓰는 곳: DB 추가 창(Esc·✕·취소), 통화 정리 확인(닫기·나중에, 고친 게 있을 때), 계약 해지 창(바깥·취소). 창마다 다른 문구를 새로 만들지 말고 이것을 쓴다. |
+| **저장 중 문구** | (공통 규칙) | 저장 진행 표시는 앱 전체 「저장중..」 하나로 쓴다(2026-11-10 belie). 「저장 중…」「저장중...」 새로 쓰지 않는다 — `ui-audit-batch-1` 시험이 잡는다. |
 | **LoadingProvider** | `components/ui/LoadingProvider.tsx` | 전역 로딩 상태 + `useGlobalLoading()` 훅. providers.tsx(QueryClientProvider 안)에서 1회 마운트, 내부 `<LoadingOverlay>` 렌더. 명령형 show(문구)/hide(카운터) + `useIsMutating()>0` 자동("저장하고 있어요"). useIsFetching 은 안 검(과노출 방지). |
 
 ### 10-2. contact 탭 (`app/(app)/contact/_components/`)
