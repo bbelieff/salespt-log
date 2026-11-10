@@ -32,6 +32,10 @@ export function CallConfirmScreen({ lead, call, onSaved, onClose }: { lead: DbSh
   }));
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
   const top = useRef<HTMLDivElement>(null);
+  // 처음 값 — setS 는 늘 새 객체를 만들어서, 같은 객체면 아무것도 안 고친 것이다.
+  const untouched = useRef(s);
+  // 「나중에」·뒤로 — 고친 메모·미팅 날짜가 말없이 사라지지 않게 한 번 묻는다.
+  const leave = () => { if (s !== untouched.current && !window.confirm("고친 내용은 저장되지 않아요. 닫을까요?")) return; onClose(); };
   useEffect(() => { top.current?.focus(); document.body.style.overflow = "hidden"; return () => { document.body.style.overflow = ""; }; }, []);
 
   const setRow = (key: string, patch: Partial<CiRow>) => setS(v => ({ ...v, rows: v.rows.map(r => r.key === key ? { ...r, ...patch } : r) }));
@@ -53,7 +57,7 @@ export function CallConfirmScreen({ lead, call, onSaved, onClose }: { lead: DbSh
 
   return <div className="dbs-cc" role="dialog" aria-modal="true" aria-labelledby="dbs-cc-title">
     <header className="dbs-cc-top"><div className="dbs-cc-top-in" ref={top} tabIndex={-1}>
-      <button type="button" className="dbs-cc-back" aria-label="닫기" disabled={busy} onClick={onClose}><ChevronLeft size={20} aria-hidden="true" /></button>
+      <button type="button" className="dbs-cc-back" aria-label="닫기" disabled={busy} onClick={leave}><ChevronLeft size={20} aria-hidden="true" /></button>
       <h1 id="dbs-cc-title">통화 정리 확인</h1>
     </div></header>
 
@@ -125,7 +129,7 @@ export function CallConfirmScreen({ lead, call, onSaved, onClose }: { lead: DbSh
 
     <footer className="dbs-cc-foot"><div className="dbs-cc-foot-in">
       <p role="status">{error ? <span className="dbs-cc-err">{error}</span> : blocker ? <span className="dbs-cc-block">{blocker}</span> : null}</p>
-      <button type="button" className="dbs-button" disabled={busy} onClick={onClose}>나중에</button>
+      <button type="button" className="dbs-button" disabled={busy} onClick={leave}>나중에</button>
       <button type="button" className="dbs-button primary" disabled={busy || !!blocker} onClick={() => void save()}>{busy ? "저장 중…" : "저장하기"}</button>
     </div></footer>
   </div>;

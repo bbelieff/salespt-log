@@ -69,12 +69,14 @@ export default function IdentityGuard() {
 
   if (!shouldBlockTab(firstRef.current, now?.activeFingerprint ?? null)) return null;
 
+  // z-[600] — 모든 모달(z-[300]~[350])·로딩(z-[400])·팝오버(z-[500]) 위. 아래에 깔리면
+  // 열린 저장 창의 [저장]을 그대로 눌러 다른 사람 기록에 써진다(tokens.md 모달 z-stack).
   return (
     <div
       role="alertdialog"
       aria-modal="true"
       aria-label="다른 사람 화면으로 바뀌었어요"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-6"
+      className="fixed inset-0 z-[600] flex items-center justify-center bg-slate-900/70 p-6"
     >
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl">
         <p className="text-2xl">🔀</p>

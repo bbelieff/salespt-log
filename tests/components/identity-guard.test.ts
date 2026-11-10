@@ -62,6 +62,19 @@ describe("★소스 가드", () => {
     expect(body).not.toMatch(/\bemail:\s/);
   });
 
+  it("★차단막은 모든 모달·로딩·팝오버보다 위에 뜬다 — 아래 깔리면 열린 창의 [저장]이 눌린다", () => {
+    const z = (src: string) => [...src.matchAll(/z-\[(\d+)\]/g)].map((m) => Number(m[1]));
+    const guardZ = Math.max(...z(guard));
+    const others = [
+      "components/DirtyGuard.tsx",
+      "components/ui/LoadingOverlay.tsx",
+      "components/payment/WorkStatusBar.tsx",
+      "components/announcements/NoticePopup.tsx",
+    ].flatMap((f) => z(readFileSync(f, "utf8")));
+    expect(others.length).toBeGreaterThan(0);
+    expect(guardZ).toBeGreaterThan(Math.max(...others));
+  });
+
   it("★whoami 는 캐시되지 않는다 — 낡은 값이면 가드가 무의미하다", () => {
     expect(whoami).toContain("no-store");
   });

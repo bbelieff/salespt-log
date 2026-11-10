@@ -322,3 +322,8 @@ function SavedItem({ index, meeting, reservationDate, onPatch, onRemove }: Saved
     </div>
   );
 }
+
+/** 사용자가 직접 적은 내용이 있는지 — 날짜는 기본값(그날)이 들어 있어 보지 않는다. 삭제 확인 여부 판단용. */
+export function newSlotHasInput(slot: NewSlot): boolean {
+  return [slot.미팅시간, slot.업체명, slot.장소, slot.예약비고].some((v) => v.trim() !== "") || slot.업체정보 != null;
+}

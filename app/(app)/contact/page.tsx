@@ -22,7 +22,7 @@ import WeekHeader from "./_components/WeekHeader";
 import ChannelTabsAndPanel from "./_components/ChannelTabsAndPanel";
 import TopHeader from "@/components/TopHeader";
 import DbManagementTabs from "@/components/DbManagementTabs";
-import type { NewSlot } from "./_components/MeetingSlotItem";
+import { newSlotHasInput, type NewSlot } from "./_components/MeetingSlotItem";
 import MeetingSlotList from "./_components/MeetingSlotList";
 import ContactDbLeads from "../db-sheet/_components/ContactDbLeads";
 import { useGuardedNav, useDirtyEntry, useDirtyRegister } from "@/components/DirtyGuard";
@@ -244,6 +244,8 @@ export default function ContactPage() {
   const removeNewSlot = (tempId: string) => {
     const target = newSlots.find((s) => s.tempId === tempId);
     if (!target) return;
+    // 「예약 등록」 바로 옆이라 잘못 누르기 쉽다 — 적어 둔 내용이 있으면 한 번 묻는다(되돌리기 없음).
+    if (newSlotHasInput(target) && !window.confirm("적어 둔 미팅 내용을 지울까요? 지우면 되돌릴 수 없어요.")) return;
     setNewSlots((s) => s.filter((x) => x.tempId !== tempId));
     adjustMetric(target.channel, "meetingReservation", -1);
     showToast("✕ 삭제 · 미팅예약 -1");

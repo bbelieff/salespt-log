@@ -4,7 +4,8 @@
  * 구조: 상단 공지(pinned 우선 — 서버 정렬 그대로, MD 렌더) → 구분선 →
  * "새로워졌어요 ✨" UpdateAccordion → 하단 [확인].
  * 기존 모달 패턴(z-[300], GeneralEventModal) 재사용 — 외곽 overflow-y-auto 스크롤.
- * 닫기(✕·배경·확인) 전부 onConfirm — "본 것" 처리 일원화 (Gate 가 localStorage 기록).
+ * 닫기(✕·확인) 전부 onConfirm — "본 것" 처리 일원화 (Gate 가 localStorage 기록).
+ * 배경 탭으로는 닫지 않는다 — 스크롤하다 바깥을 스친 것만으로 읽음 처리돼 다시 안 뜨던 문제.
  */
 "use client";
 
@@ -24,12 +25,8 @@ export default function NoticePopup({ notices, updates, onConfirm }: Props) {
   return (
     <div
       className="fixed inset-0 z-[300] flex items-start justify-center overflow-y-auto bg-black/40 p-4"
-      onClick={onConfirm}
     >
-      <div
-        className="mt-8 mb-8 w-full max-w-sm rounded-2xl bg-white shadow-xl 2xl:max-w-md"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="mt-8 mb-8 w-full max-w-sm rounded-2xl bg-white shadow-xl 2xl:max-w-md">
         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2.5">
           <h3 className="text-sm font-black text-gray-900">새소식</h3>
           <button

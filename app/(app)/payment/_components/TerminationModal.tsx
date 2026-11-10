@@ -53,7 +53,8 @@ export default function TerminationModal({ cp, pending, onClose, onConfirm }: Pr
   return (
     <div
       className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
+      // 사유·반환액을 적은 뒤 바깥을 잘못 누르면 다 사라졌다 — 적은 게 있으면 배경으로는 닫지 않는다(취소 버튼은 그대로).
+      onClick={사유.trim() || mode !== "none" || 숨김 ? undefined : onClose}
     >
       <div
         className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl"
