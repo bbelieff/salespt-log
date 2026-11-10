@@ -1124,7 +1124,6 @@ app/(app)/dashboard/page.tsx
   PageContainer > 일반 본문
     FinanceSummaryBoxes # 매출·비용·영업이익 3열 1행 한 세트 (상세 패널 내장)
     [생산성 + DashboardWorkStatus] + WeeklyGoalSummary  # ≥1600px 윗줄 반반
-    p[data-testid=dashboard-chart-basis]  # 「아래 차트는 위 기간 선택과 별개로 코스 전체 누적 기준이에요」(최근 8주 추이면 덧붙임, 2026-11-10)
     MobileChartCarousel > FunnelChart / WeeklyDualChart / ChannelPerformance  # ≥1600px 아랫줄 3등분 (1024~1599: 2열) · <1024px 옆으로 넘기기
 ```
 
