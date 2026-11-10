@@ -414,6 +414,7 @@ transition: transform 0.2s;  /* hover/tap 효과 */
 | `--ui-icon-faint` | #94a3b8 (slate-400) | 글자 금지(2.6:1). 비활성·끌기 중·장식선만 |
 | `--ui-border` / `--ui-border-strong` | #e2e8f0 / #cbd5e1 | 선 / 진한 선·입력 칸 |
 | `--ui-surface` / `-subtle` / `-muted` | #fff / #f8fafc / #f1f5f9 | 바탕 / 옅은 바탕 / 회색 바탕 |
+| `--ui-scrim` | rgba(15,23,42,.45) (slate-900 45%) | 스포트라이트 음영 — 지금 볼 곳 밖을 어둡게(DB 추가 확인 화면) |
 | `--ui-white` · `--ui-black` | #fff · #000 | 진한 바탕 위 흰 글자 · 그림자 |
 | `--ui-accent` | #2563eb (blue-600) | 강조 · **흰 글자 파란 버튼 바탕** |
 | `--ui-accent-strong` | #1d4ed8 (blue-700) | 강조 글자 · 버튼 누름 |
