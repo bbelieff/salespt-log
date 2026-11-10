@@ -221,9 +221,9 @@ export default function UpdatesManager({
   }
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-4">
+    <section className="rounded-2xl border border-slate-200 bg-white p-4">
       <div className="mb-1 flex items-center justify-between gap-2">
-        <h2 className="text-sm font-black text-gray-900">업데이트 현황</h2>
+        <h2 className="text-sm font-black text-slate-900">업데이트 현황</h2>
         <div className="flex shrink-0 items-center gap-2">
           {/* truthful 상태 — 보관 성공시에만, 게시 ACK 후 dirty 0이면 게시됨. */}
           {justPublished && dirtyRows.length === 0 ? (
@@ -239,13 +239,13 @@ export default function UpdatesManager({
             type="button"
             disabled={dirtyRows.length === 0 || busy}
             onClick={() => void publishAll()}
-            className="shrink-0 rounded-full bg-brand-red px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-600 disabled:bg-gray-200 disabled:text-gray-400"
+            className="shrink-0 rounded-full bg-brand-red px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-600 disabled:bg-slate-200 disabled:text-slate-400"
           >
             {busy ? "게시 반영 중…" : `게시 반영 (${dirtyRows.length})`}
           </button>
         </div>
       </div>
-      <p className="mb-3 text-xs text-gray-400">
+      <p className="mb-3 text-xs text-slate-400">
         배포할 때마다 자동으로 쌓여요. 문구를 수강생이 읽기 쉽게 다듬고, 보여줄지 정하세요.
       </p>
       {conflictPrs.size > 0 && (
@@ -257,7 +257,7 @@ export default function UpdatesManager({
       {/* 열 헤더 — 데스크탑(pc:)만. 모바일은 카드 자체 라벨이라 헤더 불필요.
           순서는 본문 데스크탑 컬럼(유형·#·날짜·내용·마일스톤·노출)과 1:1. */}
       {rows.length > 0 && (
-        <div className="hidden items-center gap-2 border-b border-gray-100 px-2 pb-1.5 text-px-10 font-bold uppercase tracking-wide text-gray-400 pc:flex">
+        <div className="hidden items-center gap-2 border-b border-slate-100 px-2 pb-1.5 text-px-10 font-bold uppercase tracking-wide text-slate-400 pc:flex">
           <span className="w-10 shrink-0">유형</span>
           <span className="w-10 shrink-0">#</span>
           <span className="w-16 shrink-0">날짜</span>
@@ -286,15 +286,15 @@ export default function UpdatesManager({
                     className={`shrink-0 rounded-full px-1 py-0.5 text-center text-px-10 font-bold pc:w-10 ${
                       u.type === "feat" || u.type === "fix"
                         ? "bg-red-50 text-brand-red"
-                        : "bg-gray-100 text-gray-500"
+                        : "bg-slate-100 text-slate-500"
                     }`}
                   >
                     {u.type || "-"}
                   </span>
-                  <span className="shrink-0 text-xs font-bold text-gray-400 pc:w-10">
+                  <span className="shrink-0 text-xs font-bold text-slate-400 pc:w-10">
                     #{u.pr}
                   </span>
-                  <span className="shrink-0 truncate text-xs text-gray-400 pc:w-16">
+                  <span className="shrink-0 truncate text-xs text-slate-400 pc:w-16">
                     {u.date}
                   </span>
                 </div>
@@ -302,7 +302,7 @@ export default function UpdatesManager({
                 <div className="flex shrink-0 items-center justify-end gap-2 pc:order-last pc:w-24">
                   <span
                     className={`w-7 text-right text-px-11 font-bold ${
-                      u.visible ? "text-brand-red" : "text-gray-400"
+                      u.visible ? "text-brand-red" : "text-slate-400"
                     }`}
                   >
                     {u.visible ? "노출" : "숨김"}
@@ -315,7 +315,7 @@ export default function UpdatesManager({
                     title={u.visible ? "노출 중 (눌러서 숨김)" : "숨김 (눌러서 노출)"}
                     onClick={() => edit(u.pr, { visible: !u.visible })}
                     className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${
-                      u.visible ? "bg-brand-red" : "bg-gray-300"
+                      u.visible ? "bg-brand-red" : "bg-slate-300"
                     }`}
                   >
                     <span
@@ -329,21 +329,21 @@ export default function UpdatesManager({
 
               {/* 제목 — 모바일 w-full, 데스크탑 flex-1(긴 제목이 우측 안 밂). */}
               <input
-                className="h-9 w-full rounded-lg border border-gray-200 px-2 text-sm text-gray-900 focus:border-red-300 focus:outline-none pc:min-w-0 pc:flex-1"
+                className="h-9 w-full rounded-lg border border-slate-200 px-2 text-sm text-slate-900 focus:border-red-300 focus:outline-none pc:min-w-0 pc:flex-1"
                 value={u.titleUser}
                 onChange={(e) => edit(u.pr, { titleUser: e.target.value })}
                 placeholder="수강생이 읽는 한 줄"
               />
               {/* 마일스톤 — 모바일 w-full, 데스크탑 w-28 고정. */}
               <input
-                className="h-9 w-full rounded-lg border border-gray-200 px-2 text-xs text-gray-700 placeholder:text-gray-300 focus:border-red-300 focus:outline-none pc:w-28 pc:shrink-0"
+                className="h-9 w-full rounded-lg border border-slate-200 px-2 text-xs text-slate-700 placeholder:text-slate-300 focus:border-red-300 focus:outline-none pc:w-28 pc:shrink-0"
                 value={u.milestone}
                 onChange={(e) => edit(u.pr, { milestone: e.target.value })}
                 placeholder="마일스톤 (선택)"
               />
               {/* 앵커 키 — 앱 내 NEW 위치 (lib/config/anchors.ts 등록 키만 유효). */}
               <input
-                className="h-9 w-full rounded-lg border border-gray-200 px-2 text-xs text-gray-700 placeholder:text-gray-300 focus:border-red-300 focus:outline-none pc:w-28 pc:shrink-0"
+                className="h-9 w-full rounded-lg border border-slate-200 px-2 text-xs text-slate-700 placeholder:text-slate-300 focus:border-red-300 focus:outline-none pc:w-28 pc:shrink-0"
                 value={u.anchor}
                 onChange={(e) => edit(u.pr, { anchor: e.target.value })}
                 placeholder="앵커 키 (선택)"
@@ -358,11 +358,11 @@ export default function UpdatesManager({
         })}
       </ul>
       {rows.length === 0 && (
-        <p className="py-4 text-center text-sm text-gray-400">
+        <p className="py-4 text-center text-sm text-slate-400">
           아직 수집된 업데이트가 없어요. 다음 배포부터 자동으로 쌓여요.
         </p>
       )}
-      {msg && <p className="mt-2 text-xs font-semibold text-gray-500">{msg}</p>}
+      {msg && <p className="mt-2 text-xs font-semibold text-slate-500">{msg}</p>}
     </section>
   );
 }

@@ -34,7 +34,7 @@ export function MethodBadge({ method, time }: { method: Method; time?: string })
   const m = ICON[method];
   const name = method === "공동인증서" ? "공동인증서" : `${method} 인증`;
   return (
-    <span title={name} className="inline-flex shrink-0 items-center gap-1.5 rounded-full py-0.5 pl-1 pr-2 text-sm text-gray-700 tabular-nums" style={{ backgroundColor: `${m.tint}26`, boxShadow: `inset 0 0 0 1px ${m.tint}66` }}>
+    <span title={name} className="inline-flex shrink-0 items-center gap-1.5 rounded-full py-0.5 pl-1 pr-2 text-sm text-slate-700 tabular-nums" style={{ backgroundColor: `${m.tint}26`, boxShadow: `inset 0 0 0 1px ${m.tint}66` }}>
       <AuthMethodIcon method={method} className="h-4 w-4" />
       <span className="sr-only">{name}</span>
       {/* 날짜는 위 날짜 묶음에 있으므로 시각만(「11-08 14:02」 → 「14:02」, belie 2026-11-09 한 줄 요청). */}

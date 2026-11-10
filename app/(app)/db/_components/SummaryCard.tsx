@@ -33,23 +33,23 @@ export function CostSummary({
     <>
       <div className="mb-3 flex items-center gap-2">
         <span className={`badge ${badgeCls}`}>{channel.name}</span>
-        <span className="text-sm font-semibold text-gray-700">합계</span>
+        <span className="text-sm font-semibold text-slate-700">합계</span>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <div className="mb-0.5 text-xs text-gray-500">총비용</div>
+          <div className="mb-0.5 text-xs text-slate-500">총비용</div>
           <div className="text-xl font-bold text-red-600" style={numStyle}>
             ₩{fmtWon(totalCost)}
           </div>
         </div>
         <div>
-          <div className="mb-0.5 text-xs text-gray-500">평균단가</div>
-          <div className="text-xl font-bold text-gray-900" style={numStyle}>
+          <div className="mb-0.5 text-xs text-slate-500">평균단가</div>
+          <div className="text-xl font-bold text-slate-900" style={numStyle}>
             ₩{fmtWon(avgUnit)}
           </div>
         </div>
       </div>
-      <div className="mt-3 flex justify-between border-t border-gray-100 pt-3 text-xs text-gray-500">
+      <div className="mt-3 flex justify-between border-t border-slate-100 pt-3 text-xs text-slate-500">
         <span>
           {rowCount}개 {channel.recordsLabel}
         </span>
@@ -67,13 +67,13 @@ export function LeadSummary({ count }: { count: number }) {
     <>
       <div className="mb-3 flex items-center gap-2">
         <span className="badge badge-referral">콜·지·기·소</span>
-        <span className="text-sm font-semibold text-gray-700">영업기회</span>
+        <span className="text-sm font-semibold text-slate-700">영업기회</span>
       </div>
       <div className="flex items-baseline gap-2">
         <div className="text-3xl font-bold text-purple-700" style={numStyle}>
           {count}
         </div>
-        <div className="text-base text-gray-700">건</div>
+        <div className="text-base text-slate-700">건</div>
       </div>
     </>
   );

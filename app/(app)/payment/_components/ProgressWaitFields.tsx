@@ -27,7 +27,7 @@ export default function ProgressWaitFields({ slot, onChange }: {
           data-payment-draft-input type="text" value={slot.대기사유 ?? ""}
           placeholder="예: 담보 설정 완료 기다림"
           onChange={(e) => onChange({ 대기사유: e.target.value, 대기기간: term })}
-          className="mt-0.5 h-8 w-full rounded-md border border-violet-200 bg-white px-2 text-sm text-gray-900 placeholder:text-gray-400 focus:border-violet-500 focus:outline-none"
+          className="mt-0.5 h-8 w-full rounded-md border border-violet-200 bg-white px-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-violet-500 focus:outline-none"
         />
       </label>
       <div className="flex flex-wrap gap-1" role="group" aria-label="조건 대기 기간">

@@ -173,7 +173,7 @@ function FieldCell({
   // 라벨 baseline — 2줄 라벨과 1줄 라벨이 섞여도 컨트롤 시작점이 어긋나지 않게
   // 같은 grid 행의 셀을 늘리고 라벨이 남은 높이를 채워 제어점을 맞춘다.
   const labelCls =
-    "mb-1 flex min-h-4 flex-1 flex-wrap items-end gap-1 text-xs font-medium leading-tight text-gray-600";
+    "mb-1 flex min-h-4 flex-1 flex-wrap items-end gap-1 text-xs font-medium leading-tight text-slate-600";
 
   // 자동수식 — disabled + 노란 박스
   if (field.formula) {
@@ -218,14 +218,14 @@ function FieldCell({
           className={`flex h-10 w-full min-w-0 items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${
             on
               ? "border-blue-500 bg-blue-50 text-blue-700"
-              : "border-gray-300 bg-white text-gray-500"
+              : "border-slate-300 bg-white text-slate-500"
           }`}
         >
           <span className="min-w-0 truncate">{on ? "포함" : "미포함"}</span>
           <span
             aria-hidden="true"
             className={`inline-flex h-4 w-7 shrink-0 items-center rounded-full px-0.5 transition-colors ${
-              on ? "justify-end bg-blue-500" : "justify-start bg-gray-300"
+              on ? "justify-end bg-blue-500" : "justify-start bg-slate-300"
             }`}
           >
             <span className="h-3 w-3 rounded-full bg-white" />
@@ -245,7 +245,7 @@ function FieldCell({
           onChange={(e) => onChange(e.target.value)}
           aria-label={field.label}
           data-field={field.key}
-          className="h-10 w-full min-w-0 max-w-full truncate rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          className="h-10 w-full min-w-0 max-w-full truncate rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
         >
           {field.options.map((o) => (
             <option key={o} value={o}>
@@ -274,7 +274,7 @@ function FieldCell({
   const inputType = field.type === "date" ? "date" : field.type === "number" ? "number" : "text";
   // 예시 문구는 위 별도 span이 아니라 실제 placeholder로 — 별도 행이 생기지 않아
   // 짝지어진 두 컨트롤 높이가 어긋나지 않는다. 라벨은 그대로 유지.
-  const inputCls = `h-10 w-full min-w-0 max-w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none ${numCls} ${dateOverflowFix}`;
+  const inputCls = `h-10 w-full min-w-0 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none ${numCls} ${dateOverflowFix}`;
 
   return (
     <div className="flex min-w-0 flex-col">
@@ -282,7 +282,7 @@ function FieldCell({
         <span className="min-w-0 break-keep">
           {field.label}
           {field.unit && (
-            <span className="ml-0.5 text-gray-300">({field.unit})</span>
+            <span className="ml-0.5 text-slate-300">({field.unit})</span>
           )}
         </span>
       </label>

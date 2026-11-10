@@ -47,9 +47,9 @@ export default function DashboardProgressBanner({
   if (!hasDates) {
     // 진행도 데이터가 없으면 헤더만 보여주고 D-day는 그대로 표시 (R4 W1-3 — 매출/비용·경비장부 진입점 보호)
     return (
-      <div className="border-b border-gray-100 bg-white px-4 py-2.5">
+      <div className="border-b border-slate-100 bg-white px-4 py-2.5">
         <div className="flex items-center justify-between gap-2">
-          <div className="text-sm text-gray-500"><div>현재 {today} ({weekday})</div><div>수강 일정을 확인하고 있어요</div></div>
+          <div className="text-sm text-slate-500"><div>현재 {today} ({weekday})</div><div>수강 일정을 확인하고 있어요</div></div>
           <DDayBadge graduationISO={graduationISO} />
         </div>
       </div>
@@ -57,7 +57,7 @@ export default function DashboardProgressBanner({
   }
 
   return (
-    <div className="border-b border-gray-100 bg-white">
+    <div className="border-b border-slate-100 bg-white">
       {/* PC(1024+)는 한 줄: 날짜·주차 | 시작 | 진행바 | 진행률 | 종강총회 | D-day (belie 2026-10-24 「풀사이즈면 한 줄」).
           좁은 화면은 지금처럼 세 줄 — 묶음 div 를 pc:contents 로 풀고 order 로 순서만 바꾼다. */}
       <div className="px-4 pb-2.5 pt-3 pc:flex pc:items-center pc:gap-4 pc:py-2.5">
@@ -65,7 +65,7 @@ export default function DashboardProgressBanner({
         <div className={`${graduated ? "" : "mb-3 "}flex items-center justify-between gap-2.5 pc:contents`}>
           <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-1 pc:order-1 pc:shrink-0 pc:flex-nowrap pc:whitespace-nowrap">
             <span
-              className="text-sm font-extrabold text-gray-900 sm:text-base"
+              className="text-sm font-extrabold text-slate-900 sm:text-base"
               style={{ fontVariantNumeric: "tabular-nums" }}
             >
               현재 {today} ({weekday})
@@ -113,14 +113,14 @@ export default function DashboardProgressBanner({
 
         {/* 시작 · 진행률 · 종강총회 — 3-라벨 justify-between */}
         <div className="flex items-center justify-between text-xs pc:contents">
-          <span className="text-gray-400 pc:order-2 pc:shrink-0 pc:whitespace-nowrap pc:text-xs">{startDate} 시작</span>
+          <span className="text-slate-400 pc:order-2 pc:shrink-0 pc:whitespace-nowrap pc:text-xs">{startDate} 시작</span>
           <span
             className="font-bold text-blue-600 pc:order-4 pc:shrink-0 pc:whitespace-nowrap pc:text-xs"
             style={{ fontVariantNumeric: "tabular-nums" }}
           >
             <CountUp value={Math.round(pct)} play={play} format={(n) => `${n}%`} /> 진행
           </span>
-          <span className="text-gray-500 pc:order-5 pc:shrink-0 pc:whitespace-nowrap pc:text-xs">🎓 {graduationDate} 종강총회</span>
+          <span className="text-slate-500 pc:order-5 pc:shrink-0 pc:whitespace-nowrap pc:text-xs">🎓 {graduationDate} 종강총회</span>
         </div>
         </>}
       </div>

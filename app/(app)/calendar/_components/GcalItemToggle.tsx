@@ -55,7 +55,7 @@ export default function GcalItemToggle({
       aria-pressed={on}
       aria-label={on ? "구글 캘린더에서 빼기" : "구글 캘린더에 담기"}
       title={on ? "구글 캘린더에 담김 (눌러서 빼기)" : "구글 캘린더에서 뺌 (눌러서 담기)"}
-      className={`shrink-0 rounded-md p-1 transition-colors ${on ? "text-blue-600" : "text-gray-300"} ${busy ? "opacity-50" : ""}`}
+      className={`shrink-0 rounded-md p-1 transition-colors ${on ? "text-blue-600" : "text-slate-300"} ${busy ? "opacity-50" : ""}`}
     >
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
         <rect x="3" y="4.5" width="18" height="16" rx="2.5" stroke="currentColor" strokeWidth="2" />

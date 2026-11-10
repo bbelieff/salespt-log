@@ -149,7 +149,7 @@ export default function TrainerAssignCard({
             title="드래그하여 순서 변경"
             {...dragListeners}
             style={{ touchAction: "none" }}
-            className="inline-flex w-7 shrink-0 cursor-grab select-none items-center justify-center self-stretch rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing"
+            className="inline-flex w-7 shrink-0 cursor-grab select-none items-center justify-center self-stretch rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 active:cursor-grabbing"
           >
             <span className="text-base leading-none">⋮⋮</span>
           </button>
@@ -161,17 +161,17 @@ export default function TrainerAssignCard({
           className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left"
         >
           <div className="min-w-0">
-            <div className="truncate text-base font-black tracking-tight text-gray-900">
+            <div className="truncate text-base font-black tracking-tight text-slate-900">
               {trainer.name || trainer.email}
               <span className="ml-1.5 text-xs font-bold text-indigo-700">
                 · 담당 {assignedCount}명
               </span>
             </div>
-            <div className="truncate text-xs text-gray-500">
+            <div className="truncate text-xs text-slate-500">
               {trainer.email}
             </div>
           </div>
-          <DisclosureChevron open={open} className="text-gray-400" />
+          <DisclosureChevron open={open} className="text-slate-400" />
         </button>
         {onMoveToManagement && (
           <button
@@ -203,11 +203,11 @@ export default function TrainerAssignCard({
         )}
       </div>
       {open && (
-        <div className="border-t border-gray-100 bg-gray-50 p-3">
+        <div className="border-t border-slate-100 bg-slate-50 p-3">
           {/* 전체 일괄 토글 — 트레이너 연습용 시트 등 모두 배정 필요할 때. */}
           {trainees.length > 0 && (
-            <div className="mb-3 flex items-center justify-end gap-1.5 border-b border-gray-200 pb-2 text-px-11">
-              <span className="mr-auto text-gray-500">일괄 토글:</span>
+            <div className="mb-3 flex items-center justify-end gap-1.5 border-b border-slate-200 pb-2 text-px-11">
+              <span className="mr-auto text-slate-500">일괄 토글:</span>
               <button
                 type="button"
                 disabled={bulkBusy}
@@ -220,7 +220,7 @@ export default function TrainerAssignCard({
                 type="button"
                 disabled={bulkBusy}
                 onClick={() => bulkApply(trainees, "remove")}
-                className="rounded-full border border-gray-300 bg-white px-2.5 py-1 font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="rounded-full border border-slate-300 bg-white px-2.5 py-1 font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
               >
                 전체 해제
               </button>
@@ -228,12 +228,12 @@ export default function TrainerAssignCard({
           )}
 
           {grouped.length === 0 ? (
-            <p className="py-3 text-center text-xs text-gray-400">수강생 없음</p>
+            <p className="py-3 text-center text-xs text-slate-400">수강생 없음</p>
           ) : (
             <div className="space-y-3">
               {grouped.map(([cohort, list]) => (
                 <div key={cohort}>
-                  <div className="mb-1.5 flex items-center justify-between gap-2 text-px-10 font-bold uppercase tracking-wider text-gray-500">
+                  <div className="mb-1.5 flex items-center justify-between gap-2 text-px-10 font-bold uppercase tracking-wider text-slate-500">
                     <span>
                       {cohort === "—" ? "미분류" : `${cohort}기`} · {list.length}명
                     </span>
@@ -250,7 +250,7 @@ export default function TrainerAssignCard({
                         type="button"
                         disabled={bulkBusy}
                         onClick={() => bulkApply(list, "remove")}
-                        className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-px-9 font-bold normal-case text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                        className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-px-9 font-bold normal-case text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                       >
                         기수 해제
                       </button>
@@ -271,13 +271,13 @@ export default function TrainerAssignCard({
                             checked={checked}
                             disabled={busy === key || viewOnly}
                             onChange={() => !viewOnly && toggle(s)}
-                            className="h-4 w-4 rounded border-gray-300 text-brand-red focus:ring-red-200"
+                            className="h-4 w-4 rounded border-slate-300 text-brand-red focus:ring-red-200"
                           />
-                          <span className="min-w-0 flex-1 truncate font-semibold text-gray-800">
+                          <span className="min-w-0 flex-1 truncate font-semibold text-slate-800">
                             {s.name || s.email}
                             {s.captainOf ? <span title="회장"> 👑</span> : null}
                           </span>
-                          <span className="shrink-0 text-px-10 text-gray-400">
+                          <span className="shrink-0 text-px-10 text-slate-400">
                             {s.email}
                           </span>
                         </label>

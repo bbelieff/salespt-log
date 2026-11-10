@@ -234,10 +234,10 @@ export default function DateInputCustom({
           {value ? (
             formatDisplay(value)
           ) : (
-            <span className="text-gray-400 font-normal">{placeholder}</span>
+            <span className="text-slate-400 font-normal">{placeholder}</span>
           )}
         </span>
-        <span className="custom-date-icon text-gray-400" aria-hidden="true">
+        <span className="custom-date-icon text-slate-400" aria-hidden="true">
           📅
         </span>
       </button>

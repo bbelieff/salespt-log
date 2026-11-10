@@ -31,7 +31,7 @@ function view(week) {
   return { student: { email: "fixture@example.test", name: "테스트 수강생", cohort: "연습기수", courseStart: "2026-09-04", region: "테스트", trainers: ["테스트 트레이너"] },
     current: period, previous: { ...period, week: week - 1 }, reporting: { start: period.start, end: period.end, actuals: goals }, cumulative: goals, canReadInternal: true };
 }
-const html = '<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>자동저장 실컴포넌트 검증</title><link rel="stylesheet" href="/style.css"><style>html,body,#root{height:100%}</style><body class="bg-gray-50"><div id="root"></div><script src="/app.js"></script></body></html>';
+const html = '<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>자동저장 실컴포넌트 검증</title><link rel="stylesheet" href="/style.css"><style>html,body,#root{height:100%}</style><body class="bg-slate-50"><div id="root"></div><script src="/app.js"></script></body></html>';
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, "http://127.0.0.1"); const path = url.pathname;
   const json = (data, status = 200) => { res.statusCode = status; res.setHeader("Content-Type", "application/json"); res.end(JSON.stringify(data)); };

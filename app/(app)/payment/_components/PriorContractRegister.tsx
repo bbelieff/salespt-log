@@ -102,10 +102,10 @@ export default function PriorContractRegister({
           >
             {step === "alert" ? (
               <>
-                <h3 className="mb-2 text-sm font-black text-gray-900">
+                <h3 className="mb-2 text-sm font-black text-slate-900">
                   이전 계약업체 등록
                 </h3>
-                <p className="mb-4 text-sm leading-relaxed text-gray-600">
+                <p className="mb-4 text-sm leading-relaxed text-slate-600">
                   <b>{courseStartISO || "시작일"}</b> 이전 계약은 아레나에 집계되지
                   않아요. 실무·수납 관리용으로만 등록됩니다.
                 </p>
@@ -113,14 +113,14 @@ export default function PriorContractRegister({
                   <button
                     type="button"
                     onClick={reset}
-                    className="flex-1 rounded-lg border border-gray-200 py-2.5 text-sm font-bold text-gray-600 hover:bg-gray-50"
+                    className="flex-1 rounded-lg border border-slate-200 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50"
                   >
                     취소
                   </button>
                   <button
                     type="button"
                     onClick={() => setStep("form")}
-                    className="flex-1 rounded-lg bg-blue-500 py-2.5 text-sm font-bold text-white hover:bg-blue-600"
+                    className="flex-1 rounded-lg bg-blue-700 py-2.5 text-sm font-bold text-white hover:bg-blue-800"
                   >
                     계속 등록
                   </button>
@@ -128,21 +128,21 @@ export default function PriorContractRegister({
               </>
             ) : (
               <>
-                <h3 className="mb-3 text-sm font-black text-gray-900">
+                <h3 className="mb-3 text-sm font-black text-slate-900">
                   이전 계약업체 등록{" "}
-                  <span className="text-xs font-normal text-gray-400">
+                  <span className="text-xs font-normal text-slate-400">
                     (이월·비집계)
                   </span>
                 </h3>
                 <div className="space-y-2.5">
                   <div>
-                    <label className="mb-1 block text-xs text-gray-600">
+                    <label className="mb-1 block text-xs text-slate-600">
                       계약일 <span className="text-red-500">*</span>
                     </label>
                     <DateInputCustom value={계약일} onChange={set계약일} ariaLabel="계약일" required />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs text-gray-600">
+                    <label className="mb-1 block text-xs text-slate-600">
                       업체명 <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -150,7 +150,7 @@ export default function PriorContractRegister({
                       value={업체명}
                       onChange={(e) => set업체명(e.target.value)}
                       placeholder="예: ○○부동산"
-                      className="w-full rounded-lg border border-gray-200 px-2.5 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                      className="w-full rounded-lg border border-slate-200 px-2.5 py-2 text-sm focus:border-blue-500 focus:outline-none"
                     />
                   </div>
                   <ContractForm
@@ -167,7 +167,7 @@ export default function PriorContractRegister({
                   <button
                     type="button"
                     onClick={reset}
-                    className="w-full rounded-lg border border-gray-200 py-2 text-xs font-bold text-gray-500 hover:bg-gray-50"
+                    className="w-full rounded-lg border border-slate-200 py-2 text-xs font-bold text-slate-500 hover:bg-slate-50"
                   >
                     취소
                   </button>

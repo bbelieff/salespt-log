@@ -64,14 +64,14 @@ export default function ContractListTable({ items, selectedKey, onSelect, highli
               onClick={() => selected && renderDetail ? onToggleDetail?.() : !selected ? onSelect(item) : undefined}
               className={`relative w-full scroll-mt-app-content border px-3 py-2.5 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${selected ? `z-10 border-blue-400 bg-gradient-to-r from-blue-100 via-blue-50 to-white shadow-[0_8px_24px_rgba(37,99,235,.12)] ${inlineOpen ? "rounded-t-xl border-b-blue-100" : renderDetail ? "rounded-xl" : "rounded-l-xl"} pc:rounded-r-none pc:border-r-0` : "rounded-xl border-slate-200 bg-white hover:border-blue-200 hover:bg-slate-50"} ${muted && !selected ? "opacity-60" : ""}`}>
               <span className="flex min-w-0 items-center gap-2">
-                <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-px-11 font-bold ${selected ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-500"}`}>{startIndex + index + 1}</span>
+                <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-px-11 font-bold ${selected ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-500"}`}>{startIndex + index + 1}</span>
                 <span className="min-w-0 flex-1 truncate text-sm font-extrabold text-slate-900">{renderNameWithHighlight(cp.업체명, highlight)}</span>
                 {isManualContractLink(cp.linkedMeetingId) && <span role="button" tabIndex={0} title="눌러서 영업기록(미팅)과 연결" aria-label={`${cp.업체명} 영업기록과 연결`}
                   onClick={openLink(cp.row, cp.업체명)} onKeyDown={openLink(cp.row, cp.업체명)}
                   className="shrink-0 rounded border border-dashed border-slate-300 bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-500 hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700">영업기록 없음 ＋</span>}
                 <GrantChip 계약일={cp.계약일} 업체명={cp.업체명} grants={grants}/>
                 {hasProgress ? <WorkActivityBadge activity={work} state={activityState} /> : <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-px-11 font-semibold text-slate-600">진행 없음</span>}
-                {selected && <span className="shrink-0 rounded-full bg-blue-600 px-1.5 py-0.5 text-px-10 font-bold text-white">조회 중</span>}
+                {selected && <span className="shrink-0 rounded-full bg-blue-700 px-1.5 py-0.5 text-px-10 font-bold text-white">조회 중</span>}
               </span>
               {hasProgress ? works.map((w) => {
                 const data = slotOf(cp, w.slot);

@@ -45,7 +45,7 @@ export default function CompanyDocAutofillButton({ current, onApply, onVault, co
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-label={compactMobile ? "문서로 자동입력" : undefined} title={compactMobile ? "문서로 자동입력" : undefined}
-        className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-50"
+        className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
       >
         {compactMobile && <FileInput className="payment-ci-icon" size={18} strokeWidth={1.75} aria-hidden /> }<span className={compactMobile ? "payment-ci-action-label" : undefined}>문서로 자동입력</span>{compactMobile && <span className="payment-ci-short" aria-hidden>문서입력</span>}
       </button>
@@ -58,10 +58,10 @@ export default function CompanyDocAutofillButton({ current, onApply, onVault, co
         <style>{marked.map((k) => `[data-company-info-body] [id$="-${k}"]`).join(",") + "{background-color:#fffbeb}"}</style>
       )}
       {notice && marked.length > 0 && typeof document !== "undefined" && createPortal(
-        <div role="status" className="fixed inset-x-4 bottom-4 z-50 mx-auto flex max-w-sm items-center gap-2 rounded-lg bg-gray-900 px-3 py-2 text-xs text-white shadow-lg">
+        <div role="status" className="fixed inset-x-4 bottom-4 z-50 mx-auto flex max-w-sm items-center gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs text-white shadow-lg">
           <span className="min-w-0 flex-1">문서로 {marked.length}칸 채웠어요 (노란 칸)</span>
           <button type="button" onClick={undo} className="shrink-0 rounded-md px-2 py-1 font-bold text-amber-300 hover:bg-white/10">되돌리기</button>
-          <button type="button" onClick={() => setNotice(false)} aria-label="알림 닫기" className="shrink-0 rounded-md px-2 py-1 text-gray-300 hover:bg-white/10">✕</button>
+          <button type="button" onClick={() => setNotice(false)} aria-label="알림 닫기" className="shrink-0 rounded-md px-2 py-1 text-slate-300 hover:bg-white/10">✕</button>
         </div>,
         document.body,
       )}

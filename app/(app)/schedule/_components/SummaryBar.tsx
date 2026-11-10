@@ -76,18 +76,18 @@ export default function SummaryBar({ meetings, goalSummary }: Props) {
   const revenueSum = feeSum + commissionSum;
 
   return (
-    <div className="border-y border-gray-200 bg-white shadow-sm">
+    <div className="border-y border-slate-200 bg-white shadow-sm">
       {/* 2026-05-17 [5] 재정돈: row 1 = 5 카운터 균등, row 2 = 매출 (정신없는 wrap 회피). */}
       <div className="px-3 py-2">
         <div className="grid grid-cols-5 gap-1">
-          <Counter label="총건" value={total} cls="text-gray-900" />
+          <Counter label="총건" value={total} cls="text-slate-900" />
           <Counter label="예정" value={reserved} cls="text-amber-600" />
           <Counter label="완료" value={done} cls="text-orange-600" />
           <Counter label="취소" value={canceled} cls="text-red-500" />
           <Counter label="계약" value={contract} cls="text-green-700" highlight />
         </div>
         {revenueSum > 0 && (
-          <div className="mt-1.5 flex items-baseline justify-end gap-2 border-t border-gray-100 pt-1.5 text-xs">
+          <div className="mt-1.5 flex items-baseline justify-end gap-2 border-t border-slate-100 pt-1.5 text-xs">
             <span className="font-medium text-green-700">💰 이번 주 계약</span>
             <span
               className="text-sm font-extrabold text-green-700"
@@ -96,14 +96,14 @@ export default function SummaryBar({ meetings, goalSummary }: Props) {
               ₩{fmtMoney(revenueSum)}
             </span>
             <span
-              className="text-px-10 text-gray-500"
+              className="text-px-10 text-slate-500"
               style={{ fontVariantNumeric: "tabular-nums" }}
             >
               수임 ₩{fmtMoney(feeSum)} · 수수료 ₩{fmtMoney(commissionSum)}
             </span>
           </div>
         )}
-        {goalSummary && <div className="mt-1 border-t border-gray-100">{goalSummary}</div>}
+        {goalSummary && <div className="mt-1 border-t border-slate-100">{goalSummary}</div>}
       </div>
     </div>
   );
@@ -132,7 +132,7 @@ function Counter({
         {value}
       </span>
       <span
-        className={`mt-0.5 text-px-10 ${highlight ? "font-bold text-green-700" : "text-gray-500"}`}
+        className={`mt-0.5 text-px-10 ${highlight ? "font-bold text-green-700" : "text-slate-500"}`}
       >
         {label}
       </span>

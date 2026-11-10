@@ -73,14 +73,14 @@ export default function CohortMgmtPanel({
   const archived = cohorts.filter((c) => c.status === "archived");
 
   return (
-    <main className="min-h-dvh bg-gray-50">
-      <header className="sticky top-0 z-10 border-b border-gray-200 bg-white px-6 py-4">
+    <main className="min-h-dvh bg-slate-50">
+      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white px-6 py-4">
         <div className="mx-auto flex max-w-3xl pc:max-w-5xl items-center justify-between gap-3">
           <div>
             <div className="text-xs font-bold uppercase tracking-wider text-red-600">
               {viewOnly ? "관리부서 · 기수 조회" : "Master · 기수 관리"}
             </div>
-            <div className="mt-0.5 text-sm font-semibold text-gray-900">
+            <div className="mt-0.5 text-sm font-semibold text-slate-900">
               {sessionEmail}
             </div>
           </div>
@@ -92,7 +92,7 @@ export default function CohortMgmtPanel({
             {!viewOnly && <ArenaCreateModal />}
             <Link
               href="/admin"
-              className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50 pc:hidden"
+              className="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50 pc:hidden"
             >
               ← 마스터 메뉴
             </Link>
@@ -113,14 +113,14 @@ export default function CohortMgmtPanel({
         )}
 
         <section>
-          <h2 className="mb-2 text-lg font-black tracking-tight text-gray-900">
+          <h2 className="mb-2 text-lg font-black tracking-tight text-slate-900">
             활성 기수 ({active.length})
           </h2>
-          <p className="mb-4 text-xs text-gray-500">
+          <p className="mb-4 text-xs text-slate-500">
             현재 운영 중인 기수. 수강생 관리·트레이너 명단에 노출.
           </p>
           {active.length === 0 ? (
-            <p className="rounded-xl border border-gray-100 bg-white p-6 text-center text-sm text-gray-400">
+            <p className="rounded-xl border border-slate-100 bg-white p-6 text-center text-sm text-slate-400">
               활성 기수 없음.
             </p>
           ) : (
@@ -128,14 +128,14 @@ export default function CohortMgmtPanel({
               {active.map((c) => (
                 <li
                   key={c.label}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4"
+                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white p-4"
                 >
                   <div className="min-w-0">
-                    <div className="text-sm font-bold text-gray-900">
+                    <div className="text-sm font-bold text-slate-900">
                       {displayLabel(c)} · {c.traineeCount}명
                     </div>
                     {c.note && (
-                      <div className="mt-0.5 text-px-11 text-gray-500">
+                      <div className="mt-0.5 text-px-11 text-slate-500">
                         {c.note}
                       </div>
                     )}
@@ -181,14 +181,14 @@ export default function CohortMgmtPanel({
         </section>
 
         <section>
-          <h2 className="mb-2 text-lg font-black tracking-tight text-gray-900">
+          <h2 className="mb-2 text-lg font-black tracking-tight text-slate-900">
             보관 기수 ({archived.length})
           </h2>
-          <p className="mb-4 text-xs text-gray-500">
+          <p className="mb-4 text-xs text-slate-500">
             보관된 기수. 수강생 관리·트레이너 명단에서 별도 collapsed 섹션으로 표시.
           </p>
           {archived.length === 0 ? (
-            <p className="rounded-xl border border-gray-100 bg-white p-6 text-center text-sm text-gray-400">
+            <p className="rounded-xl border border-slate-100 bg-white p-6 text-center text-sm text-slate-400">
               보관된 기수 없음.
             </p>
           ) : (
@@ -196,12 +196,12 @@ export default function CohortMgmtPanel({
               {archived.map((c) => (
                 <li
                   key={c.label}
-                  className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 bg-gray-100 p-4"
+                  className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-100 p-4"
                 >
                   <div className="min-w-0">
-                    <div className="text-sm font-bold text-gray-700">
+                    <div className="text-sm font-bold text-slate-700">
                       {displayLabel(c)} · {c.traineeCount}명{" "}
-                      <span className="ml-1 rounded bg-gray-400 px-1.5 py-0.5 text-px-9 font-bold uppercase tracking-wider text-white">
+                      <span className="ml-1 rounded bg-slate-400 px-1.5 py-0.5 text-px-9 font-bold uppercase tracking-wider text-white">
                         archived
                       </span>
                     </div>

@@ -71,12 +71,12 @@
 - **GoalInternalEditor**: 별도 서버 권한을 통과한 내부 특이사항·지난 PT성과. 토글 없이 항상 펼쳐 두되 권한이 있을 때만 마운트한다. 지난 성과는 지난주 과제 행에 위치로 1:1 대응하므로 중간 빈 행을 보존한다. 독립 자동저장 큐와 내부 revision을 사용하며 공용 목표와 연쇄 저장하지 않는다. 명시적 내부 재조회와 generation/abort 경합 보호, 관찰한401/403은 내부 기록·dirty 등록·복사 상태를 제거하고409/5xx는 초안 보존.
 - **GoalCopyPanel**: 저장된 공용 목표·과제를 '클립보드 복사'로 내보내고, 같은 내용을 노션 표 모양의 가로형 미리보기로 항상 보여준다. 복사는 명시적인 복사 클릭으로만 실행한다. 자동저장 완료가 클립보드를 바꾸지 않는다. 복사 형식은 header+value 2행 HTML 표와 같은 모양의 TSV를 함께 실어 노션 표 셀에 붙도록 한다. 내부 회의록 편집 미리보기/14열 복사는 그대로. 선택 가능한 텍스트 대체; Notion 자동 기록 없음.
 - **TrainerGoalOverview**: 담당 학생의 공용 저장 목표만 집계. 실제 실적은 선택한 학생에만 요청해 전원 미팅/계약 조회를 방지.
-- **TraineeCard/ReservedSection 진입**: admin(`!viewOnly`)·담당 트레이너 카드·유보 목록은 녹색 시트 대신 compact [주간목표] (`rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50`, student 인코딩·spreadsheetId 무관). admin `returnTo=/admin/users`, trainer `returnTo=/trainer`. [웹앱 →]·배정·복귀/퇴출·read-only 가드는 그대로.
+- **TraineeCard/ReservedSection 진입**: admin(`!viewOnly`)·담당 트레이너 카드·유보 목록은 녹색 시트 대신 compact [주간목표] (`rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50`, student 인코딩·spreadsheetId 무관). admin `returnTo=/admin/users`, trainer `returnTo=/trainer`. [웹앱 →]·배정·복귀/퇴출·read-only 가드는 그대로.
 - 세부 계약과 미검증 운영 경계: [weekly-goals.md](../domains/weekly-goals.md).
 
 ## 업체 계정 보관함 (2026-10-08)
 
-- **CompanyVaultSection** (`components/company-info/CompanyVaultSection.tsx`): 업체정보 편집기(패널·팝업) 안 「계정 보관함」 카드. `rounded-xl border border-gray-200 bg-white p-3 shadow-sm`, 머리 「계정 보관함」 + 배지 「잠금 저장」(emerald-50/700). 상태 4가지 — 불러오는 중 / PIN 만들기(4~8자리 2칸) / 잠김(항목 수 + PIN 1칸 + [열기]) / 열림(mm:ss 카운트다운·[PIN 바꾸기]·[지금 잠그기], 항목 카드: 종류·이름·앞값[복사]·가릴값 password[보기][복사]·메모, 점선 [+ 항목 추가]). 편집 800ms 뒤 자동 저장, 401 이면 잠김으로 돌아가 입력값 보존 후 다시 열면 저장. 주 행동만 brand-red 채움. 초안 Muse, 총괄 검수. `incoming`(미팅 메모에서 뽑은 항목)은 열려 있으면 바로, 잠겨 있으면 PIN 입력 뒤 같은 값이 없을 때만 더하고 「메모에서 N건을 넣었어요」를 보여 준다.
+- **CompanyVaultSection** (`components/company-info/CompanyVaultSection.tsx`): 업체정보 편집기(패널·팝업) 안 「계정 보관함」 카드. `rounded-xl border border-slate-200 bg-white p-3 shadow-sm`, 머리 「계정 보관함」 + 배지 「잠금 저장」(emerald-50/700). 상태 4가지 — 불러오는 중 / PIN 만들기(4~8자리 2칸) / 잠김(항목 수 + PIN 1칸 + [열기]) / 열림(mm:ss 카운트다운·[PIN 바꾸기]·[지금 잠그기], 항목 카드: 종류·이름·앞값[복사]·가릴값 password[보기][복사]·메모, 점선 [+ 항목 추가]). 편집 800ms 뒤 자동 저장, 401 이면 잠김으로 돌아가 입력값 보존 후 다시 열면 저장. 주 행동만 brand-red 채움. 초안 Muse, 총괄 검수. `incoming`(미팅 메모에서 뽑은 항목)은 열려 있으면 바로, 잠겨 있으면 PIN 입력 뒤 같은 값이 없을 때만 더하고 「메모에서 N건을 넣었어요」를 보여 준다.
 - **CompanyInfoViewToggle** (`components/company-info/CompanyInfoViewToggle.tsx` + `view-filter.ts`, 2026-10-09): 업체정보 편집기(패널·팝업) 맨 위 오른쪽 [전체 | 적은 것 N | 안 적은 것 N] (흰 바탕 테두리 상자, 고른 칸 slate-800 채움, 개수 tabular-nums). 전체 = 묶음마다 적은 항목 위·안 적은 항목 아래·자동 비율 맨 끝·기타메모는 늘 맨 아래(2026-11-04), 적은 것/안 적은 것 = 해당 항목만(한 줄 여러 칸은 하나라도 맞으면), 묶음이 비면 「다 적었어요 ✓」/「아직 적은 칸이 없어요」. 보일 칸은 편집기를 열 때·보기를 바꿀 때의 값으로 고정(적는 도중 안 움직임), 개수는 지금 값. 자동 계산 칸 제외, 연도별 매출은 해마다 합계·반기 중 하나라도 있으면 적은 것. 고른 보기는 기기에 기억(localStorage `salespt:company-info-view`).
 - **CompanyDocMemoExtras** (`components/company-doc/CompanyDocMemoExtras.tsx`): 「문서로 자동입력」에서 미팅 메모(txt·붙여넣기)를 읽었을 때만 — 계정 보관함으로 보낼 항목(emerald 상자, 기본 체크, 값은 앞 2자 + •• 로 가림)과 「나머지 메모를 업체 기타메모에 붙이기」(기본 꺼짐).
 
@@ -106,7 +106,7 @@
 
 **Variants:**
 - Default: `bg-blue-500 hover:bg-blue-600 text-white`
-- Disabled: `bg-gray-300 text-gray-500 cursor-not-allowed`
+- Disabled: `bg-slate-300 text-slate-500 cursor-not-allowed`
 
 **구현 예시:**
 ```html
@@ -122,7 +122,7 @@
 보조 액션용 버튼 (취소, 닫기 등).
 
 ```html
-<button class="px-4 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium rounded-lg transition-colors">
+<button class="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium rounded-lg transition-colors">
   취소
 </button>
 ```
@@ -140,7 +140,7 @@
 아이콘만 있는 버튼.
 
 ```html
-<button class="w-11 h-11 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors">
+<button class="w-11 h-11 rounded-full hover:bg-slate-100 flex items-center justify-center transition-colors">
   ⚙️
 </button>
 ```
@@ -150,7 +150,7 @@
 
 ```html
 <button class="stepper-btn bg-blue-500 hover:bg-blue-600 text-white">+</button>
-<button class="stepper-btn bg-gray-200 hover:bg-gray-300 text-gray-700">-</button>
+<button class="stepper-btn bg-slate-200 hover:bg-slate-300 text-slate-700">-</button>
 ```
 
 **CSS 정의:**
@@ -175,7 +175,7 @@
 ```html
 <input 
   type="text" 
-  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+  class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500"
   placeholder="업체명을 입력하세요"
 >
 ```
@@ -189,7 +189,7 @@
 
 ```html
 <div class="flex items-center gap-2">
-  <button class="stepper-btn bg-gray-200 hover:bg-gray-300 text-gray-700">-</button>
+  <button class="stepper-btn bg-slate-200 hover:bg-slate-300 text-slate-700">-</button>
   <input type="number" class="stepper-val" value="12" inputmode="numeric">
   <button class="stepper-btn bg-blue-500 hover:bg-blue-600 text-white">+</button>
 </div>
@@ -399,7 +399,7 @@ function getTimeValue(hourId, minuteId) {
 일반 드롭다운 선택 필드.
 
 ```html
-<select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500">
+<select class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500">
   <option value="purchase">매입DB</option>
   <option value="direct">직접생산</option>
   <option value="banner">현수막</option>
@@ -412,7 +412,7 @@ function getTimeValue(hourId, minuteId) {
 
 ```html
 <textarea 
-  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 resize-none"
+  class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 resize-none"
   rows="3"
   placeholder="특이사항을 입력하세요"
 ></textarea>
@@ -427,8 +427,8 @@ function getTimeValue(hourId, minuteId) {
 
 ```html
 <div class="bg-white rounded-lg p-4 shadow-sm">
-  <h3 class="font-semibold text-gray-900 mb-2">카드 제목</h3>
-  <p class="text-gray-600">카드 내용</p>
+  <h3 class="font-semibold text-slate-900 mb-2">카드 제목</h3>
+  <p class="text-slate-600">카드 내용</p>
 </div>
 ```
 
@@ -579,14 +579,14 @@ function getTimeValue(hourId, minuteId) {
 
 **전체 컨테이너:**
 ```html
-<nav class="bottom-nav bg-white border-t border-gray-100 flex">
+<nav class="bottom-nav bg-white border-t border-slate-100 flex">
   <!-- 5개 탭 버튼 (아래 5개 SVG 아이콘 차례로 삽입) -->
 </nav>
 ```
 
 **활성/비활성 색상 규칙**:
 - 활성 탭: `text-blue-600` + `font-semibold`
-- 비활성 탭: `text-gray-400 hover:text-gray-600`
+- 비활성 탭: `text-slate-400 hover:text-slate-600`
 - SVG의 `fill`/`stroke`는 **반드시 `currentColor`** 사용 (텍스트 색을 따라감)
 
 **CSS 정의:**
@@ -597,7 +597,7 @@ function getTimeValue(hourId, minuteId) {
 
 #### 탭 버튼 공통 구조
 ```html
-<button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-gray-400 hover:text-gray-600 transition-colors">
+<button class="flex-1 py-2 flex flex-col items-center gap-0.5 text-slate-400 hover:text-slate-600 transition-colors">
   <!-- SVG 아이콘 -->
   <span class="text-xs">탭 이름</span>
 </button>
@@ -689,11 +689,11 @@ function getTimeValue(hourId, minuteId) {
 상단 채널 탭 (4개 채널).
 
 ```html
-<div class="flex border-b border-gray-200">
+<div class="flex border-b border-slate-200">
   <button class="flex-1 py-2 px-3 text-sm font-medium border-b-2 border-blue-500 text-blue-600">매입DB</button>
-  <button class="flex-1 py-2 px-3 text-sm font-medium text-gray-500 hover:text-gray-700">직접생산</button>
-  <button class="flex-1 py-2 px-3 text-sm font-medium text-gray-500 hover:text-gray-700">현수막</button>
-  <button class="flex-1 py-2 px-3 text-sm font-medium text-gray-500 hover:text-gray-700">콜·지·기·소</button>
+  <button class="flex-1 py-2 px-3 text-sm font-medium text-slate-500 hover:text-slate-700">직접생산</button>
+  <button class="flex-1 py-2 px-3 text-sm font-medium text-slate-500 hover:text-slate-700">현수막</button>
+  <button class="flex-1 py-2 px-3 text-sm font-medium text-slate-500 hover:text-slate-700">콜·지·기·소</button>
 </div>
 ```
 
@@ -702,12 +702,12 @@ function getTimeValue(hourId, minuteId) {
 
 ```html
 <div class="flex items-center justify-between py-3">
-  <button class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center">◀</button>
+  <button class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center">◀</button>
   <div class="text-center">
     <div class="text-lg font-semibold">4월 17일 (수)</div>
-    <div class="text-sm text-gray-500">17주차</div>
+    <div class="text-sm text-slate-500">17주차</div>
   </div>
-  <button class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center">▶</button>
+  <button class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center">▶</button>
 </div>
 ```
 
@@ -744,11 +744,11 @@ function getTimeValue(hourId, minuteId) {
 ```html
 <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
   <div class="bg-white rounded-xl p-6 mx-4 max-w-sm w-full">
-    <h3 class="font-semibold text-gray-900 mb-2">저장하지 않은 변경사항</h3>
-    <p class="text-gray-600 mb-4">변경사항이 손실될 수 있습니다. 저장하시겠습니까?</p>
+    <h3 class="font-semibold text-slate-900 mb-2">저장하지 않은 변경사항</h3>
+    <p class="text-slate-600 mb-4">변경사항이 손실될 수 있습니다. 저장하시겠습니까?</p>
     <div class="flex gap-2">
       <button class="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg">저장</button>
-      <button class="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg">취소</button>
+      <button class="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg">취소</button>
     </div>
   </div>
 </div>
@@ -760,7 +760,7 @@ function getTimeValue(hourId, minuteId) {
 ```html
 <div class="bottomsheet-overlay" onclick="closeBottomSheet()"></div>
 <div class="bottomsheet">
-  <div class="w-12 h-1 bg-gray-300 rounded-full mx-auto my-3"></div>
+  <div class="w-12 h-1 bg-slate-300 rounded-full mx-auto my-3"></div>
   <div class="px-4 pb-4">
     <h3 class="font-semibold text-lg mb-4">미팅 추가</h3>
   </div>
@@ -788,8 +788,8 @@ function getTimeValue(hourId, minuteId) {
 
 ```html
 <div class="metric-card">
-  <div class="text-2xl font-bold text-gray-900 mb-1">125</div>
-  <div class="text-sm text-gray-500">총 생산</div>
+  <div class="text-2xl font-bold text-slate-900 mb-1">125</div>
+  <div class="text-sm text-slate-500">총 생산</div>
   <div class="text-xs text-green-600 mt-1">+12 (+10.6%)</div>
 </div>
 ```
@@ -939,8 +939,8 @@ function getTimeValue(hourId, minuteId) {
     <span class="badge badge-banner">현수막</span>
     <span class="font-semibold ml-auto">○○부동산</span>
   </div>
-  <div class="text-sm text-gray-500">📍 잠실</div>
-  <div class="text-sm text-gray-600 mt-1">📝 견적서 지참</div>
+  <div class="text-sm text-slate-500">📍 잠실</div>
+  <div class="text-sm text-slate-600 mt-1">📝 견적서 지참</div>
 </div>
 ```
 
@@ -986,10 +986,10 @@ function getTimeValue(hourId, minuteId) {
 ```html
 <div class="card-reserved rounded-lg px-3 py-2 flex items-center gap-2">
   <span class="shrink-0 text-base leading-none">🟡</span>
-  <span class="text-xs font-bold text-gray-700 shrink-0">09:00</span>
+  <span class="text-xs font-bold text-slate-700 shrink-0">09:00</span>
   <span class="badge badge-purchase shrink-0">매입DB</span>
-  <span class="text-xs font-semibold text-gray-900 truncate flex-1">▽▽의원</span>
-  <span class="text-xs text-gray-500 truncate shrink-0 max-w-16">서초</span>
+  <span class="text-xs font-semibold text-slate-900 truncate flex-1">▽▽의원</span>
+  <span class="text-xs text-slate-500 truncate shrink-0 max-w-16">서초</span>
 </div>
 ```
 
@@ -1468,13 +1468,13 @@ D R7 PC bare 상세는 `page.tsx` 기존 제목줄의 `data-payment-pc-status-sl
 | **ScoreboardView** | 전광판 클라이언트 뷰 (arena-scoreboard-v2). Props: `data: {byCohort, rankings, seasonWeek, season}`. 상단 [관리자 대시보드]/[캡쳐 모드] 토글. 대시보드=기수 평균 표+5지표 개인 랭킹 표 밀도형. 캡쳐=탭(메인 종합/미팅/계약/매출/앱사용량/공유왕), 메인=CohortSummaryBoard·지표탭=AwardPodium, 공통 헤더 `"아레나 시즌N · M주차 · {지표}왕"` — **시즌 번호는 SSOT(`lib/service/arena-season-config`)가 준 `data.season` 만 사용, 하드코딩 금지**(AR-2b). 표기=`seasonDisplayLabel`(미상 0 이면 "아레나"), 주차 미상(0)이면 주차 칸 생략. 표·랭킹·공유왕 모수도 같은 SSOT(`isInSeason`)로 현재 시즌만 — 헤더/데이터 시즌 불일치 금지. **시즌 정본 = cohorts 탭 J열 `seasonStartISO`**(admin 입력, SeasonStartInput): 개강일이 오늘(KST) 이하인 활성 아레나 시즌 중 최대. 더 높은 시즌의 개강일이 **미입력**이면 옛 시즌으로 고정하지 않고 0 → 라벨 "아레나" + 스코프 미적용(새 시즌 참가자를 숨기지 않음). 참가자별 registry K 는 템플릿 O1 스탬프라 판정에서 배제. 탭 전환=hydration 후 useState(스트리밍 중 display:none 아님). |
 | **CompanyInfoEditor** | 헤더 「편집」 왼쪽에 「문서로 자동입력」(`CompanyDocAutofillButton`, 2026-09-28 — 체크한 칸만 같은 set 경로로 반영). 미팅 업체정보(04 T~AN + AQ~AS + AU~CD, 59필드) 드롭다운+팝업 편집 — 필드 정의는 `components/company-info-defs.ts`(대표자_ITEMS·기업정보_ITEMS·재무_ITEMS = EditorItem 목록: field·bizType·ownership·row·pair·hidden·money·ratio·sales, `salesDefs(baseYear)`·`companyInfoFieldList(baseYear)`), 항목 그리기는 `components/company-info/CompanyInfoItem`(→ CompanyInfoField·CompanyInfoChoiceFields·CompanyInfoFinanceFields·CompanyInfoSalesFields). **2026-09-28 company-finance-won-grid**: [재무] 금액 = 백만원(칸 옆 "백만원"·"약 2.5억"·옛 자유 글 안내+「백만원으로 바꾸기」), 연도별 매출 = 상반기·하반기·합계 표(반기별 매출 묶음 삭제), Y 줄 연도 = 저장 가능한 매출 기준 연도, 부채비율·이자보상배율·당기순이익률 자동(읽기 전용). [기업정보] 업종 줄을 등록번호 뒤·4대보험 직원을 소유여부 뒤로, [대표자] 생년월일 칸 삭제(값 유지) + 이름·주민등록번호 / 신용점수·연락처 한 줄(375px 에서도, 입력칸 아래 정렬). 저장 경로 `apply()` = `deriveCompanyInfo`(lib/service/company-finance.ts — 합계·증가율·비율·기준 연도·주민등록번호 앞자리, 덮이는 옛 합계는 기타메모로), TXT 내보내기 = `companyInfoForExport`. **2026-09-28 재구성(company-info-restructure)**: 섹션 순서 [대표자] → [기업정보](옛 [업체], 커스텀 저장 키 "업체" 유지) → [재무], 2xl 좌우 2단 = [대표자]\|[기업정보]. 사업자구분·과세유형 한 칸 조합 select, 법인등록번호는 법인일 때만(이미 값이 있으면 늘 보임), 소유여부·대표소유여부 자가/임차 select + 임차 한 줄(보증금 원·월세 원·면적 ㎡), 업종·업태·주생산품목 한 줄, 매출·기대출(사업자)은 [재무]. 저장 경로 `apply()` 가 매출증가율 3칸을 연도 매출에서 다시 계산(PR-7 부터 `deriveCompanyInfo` — lib/service/company-finance.ts) — 직접 입력·문서 자동입력 공통, TXT 내보내기도 계산값 포함. 2026-09-28 확장2: [업체]·[대표자]에 새 칸 + 두 그룹 아래 전폭 **[재무]** 섹션(같은 카드·그리드, 사용자 필드 추가 없음, `role=group`), 주민등록번호 앞자리는 입력 중 6자리 초과분 즉시 절단·blur 에 `NNNNNN-` 마무리. 혼합 그리드(2026-06-11 §3-2 확정: 기본 1열 → sm 2열 short=span1/long=span2 → 2xl [업체]\|[대표자] 좌우 2단, 모달 2xl:max-w-3xl). placeholder 확정 문구, 기대출 2필드 textarea 자동높이(
  저장). Props: `value?: CompanyInfo`, `onSave(ci)`, `busy?`, `txtCompanyName?`(있으면 [📄 업체정보생성] — POST /api/company-info/export 로 O 폴더 TXT 1본 덮어쓰기 + 성공/실패 메시지·파일 링크, §3-3/ADR-0016). [업체]12+[대표자]8+커스텀(필드추가+). 사용처: schedule MeetingResultCard·contact SavedItem+NewItem(미팅예약+1 신규 슬롯 — 예약비고 자리 교체, 등록 시 04 포함)·payment(CompanyInfoContractSection 경유). consultation-log §3. |
-| **CompanyDocAutofillButton** | `components/company-doc/CompanyDocAutofillButton.tsx` — CompanyInfoEditor 헤더(「편집」 왼쪽)의 「문서로 자동입력」 버튼(`aria-haspopup=dialog`, 편집 버튼과 같은 회색 테두리 xs). Props: `current: CompanyInfo`, `onApply(patch)`. 누르면 `CompanyDocAutofillDialog` 를 React.lazy 로 내려받아 연다 — 업체정보를 열기만 하면 OCR 코드는 받지 않는다. 편집기는 onApply 를 기존 `apply()`(자동저장 update / 임베드 stage)에 연결 — 새 저장 경로 없음. company-doc-autofill 2026-09-28. **2026-11-01 msc-document-upload-port**: 적용 뒤 바닥 알림(`role=status`, body portal, 진회색 `bg-gray-900`) "문서로 N칸 채웠어요 (노란 칸)" + 「되돌리기」(이번 묶음 중 아직 문서 값 그대로인 칸만 이전 값으로, `lib/document-ocr/undo.ts`) + ✕(알림만 닫음). 문서로 채운 칸은 손대기 전까지 `amber-50`(#fffbeb) 바탕. |
+| **CompanyDocAutofillButton** | `components/company-doc/CompanyDocAutofillButton.tsx` — CompanyInfoEditor 헤더(「편집」 왼쪽)의 「문서로 자동입력」 버튼(`aria-haspopup=dialog`, 편집 버튼과 같은 회색 테두리 xs). Props: `current: CompanyInfo`, `onApply(patch)`. 누르면 `CompanyDocAutofillDialog` 를 React.lazy 로 내려받아 연다 — 업체정보를 열기만 하면 OCR 코드는 받지 않는다. 편집기는 onApply 를 기존 `apply()`(자동저장 update / 임베드 stage)에 연결 — 새 저장 경로 없음. company-doc-autofill 2026-09-28. **2026-11-01 msc-document-upload-port**: 적용 뒤 바닥 알림(`role=status`, body portal, 진회색 `bg-slate-900`) "문서로 N칸 채웠어요 (노란 칸)" + 「되돌리기」(이번 묶음 중 아직 문서 값 그대로인 칸만 이전 값으로, `lib/document-ocr/undo.ts`) + ✕(알림만 닫음). 문서로 채운 칸은 손대기 전까지 `amber-50`(#fffbeb) 바탕. |
 | **CompanyDocAutofillDialog** | `components/company-doc/CompanyDocAutofillDialog.tsx` — 「문서로 자동입력」 팝업(body portal, `fixed inset-0 z-50`, `max-w-2xl`, 375px 1열). Props: `current`, `onApply(patch)`, `onClose`. 머리말 "파일은 이 기기 안에서만 읽고 저장하지 않아요." · 점선 끌어놓기 칸 + [파일 고르기](JPG/PNG/WebP/PDF, 15MB, PDF 글자층 10쪽·스캔 6쪽, 여러 개) · 파일 행 = 이름 + 문서 종류 고르기 상자(자동 판별, 바꾸면 다시 해석) + 진행 막대(role=progressbar)/오류(role=alert)/모르는 문서 안내("어떤 서류인지 알아보지 못했어요…")/참고 정보(상호·금액 단위 등, 저장 안 함) · `CompanyDocDiffTable` · 바닥 "N개 선택" 「취소」「선택 항목 적용」(0개면 비활성). OCR 은 한 번에 한 파일, `@/lib/document-ocr/ocr-client` 를 읽는 순간 dynamic import, 닫으면 진행 중 OCR 취소. 파서(2026-09-28 company-doc-parsers): 사업자등록증·부가세 과세표준증명·재무제표·신분증·임대차계약서 5종 모두 `lib/document-ocr/registry.ts` PARSERS 등록 — "곧 지원돼요" 상태 없음. 신분증은 가린 원문(주민등록번호 `앞6-*******`·운전면허번호 통째 가림)으로 읽는다. 접근성: role=dialog·aria-modal·aria-labelledby/-describedby, 열리면 제목 포커스, Tab 순환, Esc 닫기, 닫히면 여는 버튼으로 포커스 복귀. **2026-11-01 msc-document-upload-port**: PDF 는 쪽별로 읽어 합본이면 서류마다 한 줄(이름 "파일.pdf (3~5쪽)", `lib/document-ocr/bundle.ts`), 스캔 PDF 는 최대 6쪽(120초 안, 못 다 읽으면 "N쪽 중 M쪽까지 읽었어요 — 나머지 쪽은 따로 올려 주세요"), 깨진 글자층 PDF 는 OCR 로. 사업자등록번호가 업체정보(없으면 서류 다수)와 다른 서류는 파일 줄에 "다른 회사 서류 같아요(사업자등록번호 …)" 경고 + 그 서류에서만 나온 칸 기본 체크 해제(`otherCompanyFiles`). |
 | **CompanyDocDiffTable** | `components/company-doc/CompanyDocDiffTable.tsx` — 비교표 `table-fixed text-xs`: 항목 \| 지금 값 \| 문서에서 읽은 값 \| 정확도(높음 emerald·보통 amber·낮음 red 칩) \| 적용 체크(라벨=항목명). 행·기본 체크는 `lib/document-ocr/diff.ts` 가 정함(빈 칸만 체크, 지금 값 있으면 해제+"지금 값이 있어 기본으로 안 덮어요", 검증 실패 번호 해제, 빈 읽은 값은 행 없음). 충돌(문서마다 다른 값)은 값 칸이 amber 고르기 상자(`<값> (<파일명>)`), 기본은 정확도 높은 값. 경고는 ⚠ amber 줄. |
 | **CompanyInfoField** | `components/company-info/CompanyInfoField.tsx` — 업체정보 편집기 한 칸(default) + `FieldLabel`(라벨 + (?) HintTooltip + sr-only 설명, 버튼은 label 밖, 선택 `tag` = 라벨 옆 회색 "(자동)" — 칸 이름엔 안 들어감) + `inputCls`·`readOnlyCls`·`hintIdOf`. Props: `def: FieldDef`, `value`, `onChange(k, v)`, `id`(패널·모달 구분 고유 id), `className`. 여러 줄 칸 = textarea 자동높이, 연락처통신사 = blur 에 formatPhone, 주민등록번호 = 입력 중 6자리 초과분 절단·blur `NNNNNN-`·자른/비운 이유 role=status(amber), placeholder 없음. **이메일(2026-11-10 company-info-email-v2)** = [대표자] 확장보기 연락처 줄 바로 아래 전폭 한 칸(기본보기 없음), blur 에 `tidyContactEmail`(공백·전각 ＠·mailto: 정리, 대소문자 유지), 모양이 아니면 막지 않고 포커스 밖에서 amber `EMAIL_SHAPE_MSG`(role=status), type=text + inputMode=email + autoComplete=off·autoCapitalize=none·spellCheck=false. company-info-restructure 2026-09-28 에 CompanyInfoEditor 에서 분리. |
 | **CompanyInfoChoiceFields** | `components/company-info/CompanyInfoChoiceFields.tsx` — 업체정보 선택형 칸 두 개(named export). **BizTypeField**: 사업자구분 · 과세유형 한 칸 select(선택 · 개인·일반과세 / 개인·간이과세 / 개인·면세 / 법인·일반과세 / 법인·면세) — 고르면 두 저장 키를 함께, 옛 값(과세유형 빈칸·목록 밖 글)은 disabled "지금 값" 선택지로 선택된 채 표시("개인 · 과세유형 선택"), 목록 밖 글은 바꿀 때 기업정보 기타메모로 옮김. **OwnershipField**(Props `spec: OwnershipSpec`·`draft`·`onPatch`·`idBase`·`className`): 소유여부 선택/자가/임차 select, 임차면(또는 임차 칸에 값이 있으면) `role=group aria-label="임차 조건"` 한 줄 `grid-cols-1 xs:grid-cols-3`(360px 미만 세로) — 보증금·월세(숫자만 친 값은 칸을 떠날 때(blur) 천 단위 쉼표 — 입력 중 커서 튐 방지, 옆에 "원")·면적(옆에 "㎡"), 단위가 이미 적힌 옛 값("1,000만")엔 단위 안 붙임. 옛 자유 글은 선택을 짐작 + 아래 `role=note` "이전에 적은 내용: … · 선택하면 기타메모로 옮겨 둬요" + 짐작한 선택이 있으면 「임차로 확정」(「자가로 확정」) 버튼(같은 값을 다시 고르면 change 가 안 나므로 — 누르면 선택값 저장 + 원문을 기타메모로). 기업정보(소유여부)·대표자(대표소유여부) 공용. company-info-restructure 2026-09-28. |
-| **CompanyInfoSalesFields** | `components/company-info/CompanyInfoSalesFields.tsx` — 업체정보 [재무] 「연도별 매출」 표(company-finance-won-grid 2026-09-28). Props: `draft`, `onField`, `onPatch`, `idBase`, `today`(기준 연도가 비었을 때), `className`. 제목 줄 "연도별 매출 (?)" + "단위: 백만원", `role=group aria-label="연도별 매출"` **2026-10-09 피벗: 연도가 가로** — `table-fixed` 표(첫 열 `w-11` 줄 이름 연매출·상반기·하반기 + 연도 4열, 줄 높이 자동 맞춤 — 글자 크기를 키워도 "약 …" 줄이 안 잘림, 2026-10-09 보정), 연도 머리 `data-sales-row` 4개·칸 `data-sales-cell`(Y·Y-1·Y-2·Y-3; 머리 = 연도 토큰 + Y 는 네 자리 기준 연도 입력·(?) "기준 연도를 바꾸면 칸 이름만 바뀌어요. 값은 그대로예요.", 그 밖은 연도 숫자), 아래로 연매출(굵게)·상반기·하반기 칸. 칸 안 오른쪽에 옅은 "백만"(`MillionWonInput bare`, gray-300) + 제목 줄 "단위: 백만원"(gray-400). 연도별 안내(한쪽만·읽을 수 없음·이전 합계·옛 글)는 표 아래 `data-sales-note`. 2000~2100 밖이면 저장 안 하고 표 아래 `role=alert`, 칸 라벨은 sr-only "Y(2026) 상반기"·"매출 Y(2026)". 합계 = 반기 칸에 값이 있으면 읽기 전용 반기 합(bg-gray-50) + "자동 · 약 …", 한쪽만이면 줄 아래 "하반기가 비어 있어 상반기만 더했어요", 반기에 읽을 수 없는 글이면 amber 안내 + 합계 직접 입력, 둘 다 비면 합계 직접 입력, 반기 합과 다른 옛 합계는 "이전 합계 … — 반기 합과 달라 저장할 때 업체 기타메모로 옮겨 둬요"(#1068 자동입력의 백만 반올림·반기로 드러나는 6월/12월 표시는 같은 값). 기준 연도 칸은 sr-only 설명 연결, 틀린 연도 `role=alert` 는 Y 줄 바로 아래(칸에 다시 들어가면 거둠). 칸마다 옛 자유 글 안내(MoneyLegacyNote). 아래 매출증가율 `role=group aria-label="매출증가율"` `grid-cols-1 xs:grid-cols-3` 읽기 전용 3칸(줄 합계에서 계산, Y 상반기만이면 Y-1→Y 설명에 안내). 옛 한 칸 반기별매출·매출증가율은 값이 있을 때만 읽기 전용 메모. |
-| **CompanyInfoFinanceFields** | `components/company-info/CompanyInfoFinanceFields.tsx` — [재무] 금액·비율 칸(named export, company-finance-won-grid 2026-09-28). **MillionWonInput**(Props `id`·`value`·`signed`·`onChange`·`suffix?`·`describedBy?` — 원 단위 공용 `components/ui/MoneyInput` 과 다른 칸, 값은 글): 백만원 입력 `tabular-nums`(숫자는 오른쪽·옛 글은 왼쪽 정렬), 숫자만 친 값은 소수 한 자리까지(넘치면 자르고 `role=status` "소수는 한 자리까지만 적어요" — blur 에 거둠), 손익 칸만 앞 "-", blur 에 천 단위 쉼표, 칸 아래 "약 2.5억"·"약 3,200만". **MoneyLegacyNote**: 옛 자유 글 `role=note` amber — "글로 적힌 값이에요 — 계산에는 X백만원으로 써요"(1,000,000 이상 숫자는 "원 단위로 적은 숫자 같아요 — …") + 「백만원으로 바꾸기」(표 안에선 `aria-label` "<칸 이름> 백만원으로 바꾸기") / "읽을 수 없어 계산에서 빠져요". **MoneyField**: 라벨+(?)+MillionWonInput+"백만원"+옛 글 안내(영업이익·당기순이익·이자비용·자산총계·부채총계·자본총계·면세 수입금액). **RatioField**: 자동 비율 읽기 전용(bg-gray-50, 라벨 옆 "(자동)" — `FieldLabel` `tag`, 비었으면 placeholder "금액을 적으면 자동 계산") + 저장된 옛 값이 다른 값이면 "이전에 적은 값: …"(숫자가 같고 모양만 다르면 안 보임). |
+| **CompanyInfoSalesFields** | `components/company-info/CompanyInfoSalesFields.tsx` — 업체정보 [재무] 「연도별 매출」 표(company-finance-won-grid 2026-09-28). Props: `draft`, `onField`, `onPatch`, `idBase`, `today`(기준 연도가 비었을 때), `className`. 제목 줄 "연도별 매출 (?)" + "단위: 백만원", `role=group aria-label="연도별 매출"` **2026-10-09 피벗: 연도가 가로** — `table-fixed` 표(첫 열 `w-11` 줄 이름 연매출·상반기·하반기 + 연도 4열, 줄 높이 자동 맞춤 — 글자 크기를 키워도 "약 …" 줄이 안 잘림, 2026-10-09 보정), 연도 머리 `data-sales-row` 4개·칸 `data-sales-cell`(Y·Y-1·Y-2·Y-3; 머리 = 연도 토큰 + Y 는 네 자리 기준 연도 입력·(?) "기준 연도를 바꾸면 칸 이름만 바뀌어요. 값은 그대로예요.", 그 밖은 연도 숫자), 아래로 연매출(굵게)·상반기·하반기 칸. 칸 안 오른쪽에 옅은 "백만"(`MillionWonInput bare`, slate-300) + 제목 줄 "단위: 백만원"(slate-400). 연도별 안내(한쪽만·읽을 수 없음·이전 합계·옛 글)는 표 아래 `data-sales-note`. 2000~2100 밖이면 저장 안 하고 표 아래 `role=alert`, 칸 라벨은 sr-only "Y(2026) 상반기"·"매출 Y(2026)". 합계 = 반기 칸에 값이 있으면 읽기 전용 반기 합(bg-slate-50) + "자동 · 약 …", 한쪽만이면 줄 아래 "하반기가 비어 있어 상반기만 더했어요", 반기에 읽을 수 없는 글이면 amber 안내 + 합계 직접 입력, 둘 다 비면 합계 직접 입력, 반기 합과 다른 옛 합계는 "이전 합계 … — 반기 합과 달라 저장할 때 업체 기타메모로 옮겨 둬요"(#1068 자동입력의 백만 반올림·반기로 드러나는 6월/12월 표시는 같은 값). 기준 연도 칸은 sr-only 설명 연결, 틀린 연도 `role=alert` 는 Y 줄 바로 아래(칸에 다시 들어가면 거둠). 칸마다 옛 자유 글 안내(MoneyLegacyNote). 아래 매출증가율 `role=group aria-label="매출증가율"` `grid-cols-1 xs:grid-cols-3` 읽기 전용 3칸(줄 합계에서 계산, Y 상반기만이면 Y-1→Y 설명에 안내). 옛 한 칸 반기별매출·매출증가율은 값이 있을 때만 읽기 전용 메모. |
+| **CompanyInfoFinanceFields** | `components/company-info/CompanyInfoFinanceFields.tsx` — [재무] 금액·비율 칸(named export, company-finance-won-grid 2026-09-28). **MillionWonInput**(Props `id`·`value`·`signed`·`onChange`·`suffix?`·`describedBy?` — 원 단위 공용 `components/ui/MoneyInput` 과 다른 칸, 값은 글): 백만원 입력 `tabular-nums`(숫자는 오른쪽·옛 글은 왼쪽 정렬), 숫자만 친 값은 소수 한 자리까지(넘치면 자르고 `role=status` "소수는 한 자리까지만 적어요" — blur 에 거둠), 손익 칸만 앞 "-", blur 에 천 단위 쉼표, 칸 아래 "약 2.5억"·"약 3,200만". **MoneyLegacyNote**: 옛 자유 글 `role=note` amber — "글로 적힌 값이에요 — 계산에는 X백만원으로 써요"(1,000,000 이상 숫자는 "원 단위로 적은 숫자 같아요 — …") + 「백만원으로 바꾸기」(표 안에선 `aria-label` "<칸 이름> 백만원으로 바꾸기") / "읽을 수 없어 계산에서 빠져요". **MoneyField**: 라벨+(?)+MillionWonInput+"백만원"+옛 글 안내(영업이익·당기순이익·이자비용·자산총계·부채총계·자본총계·면세 수입금액). **RatioField**: 자동 비율 읽기 전용(bg-slate-50, 라벨 옆 "(자동)" — `FieldLabel` `tag`, 비었으면 placeholder "금액을 적으면 자동 계산") + 저장된 옛 값이 다른 값이면 "이전에 적은 값: …"(숫자가 같고 모양만 다르면 안 보임). |
 | **CompanyInfoItem** | `components/company-info/CompanyInfoItem.tsx` — 업체정보 편집기 항목 하나(EditorItem) 그리기, CompanyInfoEditor 에서 분리(500줄 캡). Props: `it`, `draft`, `inline`, `idBase`, `today`, `onField`, `onPatch`. field/row(업종 줄 `xs:grid-cols-3`)/bizRow(개업일·사업자구분·등록번호 — 칸 묶음 330px 이상 3:4:3 한 줄, 좁으면 [개업일 | 등록번호] + 사업자구분 전폭, globals.css `.company-biz-row` 컨테이너 쿼리, 2026-11-04)/pair(늘 한 줄 `grid-cols-2` 또는 2:3 `grid-cols-5`, `items-end`)/bizType/ownership/money/ratio/sales, hidden 은 그리지 않음. 주민등록번호가 비었고 생년월일을 읽을 수 있으면 "880124-" 를 보여 주기만(설명 "생년월일에서 자동으로 채운 값이에요…") — 저장은 편집 때 apply(). 그 값을 통째로 지우면 생년월일도 함께 지워(onPatch) 비운 채로 남는다. |
 | **CustomFieldUndo** | `components/company-info/CustomFieldUndo.tsx` — 업체정보 사용자 추가 칸(기타)을 ✕ 로 지운 직후 그 그룹 끝에 보이는 「「라벨」 칸을 지웠어요 · 되돌리기」 줄(role=status, 10초 뒤 자동 닫힘). 되돌리기 = 같은 값으로 원래 순서 자리에 복원(CompanyInfoEditor `restoreCustom`). Props: `label`, `inline`, `onUndo`, `onDismiss`. 2026-10-23 custom-field-undo. |
 | **CompanyInfoContractSection** | payment 계약 카드 업체정보 섹션. Props: `계약일`, `업체명`. GET /api/company-info(06 read) → CompanyInfoEditor → POST(04 원본+06 동기화 저장, saveCompanyInfoByContract). §3-1. |

@@ -165,15 +165,15 @@ export default function ChannelPerformance({ costBreakdown, matrix, weeks = STAT
       {/* 섹션 제목 */}
       <div className="mb-2 flex items-center gap-2">
         <span className="h-5 w-1 rounded-full bg-red-500" />
-        <h2 className="text-base font-extrabold text-gray-900">채널별 성과</h2>
-        <span className="ml-auto text-xs text-gray-400">{weeks}주 누적</span>
+        <h2 className="text-base font-extrabold text-slate-900">채널별 성과</h2>
+        <span className="ml-auto text-xs text-slate-400">{weeks}주 누적</span>
       </div>
 
       <div className="flex flex-1 flex-col justify-center gap-2">
         {/* 도넛 2개 — 제목은 도넛 바로 왼쪽 */}
         <div className="grid grid-cols-2 gap-2">
           <div className="flex items-center justify-center gap-1.5">
-            <span className="shrink-0 break-keep text-right text-xs font-semibold leading-tight text-gray-700">채널별<br />비용</span>
+            <span className="shrink-0 break-keep text-right text-xs font-semibold leading-tight text-slate-700">채널별<br />비용</span>
             <DonutSvg
               play={play}
               slices={costSlices}
@@ -183,7 +183,7 @@ export default function ChannelPerformance({ costBreakdown, matrix, weeks = STAT
             />
           </div>
           <div className="flex items-center justify-center gap-1.5">
-            <span className="shrink-0 break-keep text-right text-xs font-semibold leading-tight text-gray-700">채널별<br />DB유입</span>
+            <span className="shrink-0 break-keep text-right text-xs font-semibold leading-tight text-slate-700">채널별<br />DB유입</span>
             <DonutSvg
               play={play}
               slices={inflowSlices}
@@ -197,7 +197,7 @@ export default function ChannelPerformance({ costBreakdown, matrix, weeks = STAT
         {/* 채널 표 — 비용 · DB유입 · 계약단가(1계약당 비용) */}
         <table className="w-full whitespace-nowrap text-xs" style={{ fontVariantNumeric: "tabular-nums" }}>
           <thead>
-            <tr className="text-gray-400">
+            <tr className="text-slate-400">
               <th className="pb-0.5 text-left font-medium">채널</th>
               <th className="pb-0.5 text-right font-medium">비용</th>
               <th className="pb-0.5 text-right font-medium">DB유입</th>
@@ -214,28 +214,28 @@ export default function ChannelPerformance({ costBreakdown, matrix, weeks = STAT
                   <td className="py-0.5">
                     <span className="flex items-center gap-1.5">
                       <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: r.color }} />
-                      <span className="truncate font-semibold text-gray-700">{r.채널}</span>
+                      <span className="truncate font-semibold text-slate-700">{r.채널}</span>
                     </span>
                   </td>
                   <td className="py-0.5 text-right">
                     {r.hasCost ? (
                       <>
-                        <span className="font-bold text-gray-900">{fmtMan(r.cost)}</span>
-                        <span className="ml-1 text-gray-400">{pct(r.cost, costTotal)}</span>
+                        <span className="font-bold text-slate-900">{fmtMan(r.cost)}</span>
+                        <span className="ml-1 text-slate-400">{pct(r.cost, costTotal)}</span>
                       </>
                     ) : (
-                      <span className="text-gray-400">—</span>
+                      <span className="text-slate-400">—</span>
                     )}
                   </td>
                   <td className="py-0.5 text-right">
-                    <span className="font-bold text-gray-900">{fmtCount(inflow)}</span>
-                    <span className="ml-1 text-gray-400">{pct(inflow, inflowTotal)}</span>
+                    <span className="font-bold text-slate-900">{fmtCount(inflow)}</span>
+                    <span className="ml-1 text-slate-400">{pct(inflow, inflowTotal)}</span>
                   </td>
                   <td
-                    className="py-0.5 text-right font-bold text-gray-900"
+                    className="py-0.5 text-right font-bold text-slate-900"
                     title={r.hasCost ? `${fmtMan(r.cost)} ÷ ${r.contracts}건` : "비용 없음"}
                   >
-                    {!r.hasCost || r.contracts === 0 ? <span className="font-normal text-gray-400">—</span> : fmtMan(r.cpc)}
+                    {!r.hasCost || r.contracts === 0 ? <span className="font-normal text-slate-400">—</span> : fmtMan(r.cpc)}
                   </td>
                 </tr>
               );

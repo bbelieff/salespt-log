@@ -27,8 +27,8 @@ const toBase64 = (f: File) => new Promise<string>((resolve, reject) => {
   r.readAsDataURL(f);
 });
 
-const INPUT = "w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base focus:border-blue-500 focus:outline-none";
-const LABEL = "text-sm font-medium text-gray-700";
+const INPUT = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base focus:border-blue-500 focus:outline-none";
+const LABEL = "text-sm font-medium text-slate-700";
 
 function birthError(v: string): string {
   if (!v) return "생년월일 8자리를 넣어 주세요.";
@@ -98,14 +98,14 @@ export default function RequestForm({ onSend, busy }: { onSend: (body: Record<st
 
   const tab = (m: Mode, label: string) => (
     <button type="button" role="tab" aria-selected={mode === m} onClick={() => switchMode(m)}
-      className={`flex-1 whitespace-nowrap rounded-md px-2 py-1.5 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 ${mode === m ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+      className={`flex-1 whitespace-nowrap rounded-md px-2 py-1.5 text-sm font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 ${mode === m ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
       {label}
     </button>
   );
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-      <div role="tablist" aria-label="가져오는 방법" className="flex gap-1 rounded-lg bg-gray-100 p-1">
+    <form onSubmit={submit} noValidate className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div role="tablist" aria-label="가져오는 방법" className="flex gap-1 rounded-lg bg-slate-100 p-1">
         {tab("simple", "간편인증 보내기")}
         {tab("cert", "공동인증서로 가져오기")}
       </div>
@@ -126,7 +126,7 @@ export default function RequestForm({ onSend, busy }: { onSend: (body: Record<st
       </div>
 
       <div>
-        <label htmlFor={`${id}-phone`} className={LABEL}>대표 휴대폰{cert && <span className="font-normal text-gray-500"> (선택 · DB 연결용)</span>}</label>
+        <label htmlFor={`${id}-phone`} className={LABEL}>대표 휴대폰{cert && <span className="font-normal text-slate-500"> (선택 · DB 연결용)</span>}</label>
         <PhoneInput value={phone} onChange={setPhone} className={`${INPUT} mt-1 tabular-nums`} aria-label="대표 휴대폰" />
         {show("phone")}
       </div>
@@ -139,7 +139,7 @@ export default function RequestForm({ onSend, busy }: { onSend: (body: Record<st
             <CertPicker id={`${id}-cert`} value={picked} onChange={pickCert} invalid={invalid("cert")} />
             {show("cert")}
             {/* 법인/개인은 받은 사업자등록증명의 사업자 종류로 서버가 정한다(재무제표·지방세 상품이 다름). */}
-            <p className="mt-1.5 text-xs text-gray-500">법인 인증서면 법인 서류, 개인 인증서면 대표의 개인사업자 서류를 가져와요.</p>
+            <p className="mt-1.5 text-xs text-slate-500">법인 인증서면 법인 서류, 개인 인증서면 대표의 개인사업자 서류를 가져와요.</p>
           </div>
           <div>
             <label htmlFor={`${id}-certpw`} className={LABEL}>인증서 비밀번호</label>
@@ -152,14 +152,14 @@ export default function RequestForm({ onSend, busy }: { onSend: (body: Record<st
           <legend className={LABEL}>인증 수단</legend>
           <div className="mt-1 grid grid-cols-3 gap-1.5">
             {AUTH_METHODS.map(m => (
-              <label key={m} className={`flex cursor-pointer items-center justify-start gap-1.5 whitespace-nowrap rounded-lg border px-2 py-1.5 text-sm 2xl:gap-2 2xl:px-2.5 2xl:text-base transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-500 ${method === m ? "border-blue-500 bg-blue-50 font-semibold text-blue-700" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}>
+              <label key={m} className={`flex cursor-pointer items-center justify-start gap-1.5 whitespace-nowrap rounded-lg border px-2 py-1.5 text-sm 2xl:gap-2 2xl:px-2.5 2xl:text-base transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-500 ${method === m ? "border-blue-500 bg-blue-50 font-semibold text-blue-700" : "border-slate-300 text-slate-700 hover:bg-slate-50"}`}>
                 <input type="radio" name={`${id}-method`} value={m} checked={method === m} onChange={() => setMethod(m)} className="sr-only" /><AuthMethodIcon method={m} />{m}
               </label>
             ))}
           </div>
           {method === "PASS" && (
             <div className="mt-2">
-              <label htmlFor={`${id}-telecom`} className="text-xs text-gray-600">통신사</label>
+              <label htmlFor={`${id}-telecom`} className="text-xs text-slate-600">통신사</label>
               <select id={`${id}-telecom`} value={telecom} onChange={e => setTelecom(e.target.value)} className={`${INPUT} mt-1`} {...invalid("telecom")}>
                 <option value="">통신사</option>
                 {TELECOMS.map(t => <option key={t} value={t}>{t}</option>)}
@@ -178,15 +178,15 @@ export default function RequestForm({ onSend, busy }: { onSend: (body: Record<st
             if (!list.length) return null;
             return (
               <div key={site} className="min-w-0">
-                <p className="text-xs font-semibold text-gray-500">{site}</p>
+                <p className="text-xs font-semibold text-slate-500">{site}</p>
                 <ul className="mt-1 flex flex-wrap gap-1.5">
                   {list.map(d => {
                     const on = docs.includes(d.key);
                     return (
                       <li key={d.key}>
-                        <label className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-500 ${on ? "border-blue-500 bg-blue-50 font-semibold text-blue-700" : "border-gray-300 text-gray-700"} ${d.locked ? "cursor-default" : "cursor-pointer hover:bg-gray-50"}`}>
+                        <label className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-500 ${on ? "border-blue-500 bg-blue-50 font-semibold text-blue-700" : "border-slate-300 text-slate-700"} ${d.locked ? "cursor-default" : "cursor-pointer hover:bg-slate-50"}`}>
                           <input type="checkbox" checked={on} disabled={d.locked} onChange={() => toggleDoc(d.key)} className="sr-only" />
-                          {d.label}{d.note && <span className={on ? "font-normal text-blue-600" : "text-gray-500"}>{d.note}</span>}
+                          {d.label}{d.note && <span className={on ? "font-normal text-blue-600" : "text-slate-500"}>{d.note}</span>}
                         </label>
                       </li>
                     );
@@ -200,8 +200,8 @@ export default function RequestForm({ onSend, busy }: { onSend: (body: Record<st
       </fieldset>
 
       {gov24 && (
-        <fieldset className="flex min-w-0 flex-col gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
-          <legend className="px-1 text-xs font-semibold text-gray-600">지방세 완납증명(정부24)에 필요</legend>
+        <fieldset className="flex min-w-0 flex-col gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+          <legend className="px-1 text-xs font-semibold text-slate-600">지방세 완납증명(정부24)에 필요</legend>
           {!cert && (
             <div>
               <label htmlFor={`${id}-rrn`} className={LABEL}>주민번호 뒷자리</label>
@@ -217,7 +217,7 @@ export default function RequestForm({ onSend, busy }: { onSend: (body: Record<st
         </fieldset>
       )}
 
-      <button type="submit" disabled={busy} className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-500 px-4 py-2 font-medium text-white transition-colors hover:bg-blue-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500">
+      <button type="submit" disabled={busy} className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-blue-700 px-4 py-2 font-medium text-white transition-colors hover:bg-blue-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500">
         {cert ? <FileKey2 className="h-4 w-4" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />}
         {busy ? "보내는 중…" : cert ? "서류 가져오기" : "인증 보내기"}
       </button>

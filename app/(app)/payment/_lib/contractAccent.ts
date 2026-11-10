@@ -27,12 +27,12 @@ export function contractAccentFamily(cp: ContractPayment): AccentFamily {
 /** 📋 서류 진행 뱃지 색 — 전부 완료 green / 0건 회색 / 진행 중 blue. */
 export function docBadgeClass(done: number): string {
   if (done === TOTAL_CHECKBOXES) return "text-green-600 bg-green-50";
-  return done === 0 ? "text-gray-400 bg-gray-50" : "text-blue-600 bg-blue-50";
+  return done === 0 ? "text-slate-400 bg-slate-50" : "text-blue-600 bg-blue-50";
 }
 
 /** 💰 수납 진행 뱃지 색 — 미착수 회색 / 완료 green / 진행 중 blue. */
 export function payBadgeClass(avgPct: number): string {
-  if (avgPct === 0) return "text-gray-400 bg-gray-50";
+  if (avgPct === 0) return "text-slate-400 bg-slate-50";
   return avgPct >= 100 ? "text-green-600 bg-green-50" : "text-blue-600 bg-blue-50";
 }
 

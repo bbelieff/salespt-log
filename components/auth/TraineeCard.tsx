@@ -180,7 +180,7 @@ export default function TraineeCard({
       ref={dragRef}
       style={dragStyle}
       {...(dragAttributes ?? {})}
-      className={`border-b border-gray-100 last:border-b-0 ${archived ? "text-gray-500" : ""} ${isDragging ? "rounded-lg bg-white opacity-50 ring-2 ring-indigo-300" : ""}`}
+      className={`border-b border-slate-100 last:border-b-0 ${archived ? "text-slate-500" : ""} ${isDragging ? "rounded-lg bg-white opacity-50 ring-2 ring-indigo-300" : ""}`}
     >
       {/* 2026-10-26 박스 다이어트(belie 승인 기획): 카드 상자 대신 줄 + 아래 구분선, 한 사람 2줄.
           1줄 = 이름·누적 진도 ↔ 주간목표·웹앱 / 2줄 = 담당(눌러서 변경) · 팀 변경(눌러야 입력칸).
@@ -194,7 +194,7 @@ export default function TraineeCard({
             title="드래그하여 같은 팀 안 순서 변경"
             {...dragListeners}
             style={{ touchAction: "none" }}
-            className="inline-flex h-6 w-4 shrink-0 cursor-grab select-none items-center justify-center rounded text-gray-300 hover:bg-gray-100 hover:text-gray-600 active:cursor-grabbing"
+            className="inline-flex h-6 w-4 shrink-0 cursor-grab select-none items-center justify-center rounded text-slate-300 hover:bg-slate-100 hover:text-slate-600 active:cursor-grabbing"
           >
             <span className="text-sm leading-none">⋮⋮</span>
           </button>
@@ -204,7 +204,7 @@ export default function TraineeCard({
               좁은 화면은 「12주 누적」 칩·예정/완료/계약 글자를 숨겨(아이콘·숫자·title 유지) 2줄을 지킨다. */}
             <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-0.5">
               <span className="flex min-w-0 items-baseline">
-                <span className="truncate text-sm font-black text-gray-900">
+                <span className="truncate text-sm font-black text-slate-900">
                   {u.name || "(이름 없음)"}
                   {u.captainOf ? <span title="회장"> 👑</span> : null}
                 </span>
@@ -213,8 +213,8 @@ export default function TraineeCard({
               {/* 누적 funnel(예정·완료·계약) — stats 없는 trainee(시트 미설정·조회 실패)는 안 그림.
                   SSOT: 시트 01 영업관리!E4/E5/E6 (= /schedule funnel 과 동일). */}
               {u.stats && (
-                <span className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-px-11 text-gray-500">
-                  <span className="hidden shrink-0 rounded bg-gray-100 px-1.5 py-0.5 font-semibold text-gray-500 2xl:inline">
+                <span className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-px-11 text-slate-500">
+                  <span className="hidden shrink-0 rounded bg-slate-100 px-1.5 py-0.5 font-semibold text-slate-500 2xl:inline">
                     {courseWeeksForCohort(u.cohort)}주 누적
                   </span>
                   <span title={`${courseWeeksForCohort(u.cohort)}주 누적 미팅 예정`}>
@@ -230,7 +230,7 @@ export default function TraineeCard({
               )}
             </div>
           {/* 2줄: 담당(글자 버튼) · 팀 변경. */}
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-px-11 text-gray-500">
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-px-11 text-slate-500">
             {canAssign ? (
               <button
                 type="button"
@@ -239,19 +239,19 @@ export default function TraineeCard({
                 className="hit-44 inline-flex min-w-0 items-center gap-1 rounded text-left font-bold text-indigo-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                 title="담당 트레이너 변경 — 토글 즉시 저장"
               >
-                <span className="shrink-0 font-semibold text-gray-400">담당</span>
+                <span className="shrink-0 font-semibold text-slate-400">담당</span>
                 <span className="min-w-0 break-words">{trainerNames}</span>
                 <DisclosureChevron open={trainerOpen} />
               </button>
             ) : (
               <span className="inline-flex min-w-0 items-center gap-1">
-                <span className="shrink-0 text-gray-400">담당</span>
-                <span className="min-w-0 break-words font-semibold text-gray-600">{trainerNames}</span>
+                <span className="shrink-0 text-slate-400">담당</span>
+                <span className="min-w-0 break-words font-semibold text-slate-600">{trainerNames}</span>
               </span>
             )}
             {!viewOnly && (teamOpen || dirty ? (
               <span className="inline-flex shrink-0 items-center gap-1">
-                <span className="text-gray-400">팀</span>
+                <span className="text-slate-400">팀</span>
                 <input
                   type="text"
                   value={team}
@@ -271,7 +271,7 @@ export default function TraineeCard({
                   }}
                   placeholder="미배정"
                   className={`rounded border px-1 py-0.5 text-px-11 outline-none ${
-                    dirty ? "border-indigo-400 bg-indigo-50" : "border-gray-200 bg-white"
+                    dirty ? "border-indigo-400 bg-indigo-50" : "border-slate-200 bg-white"
                   } focus:border-indigo-500`}
                   style={{ width: `calc(${Math.max(3, team.length + 1)}em + 0.75rem)` }}
                 />
@@ -280,7 +280,7 @@ export default function TraineeCard({
               <button
                 type="button"
                 onClick={() => setTeamOpen(true)}
-                className="hit-44 shrink-0 rounded text-gray-400 hover:text-indigo-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                className="hit-44 shrink-0 rounded text-slate-400 hover:text-indigo-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                 title="이 수강생의 팀을 바꿔요(같은 팀 안 순서는 왼쪽 ⋮⋮ 를 끌어서)"
               >
                 {u.team?.trim() ? "팀 변경" : "팀 정하기"}
@@ -296,7 +296,7 @@ export default function TraineeCard({
               <Link
                 href={isAdminGoalView ? adminGoalHref : trainerGoalHref}
                 title="주간 목표·PT과제 열기"
-                className="rounded-full border border-gray-300 bg-white px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
+                className="rounded-full border border-slate-300 bg-white px-2.5 py-1 text-xs font-bold text-slate-700 hover:bg-slate-50"
               >
                 주간목표
               </Link>
@@ -306,7 +306,7 @@ export default function TraineeCard({
               onClick={() => onPick(u.email)}
               disabled={busy !== null}
               title="이 수강생 화면으로 보기"
-              className="rounded-full bg-gray-900 px-3 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
+              className="rounded-full bg-slate-900 px-3 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
             >
               {busy === u.email ? "여는 중..." : "웹앱 →"}
             </button>
@@ -332,7 +332,7 @@ export default function TraineeCard({
                   className={`rounded-full border px-3 py-1 text-px-11 font-bold transition disabled:opacity-50 ${
                     checked
                       ? "border-indigo-500 bg-indigo-500 text-white"
-                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                      : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
                   }`}
                   title={t.email}
                 >

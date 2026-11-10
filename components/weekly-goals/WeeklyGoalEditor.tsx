@@ -175,24 +175,24 @@ export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed 
     placeholder="과제 하나를 한 줄로 적어 주세요." />;
   return <div className="space-y-5 ph-no-capture">
     {/* 주차 내비게이터 1행 — 페이지 배너 바로 아래에 고정. */}
-    <header className="sticky top-app-content z-30 -mx-1 flex items-center justify-between gap-2 rounded-2xl border border-gray-200 bg-white px-3 py-2">
+    <header className="sticky top-app-content z-30 -mx-1 flex items-center justify-between gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2">
       <button type="button" disabled={view.current.week <= 1} onClick={() => guarded(() => changeWeek(view.current.week - 1))}
-        className="min-h-11 shrink-0 whitespace-nowrap rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40">이전 주</button>
+        className="min-h-11 shrink-0 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-40">이전 주</button>
       <div className="min-w-0 text-center">
         <p className="truncate text-sm font-bold">{view.student.name} · {view.student.cohort} · {view.current.week}주차</p>
-        <p className="truncate text-xs text-gray-500">{view.current.start} ~ {view.current.end}</p>
+        <p className="truncate text-xs text-slate-500">{view.current.start} ~ {view.current.end}</p>
       </div>
       <button type="button" onClick={() => guarded(() => changeWeek(view.current.week + 1))}
-        className="min-h-11 shrink-0 whitespace-nowrap rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 hover:bg-gray-50">다음 주</button>
+        className="min-h-11 shrink-0 whitespace-nowrap rounded-lg border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50">다음 주</button>
     </header>
 
-    <section className="rounded-2xl border border-gray-200 bg-white p-4">
+    <section className="rounded-2xl border border-slate-200 bg-white p-4">
       <GoalRings goals={publicAuto.saved.goals} actuals={view.current.actuals} />
     </section>
 
-    <section className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4">
+    <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-bold text-gray-900">이번 주 목표·PT과제</h2>
+        <h2 className="text-sm font-bold text-slate-900">이번 주 목표·PT과제</h2>
         <AutosaveStatus status={publicAuto.status} error={publicAuto.error}
           savedAt={publicAuto.savedAt} onRetry={publicAuto.retry}
           canUndo={publicAuto.canUndo} onUndo={handleUndo} />
@@ -213,27 +213,27 @@ export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed 
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-max border-collapse text-left text-sm">
-          <thead><tr className="text-xs text-gray-500">
+          <thead><tr className="text-xs text-slate-500">
             <th className="py-2 pr-2 font-semibold">항목</th>
             <th className="px-2 py-2 text-right font-semibold">지난 목표</th>
             <th className="px-2 py-2 text-right font-semibold">지난 성과</th>
             <th className="px-2 py-2 text-right font-semibold">이번 목표</th>
           </tr></thead>
-          <tbody>{GOAL_KEYS.map(k => <tr key={k} className="border-t border-gray-100">
+          <tbody>{GOAL_KEYS.map(k => <tr key={k} className="border-t border-slate-100">
             <th className="py-2 pr-2 text-left font-medium">{GOAL_LABELS[k]}</th>
-            <td className="px-2 py-2 text-right tabular-nums text-gray-500">{view.previous?.record.goals[k] ?? "—"}</td>
+            <td className="px-2 py-2 text-right tabular-nums text-slate-500">{view.previous?.record.goals[k] ?? "—"}</td>
             <td className="px-2 py-2 text-right tabular-nums">{view.previous?.actuals[k] ?? "—"}</td>
             <td className="px-2 py-2 text-right">
               <input aria-label={`이번 목표 ${GOAL_LABELS[k]}`} type="number" inputMode="numeric" min="0" max="2147483647" step="1" placeholder="—"
                 value={publicAuto.draft.goals[k] ?? ""}
                 onChange={e => setGoals({ ...publicAuto.draft.goals, [k]: e.target.value === "" ? null : Number(e.target.value) })}
-                className="min-h-11 w-24 rounded-xl border border-gray-300 px-2 text-right text-sm" />
+                className="min-h-11 w-24 rounded-xl border border-slate-300 px-2 text-right text-sm" />
             </td>
           </tr>)}</tbody>
         </table>
       </div>
 
-      {!view.canReadInternal && view.previous && previousTasks.length > 0 && <div className="rounded-xl border border-gray-200 bg-gray-50 p-3">
+      {!view.canReadInternal && view.previous && previousTasks.length > 0 && <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
         <p className="text-sm font-semibold">지난 PT과제</p>
         <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-sm">{previousTasks.map((t, i) => <li key={i} className="break-words">{t}</li>)}</ol>
       </div>}

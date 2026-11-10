@@ -80,7 +80,7 @@ export default function WeekHeader({
         <button
           type="button"
           onClick={onPrevWeek}
-          className="flex h-11 w-11 items-center justify-center text-gray-400 transition-all hover:text-gray-600 active:scale-90"
+          className="flex h-11 w-11 items-center justify-center text-slate-400 transition-all hover:text-slate-600 active:scale-90"
           aria-label="이전 주차"
         >
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -88,18 +88,18 @@ export default function WeekHeader({
           </svg>
         </button>
         <div className="flex flex-1 items-baseline justify-center gap-2">
-          <span className="text-base font-bold text-gray-900">
+          <span className="text-base font-bold text-slate-900">
             {cohortName ? `${cohortName} · ` : ""}
             {weekIndex}주차
           </span>
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-slate-400">
             {fmtMD(weekStart)} ~ {fmtMD(addDays(weekStart, 6))}
           </span>
         </div>
         <button
           type="button"
           onClick={onNextWeek}
-          className="flex h-11 w-11 items-center justify-center text-gray-400 transition-all hover:text-gray-600 active:scale-90"
+          className="flex h-11 w-11 items-center justify-center text-slate-400 transition-all hover:text-slate-600 active:scale-90"
           aria-label="다음 주차"
         >
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,8 +130,8 @@ export default function WeekHeader({
               /* 2026-05-18 [1]: 모든 cell pt-3.5 → 주차 간 높이 동일 (TODAY strip 영역 reserve). */
               className={`relative flex flex-col items-center justify-center rounded-xl pb-1.5 pt-3.5 transition-all active:scale-95 ${
                 isSelected
-                  ? "bg-blue-500 text-white shadow-md shadow-blue-500/30"
-                  : "bg-gray-50 hover:bg-gray-100"
+                  ? "bg-blue-700 text-white shadow-md shadow-blue-500/30"
+                  : "bg-slate-50 hover:bg-slate-100"
               } ${isToday ? "border-2 border-black" : ""}`}
               aria-pressed={isSelected}
               aria-label={`${d.getDate()}일${isToday ? " · 오늘" : ""}${count > 0 ? ` · 미팅 ${count}건` : ""}`}
@@ -149,14 +149,14 @@ export default function WeekHeader({
                     ? "text-white"
                     : isWeekend
                       ? "text-red-500"
-                      : "text-gray-500"
+                      : "text-slate-500"
                 }`}
               >
                 {dayLabels[i]}
               </span>
               <span
                 className={`text-base font-bold leading-tight ${
-                  isSelected ? "text-white" : "text-gray-800"
+                  isSelected ? "text-white" : "text-slate-800"
                 }`}
               >
                 {d.getDate()}
@@ -167,7 +167,7 @@ export default function WeekHeader({
                   className={`absolute -right-1 -top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full text-xs font-bold leading-none shadow ${
                     isSelected
                       ? "bg-white text-blue-600"
-                      : "bg-blue-500 text-white"
+                      : "bg-blue-700 text-white"
                   }`}
                 >
                   {count}
@@ -188,7 +188,7 @@ export default function WeekHeader({
           {weekFunnel && (
             <span className="flex flex-wrap items-center gap-x-2 text-xs font-medium">
               <span className="text-blue-700/70">주차합계 :</span>
-              <span className="text-gray-800">
+              <span className="text-slate-800">
                 생산 <span className="font-bold">{weekFunnel.생산}</span>
               </span>
               <span className="text-amber-700">

@@ -90,10 +90,10 @@ export default function BulkReserveButton({ trainees, onDone }: Props) {
           >
             <div className="mb-3 flex items-start justify-between gap-2">
               <div>
-                <h3 className="text-base font-black text-gray-900">
+                <h3 className="text-base font-black text-slate-900">
                   ✋ 유보 처리할 수강생 선택
                 </h3>
-                <p className="mt-0.5 text-xs text-gray-500">
+                <p className="mt-0.5 text-xs text-slate-500">
                   활성 명단 {trainees.length}명 중 선택 ({selected.size}명 선택됨)
                 </p>
               </div>
@@ -101,25 +101,25 @@ export default function BulkReserveButton({ trainees, onDone }: Props) {
                 type="button"
                 onClick={() => !busy && setOpen(false)}
                 disabled={busy}
-                className="shrink-0 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                className="shrink-0 rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-500 hover:bg-slate-50 disabled:opacity-50"
               >
                 ✕
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-gray-200">
+            <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-slate-200">
               {trainees.length === 0 ? (
-                <p className="p-4 text-center text-sm text-gray-400">
+                <p className="p-4 text-center text-sm text-slate-400">
                   활성 수강생 없음
                 </p>
               ) : (
-                <ul className="divide-y divide-gray-100">
+                <ul className="divide-y divide-slate-100">
                   {trainees.map((t) => {
                     const checked = selected.has(t.email);
                     return (
                       <li key={t.email}>
                         <label
                           className={`flex cursor-pointer items-center gap-3 px-3 py-2 text-sm transition-colors ${
-                            checked ? "bg-amber-50" : "hover:bg-gray-50"
+                            checked ? "bg-amber-50" : "hover:bg-slate-50"
                           }`}
                         >
                           <input
@@ -130,13 +130,13 @@ export default function BulkReserveButton({ trainees, onDone }: Props) {
                             className="h-4 w-4 shrink-0"
                           />
                           <span className="min-w-0 flex-1">
-                            <span className="font-semibold text-gray-900">
+                            <span className="font-semibold text-slate-900">
                               {t.name}
                             </span>
-                            <span className="ml-1.5 text-px-11 text-gray-500">
+                            <span className="ml-1.5 text-px-11 text-slate-500">
                               · {t.cohort}
                             </span>
-                            <span className="ml-1.5 break-all text-px-10 text-gray-400">
+                            <span className="ml-1.5 break-all text-px-10 text-slate-400">
                               {t.email}
                             </span>
                           </span>
@@ -157,7 +157,7 @@ export default function BulkReserveButton({ trainees, onDone }: Props) {
                 type="button"
                 onClick={() => !busy && setOpen(false)}
                 disabled={busy}
-                className="flex-1 rounded-lg border border-gray-300 bg-white py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="flex-1 rounded-lg border border-slate-300 bg-white py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
               >
                 취소
               </button>
@@ -165,7 +165,7 @@ export default function BulkReserveButton({ trainees, onDone }: Props) {
                 type="button"
                 onClick={confirm}
                 disabled={busy || selected.size === 0}
-                className="flex-1 rounded-lg bg-amber-500 py-2 text-sm font-bold text-white hover:bg-amber-600 disabled:bg-gray-300"
+                className="flex-1 rounded-lg bg-amber-500 py-2 text-sm font-bold text-white hover:bg-amber-600 disabled:bg-slate-300"
               >
                 {busy
                   ? "처리중..."

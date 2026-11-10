@@ -110,7 +110,7 @@ export default function CompanyInfoContractSection({
   if (!계약일 || !업체명) return null;
   if (load.key !== requestKey || load.status === "loading")
     return (
-      <div className="rounded-lg border border-gray-200 bg-white px-2.5 py-2">
+      <div className="rounded-lg border border-slate-200 bg-white px-2.5 py-2">
         <SkeletonBars label="업체정보 불러오는 중…" rows={2} />
       </div>
     );

@@ -51,7 +51,7 @@ export default function WeekHeader({
         <button
           type="button"
           onClick={onPrevWeek}
-          className="flex h-11 w-11 items-center justify-center text-gray-400 transition-all hover:text-gray-600 active:scale-90"
+          className="flex h-11 w-11 items-center justify-center text-slate-400 transition-all hover:text-slate-600 active:scale-90"
           aria-label="이전 주차"
         >
           <svg
@@ -69,18 +69,18 @@ export default function WeekHeader({
           </svg>
         </button>
         <div className="flex flex-1 items-baseline justify-center gap-2">
-          <span className="text-base font-bold text-gray-900">
+          <span className="text-base font-bold text-slate-900">
             {cohortName ? `${cohortName} · ` : ""}
             {weekIndex}주차
           </span>
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-slate-400">
             {fmtMD(ws)} ~ {fmtMD(addDays(ws, 6))}
           </span>
         </div>
         <button
           type="button"
           onClick={onNextWeek}
-          className="flex h-11 w-11 items-center justify-center text-gray-400 transition-all hover:text-gray-600 active:scale-90"
+          className="flex h-11 w-11 items-center justify-center text-slate-400 transition-all hover:text-slate-600 active:scale-90"
           aria-label="다음 주차"
         >
           <svg
@@ -122,8 +122,8 @@ export default function WeekHeader({
               /* 2026-05-18 [1]: 모든 cell pt-3.5 (TODAY strip 영역 reserve) → 주차 간 cell 높이 동일. */
               className={`relative flex flex-col items-center justify-center rounded-xl pb-1.5 pt-3.5 transition-all active:scale-95 ${
                 isToday
-                  ? "border-2 border-black bg-gray-50"
-                  : "bg-gray-50 hover:bg-gray-100"
+                  ? "border-2 border-black bg-slate-50"
+                  : "bg-slate-50 hover:bg-slate-100"
               }`}
               aria-label={`${d.getDate()}일${isToday ? " · 오늘" : ""}${count > 0 ? ` · 미팅 ${count}건` : ""}`}
             >
@@ -137,20 +137,20 @@ export default function WeekHeader({
               <span
                 className={`text-xs font-medium ${
                   isToday
-                    ? "text-gray-700"
+                    ? "text-slate-700"
                     : isWeekend
                       ? "text-red-500"
-                      : "text-gray-500"
+                      : "text-slate-500"
                 }`}
               >
                 {JS_DAY_KO[dow]}
               </span>
-              <span className="text-base font-bold leading-tight text-gray-800">
+              <span className="text-base font-bold leading-tight text-slate-800">
                 {d.getDate()}
               </span>
               {count > 0 && (
                 /* 2026-05-18: negative offset 으로 cell 코너 바깥에 띄움 → border 두께 무관, today/non-today 동일 위치. */
-                <span className="absolute -right-1 -top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-xs font-bold leading-none text-white shadow">
+                <span className="absolute -right-1 -top-1 z-10 flex h-5 w-5 items-center justify-center rounded-full bg-blue-700 text-xs font-bold leading-none text-white shadow">
                   {count}
                 </span>
               )}

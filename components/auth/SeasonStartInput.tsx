@@ -83,7 +83,7 @@ export default function SeasonStartInput({
           setValue(e.target.value);
           setSaved(false);
         }}
-        className="rounded-lg border border-gray-300 bg-white px-2 py-1 text-xs num-mono disabled:bg-gray-50"
+        className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs num-mono disabled:bg-slate-50"
       />
       {!disabled && dirty && (
         <button
@@ -99,7 +99,7 @@ export default function SeasonStartInput({
         <button
           type="button"
           onClick={() => setValue("")}
-          className="rounded-full border border-gray-300 px-2 py-1 text-px-11 font-medium text-gray-500 hover:bg-gray-50"
+          className="rounded-full border border-slate-300 px-2 py-1 text-px-11 font-medium text-slate-500 hover:bg-slate-50"
           title="개강일을 비우면 전광판이 시즌 번호를 표시하지 않습니다(데이터는 그대로)."
         >
           비우기
@@ -107,7 +107,7 @@ export default function SeasonStartInput({
       )}
       {saved && <span className="text-px-11 font-bold text-green-600">저장됨</span>}
       {value === "" && (
-        <span className="text-px-11 text-gray-400">
+        <span className="text-px-11 text-slate-400">
           미정 — 전광판에 시즌 번호가 표시되지 않아요
         </span>
       )}

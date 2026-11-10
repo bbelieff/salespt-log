@@ -24,20 +24,20 @@ function GroupBody({ g }: { g: UpdateGroup }) {
   const ba = parseBeforeAfter(g.bodyMd);
   return (
     <div className="space-y-2 px-1 pb-3">
-      <p className="text-xs font-bold text-gray-400">{groupOrdinalLine(g)}</p>
+      <p className="text-xs font-bold text-slate-400">{groupOrdinalLine(g)}</p>
       {ba ? (
         <>
           <div className="flex items-start gap-2">
-            <span className="mt-0.5 shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-bold text-gray-500">
+            <span className="mt-0.5 shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-500">
               전
             </span>
-            <p className="text-xs leading-snug text-gray-600">{ba.before}</p>
+            <p className="text-xs leading-snug text-slate-600">{ba.before}</p>
           </div>
           <div className="flex items-start gap-2">
             <span className="mt-0.5 shrink-0 rounded-full bg-red-50 px-2 py-0.5 text-xs font-bold text-brand-red">
               후
             </span>
-            <p className="text-xs font-medium leading-snug text-gray-800">{ba.after}</p>
+            <p className="text-xs font-medium leading-snug text-slate-800">{ba.after}</p>
           </div>
         </>
       ) : g.bodyMd.trim() ? (
@@ -45,9 +45,9 @@ function GroupBody({ g }: { g: UpdateGroup }) {
       ) : null}
       {/* 그룹 내 개별 변경 — 보조(작게). 단건은 표시 안 함 (§7-4). */}
       {g.lines.length > 0 && (
-        <ul className="space-y-0.5 border-t border-gray-50 pt-2">
+        <ul className="space-y-0.5 border-t border-slate-50 pt-2">
           {g.lines.map((l) => (
-            <li key={l.pr} className="flex items-start gap-1.5 text-xs text-gray-400">
+            <li key={l.pr} className="flex items-start gap-1.5 text-xs text-slate-400">
               <span className="shrink-0">·</span>
               <span className="min-w-0">{l.title}</span>
             </li>
@@ -63,7 +63,7 @@ export default function UpdateAccordion({ updates }: { updates: UpdateItem[] }) 
   const groups = groupUpdates(updates);
 
   if (groups.length === 0) {
-    return <p className="py-2 text-xs text-gray-400">아직 업데이트 소식이 없어요.</p>;
+    return <p className="py-2 text-xs text-slate-400">아직 업데이트 소식이 없어요.</p>;
   }
 
   return (
@@ -76,7 +76,7 @@ export default function UpdateAccordion({ updates }: { updates: UpdateItem[] }) 
             key={g.key}
             // feat 포함 항목은 "새 기능" 강조 테두리 (new-feature-highlight §0). fix/perf 는 기본.
             className={`rounded-xl border bg-white px-2 ${
-              g.hasFeat ? "border-red-200" : "border-gray-100"
+              g.hasFeat ? "border-red-200" : "border-slate-100"
             }`}
           >
             <button
@@ -86,7 +86,7 @@ export default function UpdateAccordion({ updates }: { updates: UpdateItem[] }) 
               aria-expanded={expanded}
             >
               <span className="min-w-0 flex-1">
-                <span className="block text-sm font-semibold text-gray-800">
+                <span className="block text-sm font-semibold text-slate-800">
                   {g.hasFeat && (
                     <span className="mr-1 inline-block shrink-0 rounded-full bg-red-50 px-1.5 py-0.5 align-middle text-xs font-bold text-brand-red">
                       새 기능
@@ -94,7 +94,7 @@ export default function UpdateAccordion({ updates }: { updates: UpdateItem[] }) 
                   )}
                   {g.title}
                 </span>
-                <span className="mt-0.5 block text-xs text-gray-400">{groupMetaLine(g)}</span>
+                <span className="mt-0.5 block text-xs text-slate-400">{groupMetaLine(g)}</span>
               </span>
               <DisclosureChevron open={expanded} />
             </button>

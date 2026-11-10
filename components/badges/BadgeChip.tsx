@@ -28,7 +28,7 @@ export default function BadgeChip() {
   return (
     <Link href="/badges" data-badge-chip={model.kind}
       aria-label={`배지 ${model.got}/${model.total}개 · ${model.text} · 배지 수집 열기`}
-      className={`mt-3 flex min-h-12 items-center gap-2.5 rounded-xl border py-2 pl-2 pr-3 text-gray-900 transition-colors ${fresh ? "border-orange-300 bg-orange-50 hover:bg-orange-100" : "border-amber-200 bg-amber-50 hover:bg-amber-100"}`}>
+      className={`mt-3 flex min-h-12 items-center gap-2.5 rounded-xl border py-2 pl-2 pr-3 text-slate-900 transition-colors ${fresh ? "border-orange-300 bg-orange-50 hover:bg-orange-100" : "border-amber-200 bg-amber-50 hover:bg-amber-100"}`}>
       <span className="badge-chip-icon" aria-hidden="true">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={`/badges/${model.img}.png`} alt="" />
@@ -39,7 +39,7 @@ export default function BadgeChip() {
         <span className="flex flex-wrap items-baseline gap-x-1.5 text-sm leading-snug">
           <span className="shrink-0 whitespace-nowrap">배지 <b className="font-black tabular-nums">{model.got}</b>/{model.total}</span>
           <span className="shrink-0 text-amber-400" aria-hidden="true">·</span>
-          <span className={`break-keep ${fresh ? "font-extrabold text-orange-700" : "font-semibold text-gray-700"}`}>{model.text}</span>
+          <span className={`break-keep ${fresh ? "font-extrabold text-orange-700" : "font-semibold text-slate-700"}`}>{model.text}</span>
         </span>
         <span className={`badge-meter ${fresh ? "badge-meter--total" : "badge-meter--next"}`} aria-hidden="true"><i style={{ width: `${fresh ? Math.round((model.got / model.total) * 100) : model.pct}%` }} /></span>
       </span>

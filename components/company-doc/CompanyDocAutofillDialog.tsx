@@ -271,14 +271,14 @@ export default function CompanyDocAutofillDialog({ current, onApply, onVault, on
         className="my-4 w-full max-w-2xl rounded-2xl bg-white p-3 shadow-xl sm:my-8 sm:p-4"
       >
         <div className="mb-1 flex items-center justify-between gap-2">
-          <h3 id={titleId} tabIndex={-1} className="text-sm font-black text-gray-900 focus:outline-none">
+          <h3 id={titleId} tabIndex={-1} className="text-sm font-black text-slate-900 focus:outline-none">
             문서로 자동입력
           </h3>
-          <button type="button" onClick={onClose} aria-label="닫기" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100">
+          <button type="button" onClick={onClose} aria-label="닫기" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-slate-400 hover:bg-slate-100">
             ✕
           </button>
         </div>
-        <p id={descId} className="mb-3 text-xs text-gray-500">
+        <p id={descId} className="mb-3 text-xs text-slate-500">
           🔒 파일은 이 기기 안에서만 읽고 저장하지 않아요.
         </p>
 
@@ -293,24 +293,24 @@ export default function CompanyDocAutofillDialog({ current, onApply, onVault, on
             setDragOver(false);
             addFiles(e.dataTransfer.files);
           }}
-          className={`rounded-lg border-2 border-dashed p-3 text-center text-xs ${dragOver ? "border-gray-900 bg-gray-50" : "border-gray-300"}`}
+          className={`rounded-lg border-2 border-dashed p-3 text-center text-xs ${dragOver ? "border-slate-900 bg-slate-50" : "border-slate-300"}`}
         >
-          <p className="text-gray-600">아래 서류를 여기에 끌어놓거나</p>
+          <p className="text-slate-600">아래 서류를 여기에 끌어놓거나</p>
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            className="mt-2 rounded-md border border-gray-300 bg-white px-3 py-1 font-medium text-gray-700 hover:bg-gray-50"
+            className="mt-2 rounded-md border border-slate-300 bg-white px-3 py-1 font-medium text-slate-700 hover:bg-slate-50"
           >
             파일 고르기
           </button>
           <button
             type="button"
             onClick={() => setPasteText((t) => (t === null ? "" : null))}
-            className="ml-2 mt-2 rounded-md border border-gray-300 bg-white px-3 py-1 font-medium text-gray-700 hover:bg-gray-50"
+            className="ml-2 mt-2 rounded-md border border-slate-300 bg-white px-3 py-1 font-medium text-slate-700 hover:bg-slate-50"
           >
             메모 붙여넣기
           </button>
-          <p className="mt-1 text-gray-400">JPG·PNG·WebP·PDF 15MB 이하 · PDF 는 10쪽까지(스캔본은 6쪽) · 여러 서류 합본 OK · 미팅 메모 TXT</p>
+          <p className="mt-1 text-slate-400">JPG·PNG·WebP·PDF 15MB 이하 · PDF 는 10쪽까지(스캔본은 6쪽) · 여러 서류 합본 OK · 미팅 메모 TXT</p>
           <input
             ref={inputRef}
             type="file"
@@ -334,7 +334,7 @@ export default function CompanyDocAutofillDialog({ current, onApply, onVault, on
               onChange={(e) => setPasteText(e.target.value)}
               rows={6}
               placeholder="메모장에 적은 미팅 메모를 그대로 붙여넣어 주세요."
-              className="w-full rounded-md border border-gray-300 p-2 text-xs text-gray-900 focus:border-gray-900 focus:outline-none"
+              className="w-full rounded-md border border-slate-300 p-2 text-xs text-slate-900 focus:border-slate-900 focus:outline-none"
             />
             <button
               type="button"
@@ -343,19 +343,19 @@ export default function CompanyDocAutofillDialog({ current, onApply, onVault, on
                 addMemo("붙여넣은 메모", pasteText);
                 setPasteText(null);
               }}
-              className="rounded-md bg-gray-900 px-3 py-1 text-xs font-bold text-white disabled:opacity-40"
+              className="rounded-md bg-slate-900 px-3 py-1 text-xs font-bold text-white disabled:opacity-40"
             >
               메모 읽기
             </button>
           </div>
         )}
-        <div className="mt-2 rounded-lg bg-gray-50 px-3 py-2 text-xs" aria-label="읽을 수 있는 서류">
-          <p className="font-semibold text-gray-700">읽을 수 있는 서류</p>
+        <div className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs" aria-label="읽을 수 있는 서류">
+          <p className="font-semibold text-slate-700">읽을 수 있는 서류</p>
           <ul className="mt-1 space-y-0.5">
             {SUPPORTED_DOCS.map(([doc, fills]) => (
-              <li key={doc} className="flex gap-1.5 text-gray-600">
-                <span className="shrink-0 font-medium text-gray-800">{doc}</span>
-                <span className="min-w-0 text-gray-500">— {fills}</span>
+              <li key={doc} className="flex gap-1.5 text-slate-600">
+                <span className="shrink-0 font-medium text-slate-800">{doc}</span>
+                <span className="min-w-0 text-slate-500">— {fills}</span>
               </li>
             ))}
           </ul>
@@ -367,13 +367,13 @@ export default function CompanyDocAutofillDialog({ current, onApply, onVault, on
               const result = parsed.find((p) => p.f.id === f.id)?.result;
               const info = result?.info ?? [];
               return (
-                <li key={f.id} className="rounded-md border border-gray-200 p-2 text-xs">
+                <li key={f.id} className="rounded-md border border-slate-200 p-2 text-xs">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="min-w-0 flex-1 truncate font-medium text-gray-800">{f.name}</span>
+                    <span className="min-w-0 flex-1 truncate font-medium text-slate-800">{f.name}</span>
                     {f.status === "done" && (
                       <select
                         aria-label={`${f.name} 문서 종류`}
-                        className="rounded border border-gray-300 px-1 py-0.5 text-xs"
+                        className="rounded border border-slate-300 px-1 py-0.5 text-xs"
                         value={f.docType}
                         onChange={(e) =>
                           setFiles((fs) => fs.map((x) => (x.id === f.id ? { ...x, docType: e.target.value as DocType } : x)))
@@ -390,24 +390,24 @@ export default function CompanyDocAutofillDialog({ current, onApply, onVault, on
                   {f.status === "reading" || f.status === "queued" ? (
                     <div className="mt-1">
                       <div
-                        className="h-1.5 overflow-hidden rounded bg-gray-100"
+                        className="h-1.5 overflow-hidden rounded bg-slate-100"
                         role="progressbar"
                         aria-label={`${f.name} 읽는 중`}
                         aria-valuemin={0}
                         aria-valuemax={100}
                         aria-valuenow={Math.round(f.ratio * 100)}
                       >
-                        <div className="h-full bg-gray-900 transition-all" style={{ width: `${Math.round(f.ratio * 100)}%` }} />
+                        <div className="h-full bg-slate-900 transition-all" style={{ width: `${Math.round(f.ratio * 100)}%` }} />
                       </div>
-                      <p className="mt-0.5 text-gray-500">{f.message}</p>
+                      <p className="mt-0.5 text-slate-500">{f.message}</p>
                     </div>
                   ) : f.status === "error" ? (
                     <p className="mt-1 text-red-600" role="alert">✕ {f.message}</p>
                   ) : !isSupportedDocType(f.docType) ? (
                     // 다섯 서류 파서가 모두 등록돼 있어 여기 오는 건 "모르는 문서" 뿐이다.
-                    <p className="mt-1 text-gray-500">어떤 서류인지 알아보지 못했어요. 옆에서 서류 종류를 골라 주세요.</p>
+                    <p className="mt-1 text-slate-500">어떤 서류인지 알아보지 못했어요. 옆에서 서류 종류를 골라 주세요.</p>
                   ) : (
-                    <div className="mt-1 text-gray-500">
+                    <div className="mt-1 text-slate-500">
                       {(result?.fields.length ?? 0) > 0 ? (
                         <p>✓ {result!.fields.length}칸을 읽었어요</p>
                       ) : (
@@ -415,7 +415,7 @@ export default function CompanyDocAutofillDialog({ current, onApply, onVault, on
                       )}
                       {info.map((i) => (
                         <p key={i.label}>
-                          {i.label}: <span className="text-gray-800">{i.value}</span> (참고 — 저장하지 않아요)
+                          {i.label}: <span className="text-slate-800">{i.value}</span> (참고 — 저장하지 않아요)
                         </p>
                       ))}
                       {result?.documentWarnings.map((w) => (
@@ -436,7 +436,7 @@ export default function CompanyDocAutofillDialog({ current, onApply, onVault, on
         )}
 
         {rows.length === 0 && files.length > 0 && files.every((f) => f.status === "done" || f.status === "error") && (
-          <p className="mt-3 text-center text-xs text-gray-400">문서에서 채울 수 있는 값이 아직 없어요.</p>
+          <p className="mt-3 text-center text-xs text-slate-400">문서에서 채울 수 있는 값이 아직 없어요.</p>
         )}
         <div className="mt-3">
           <CompanyDocDiffTable
@@ -466,10 +466,10 @@ export default function CompanyDocAutofillDialog({ current, onApply, onVault, on
         />
 
         <div className="mt-3 flex items-center gap-2">
-          <span className="flex-1 text-xs text-gray-500" aria-live="polite">
+          <span className="flex-1 text-xs text-slate-500" aria-live="polite">
             {count}개 선택
           </span>
-          <button type="button" onClick={onClose} className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+          <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
             취소
           </button>
           <button
@@ -480,7 +480,7 @@ export default function CompanyDocAutofillDialog({ current, onApply, onVault, on
               if (pickedVault.length > 0) onVault?.(pickedVault);
               onClose();
             }}
-            className="rounded-lg bg-gray-900 px-3 py-2 text-sm font-bold text-white hover:bg-black disabled:opacity-40"
+            className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-bold text-white hover:bg-black disabled:opacity-40"
           >
             선택 항목 적용
           </button>

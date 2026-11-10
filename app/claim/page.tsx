@@ -111,7 +111,7 @@ export default function ClaimPage() {
   }
 
   const inputCls =
-    "w-full appearance-none rounded-xl border-[1.5px] border-gray-200 bg-white px-4 text-px-15 font-semibold text-gray-900 outline-none focus:border-brand-red focus:ring-4 focus:ring-red-100";
+    "w-full appearance-none rounded-xl border-[1.5px] border-slate-200 bg-white px-4 text-px-15 font-semibold text-slate-900 outline-none focus:border-brand-red focus:ring-4 focus:ring-red-100";
 
   return (
     <><TopHeader pageEmoji="" pageTitle="수강 정보 연결" />
@@ -137,10 +137,10 @@ export default function ClaimPage() {
         </div>
 
         <div className="mt-8 text-center">
-          <h1 className="text-2xl font-black tracking-tight text-gray-900">
+          <h1 className="text-2xl font-black tracking-tight text-slate-900">
             거의 다 왔습니다
           </h1>
-          <p className="mt-2 text-sm text-gray-500">
+          <p className="mt-2 text-sm text-slate-500">
             {mode === "arena"
               ? "시즌·본인 기수·이름을 입력해 주세요."
               : "기수와 본인 이름을 입력해 주세요."}
@@ -148,7 +148,7 @@ export default function ClaimPage() {
         </div>
 
         {/* 모드 토글 */}
-        <div className="mt-6 grid grid-cols-2 gap-1 rounded-full bg-gray-100 p-1">
+        <div className="mt-6 grid grid-cols-2 gap-1 rounded-full bg-slate-100 p-1">
           {(
             [
               ["cohort", "수강생"],
@@ -164,8 +164,8 @@ export default function ClaimPage() {
               }}
               className={`h-9 rounded-full text-sm font-bold transition-colors ${
                 mode === m
-                  ? "bg-white text-gray-900 shadow-sm"
-                  : "text-gray-500"
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-500"
               }`}
             >
               {label}
@@ -176,7 +176,7 @@ export default function ClaimPage() {
         <div className="mt-7 space-y-5">
           {mode === "cohort" ? (
             <div>
-              <label htmlFor="claim-cohort" className="mb-1.5 block text-px-11 font-extrabold uppercase tracking-wider text-gray-500">
+              <label htmlFor="claim-cohort" className="mb-1.5 block text-px-11 font-extrabold uppercase tracking-wider text-slate-500">
                 기수
               </label>
               {/* inputMode=text: 숫자 기수 외에 "T"(트레이너)·"연습"(온보딩)도
@@ -197,14 +197,14 @@ export default function ClaimPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label htmlFor="claim-season" className="mb-1.5 block text-px-11 font-extrabold uppercase tracking-wider text-gray-500">
+                <label htmlFor="claim-season" className="mb-1.5 block text-px-11 font-extrabold uppercase tracking-wider text-slate-500">
                   시즌
                 </label>
                 <div
-                  className="flex items-center rounded-xl border-[1.5px] border-gray-200 bg-white pl-4 focus-within:border-brand-red focus-within:ring-4 focus-within:ring-red-100"
+                  className="flex items-center rounded-xl border-[1.5px] border-slate-200 bg-white pl-4 focus-within:border-brand-red focus-within:ring-4 focus-within:ring-red-100"
                   style={{ height: 52 }}
                 >
-                  <span className="text-px-15 font-extrabold text-gray-400">
+                  <span className="text-px-15 font-extrabold text-slate-400">
                     A
                   </span>
                   <input
@@ -215,13 +215,13 @@ export default function ClaimPage() {
                     placeholder="1"
                     value={season}
                     onChange={(e) => setSeason(e.target.value)}
-                    className="h-full w-full appearance-none bg-transparent px-2 text-px-15 font-semibold text-gray-900 outline-none"
+                    className="h-full w-full appearance-none bg-transparent px-2 text-px-15 font-semibold text-slate-900 outline-none"
                     autoComplete="off"
                   />
                 </div>
               </div>
               <div>
-                <label htmlFor="claim-gisu" className="mb-1.5 block text-px-11 font-extrabold uppercase tracking-wider text-gray-500">
+                <label htmlFor="claim-gisu" className="mb-1.5 block text-px-11 font-extrabold uppercase tracking-wider text-slate-500">
                   본인 기수
                 </label>
                 <input
@@ -241,7 +241,7 @@ export default function ClaimPage() {
           )}
 
           <div>
-            <label htmlFor="claim-name" className="mb-1.5 block text-px-11 font-extrabold uppercase tracking-wider text-gray-500">
+            <label htmlFor="claim-name" className="mb-1.5 block text-px-11 font-extrabold uppercase tracking-wider text-slate-500">
               본인 이름
             </label>
             <input
@@ -267,13 +267,13 @@ export default function ClaimPage() {
                   → {arenaCohort} {name.trim() || "이름"}
                 </p>
               )}
-              <p className="text-px-11 leading-relaxed text-gray-400">
+              <p className="text-px-11 leading-relaxed text-slate-400">
                 아레나 참가자는 시즌(A1)·본인 기수·이름을 넣어주세요. 본인 아레나
                 시트와 자동 연결됩니다.
                 <br />
-                <span className="text-gray-600">
+                <span className="text-slate-600">
                   (시트 이름:{" "}
-                  <code className="rounded bg-gray-100 px-1 text-px-10 text-gray-700">
+                  <code className="rounded bg-slate-100 px-1 text-px-10 text-slate-700">
                     세일즈PT_A시즌_기수기 이름_대표님 경영일지
                   </code>
                   )
@@ -281,12 +281,12 @@ export default function ClaimPage() {
               </p>
             </div>
           ) : (
-            <p className="text-px-11 leading-relaxed text-gray-400">
+            <p className="text-px-11 leading-relaxed text-slate-400">
               본인 수강생 시트와 자동 연결됩니다.
               <br />
-              <span className="text-gray-600">
+              <span className="text-slate-600">
                 (시트 이름:{" "}
-                <code className="rounded bg-gray-100 px-1 text-px-10 text-gray-700">
+                <code className="rounded bg-slate-100 px-1 text-px-10 text-slate-700">
                   세일즈PT_ 기수 이름 수강생 경영일지
                 </code>
                 )
@@ -307,7 +307,7 @@ export default function ClaimPage() {
           type="button"
           disabled={!valid || loading}
           onClick={handleSubmit}
-          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-gray-900 text-px-15 font-bold text-white shadow-md transition-all hover:bg-black hover:shadow-lg active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-gray-200 disabled:shadow-none"
+          className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-full bg-slate-900 text-px-15 font-bold text-white shadow-md transition-all hover:bg-black hover:shadow-lg active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-slate-200 disabled:shadow-none"
           style={{ height: 56 }}
         >
           {loading ? "연결 중..." : "경영일지 시작하기 →"}
@@ -316,7 +316,7 @@ export default function ClaimPage() {
         <button
           type="button"
           onClick={() => signIn("google", { callbackUrl: "/" })}
-          className="mt-2 w-full py-2 text-xs text-gray-400 underline-offset-2 hover:text-gray-600 hover:underline"
+          className="mt-2 w-full py-2 text-xs text-slate-400 underline-offset-2 hover:text-slate-600 hover:underline"
         >
           다른 Google 계정으로 로그인
         </button>

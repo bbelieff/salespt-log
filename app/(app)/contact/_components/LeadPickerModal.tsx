@@ -50,17 +50,17 @@ export default function LeadPickerModal({ onPick, onClose }: Props) {
       className="flex flex-col rounded-2xl bg-white shadow-2xl"
     >
         <div className="flex items-start justify-between gap-2 px-4 pt-4">
-          <h3 className="text-sm font-black text-gray-900">
+          <h3 className="text-sm font-black text-slate-900">
             발굴에서 가져오기
-            <span className="ml-1 font-normal text-gray-400">(콜·지·기·소)</span>
+            <span className="ml-1 font-normal text-slate-400">(콜·지·기·소)</span>
           </h3>
           <AppDialogClose
-            className="shrink-0 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-500 hover:bg-gray-50"
+            className="shrink-0 rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-500 hover:bg-slate-50"
           >
             ✕ 닫기
           </AppDialogClose>
         </div>
-        <p className="px-4 pt-1 text-px-11 text-gray-500">
+        <p className="px-4 pt-1 text-px-11 text-slate-500">
           선택하면 업체명·업체정보·비고가 자동으로 채워져요. 직접 입력한 값은 덮지 않아요.
         </p>
         <div className="px-4 pt-2">
@@ -69,26 +69,26 @@ export default function LeadPickerModal({ onPick, onClose }: Props) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="업체명·대표자명·연락처 검색"
-            className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
           />
         </div>
         <div className="mt-2 min-h-0 flex-1 space-y-1.5 overflow-y-auto px-4 pb-4">
           {candidates.isLoading ? (
-            <p className="py-6 text-center text-sm text-gray-400">발굴 목록 불러오는 중…</p>
+            <p className="py-6 text-center text-sm text-slate-400">발굴 목록 불러오는 중…</p>
           ) : candidates.isError ? (
             // fetch 실패를 "발굴 없음"으로 오인시키지 않는다(빈 문구는 성공 시에만).
             <div className="py-6 text-center">
-              <p className="text-sm text-gray-500">발굴 목록을 불러오지 못했어요.</p>
+              <p className="text-sm text-slate-500">발굴 목록을 불러오지 못했어요.</p>
               <button
                 type="button"
                 onClick={() => candidates.refetch()}
-                className="mt-2 rounded-md border border-gray-200 px-3 py-1 text-xs text-gray-600 hover:bg-gray-50"
+                className="mt-2 rounded-md border border-slate-200 px-3 py-1 text-xs text-slate-600 hover:bg-slate-50"
               >
                 다시 시도
               </button>
             </div>
           ) : leads.length === 0 ? (
-            <p className="py-6 text-center text-sm text-gray-400">
+            <p className="py-6 text-center text-sm text-slate-400">
               {q.trim() ? "검색 결과가 없어요" : "아직 가져올 발굴이 없어요"}
             </p>
           ) : (
@@ -97,12 +97,12 @@ export default function LeadPickerModal({ onPick, onClose }: Props) {
                 key={`${l.row ?? i}-${l.발굴id ?? ""}`}
                 type="button"
                 onClick={() => onPick(l)}
-                className="flex w-full items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-left transition-colors hover:border-purple-300 hover:bg-purple-50"
+                className="flex w-full items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left transition-colors hover:border-purple-300 hover:bg-purple-50"
               >
-                <span className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-800">
+                <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800">
                   {leadTitle(l)}
                   {l.업체명 && l.대표자명 ? (
-                    <span className="ml-1 font-normal text-gray-400">· {l.대표자명}</span>
+                    <span className="ml-1 font-normal text-slate-400">· {l.대표자명}</span>
                   ) : null}
                 </span>
                 {l.구분 ? (
@@ -110,7 +110,7 @@ export default function LeadPickerModal({ onPick, onClose }: Props) {
                     {l.구분}
                   </span>
                 ) : null}
-                <span className="shrink-0 text-xs text-gray-400">{l.접수일 || ""}</span>
+                <span className="shrink-0 text-xs text-slate-400">{l.접수일 || ""}</span>
               </button>
             ))
           )}

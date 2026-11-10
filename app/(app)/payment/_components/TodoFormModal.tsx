@@ -92,7 +92,7 @@ export default function TodoFormModal({ contractRef, institutionRef, slot, compa
         <label className="mb-3 block text-xs font-semibold text-slate-600">메모<textarea rows={3} value={detail} onChange={(e) => setDetail(e.target.value)} className="mt-1 w-full resize-y rounded-lg border border-slate-300 px-2 py-2 text-sm focus:border-blue-500 focus:outline-none"/></label>
         <label className="mb-4 flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={showOnCalendar} onChange={(e) => setShowOnCalendar(e.target.checked)} className="h-4 w-4 accent-blue-600"/>캘린더에 표시</label>
         {error && <p className="mb-2 text-xs font-medium text-red-600">{error}</p>}
-        <button type="button" disabled={pending} onClick={() => void doCreate().catch((e) => setError(e instanceof Error ? e.message : "저장 실패"))} className="h-11 w-full rounded-xl bg-blue-600 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">{pending ? "저장중.." : "저장"}</button>
+        <button type="button" disabled={pending} onClick={() => void doCreate().catch((e) => setError(e instanceof Error ? e.message : "저장 실패"))} className="h-11 w-full rounded-xl bg-blue-700 text-sm font-bold text-white hover:bg-blue-800 disabled:opacity-50">{pending ? "저장중.." : "저장"}</button>
     </AppDialog>
   );
 }

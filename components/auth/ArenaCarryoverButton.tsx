@@ -54,7 +54,7 @@ export default function ArenaCarryoverButton({ email }: { email: string }) {
       >
         {busy ? "이월 중…" : "↩ 이월 실행"}
       </button>
-      {msg && <span className="text-px-10 text-gray-500">{msg}</span>}
+      {msg && <span className="text-px-10 text-slate-500">{msg}</span>}
     </span>
   );
 }

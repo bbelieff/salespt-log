@@ -61,7 +61,7 @@ export default function TodoDayCard({
       onClick={
         general ? undefined : () => router.push(`/payment?focus=${t.id}`)
       }
-      className={`flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm ${
+      className={`flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm ${
         general
           ? ""
           : "cursor-pointer transition-shadow hover:shadow-md active:scale-[0.99]"
@@ -69,7 +69,7 @@ export default function TodoDayCard({
       style={{ borderLeft: `3px solid ${accent}` }}
     >
       <span
-        className="shrink-0 text-sm font-bold text-gray-700"
+        className="shrink-0 text-sm font-bold text-slate-700"
         style={{ width: 44 }}
       >
         {t.예정시각 || "—"}
@@ -81,13 +81,13 @@ export default function TodoDayCard({
         <TodoTypeIcon type={t.type} size={12} /> {general ? "일반" : "실무"}
       </span>
       <div className="min-w-0 flex-1">
-        <div className="truncate text-sm font-semibold text-gray-900">
+        <div className="truncate text-sm font-semibold text-slate-900">
           {t.업체명 || t.제목}
         </div>
-        <div className="truncate text-px-11 text-gray-400">{t.제목}</div>
+        <div className="truncate text-px-11 text-slate-400">{t.제목}</div>
       </div>
       {t.장소 && (
-        <span className="max-w-20 shrink-0 truncate text-xs text-gray-400">
+        <span className="max-w-20 shrink-0 truncate text-xs text-slate-400">
           {t.장소}
         </span>
       )}
@@ -97,7 +97,7 @@ export default function TodoDayCard({
           onClick={() => setConfirming(true)}
           aria-label="일반 일정 지우기"
           title="일반 일정 지우기"
-          className="shrink-0 rounded-md p-1 text-gray-300 transition-colors hover:text-red-500"
+          className="shrink-0 rounded-md p-1 text-slate-300 transition-colors hover:text-red-500"
         >
           <svg
             width="18"
@@ -135,10 +135,10 @@ export default function TodoDayCard({
           dismissOnBackdrop
           className="rounded-xl bg-white p-5 shadow-xl"
         >
-            <h3 className="mb-1 text-base font-semibold text-gray-900">
+            <h3 className="mb-1 text-base font-semibold text-slate-900">
               이 일정을 지울까요?
             </h3>
-            <p className="mb-4 text-sm leading-relaxed text-gray-600">
+            <p className="mb-4 text-sm leading-relaxed text-slate-600">
               <b>{t.제목}</b>
               <br />
               {t.예정일자}
@@ -156,7 +156,7 @@ export default function TodoDayCard({
                 data-autofocus
                 onClick={() => setConfirming(false)}
                 disabled={remove.isPending}
-                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="flex-1 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
               >
                 취소
               </button>

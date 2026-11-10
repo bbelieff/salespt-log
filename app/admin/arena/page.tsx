@@ -66,7 +66,7 @@ export default async function AdminArenaPage() {
   return (
     <main className="mx-auto min-h-dvh max-w-2xl bg-white px-4 py-6">
       <div className="mb-5 flex items-center justify-between">
-        <h1 className="text-lg font-black text-gray-900">아레나 관리</h1>
+        <h1 className="text-lg font-black text-slate-900">아레나 관리</h1>
         <div className="flex items-center gap-2">
           <Link
             href="/admin/arena/share-scores"
@@ -82,20 +82,20 @@ export default async function AdminArenaPage() {
           </Link>
           <Link
             href="/admin"
-            className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-600 hover:bg-gray-50 pc:hidden"
+            className="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-600 hover:bg-slate-50 pc:hidden"
           >
             ← 메뉴
           </Link>
         </div>
       </div>
 
-      <p className="mb-4 text-xs text-gray-500">
+      <p className="mb-4 text-xs text-slate-500">
         참가자별 회장 지정/해제. 회장은 본인 플레이어 화면 + 자기 기수 멤버
         조회(읽기 전용) 가능. 미클레임 참가자는 클레임 후 지정.
       </p>
 
       {cohorts.length === 0 && (
-        <div className="rounded-xl border border-gray-100 bg-gray-50 p-6 text-center text-sm text-gray-400">
+        <div className="rounded-xl border border-slate-100 bg-slate-50 p-6 text-center text-sm text-slate-400">
           아레나 참가자가 없습니다.
         </div>
       )}

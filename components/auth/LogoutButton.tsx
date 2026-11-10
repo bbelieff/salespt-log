@@ -21,7 +21,7 @@ export default function LogoutButton({
       onClick={async () => { await forgetPushOnThisDevice(); signOut({ callbackUrl: "/" }); }}
       className={
         className ??
-        "text-xs text-gray-500 underline-offset-2 hover:text-gray-800 hover:underline"
+        "text-xs text-slate-500 underline-offset-2 hover:text-slate-800 hover:underline"
       }
     >
       {label}

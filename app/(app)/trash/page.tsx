@@ -79,7 +79,7 @@ export default function TrashPage() {
           {list.data?.canRestore && items.length > 0 && (
             <div className="sticky bottom-3 z-10 flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/95 px-3 py-2 shadow-lg backdrop-blur">
               <span className="text-sm text-slate-600"><b className="tabular-nums text-slate-900">{pickedItems.length}</b>개 골랐어요</span>
-              <button type="button" disabled={!pickedItems.length || busy} onClick={() => void restore()} className="h-10 rounded-lg bg-blue-600 px-4 text-sm font-bold text-white transition-transform hover:bg-blue-700 active:scale-95 disabled:opacity-40">{busy ? "되살리는 중…" : "되살리기"}</button>
+              <button type="button" disabled={!pickedItems.length || busy} onClick={() => void restore()} className="h-10 rounded-lg bg-blue-700 px-4 text-sm font-bold text-white transition-transform hover:bg-blue-800 active:scale-95 disabled:opacity-40">{busy ? "되살리는 중…" : "되살리기"}</button>
             </div>
           )}
         </div>

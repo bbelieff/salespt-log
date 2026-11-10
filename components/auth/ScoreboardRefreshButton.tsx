@@ -27,7 +27,7 @@ export default function ScoreboardRefreshButton() {
       type="button"
       onClick={refresh}
       disabled={busy}
-      className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+      className="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
     >
       {busy ? "갱신 중…" : "🔄 새로고침"}
     </button>

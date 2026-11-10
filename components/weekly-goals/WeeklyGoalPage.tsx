@@ -25,7 +25,7 @@ function Content({ student, date, week }: { student: string; date: string; week:
   // 학생 전폭 + 균일 거터는 globals.css .desktop-shell .weeklygoal-main
   // 스코프가 맡는다. 트레이너는 전 폭에서 px-4 + max-w-5xl 원본 그대로.
   // 최소 높이와 하단 여백 역시 학생 셸 스코프에서만 조정한다.
-  return <main className="weeklygoal-main min-h-dvh bg-gray-50 px-4 pb-4">
+  return <main className="weeklygoal-main min-h-dvh bg-slate-50 px-4 pb-4">
     <div className="mx-auto max-w-5xl space-y-4">
       {(query.isError || locked) && <div role="alert">{query.error?.message || "접근 권한을 다시 확인해 주세요."}<button onClick={() => {
         void query.refetch().then(result => { if (!result.isError) setDeniedTarget(null); });

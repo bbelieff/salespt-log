@@ -177,14 +177,14 @@ export default function CohortCreateModal() {
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
       <div className="mt-10 w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-base font-black text-gray-900">기수/참가자 추가</h3>
+          <h3 className="text-base font-black text-slate-900">기수/참가자 추가</h3>
           <button
             type="button"
             onClick={() => {
               setOpen(false);
               reset();
             }}
-            className="rounded-full px-2 py-1 text-sm font-bold text-gray-400 hover:bg-gray-100"
+            className="rounded-full px-2 py-1 text-sm font-bold text-slate-400 hover:bg-slate-100"
           >
             ✕
           </button>
@@ -193,16 +193,16 @@ export default function CohortCreateModal() {
         <div className="space-y-4">
           {/* 기수 토큰 */}
           <div>
-            <label className="mb-1 block text-xs font-bold text-gray-700">
+            <label className="mb-1 block text-xs font-bold text-slate-700">
               기수 토큰
             </label>
             <input
               value={token}
               onChange={(e) => setToken(e.target.value)}
               placeholder="예: 8  또는  a1"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
             />
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-slate-500">
               {parsed
                 ? `→ ${parsed.type === "arena" ? "아레나" : "일반 기수"}: ${parsed.display}`
                 : "숫자=일반 기수, a+숫자=아레나"}
@@ -220,7 +220,7 @@ export default function CohortCreateModal() {
                   "flex-1 rounded-lg border px-3 py-2 text-xs font-bold " +
                   (mode === m
                     ? "border-blue-500 bg-blue-50 text-blue-700"
-                    : "border-gray-200 bg-white text-gray-500")
+                    : "border-slate-200 bg-white text-slate-500")
                 }
               >
                 {m === "create" ? "생성 (템플릿 복제)" : "연동 (기존 시트)"}
@@ -230,45 +230,45 @@ export default function CohortCreateModal() {
 
           {/* create 설정 */}
           {mode === "create" && (
-            <div className="space-y-3 rounded-xl border border-gray-100 bg-gray-50 p-3">
+            <div className="space-y-3 rounded-xl border border-slate-100 bg-slate-50 p-3">
               <div>
-                <label className="mb-1 block text-xs font-bold text-gray-700">
+                <label className="mb-1 block text-xs font-bold text-slate-700">
                   템플릿 시트 ID
                 </label>
                 <input
                   value={templateSheetId}
                   onChange={(e) => setTemplateSheetId(e.target.value)}
                   placeholder="복제 원본 경영일지 시트 ID"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-bold text-gray-700">
+                <label className="mb-1 block text-xs font-bold text-slate-700">
                   루트 폴더 ID
                 </label>
                 <input
                   value={rootFolderId}
                   onChange={(e) => setRootFolderId(e.target.value)}
                   placeholder="이름 폴더들이 들어있는 상위 폴더 ID"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 />
               </div>
               {isArena && (
                 <div>
-                  <label className="mb-1 block text-xs font-bold text-gray-700">
+                  <label className="mb-1 block text-xs font-bold text-slate-700">
                     아레나 전체 명단 시트 ID
                   </label>
                   <input
                     value={rosterSheetId}
                     onChange={(e) => setRosterSheetId(e.target.value)}
                     placeholder="참가자 1행씩 추가될 명단 시트 ID"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                   />
                 </div>
               )}
               <div>
-                <label className="mb-1 block text-xs font-bold text-gray-700">
-                  수강시작일 <span className="font-normal text-gray-400">(선택)</span>
+                <label className="mb-1 block text-xs font-bold text-slate-700">
+                  수강시작일 <span className="font-normal text-slate-400">(선택)</span>
                 </label>
                 <input
                   ref={startInputRef}
@@ -278,9 +278,9 @@ export default function CohortCreateModal() {
                     setCourseStartISO(e.target.value);
                     setNoDateAck(false);
                   }}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
                 />
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-slate-500">
                   {isExtendedCourseCohort(parsed?.label) ? "12주 과정의 시작일과 종강총회일을 기록해요. 10기는 승인된 별도 총회일이 적용돼요." : "넣으면 새 시트 O1(수강시작)·O2(종강=+50일)을 자동 기록해요. 비우면 템플릿(이전 기수) 날짜가 그대로 남아요."}
                 </p>
               </div>
@@ -289,7 +289,7 @@ export default function CohortCreateModal() {
 
           {/* 참가자 */}
           <div>
-            <label className="mb-1 block text-xs font-bold text-gray-700">
+            <label className="mb-1 block text-xs font-bold text-slate-700">
               참가자 (한 줄에 한 명)
             </label>
             <textarea
@@ -301,9 +301,9 @@ export default function CohortCreateModal() {
                   ? "김믿음\n이영업\n박계약"
                   : "김믿음, https://docs.google.com/spreadsheets/d/...\n이영업, https://..."
               }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
             />
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-slate-500">
               {mode === "create"
                 ? "이름과 같은 폴더가 루트 폴더 안에 있어야 합니다."
                 : "형식: 이름, 시트URL"}
@@ -331,8 +331,8 @@ export default function CohortCreateModal() {
           )}
 
           {report && (
-            <div className="space-y-2 rounded-xl border border-gray-200 bg-white p-3 text-xs">
-              <div className="font-bold text-gray-900">
+            <div className="space-y-2 rounded-xl border border-slate-200 bg-white p-3 text-xs">
+              <div className="font-bold text-slate-900">
                 결과 — 생성 {report.created.length} · 건너뜀{" "}
                 {report.skipped.length} · 대기 {report.pending.length} · 실패{" "}
                 {report.failed.length}
@@ -343,7 +343,7 @@ export default function CohortCreateModal() {
                 </div>
               )}
               {report.skipped.length > 0 && (
-                <div className="text-gray-500">
+                <div className="text-slate-500">
                   ⏭ 건너뜀(이미 등록): {report.skipped.map((s) => s.name).join(", ")}
                 </div>
               )}
@@ -402,7 +402,7 @@ export default function CohortCreateModal() {
               type="button"
               disabled={busy}
               onClick={run}
-              className="flex-1 rounded-lg bg-blue-500 px-4 py-2 text-sm font-bold text-white hover:bg-blue-600 disabled:opacity-50"
+              className="flex-1 rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white hover:bg-blue-800 disabled:opacity-50"
             >
               {busy ? "처리 중…" : "실행"}
             </button>
@@ -412,7 +412,7 @@ export default function CohortCreateModal() {
                 setOpen(false);
                 reset();
               }}
-              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50"
+              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50"
             >
               닫기
             </button>

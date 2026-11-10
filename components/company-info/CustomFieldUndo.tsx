@@ -15,7 +15,7 @@ export default function CustomFieldUndo({ label, onUndo, onDismiss, inline }: {
   }, [label, onDismiss]);
   return (
     <div role="status" data-custom-field-undo
-      className={`${inline ? "" : "sm:col-span-2 "}flex min-w-0 items-center justify-between gap-2 rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs text-gray-600`}>
+      className={`${inline ? "" : "sm:col-span-2 "}flex min-w-0 items-center justify-between gap-2 rounded-md border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-600`}>
       <span className="flex min-w-0 items-center gap-1"><span className="min-w-0 truncate">「{label}」</span><span className="shrink-0">지웠어요</span></span>
       <button type="button" onClick={onUndo}
         className="shrink-0 rounded-md border border-purple-200 bg-white px-2 py-0.5 text-px-11 font-semibold text-purple-600 hover:bg-purple-50">

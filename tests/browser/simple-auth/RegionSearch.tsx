@@ -41,15 +41,15 @@ export default function RegionSearch({ id, value, onChange, invalid }: { id: str
           else if (e.key === "Enter" && open && hits[hi]) { e.preventDefault(); pick(hits[hi]); }
           else if (e.key === "Escape") setOpen(false);
         }}
-        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base focus:border-blue-500 focus:outline-none" {...invalid} />
+        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base focus:border-blue-500 focus:outline-none" {...invalid} />
       {open && q.trim() && (
-        <ul id={listId} role="listbox" aria-label="시·군·구" className="absolute inset-x-0 top-full z-20 mt-1 max-h-60 overflow-y-auto rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-          {hits.length === 0 && <li className="px-3 py-2 text-sm text-gray-500">찾는 시·군·구가 없어요</li>}
+        <ul id={listId} role="listbox" aria-label="시·군·구" className="absolute inset-x-0 top-full z-20 mt-1 max-h-60 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+          {hits.length === 0 && <li className="px-3 py-2 text-sm text-slate-500">찾는 시·군·구가 없어요</li>}
           {hits.map((r, i) => (
             <li key={r} id={`${listId}-${i}`} role="option" aria-selected={i === hi}
               onMouseDown={e => { e.preventDefault(); pick(r); }} onMouseEnter={() => setHi(i)}
-              className={`cursor-pointer px-3 py-2 text-base ${i === hi ? "bg-blue-50 text-blue-800" : "text-gray-800"}`}>
-              <span className="text-gray-500">{r.split(" ")[0]}</span> {r.split(" ").slice(1).join(" ")}
+              className={`cursor-pointer px-3 py-2 text-base ${i === hi ? "bg-blue-50 text-blue-800" : "text-slate-800"}`}>
+              <span className="text-slate-500">{r.split(" ")[0]}</span> {r.split(" ").slice(1).join(" ")}
             </li>
           ))}
         </ul>

@@ -12,6 +12,6 @@ export default function RecordMoveReview({ fromLabel, toLabel, company, source, 
     <p><b>{company}</b>{movedMeetings > 1 ? ` 등 ${movedMeetings}건` : " 미팅 1건"}의 기록을 옮겨요. 미팅 예정일시는 바뀌지 않아요.</p>
     <section><h4 className="font-bold">{fromLabel} · 남는 수치</h4><MetricComparison before={source} after={from} /></section>
     <section><h4 className="font-bold">{toLabel} · 옮긴 뒤 수치</h4><MetricComparison before={target} after={to} /></section>
-    <p className="text-xs text-gray-600">남은 미팅{remainingNames.length ? ` (${remainingNames.join(", ")})` : ""}은 원래 날짜에 함께 저장해요. 다른 채널의 신규 입력은 변경하지 않아요.</p>
+    <p className="text-xs text-slate-600">남은 미팅{remainingNames.length ? ` (${remainingNames.join(", ")})` : ""}은 원래 날짜에 함께 저장해요. 다른 채널의 신규 입력은 변경하지 않아요.</p>
   </div>;
 }

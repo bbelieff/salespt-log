@@ -16,14 +16,14 @@ export default function PendingApprovalScreen({
   subtitle?: string;
 }) {
   return (
-    <main className="min-h-dvh bg-gray-50 flex items-center justify-center p-6">
+    <main className="min-h-dvh bg-slate-50 flex items-center justify-center p-6">
       <div className="max-w-sm text-center">
         <div className="mb-4 text-4xl">⏳</div>
-        <h1 className="text-2xl font-black text-gray-900 mb-2">승인 대기 중</h1>
-        <p className="text-sm text-gray-500">{subtitle}</p>
+        <h1 className="text-2xl font-black text-slate-900 mb-2">승인 대기 중</h1>
+        <p className="text-sm text-slate-500">{subtitle}</p>
         <div className="mt-6">
           <LogoutButton
-            className="text-sm text-gray-700 underline-offset-2 hover:underline"
+            className="text-sm text-slate-700 underline-offset-2 hover:underline"
             label="로그아웃"
           />
         </div>

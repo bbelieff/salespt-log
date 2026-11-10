@@ -113,7 +113,7 @@ function SingleForm({
         (e.currentTarget as HTMLFormElement).reset();
       }}
     >
-      <p className="text-px-11 text-gray-500">
+      <p className="text-px-11 text-slate-500">
         시트 URL 입력하면 자동으로 ID 추출. 본인이 같은 기수·이름으로 로그인
         하면 즉시 활성.
       </p>
@@ -124,14 +124,14 @@ function SingleForm({
           inputMode="numeric"
           placeholder="기수"
           required
-          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
+          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
         />
         <input
           name="name"
           type="text"
           placeholder="이름"
           required
-          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
+          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
         />
       </div>
       <input
@@ -139,7 +139,7 @@ function SingleForm({
         type="text"
         placeholder="https://docs.google.com/spreadsheets/d/.../edit"
         required
-        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
+        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
       />
       <button
         type="submit"
@@ -187,7 +187,7 @@ https://docs.google.com/spreadsheets/d/.../edit`;
         form.reset();
       }}
     >
-      <p className="text-px-11 text-gray-500">
+      <p className="text-px-11 text-slate-500">
         시트 이름 줄 + URL 줄 페어 (페어 사이 빈 줄 OK).
       </p>
       <textarea
@@ -195,7 +195,7 @@ https://docs.google.com/spreadsheets/d/.../edit`;
         rows={6}
         placeholder={placeholder}
         required
-        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-mono text-px-11 outline-none focus:border-sky-500"
+        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-mono text-px-11 outline-none focus:border-sky-500"
       />
       <button
         type="submit"
@@ -247,7 +247,7 @@ function LinkForm() {
         }
       }}
     >
-      <p className="text-px-11 text-gray-500">
+      <p className="text-px-11 text-slate-500">
         이미 사전등록한 줄(기수·이름)에 이메일을 바로 연결해요. 본인이 /claim 하지 않아도 돼요.
       </p>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-[80px_1fr]">
@@ -258,7 +258,7 @@ function LinkForm() {
           aria-label="연결할 기수"
           placeholder="기수"
           required
-          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
+          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
         />
         <input
           name="name"
@@ -266,7 +266,7 @@ function LinkForm() {
           aria-label="연결할 이름"
           placeholder="이름 (사전등록과 같게)"
           required
-          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
+          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
         />
       </div>
       <input
@@ -275,7 +275,7 @@ function LinkForm() {
         aria-label="연결할 이메일"
         placeholder="로그인 이메일 (예: name@gmail.com)"
         required
-        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
+        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-sky-500"
       />
       {message && (
         <p role="status" className={`text-px-11 ${message.error ? "text-rose-600" : "text-sky-700"}`}>

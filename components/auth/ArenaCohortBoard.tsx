@@ -47,11 +47,11 @@ function CohortBox({
       ref={drag?.ref}
       style={drag?.style}
       {...(drag?.attributes ?? {})}
-      className={`overflow-hidden rounded-xl border border-gray-200 bg-white ${
+      className={`overflow-hidden rounded-xl border border-slate-200 bg-white ${
         drag?.isDragging ? "opacity-50 ring-2 ring-purple-300" : ""
       }`}
     >
-      <div className="flex items-center justify-between bg-gray-50 px-4 py-2">
+      <div className="flex items-center justify-between bg-slate-50 px-4 py-2">
         <div className="flex min-w-0 items-center gap-2">
           {drag && (
             <button
@@ -60,30 +60,30 @@ function CohortBox({
               title="드래그하여 순서 변경"
               {...drag.listeners}
               style={{ touchAction: "none" }}
-              className="inline-flex w-6 shrink-0 cursor-grab select-none items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700 active:cursor-grabbing"
+              className="inline-flex w-6 shrink-0 cursor-grab select-none items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-700 active:cursor-grabbing"
             >
               <span className="text-base leading-none">⋮⋮</span>
             </button>
           )}
-          <h2 className="truncate text-sm font-bold text-gray-800">
+          <h2 className="truncate text-sm font-bold text-slate-800">
             {group.label}
           </h2>
         </div>
-        <span className="shrink-0 text-px-11 text-gray-500">
+        <span className="shrink-0 text-px-11 text-slate-500">
           {group.members.length}명 · 회장 {captainCount}
         </span>
       </div>
-      <ul className="divide-y divide-gray-50">
+      <ul className="divide-y divide-slate-50">
         {group.members.map((m, i) => (
           <li
             key={`${m.email || m.name}-${i}`}
             className="flex items-center justify-between gap-2 px-4 py-2"
           >
             <div className="min-w-0">
-              <div className="truncate text-sm font-semibold text-gray-900">
+              <div className="truncate text-sm font-semibold text-slate-900">
                 {m.nameLabel || m.name}
               </div>
-              <div className="flex items-center gap-2 truncate text-px-11 text-gray-400">
+              <div className="flex items-center gap-2 truncate text-px-11 text-slate-400">
                 <span className="truncate">{m.email || "(미클레임)"}</span>
                 <ArenaCarryoverButton email={m.email} />
               </div>

@@ -30,8 +30,8 @@ export default function CompanyInfoSalesTotals({ draft, onField, idBase, today, 
   const rows = salesDefs(baseYear).rows;
   return (
     <div className={`min-w-0 ${className}`} role="group" aria-label="연매출">
-      <p className="mb-0.5 text-xs font-semibold text-gray-600">
-        연매출 <span className="font-normal text-gray-400">(백만원 · 상·하반기는 확장보기)</span>
+      <p className="mb-0.5 text-xs font-semibold text-slate-600">
+        연매출 <span className="font-normal text-slate-400">(백만원 · 상·하반기는 확장보기)</span>
       </p>
       <div className="grid grid-cols-2 gap-1 rounded-md bg-blue-50 p-1 xs:grid-cols-4" data-sales-totals>
         {rows.map(([, , 합], i) => {

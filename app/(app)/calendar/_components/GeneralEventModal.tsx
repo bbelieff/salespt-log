@@ -17,7 +17,7 @@ import DateInputCustom from "@/components/ui/DateInputCustom";
 
 const HINT_KEY = "hideGeneralEventHint";
 const inputCls =
-  "w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none";
+  "w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-teal-500 focus:outline-none";
 
 interface Props {
   defaultDate: string; // YYYY-MM-DD (선택일)
@@ -113,21 +113,21 @@ export default function GeneralEventModal({ defaultDate, onClose, onCreated }: P
   return (
     <AppDialog title="일반이벤트 추가" onClose={guardedClose} className="rounded-2xl bg-white p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-black text-gray-900">일반이벤트 추가</h3>
-          <AppDialogClose aria-label="닫기" className="rounded-full px-2 text-gray-400 hover:bg-gray-100">
+          <h3 className="text-sm font-black text-slate-900">일반이벤트 추가</h3>
+          <AppDialogClose aria-label="닫기" className="rounded-full px-2 text-slate-400 hover:bg-slate-100">
             ✕
           </AppDialogClose>
         </div>
 
         <div className="space-y-2.5">
-          <div className="grid grid-cols-2 gap-1 rounded-full bg-gray-100 p-1">
+          <div className="grid grid-cols-2 gap-1 rounded-full bg-slate-100 p-1">
             {(["기존", "기타"] as const).map((c) => (
               <button
                 key={c}
                 type="button"
                 onClick={() => set분류(c)}
                 className={`h-8 rounded-full text-xs font-bold ${
-                  분류 === c ? "bg-white text-teal-700 shadow-sm" : "text-gray-500"
+                  분류 === c ? "bg-white text-teal-700 shadow-sm" : "text-slate-500"
                 }`}
               >
                 {c === "기존" ? "기존 고객" : "기타(개인)"}
@@ -160,11 +160,11 @@ export default function GeneralEventModal({ defaultDate, onClose, onCreated }: P
 
       {hint && (
         <AppDialog title="일반이벤트 안내" onClose={() => setHint(false)} dismissOnBackdrop size="xs" className="rounded-2xl bg-white p-4 shadow-xl">
-            <p className="text-sm leading-relaxed text-gray-700">
+            <p className="text-sm leading-relaxed text-slate-700">
               일반이벤트로 추가하는 일정은 다른 탭에 연동되지 않습니다. 기존업체
               관련 실적은 아레나에 포함되지 않지만 캘린더에서 관리할 수 있습니다.
             </p>
-            <label className="mt-3 flex items-center gap-2 text-xs text-gray-500">
+            <label className="mt-3 flex items-center gap-2 text-xs text-slate-500">
               <input
                 type="checkbox"
                 checked={hideForever}
@@ -178,14 +178,14 @@ export default function GeneralEventModal({ defaultDate, onClose, onCreated }: P
                 type="button"
                 data-autofocus
                 onClick={() => setHint(false)}
-                className="min-h-11 flex-1 rounded-lg border border-gray-300 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="min-h-11 flex-1 rounded-lg border border-slate-300 py-2 text-sm text-slate-700 hover:bg-slate-50"
               >
                 취소
               </button>
               <button
                 type="button"
                 onClick={confirmHint}
-                className="min-h-11 flex-1 rounded-lg bg-gray-900 py-2 text-sm font-bold text-white hover:bg-black"
+                className="min-h-11 flex-1 rounded-lg bg-slate-900 py-2 text-sm font-bold text-white hover:bg-black"
               >
                 확인하고 추가
               </button>

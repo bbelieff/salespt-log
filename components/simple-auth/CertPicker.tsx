@@ -186,30 +186,30 @@ export default function CertPicker({ id: givenId, value, onChange, invalid }: {
     <div className="min-w-0">
       <button type="button" id={id} aria-expanded={open} aria-controls={`${id}-box`} onClick={() => setOpen(o => !o)}
         onDragOver={e => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)} onDrop={onDrop}
-        className={`mt-1 flex w-full items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-left text-base transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 ${drag ? "border-blue-500 bg-blue-50" : picked ? "border-blue-300 bg-blue-50/40 text-gray-900" : "border-gray-300 text-gray-700 hover:bg-gray-50"}`}
+        className={`mt-1 flex w-full items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-left text-base transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 ${drag ? "border-blue-500 bg-blue-50" : picked ? "border-blue-300 bg-blue-50/40 text-slate-900" : "border-slate-300 text-slate-700 hover:bg-slate-50"}`}
         {...invalid}>
-        <FileKey2 className="h-5 w-5 shrink-0 text-gray-500" aria-hidden />
+        <FileKey2 className="h-5 w-5 shrink-0 text-slate-500" aria-hidden />
         <span className="min-w-0 flex-1 truncate">{summary || "인증서 선택"}</span>
         <span className="shrink-0 text-sm text-blue-600">{picked ? "바꾸기" : "열기"}</span>
       </button>
 
       {open && (
-        <div id={`${id}-box`} className="mt-2 flex flex-col gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3"
+        <div id={`${id}-box`} className="mt-2 flex flex-col gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3"
           onDragOver={e => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)} onDrop={onDrop}>
           {options && options.length > 0 && (
-            <ul role="listbox" aria-label="찾은 인증서" className="flex flex-col divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white">
+            <ul role="listbox" aria-label="찾은 인증서" className="flex flex-col divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200 bg-white">
               {options.map(o => {
                 const on = !!picked && (picked.kind === "npki" ? o.kind === "npki" && o.der === picked.der : o.kind === "pfx" && o.file === picked.file);
                 const info = o.kind === "npki" ? o.info : null;
                 return (
                   <li key={o.id} role="option" aria-selected={on}>
                     <button type="button" onClick={() => { onChange(o); setOpen(false); }}
-                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-500 ${on ? "bg-blue-50" : "hover:bg-gray-50"}`}>
-                      <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold ${info?.kind === "법인" ? "bg-violet-100 text-violet-700" : info?.kind === "개인" ? "bg-sky-100 text-sky-700" : "bg-gray-100 text-gray-600"}`}>
+                      className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-blue-500 ${on ? "bg-blue-50" : "hover:bg-slate-50"}`}>
+                      <span className={`shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold ${info?.kind === "법인" ? "bg-violet-100 text-violet-700" : info?.kind === "개인" ? "bg-sky-100 text-sky-700" : "bg-slate-100 text-slate-600"}`}>
                         {o.kind === "pfx" ? "PFX" : info?.kind ?? "인증서"}
                       </span>
-                      <span className="min-w-0 flex-1 truncate font-medium text-gray-900">{o.label}</span>
-                      {info && <span className={`shrink-0 text-xs tabular-nums ${info.expired ? "font-semibold text-red-600" : "text-gray-600"}`}>{info.expired ? "만료됨" : `${info.notAfter}까지`}</span>}
+                      <span className="min-w-0 flex-1 truncate font-medium text-slate-900">{o.label}</span>
+                      {info && <span className={`shrink-0 text-xs tabular-nums ${info.expired ? "font-semibold text-red-600" : "text-slate-600"}`}>{info.expired ? "만료됨" : `${info.notAfter}까지`}</span>}
                       {on && <Check className="h-4 w-4 shrink-0 text-blue-600" aria-hidden />}
                     </button>
                   </li>
@@ -218,11 +218,11 @@ export default function CertPicker({ id: givenId, value, onChange, invalid }: {
             </ul>
           )}
 
-          {busy && <p className="text-sm text-gray-600" role="status">인증서를 찾는 중…</p>}
+          {busy && <p className="text-sm text-slate-600" role="status">인증서를 찾는 중…</p>}
           {note && <p className="text-sm text-amber-700" role="status">{note}</p>}
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-            <button type="button" onClick={findCerts} disabled={busy} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 text-sm font-medium text-gray-800 hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50">
+            <button type="button" onClick={findCerts} disabled={busy} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 text-sm font-medium text-slate-800 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50">
               <FolderOpen className="h-4 w-4" aria-hidden />{options?.length ? "다른 폴더에서 찾기" : "내 PC에서 인증서 찾기"}
             </button>
             <button type="button" onClick={() => fileInput.current?.click()} disabled={busy} className="text-sm font-medium text-blue-600 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500 disabled:opacity-50">
@@ -231,11 +231,11 @@ export default function CertPicker({ id: givenId, value, onChange, invalid }: {
           </div>
 
           {!options?.length && (
-            <details className="text-xs text-gray-600">
-              <summary className="cursor-pointer select-none font-medium text-gray-700">어느 폴더를 고르나요?</summary>
-              <p className="mt-1.5 leading-relaxed">폴더 창 주소줄에 아래 경로를 붙여 넣고 <b className="font-semibold text-gray-800">NPKI</b> 폴더를 고르세요. USB는 그 드라이브의 NPKI 폴더예요.</p>
+            <details className="text-xs text-slate-600">
+              <summary className="cursor-pointer select-none font-medium text-slate-700">어느 폴더를 고르나요?</summary>
+              <p className="mt-1.5 leading-relaxed">폴더 창 주소줄에 아래 경로를 붙여 넣고 <b className="font-semibold text-slate-800">NPKI</b> 폴더를 고르세요. USB는 그 드라이브의 NPKI 폴더예요.</p>
               <p className="mt-1 flex min-w-0 items-center gap-1.5">
-                <code className="min-w-0 truncate rounded bg-white px-1.5 py-0.5 text-gray-800 ring-1 ring-gray-200">{NPKI_PATH}</code>
+                <code className="min-w-0 truncate rounded bg-white px-1.5 py-0.5 text-slate-800 ring-1 ring-slate-200">{NPKI_PATH}</code>
                 <button type="button" onClick={copyPath} className="inline-flex shrink-0 items-center gap-0.5 font-medium text-blue-600 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500">
                   {copied ? <Check className="h-3 w-3" aria-hidden /> : <Copy className="h-3 w-3" aria-hidden />}{copied ? "복사됨" : "경로 복사"}
                 </button>

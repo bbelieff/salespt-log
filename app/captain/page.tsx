@@ -51,22 +51,22 @@ export default async function CaptainPage() {
     <main className="mx-auto min-h-dvh max-w-2xl bg-white px-4 py-6">
       <div className="mb-5 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-black text-gray-900">기수임원</h1>
-          <p className="text-xs text-gray-500">
+          <h1 className="text-lg font-black text-slate-900">기수임원</h1>
+          <p className="text-xs text-slate-500">
             {normalizeArenaCohort(captainOf)}기 멤버 {withStats.length}명 · 조회
             전용
           </p>
         </div>
         <Link
           href="/contact"
-          className="rounded-full border border-gray-200 px-3 py-1 text-xs font-bold text-gray-600 hover:bg-gray-50"
+          className="rounded-full border border-slate-200 px-3 py-1 text-xs font-bold text-slate-600 hover:bg-slate-50"
         >
           내 화면 →
         </Link>
       </div>
 
       {withStats.length === 0 ? (
-        <div className="rounded-xl border border-gray-100 bg-gray-50 p-6 text-center text-sm text-gray-400">
+        <div className="rounded-xl border border-slate-100 bg-slate-50 p-6 text-center text-sm text-slate-400">
           기수 멤버가 없습니다.
         </div>
       ) : (
@@ -78,11 +78,11 @@ export default async function CaptainPage() {
               <li
                 key={`${m.email || m.name}-${i}`}
                 className={`rounded-xl border p-3 ${
-                  isMe ? "border-brand-red/30 bg-red-50/40" : "border-gray-100"
+                  isMe ? "border-brand-red/30 bg-red-50/40" : "border-slate-100"
                 }`}
               >
                 <div className="mb-2 flex items-center gap-2">
-                  <span className="text-sm font-bold text-gray-900">
+                  <span className="text-sm font-bold text-slate-900">
                     {m.name}
                   </span>
                   {isMe && (
@@ -95,10 +95,10 @@ export default async function CaptainPage() {
                   {STAT_LABELS.map(({ key, label }) => (
                     <div
                       key={key}
-                      className="rounded-lg bg-gray-50 px-2 py-1.5 text-center"
+                      className="rounded-lg bg-slate-50 px-2 py-1.5 text-center"
                     >
-                      <div className="text-px-10 text-gray-400">{label}</div>
-                      <div className="text-base font-black text-gray-900">
+                      <div className="text-px-10 text-slate-400">{label}</div>
+                      <div className="text-base font-black text-slate-900">
                         {s[key]}
                       </div>
                     </div>

@@ -172,15 +172,15 @@ export default function TrainerCohortView({
 
   return (
     <TrainerOpenContext.Provider value={canOpen}>
-    <main className="min-h-dvh bg-gray-50">
+    <main className="min-h-dvh bg-slate-50">
       <PageContainer width="wide" className="space-y-4 px-4 py-4">
         <section>
           {/* 수강생출신 트레이너 — 본인 아레나 일지 전환 토글(P14). */}
-          <h1 className="text-lg font-black tracking-tight text-gray-900">
+          <h1 className="text-lg font-black tracking-tight text-slate-900">
             수강생 명단
           </h1>
           <div className="mt-1 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-slate-500">
               {showOnlyMine
                 ? `내 담당 ${myCount}명`
                 : `전체 ${trainees.length}명 (내 담당 ${myCount}명)`}
@@ -203,9 +203,9 @@ export default function TrainerCohortView({
           placeholder="이름 / 기수 / 이메일 검색"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100"
+          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none focus:border-red-500 focus:ring-4 focus:ring-red-100"
         />
-        {searching && visibleTrainees.length === 0 && <p className="text-sm text-gray-400">검색 결과 없음.</p>}
+        {searching && visibleTrainees.length === 0 && <p className="text-sm text-slate-400">검색 결과 없음.</p>}
 
         {error && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700">
@@ -215,11 +215,11 @@ export default function TrainerCohortView({
 
         {activeGroups.length === 0 && archivedGroups.length === 0 && (
           showOnlyMine && trainees.length > 0 ? (
-            <p className="text-sm text-gray-400">
+            <p className="text-sm text-slate-400">
               담당 수강생이 없습니다. 전체 명단은 [전체 수강생 보기]로 확인하세요.
             </p>
           ) : (
-            <p className="text-sm text-gray-400">등록된 수강생이 없습니다.</p>
+            <p className="text-sm text-slate-400">등록된 수강생이 없습니다.</p>
           )
         )}
 
@@ -273,14 +273,14 @@ export default function TrainerCohortView({
 
         {/* 보관된 기수 — collapsed (details) */}
         {archivedGroups.length > 0 && (
-          <details key={searching ? "search" : "browse"} open={searching || undefined} className="group overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 open:bg-white">
-            <summary className="disclosure-summary flex cursor-pointer items-center justify-between gap-2 px-4 py-3 hover:bg-gray-100">
-              <span className="text-sm font-bold text-gray-700">
+          <details key={searching ? "search" : "browse"} open={searching || undefined} className="group overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 open:bg-white">
+            <summary className="disclosure-summary flex cursor-pointer items-center justify-between gap-2 px-4 py-3 hover:bg-slate-100">
+              <span className="text-sm font-bold text-slate-700">
                 📦 보관된 기수 ({archivedGroups.reduce((s, [, l]) => s + l.length, 0)}명)
               </span>
-              <DisclosureChevron className="text-gray-400" />
+              <DisclosureChevron className="text-slate-400" />
             </summary>
-            <div className="space-y-6 border-t border-gray-200 px-4 py-4">
+            <div className="space-y-6 border-t border-slate-200 px-4 py-4">
               {archivedGroups.map(([cohort, list]) => (
                 <CohortSection
                   key={cohort}

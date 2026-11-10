@@ -10,7 +10,7 @@ export default function WeekBody({ firstDays, lastDays }: {
     <PageContainer width="fluid">
       <div className="pc:grid pc:grid-cols-2 pc:items-start pc:gap-8">
         <div className="min-w-0">{firstDays}</div>
-        <div className="min-w-0 pc:border-l pc:border-gray-200 pc:pl-8">{lastDays}</div>
+        <div className="min-w-0 pc:border-l pc:border-slate-200 pc:pl-8">{lastDays}</div>
       </div>
     </PageContainer>
   </main>;

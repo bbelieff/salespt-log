@@ -78,12 +78,12 @@ const MARK_BG: Record<Mark, string> = {
   check: "bg-red-50",
 };
 const MARK_LABEL: Record<Mark, string> = {
-  none: "text-gray-400",
+  none: "text-slate-400",
   warn: "text-amber-700",
   check: "text-red-700",
 };
 const MARK_VALUE: Record<Mark, string> = {
-  none: "text-gray-900",
+  none: "text-slate-900",
   warn: "text-amber-800",
   check: "text-red-800",
 };
@@ -114,7 +114,7 @@ function Cell({
         }`}
       >
         {value}
-        {sub ? <span className="ml-1 text-sm text-gray-600">{sub}</span> : null}
+        {sub ? <span className="ml-1 text-sm text-slate-600">{sub}</span> : null}
       </span>
       {note ? (
         <span className={`mt-1 block text-px-10 font-bold leading-tight ${MARK_LABEL[mark]}`}>
@@ -131,7 +131,7 @@ function CorrectionHelp() {
   const [pinned, setPinned] = useState(false);
   const expanded = hovered || pinned;
   return (
-    <div className="mt-3 text-xs leading-relaxed text-gray-600"
+    <div className="mt-3 text-xs leading-relaxed text-slate-600"
       onMouseLeave={() => setHovered(false)}
       onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setPinned(false); }}
       onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); setHovered(false); setPinned(false); } }}>
@@ -140,9 +140,9 @@ function CorrectionHelp() {
         onMouseEnter={() => setHovered(true)}
         onClick={() => { setPinned((value) => !value); setHovered(false); }}
         className="ml-1 inline-flex h-7 w-7 items-center justify-center rounded-full align-middle focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600">
-        <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-gray-400 text-px-10 font-bold">?</span>
+        <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-400 text-px-10 font-bold">?</span>
       </button>
-      <p id={id} hidden={!expanded} className="mt-1 rounded-lg bg-gray-50 p-2.5">
+      <p id={id} hidden={!expanded} className="mt-1 rounded-lg bg-slate-50 p-2.5">
         X로 이 창을 닫고 미팅 카드에서 수정하세요. 기록 날짜·채널을 옮기려면 [잘못 적었어요]에서 선택해요. 창을 닫아도 입력은 남고, [저장하기]를 누르기 전에는 저장되지 않아요.
       </p>
     </div>
@@ -204,13 +204,13 @@ export default function SaveConfirmModal({
             const before = savedChannels?.[ch] ?? { production: 0, inflow: 0, contactProgress: 0, meetingReservation: existing.length };
             return (
               <div key={ch} className="mb-3 last:mb-0">
-                <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-gray-200">
+                <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-slate-200">
                   <Cell label="기록하는 날짜" value={dateLabel} sub={dow} />
                   <Cell label="채널" value={ch} valueClass={CHANNEL_TEXT[ch]} />
                 </div>
 
-                <p className="mb-1 mt-3 text-xs font-bold text-gray-500">기존 예약된 미팅 · {existing.length}건</p>
-                {existing.map((m) => <div key={m.id} className="grid grid-cols-2 gap-px rounded-xl bg-gray-200">
+                <p className="mb-1 mt-3 text-xs font-bold text-slate-500">기존 예약된 미팅 · {existing.length}건</p>
+                {existing.map((m) => <div key={m.id} className="grid grid-cols-2 gap-px rounded-xl bg-slate-200">
                   <Cell label="기존 예약된 미팅" value={formatKoreanDate(m.미팅날짜).label} sub={m.미팅시간} />
                   <Cell label="회사명" value={m.업체명} />
                 </div>)}
@@ -223,7 +223,7 @@ export default function SaveConfirmModal({
                   return (
                     <div
                       key={s.tempId}
-                      className="mt-px grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-gray-200"
+                      className="mt-px grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-slate-200"
                     >
                       <Cell
                         label={`예약된 미팅${mine.length > 1 ? ` ${i + 1}` : ""}`}
@@ -251,7 +251,7 @@ export default function SaveConfirmModal({
             <b>같은 날짜·시간에 미팅이 겹쳐요. 일정을 확인하고 수정해주세요.</b>
             {conflicts.map((m) => <p key={m.id}>{m.미팅날짜} {m.미팅시간} · {m.업체명}</p>)}
           </div>}
-          {checking && <p className="mt-2 text-xs text-gray-500">기존 미팅 일정 확인 중…</p>}
+          {checking && <p className="mt-2 text-xs text-slate-500">기존 미팅 일정 확인 중…</p>}
           {checkFailed && <p role="alert" className="mt-2 text-xs text-red-700">기존 일정을 확인하지 못했어요. 창을 닫고 다시 시도해주세요.</p>}
           {unfilled.length > 0 ? (
             <p className="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
@@ -265,12 +265,12 @@ export default function SaveConfirmModal({
           ) : null}
         </div>
 
-        <div className="flex gap-2 border-t border-gray-100 px-4 py-3">
+        <div className="flex gap-2 border-t border-slate-100 px-4 py-3">
           <button
             type="button"
             onClick={unfilled.length > 0 ? onClose : onFix}
             disabled={saving}
-            className="flex-1 rounded-lg bg-amber-100 py-3 text-px-13 font-bold text-amber-800 hover:bg-amber-200 disabled:bg-gray-100 disabled:text-gray-400"
+            className="flex-1 rounded-lg bg-amber-100 py-3 text-px-13 font-bold text-amber-800 hover:bg-amber-200 disabled:bg-slate-100 disabled:text-slate-400"
           >
             {unfilled.length > 0 ? "입력 수정하기" : "잘못 적었어요"}
           </button>
@@ -278,7 +278,7 @@ export default function SaveConfirmModal({
             type="button"
             onClick={onSave}
             disabled={unfilled.length > 0 || saving || checking || checkFailed || conflicts.length > 0}
-            className="flex-1 rounded-lg bg-slate-900 py-3 text-px-13 font-bold text-white hover:bg-slate-800 disabled:bg-gray-200 disabled:text-gray-400"
+            className="flex-1 rounded-lg bg-slate-900 py-3 text-px-13 font-bold text-white hover:bg-slate-800 disabled:bg-slate-200 disabled:text-slate-400"
           >
             {saving ? "저장중.." : "저장하기"}
           </button>

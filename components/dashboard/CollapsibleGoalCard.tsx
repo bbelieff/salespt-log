@@ -42,9 +42,9 @@ export default function CollapsibleGoalCard({ layout, className = "" }: { layout
     <button type="button" aria-expanded="false" onClick={() => toggle(true)}
       className="flex min-h-11 w-full items-center gap-2 rounded-2xl px-3 py-2 text-left hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500">
       <span aria-hidden className="h-5 w-1 shrink-0 rounded-full bg-teal-400" />
-      <Target className="h-4 w-4 shrink-0 text-gray-500" aria-hidden />
-      <span className="min-w-0 flex-1 text-sm font-bold text-gray-900">주간 목표 · PT과제</span>
-      <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-gray-600">펼치기<ChevronDown className="h-4 w-4" aria-hidden /></span>
+      <Target className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+      <span className="min-w-0 flex-1 text-sm font-bold text-slate-900">주간 목표 · PT과제</span>
+      <span className="flex shrink-0 items-center gap-0.5 text-xs font-semibold text-slate-600">펼치기<ChevronDown className="h-4 w-4" aria-hidden /></span>
     </button>
   </section>;
 }

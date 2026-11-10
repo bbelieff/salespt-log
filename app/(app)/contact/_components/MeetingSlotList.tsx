@@ -38,24 +38,24 @@ export default function MeetingSlotList({
   return (
     <div className="mb-3">
       <div className="mb-2 flex items-center justify-between px-1">
-        <span className="text-sm font-semibold text-gray-700">
+        <span className="text-sm font-semibold text-slate-700">
           미팅예약하기
           {slots.length > 0 ? ` · ${slots.length}건` : ""}
         </span>
         <span className="flex items-center gap-2">
           {onMove && newCount > 0 && (
             <button type="button" onClick={onMove}
-              className="min-h-11 rounded-lg px-2 text-xs font-semibold text-gray-500 underline underline-offset-2">
+              className="min-h-11 rounded-lg px-2 text-xs font-semibold text-slate-500 underline underline-offset-2">
               잘못 적었어요
             </button>
           )}
-          <span className="text-xs text-gray-400">컨택성공 1건 = 미팅예약 1건</span>
+          <span className="text-xs text-slate-400">컨택성공 1건 = 미팅예약 1건</span>
         </span>
       </div>
 
       {slots.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-gray-200 bg-white px-4 py-6 text-center">
-          <div className="text-sm text-gray-400">
+        <div className="rounded-xl border-2 border-dashed border-slate-200 bg-white px-4 py-6 text-center">
+          <div className="text-sm text-slate-400">
             미팅예약을 입력하면
             <br />
             미팅예약 카드가 자동 생성됩니다

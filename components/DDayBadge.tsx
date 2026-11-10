@@ -53,7 +53,7 @@ export default function DDayBadge({ graduationISO }: Props) {
   if (!graduationISO || !today) {
     // 로딩 placeholder
     return (
-      <div className="flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-px-11 font-bold text-gray-400">
+      <div className="flex items-center gap-1 rounded bg-slate-100 px-2 py-1 text-px-11 font-bold text-slate-400">
         <span>D-—</span>
       </div>
     );
@@ -65,7 +65,7 @@ export default function DDayBadge({ graduationISO }: Props) {
   const ones = abs % 10;
 
   // 색 분기 (수료·D-DAY 는 아래서 조기 return — 숫자 박스는 남은 일수 전용)
-  let cls = "bg-gray-900 text-white";
+  let cls = "bg-slate-900 text-white";
   if (remain === 0) {
     return (
       <div className="flex items-center rounded-md bg-red-600 px-2 py-0.5 text-px-11 font-extrabold tracking-wider text-white">

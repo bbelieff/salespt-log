@@ -107,25 +107,25 @@ function NewItem({
   };
 
   return (
-    <div className="mb-2 overflow-hidden rounded-xl border-l-4 border-gray-300 bg-white shadow-sm">
+    <div className="mb-2 overflow-hidden rounded-xl border-l-4 border-slate-300 bg-white shadow-sm">
       {/* 2단 헤더 (신규는 항상 펼침) — 1행 메타, 2행 업체명 풀폭·장소 */}
       <div className="px-3 py-3">
         <div className="flex items-center gap-2">
-          <span className="shrink-0 text-xs font-bold text-gray-400">#{index + 1}</span>
+          <span className="shrink-0 text-xs font-bold text-slate-400">#{index + 1}</span>
           <span className={`shrink-0 ${CHANNEL_BADGE[channel]}`}>{channel}</span>
           <span className="shrink-0 text-base leading-none">⚪</span>
-          <span className="shrink-0 text-sm font-bold text-gray-700">{collapsedTime}</span>
+          <span className="shrink-0 text-sm font-bold text-slate-700">{collapsedTime}</span>
         </div>
         <div className="mt-1 flex items-center gap-2">
-          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900">
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-900">
             {collapsedCompany}
           </span>
-          <span className="shrink-0 truncate text-xs text-gray-500">{collapsedPlace}</span>
+          <span className="shrink-0 truncate text-xs text-slate-500">{collapsedPlace}</span>
         </div>
       </div>
 
       {/* 펼침 본문 */}
-      <div className="space-y-3 border-t border-gray-200 px-3 py-3">
+      <div className="space-y-3 border-t border-slate-200 px-3 py-3">
         <ExpandHeader saved={false} reservationDate={reservationDate} />
         {/* 콜·지·기·소: 03 발굴에서 프리필(선택 사항 — 안 쓰면 기존과 100% 동일). lead-chain §2-1. */}
         {isLead && (
@@ -258,26 +258,26 @@ function SavedItem({ index, meeting, reservationDate, onPatch, onRemove }: Saved
         {/* 2단: 1행 메타(#·채널·날짜·시간), 2행 업체명 풀폭·장소 */}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="shrink-0 text-xs font-bold text-gray-400">#{index + 1}</span>
+            <span className="shrink-0 text-xs font-bold text-slate-400">#{index + 1}</span>
             <span className={`shrink-0 ${CHANNEL_BADGE[meeting.channel]}`}>
               {meeting.channel}
             </span>
             <span className="shrink-0 text-base leading-none">🔵</span>
-            <span className="shrink-0 text-xs font-semibold text-gray-500">{collapsedDate}</span>
-            <span className="shrink-0 text-sm font-bold text-gray-700">{collapsedTime}</span>
+            <span className="shrink-0 text-xs font-semibold text-slate-500">{collapsedDate}</span>
+            <span className="shrink-0 text-sm font-bold text-slate-700">{collapsedTime}</span>
           </div>
           <div className="mt-1 flex items-center gap-2">
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-900">
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-900">
               {meeting.업체명 || "(업체 미입력)"}
             </span>
-            <span className="shrink-0 truncate text-xs text-gray-500">{meeting.장소}</span>
+            <span className="shrink-0 truncate text-xs text-slate-500">{meeting.장소}</span>
           </div>
         </div>
         <DisclosureChevron open={open} />
       </button>
 
       {open && (
-        <div className="space-y-3 border-t border-gray-200 px-3 py-3">
+        <div className="space-y-3 border-t border-slate-200 px-3 py-3">
           <div className="flex items-center justify-between gap-2">
             <ExpandHeader saved reservationDate={meeting.예약일} />
             <AutosaveStatus status={auto.status} error={auto.error}

@@ -29,7 +29,7 @@ export default function AutosaveStatus({
         })
       : null;
   return (
-    <span aria-live="polite" className="inline-flex min-w-0 flex-wrap items-center justify-end gap-1 text-right text-xs text-gray-400">
+    <span aria-live="polite" className="inline-flex min-w-0 flex-wrap items-center justify-end gap-1 text-right text-xs text-slate-400">
       {status === "pending" && <span>저장중..</span>}
       {status === "saved" && <span>저장됨{time ? ` ${time}` : ""}</span>}
       {status === "error" && (

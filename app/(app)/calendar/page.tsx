@@ -187,7 +187,7 @@ export default function CalendarPage() {
           <button
             type="button"
             onClick={() => moveMonth(-1)}
-            className="flex h-11 w-11 items-center justify-center text-gray-400 transition-all hover:text-gray-600 active:scale-90"
+            className="flex h-11 w-11 items-center justify-center text-slate-400 transition-all hover:text-slate-600 active:scale-90"
             aria-label="이전 달"
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -195,11 +195,11 @@ export default function CalendarPage() {
             </svg>
           </button>
           <div className="flex-1 text-center">
-            <div className="text-base font-bold text-gray-900">
+            <div className="text-base font-bold text-slate-900">
               {yearStr}년 {Number(monthStr)}월
             </div>
             {monthSummary && monthSummary.total + monthSummary.practice > 0 && (
-              <div className="mt-0.5 text-xs text-gray-400">
+              <div className="mt-0.5 text-xs text-slate-400">
                 미팅 {monthSummary.total}건 · 계약 {monthSummary.contract}건
                 {monthSummary.practice > 0 &&
                   ` · 실무 ${monthSummary.practice}건`}
@@ -216,7 +216,7 @@ export default function CalendarPage() {
           <button
             type="button"
             onClick={() => moveMonth(1)}
-            className="flex h-11 w-11 items-center justify-center text-gray-400 transition-all hover:text-gray-600 active:scale-90"
+            className="flex h-11 w-11 items-center justify-center text-slate-400 transition-all hover:text-slate-600 active:scale-90"
             aria-label="다음 달"
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -256,16 +256,16 @@ export default function CalendarPage() {
                 길면 자체 스크롤(그리드와 독립). 모바일은 일반 흐름. */}
             <section className="mt-4 px-4 pc:mt-0 pc:col-span-2 pc:sticky pc:top-app-calendar-panel pc:self-start pc:max-h-[calc(100vh-11rem)] pc:overflow-y-auto">
               <div className="mb-2 flex items-baseline justify-between">
-                <h2 className="text-sm font-bold text-gray-900">
+                <h2 className="text-sm font-bold text-slate-900">
                   {selectedDate.replace(/^\d{4}-/, "").replace("-", "/")} (
                   {selectedDow})
                   {selectedDate === TODAY_ISO && (
-                    <span className="ml-2 inline-flex items-center rounded-full bg-blue-600 px-2 py-0.5 text-xs font-bold text-white">
+                    <span className="ml-2 inline-flex items-center rounded-full bg-blue-700 px-2 py-0.5 text-xs font-bold text-white">
                       오늘
                     </span>
                   )}
                 </h2>
-                <span className="flex items-center gap-2 text-xs text-gray-500">
+                <span className="flex items-center gap-2 text-xs text-slate-500">
                   {selectedItems.length > 0
                     ? `${selectedItems.length}건`
                     : "일정 없음"}
@@ -282,7 +282,7 @@ export default function CalendarPage() {
               </div>
 
               {selectedItems.length === 0 ? (
-                <div className="rounded-xl border-2 border-dashed border-gray-200 bg-white px-4 py-6 text-center text-sm text-gray-400">
+                <div className="rounded-xl border-2 border-dashed border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-400">
                   이 날은 일정이 없어요
                 </div>
               ) : (
@@ -301,13 +301,13 @@ export default function CalendarPage() {
                               `/schedule?date=${selectedDate}&focus=${m.id}`,
                             )
                           }
-                          className="flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 shadow-sm transition-shadow hover:shadow-md active:scale-[0.99]"
+                          className="flex cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2.5 shadow-sm transition-shadow hover:shadow-md active:scale-[0.99]"
                           style={{
                             borderLeft: `3px solid ${CHANNEL_HEX[m.channel]}`,
                           }}
                         >
                           <span
-                            className="shrink-0 text-sm font-bold text-gray-700"
+                            className="shrink-0 text-sm font-bold text-slate-700"
                             style={{ width: 44 }}
                           >
                             {m.미팅시간}
@@ -318,10 +318,10 @@ export default function CalendarPage() {
                             {CARD_ICON[state]} 영업
                           </span>
                           <div className="min-w-0 flex-1">
-                            <div className="truncate text-sm font-semibold text-gray-900">
+                            <div className="truncate text-sm font-semibold text-slate-900">
                               {m.업체명}
                             </div>
-                            <div className="truncate text-px-11 text-gray-400">
+                            <div className="truncate text-px-11 text-slate-400">
                               {m.channel}
                             </div>
                           </div>
@@ -334,7 +334,7 @@ export default function CalendarPage() {
                             </span>
                           ) : (
                             m.장소 && (
-                              <span className="max-w-20 shrink-0 truncate text-xs text-gray-400">
+                              <span className="max-w-20 shrink-0 truncate text-xs text-slate-400">
                                 {m.장소}
                               </span>
                             )
@@ -396,10 +396,10 @@ export default function CalendarPage() {
             → 좁은 패널에서 '콜·지·기·소' wrap 되던 문제 해소. 아주 좁으면 가로 스크롤. */}
         {!monthQuery.isLoading && !monthQuery.isError && (
           <div className="mt-4">
-            <div className="mb-1 text-px-11 text-gray-400">범례</div>
-            <div className="flex flex-col gap-1.5 overflow-x-auto rounded-xl border border-gray-100 bg-white px-3 py-2.5 text-xs text-gray-600 sm:flex-row sm:flex-wrap sm:gap-x-5">
+            <div className="mb-1 text-px-11 text-slate-400">범례</div>
+            <div className="flex flex-col gap-1.5 overflow-x-auto rounded-xl border border-slate-100 bg-white px-3 py-2.5 text-xs text-slate-600 sm:flex-row sm:flex-wrap sm:gap-x-5">
               <div className="flex flex-nowrap items-center gap-2 break-keep">
-                <span className="shrink-0 font-medium text-gray-400" style={{ width: 36 }}>
+                <span className="shrink-0 font-medium text-slate-400" style={{ width: 36 }}>
                   영업
                 </span>
                 {(Object.keys(CHANNEL_HEX) as Channel[]).map((ch) => (
@@ -410,7 +410,7 @@ export default function CalendarPage() {
                 ))}
               </div>
               <div className="flex flex-nowrap items-center gap-2 break-keep">
-                <span className="shrink-0 font-medium text-gray-400" style={{ width: 36 }}>
+                <span className="shrink-0 font-medium text-slate-400" style={{ width: 36 }}>
                   일반
                 </span>
                 <span className="flex shrink-0 items-center gap-1 whitespace-nowrap">
@@ -421,7 +421,7 @@ export default function CalendarPage() {
                 </span>
               </div>
               <div className="flex flex-nowrap items-center gap-2 break-keep">
-                <span className="shrink-0 font-medium text-gray-400" style={{ width: 36 }}>
+                <span className="shrink-0 font-medium text-slate-400" style={{ width: 36 }}>
                   실무
                 </span>
                 {TODO_TYPES.map((t) => (

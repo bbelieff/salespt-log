@@ -40,8 +40,8 @@ export default function TrainerPlayerToggle({
       disabled={busy}
       className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-bold transition-colors disabled:opacity-50 ${
         mode === to
-          ? "bg-white text-gray-900 shadow-sm"
-          : "text-gray-500 hover:text-gray-700"
+          ? "bg-white text-slate-900 shadow-sm"
+          : "text-slate-500 hover:text-slate-700"
       }`}
     >
       {label}
@@ -49,7 +49,7 @@ export default function TrainerPlayerToggle({
   );
 
   return (
-    <div className="mb-3 flex gap-1 rounded-xl bg-gray-100 p-1">
+    <div className="mb-3 flex gap-1 rounded-xl bg-slate-100 p-1">
       {seg("manager", "트레이너 관리")}
       {seg("arena", "내 아레나 일지")}
     </div>

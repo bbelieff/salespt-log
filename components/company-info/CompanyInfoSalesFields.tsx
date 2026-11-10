@@ -38,14 +38,14 @@ const GRID_HINT =
 const YEAR_HINT = "기준 연도를 바꾸면 칸 이름만 바뀌어요. 값은 그대로예요.";
 
 function SubHead({ children }: { children: string }) {
-  return <p className="pt-0.5 text-xs font-semibold text-gray-600">{children}</p>;
+  return <p className="pt-0.5 text-xs font-semibold text-slate-600">{children}</p>;
 }
 
 function LegacyNote({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-600" role="note" aria-label={label}>
-      <span className="font-medium text-gray-700">{label}</span> (읽기 전용)
-      <p className="whitespace-pre-line break-words text-gray-800">{value}</p>
+    <div className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-2 py-1 text-xs text-slate-600" role="note" aria-label={label}>
+      <span className="font-medium text-slate-700">{label}</span> (읽기 전용)
+      <p className="whitespace-pre-line break-words text-slate-800">{value}</p>
     </div>
   );
 }
@@ -105,7 +105,7 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
           <SubHead>연도별 매출</SubHead>
           <HintTooltip label="연도별 매출" text={GRID_HINT} />
         </div>
-        <span className="text-xs text-gray-400">단위: 백만원</span>
+        <span className="text-xs text-slate-400">단위: 백만원</span>
       </div>
       {/* 연도가 가로(Y·Y-1·Y-2·Y-3), 아래로 연매출 → 상반기 → 하반기(belie 2026-10-09 피벗).
           표(table)라 칸 아래 "약 …" 줄이 생겨도 같은 줄끼리 높이가 저절로 맞는다(글자 크기를 키워도 안 잘림). */}
@@ -123,7 +123,7 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
             <th scope="col" className="sr-only">구분</th>
             {defs.rows.map((_, i) => (
               <th key={i} scope="col" className="px-0.5 align-top font-normal" data-sales-row={i}>
-                <div className="flex items-center justify-center gap-0.5 font-semibold text-gray-800">
+                <div className="flex items-center justify-center gap-0.5 font-semibold text-slate-800">
                   {salesYearToken(i)}
                   {i === 0 && <HintTooltip label="기준 연도" text={YEAR_HINT} />}
                 </div>
@@ -137,7 +137,7 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
                     </span>
                     <input
                       id={yearId}
-                      className="w-full rounded border border-gray-300 px-1 py-0.5 text-center text-xs tabular-nums text-gray-900 focus:border-brand-red focus:outline-none"
+                      className="w-full rounded border border-slate-300 px-1 py-0.5 text-center text-xs tabular-nums text-slate-900 focus:border-brand-red focus:outline-none"
                       inputMode="numeric"
                       maxLength={4}
                       aria-invalid={yearError ? true : undefined}
@@ -155,7 +155,7 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
                     />
                   </>
                 ) : (
-                  <p className="pt-0.5 text-center tabular-nums text-gray-500">{baseYear - i}</p>
+                  <p className="pt-0.5 text-center tabular-nums text-slate-500">{baseYear - i}</p>
                 )}
               </th>
             ))}
@@ -166,7 +166,7 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
             // 연매출 줄은 업무도구의 선택 블록처럼 옅은 파랑 띠로 강조(belie 2026-10-09).
             // 띠가 끊기지 않게 표는 가로 간격 0, 칸 안쪽 여백(px-0.5)으로 칸 사이를 띄운다.
             <tr key={name} data-sales-line={line === 0 ? "total" : undefined}>
-              <th scope="row" className={`pl-1 pt-1.5 text-left align-top text-xs ${line === 0 ? "rounded-l-md bg-blue-50 py-1 font-bold text-blue-900" : "font-medium text-gray-500"}`}>
+              <th scope="row" className={`pl-1 pt-1.5 text-left align-top text-xs ${line === 0 ? "rounded-l-md bg-blue-50 py-1 font-bold text-blue-900" : "font-medium text-slate-500"}`}>
                 {name}
               </th>
               {defs.rows.map(([상, 하, 합], i) => {
@@ -189,9 +189,9 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
                             aria-readonly="true"
                             value={formatTenths(row.total)}
                           />
-                          <span aria-hidden className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center text-xs text-gray-300">백만</span>
+                          <span aria-hidden className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center text-xs text-slate-300">백만</span>
                         </div>
-                        <p className="mt-0.5 truncate text-xs text-gray-500">
+                        <p className="mt-0.5 truncate text-xs text-slate-500">
                           {["자동", moneyHint(row.total)].filter(Boolean).join(" · ")}
                         </p>
                       </div>
@@ -217,7 +217,7 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
         const other = row.only === "상반기" ? "하반기" : "상반기";
         const notes = [
           row.only && (
-            <p key="only" className="text-xs text-gray-500" role="note">
+            <p key="only" className="text-xs text-slate-500" role="note">
               {tag}: {other}가 비어 있어 {row.only}만 더했어요
             </p>
           ),
@@ -227,7 +227,7 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
             </p>
           ),
           row.staleTotal && (
-            <p key="stale" className="break-words text-xs text-gray-500" role="note">
+            <p key="stale" className="break-words text-xs text-slate-500" role="note">
               {tag}: 이전 합계 {row.staleTotal} — 반기 합과 달라 저장할 때 업체 기타메모로 옮겨 둬요
             </p>
           ),

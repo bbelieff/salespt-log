@@ -20,7 +20,7 @@ export default function GoalRings({ goals, actuals, metrics = GOAL_KEYS, showSta
       return <div key={key} className="min-w-0 flex-1 text-center pc:max-w-24">
         <div className={`relative mx-auto h-12 w-12 rounded-full pc:h-16 pc:w-16 ${play && percent !== null && percent >= 100 ? "fx-glow" : ""}`} style={{ animationDelay: "900ms" }}>
           <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90" aria-hidden="true">
-            <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="7" className="text-gray-100" />
+            <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="7" className="text-slate-100" />
             <circle cx="50" cy="50" r="42" fill="none" stroke="currentColor" strokeWidth="7" pathLength="100"
               strokeDasharray="100" strokeDashoffset={100 - progress} strokeLinecap="round" style={play ? delay : undefined}
               className={`${percent !== null && percent >= 100 ? "text-green-600" : "text-brand-red"} ${play ? "fx-ring" : ""}`} />
@@ -29,7 +29,7 @@ export default function GoalRings({ goals, actuals, metrics = GOAL_KEYS, showSta
         </div>
         <p className="text-xs font-semibold pc:text-sm">{GOAL_LABELS[key]}</p>
         <p className="break-words text-xs tabular-nums pc:text-sm">{actual} / {goal ?? "—"}</p>
-        {showStatus && <p className="break-words text-xs text-gray-500">{label}</p>}
+        {showStatus && <p className="break-words text-xs text-slate-500">{label}</p>}
       </div>;
     })}
   </div>;

@@ -67,24 +67,24 @@ export default function ShareScoresManager({
   }
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-4">
+    <section className="rounded-2xl border border-slate-200 bg-white p-4">
       <div className="mb-1 flex items-center justify-between gap-2">
-        <h2 className="text-sm font-black text-gray-900">공유왕 점수</h2>
+        <h2 className="text-sm font-black text-slate-900">공유왕 점수</h2>
         <button
           type="button"
           disabled={dirtyRows.length === 0 || busy}
           onClick={() => void saveAll()}
-          className="shrink-0 rounded-full bg-brand-red px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-600 disabled:bg-gray-200 disabled:text-gray-400"
+          className="shrink-0 rounded-full bg-brand-red px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-red-600 disabled:bg-slate-200 disabled:text-slate-400"
         >
           {busy ? "저장중.." : `변경사항 저장 (${dirtyRows.length})`}
         </button>
       </div>
-      <p className="mb-3 text-xs text-gray-400">
+      <p className="mb-3 text-xs text-slate-400">
         게시판 성과·도움사례 공유글 1건=1점 기준(가감 자유), 최고점=공유왕.
       </p>
 
       <input
-        className="mb-3 h-9 w-full rounded-lg border border-gray-200 px-3 text-sm text-gray-900 focus:border-red-300 focus:outline-none"
+        className="mb-3 h-9 w-full rounded-lg border border-slate-200 px-3 text-sm text-slate-900 focus:border-red-300 focus:outline-none"
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder="이름·기수 검색"
@@ -100,10 +100,10 @@ export default function ShareScoresManager({
                 dirty ? "border-yellow-400 bg-yellow-50" : "border-transparent"
               }`}
             >
-              <span className="w-14 shrink-0 truncate text-px-11 font-bold text-gray-400">
+              <span className="w-14 shrink-0 truncate text-px-11 font-bold text-slate-400">
                 {r.cohort}기
               </span>
-              <span className="min-w-0 flex-1 truncate text-sm font-bold text-gray-900">
+              <span className="min-w-0 flex-1 truncate text-sm font-bold text-slate-900">
                 {r.name}
               </span>
               <div className="flex shrink-0 items-center gap-1">
@@ -111,14 +111,14 @@ export default function ShareScoresManager({
                   type="button"
                   aria-label="감점"
                   onClick={() => setPoints(r.email, r.points - 1)}
-                  className="h-8 w-8 rounded-full border border-gray-200 text-base font-black text-gray-600 hover:bg-gray-50"
+                  className="h-8 w-8 rounded-full border border-slate-200 text-base font-black text-slate-600 hover:bg-slate-50"
                 >
                   −
                 </button>
                 <input
                   type="number"
                   inputMode="numeric"
-                  className="h-8 w-14 rounded-lg border border-gray-200 text-center text-sm font-black tabular-nums text-gray-900 focus:border-red-300 focus:outline-none"
+                  className="h-8 w-14 rounded-lg border border-slate-200 text-center text-sm font-black tabular-nums text-slate-900 focus:border-red-300 focus:outline-none"
                   value={r.points}
                   onChange={(e) =>
                     setPoints(r.email, Math.round(Number(e.target.value) || 0))
@@ -128,7 +128,7 @@ export default function ShareScoresManager({
                   type="button"
                   aria-label="가점"
                   onClick={() => setPoints(r.email, r.points + 1)}
-                  className="h-8 w-8 rounded-full border border-gray-200 text-base font-black text-gray-600 hover:bg-gray-50"
+                  className="h-8 w-8 rounded-full border border-slate-200 text-base font-black text-slate-600 hover:bg-slate-50"
                 >
                   +
                 </button>
@@ -138,16 +138,16 @@ export default function ShareScoresManager({
         })}
       </ul>
       {rows.length === 0 && (
-        <p className="py-4 text-center text-sm text-gray-400">
+        <p className="py-4 text-center text-sm text-slate-400">
           입금 참가자가 없어요.
         </p>
       )}
       {filtered.length === 0 && rows.length > 0 && (
-        <p className="py-4 text-center text-sm text-gray-400">
+        <p className="py-4 text-center text-sm text-slate-400">
           검색 결과가 없어요.
         </p>
       )}
-      {msg && <p className="mt-2 text-xs font-semibold text-gray-500">{msg}</p>}
+      {msg && <p className="mt-2 text-xs font-semibold text-slate-500">{msg}</p>}
     </section>
   );
 }

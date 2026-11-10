@@ -24,12 +24,12 @@ type Row = BadgeRow;
 function TileStatus({ row }: { row: Row }) {
   const { def, state } = row;
   if (state.earned) return <span className="text-px-11 font-semibold text-emerald-700">{state.earnedOn ? `${badgeDateLabel(state.earnedOn)} 획득` : "획득"}</span>;
-  if (!def.ready && def.group !== "secret") return <span className="text-px-11 text-gray-400">준비 중</span>;
+  if (!def.ready && def.group !== "secret") return <span className="text-px-11 text-slate-400">준비 중</span>;
   const p = state.progress;
-  if (!p) return <span className="text-px-11 text-gray-400">잠김</span>;
+  if (!p) return <span className="text-px-11 text-slate-400">잠김</span>;
   return <>
     <span className="badge-meter mt-0.5 w-3/4" aria-hidden="true"><i style={{ width: `${Math.round((p.cur / p.max) * 100)}%` }} /></span>
-    <span className="text-px-11 tabular-nums text-gray-400">{p.cur} / {p.max}{p.unit}</span>
+    <span className="text-px-11 tabular-nums text-slate-400">{p.cur} / {p.max}{p.unit}</span>
   </>;
 }
 
@@ -68,22 +68,22 @@ export default function BadgesPage() {
               배지를 불러오지 못했어요. <button type="button" className="font-bold underline" onClick={() => void q.refetch()}>다시 시도</button>
             </div>
           )}
-          {q.isLoading && <p className="py-10 text-center text-sm text-gray-400">배지를 모으는 중…</p>}
+          {q.isLoading && <p className="py-10 text-center text-sm text-slate-400">배지를 모으는 중…</p>}
           {q.data && <>
             <div className="grid gap-3 2xl:grid-cols-2">
-              <div className="rounded-2xl border border-gray-200 bg-white p-4">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
                 <div className="flex items-center gap-4">
                   <div className="shrink-0">
-                    <div className="text-xs font-bold text-gray-500">모은 배지</div>
-                    <div className="text-3xl font-black tabular-nums text-gray-900">{got.length} <span className="text-base font-bold text-gray-400">/ {BADGES.length}</span></div>
+                    <div className="text-xs font-bold text-slate-500">모은 배지</div>
+                    <div className="text-3xl font-black tabular-nums text-slate-900">{got.length} <span className="text-base font-bold text-slate-400">/ {BADGES.length}</span></div>
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="badge-meter badge-meter--total" aria-hidden="true"><i style={{ width: `${pct}%` }} /></div>
                     {recent.length > 0 && (
-                      <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-gray-500">
+                      <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
                         최근
                         {recent.map(r => (
-                          <span key={r.def.id} className="inline-flex items-center gap-1 rounded-full border border-gray-200 py-0.5 pl-0.5 pr-2 font-semibold text-gray-700">
+                          <span key={r.def.id} className="inline-flex items-center gap-1 rounded-full border border-slate-200 py-0.5 pl-0.5 pr-2 font-semibold text-slate-700">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={`/badges/${r.def.img}.png`} alt="" className="h-5 w-5" />{r.def.name}
                           </span>
@@ -98,13 +98,13 @@ export default function BadgesPage() {
                   <BadgeMedal img={next.def.img} tier={next.def.tier} locked={false} />
                   <div className="min-w-0 flex-1">
                     <div className="text-xs font-black text-amber-700">다음 배지</div>
-                    <div className="text-base font-black text-gray-900">{next.def.name}</div>
+                    <div className="text-base font-black text-slate-900">{next.def.name}</div>
                     {next.state.progress ? <>
-                      <div className="text-sm text-gray-700">{next.state.progress.max - next.state.progress.cur}{next.state.progress.unit} 남았어요 · {next.state.progress.cur} / {next.state.progress.max}{next.state.progress.unit}</div>
+                      <div className="text-sm text-slate-700">{next.state.progress.max - next.state.progress.cur}{next.state.progress.unit} 남았어요 · {next.state.progress.cur} / {next.state.progress.max}{next.state.progress.unit}</div>
                       <div className="badge-meter badge-meter--next mt-1.5" aria-hidden="true"><i style={{ width: `${Math.round((next.state.progress.cur / next.state.progress.max) * 100)}%` }} /></div>
-                    </> : <div className="text-sm text-gray-700">{next.def.how}</div>}
+                    </> : <div className="text-sm text-slate-700">{next.def.how}</div>}
                     {next.def.cta && (
-                      <Link href={next.def.cta.href as Route} className="mt-2.5 inline-flex min-h-9 items-center rounded-lg bg-gray-900 px-3.5 text-sm font-bold text-white">{next.def.cta.label}</Link>
+                      <Link href={next.def.cta.href as Route} className="mt-2.5 inline-flex min-h-9 items-center rounded-lg bg-slate-900 px-3.5 text-sm font-bold text-white">{next.def.cta.label}</Link>
                     )}
                   </div>
                 </div>
@@ -117,7 +117,7 @@ export default function BadgesPage() {
                 const on = filter === g.id;
                 return (
                   <button key={g.id} type="button" aria-pressed={on} onClick={() => setFilter(g.id)}
-                    className={`min-h-9 shrink-0 rounded-full border px-3 text-sm font-semibold tabular-nums ${on ? "border-gray-900 bg-gray-900 text-white" : "border-gray-200 bg-white text-gray-700"}`}>
+                    className={`min-h-9 shrink-0 rounded-full border px-3 text-sm font-semibold tabular-nums ${on ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 bg-white text-slate-700"}`}>
                     {g.name} {list.filter(r => r.state.earned).length}/{list.length}
                   </button>
                 );
@@ -129,8 +129,8 @@ export default function BadgesPage() {
               return (
                 <section key={g.id} className="flex flex-col gap-2" aria-labelledby={`badge-group-${g.id}`}>
                   <div>
-                    <h2 id={`badge-group-${g.id}`} className="text-sm font-black text-gray-900">{g.name} <span className="text-xs font-bold tabular-nums text-gray-400">{list.filter(r => r.state.earned).length} / {list.length}</span></h2>
-                    <p className="text-xs text-gray-500">{g.hint}</p>
+                    <h2 id={`badge-group-${g.id}`} className="text-sm font-black text-slate-900">{g.name} <span className="text-xs font-bold tabular-nums text-slate-400">{list.filter(r => r.state.earned).length} / {list.length}</span></h2>
+                    <p className="text-xs text-slate-500">{g.hint}</p>
                   </div>
                   <div className="grid grid-cols-3 gap-1.5 2xl:grid-cols-6">
                     {list.map(r => {
@@ -138,10 +138,10 @@ export default function BadgesPage() {
                       return (
                         <button key={r.def.id} type="button" onClick={() => setOpenId(r.def.id)}
                           aria-label={`${hidden ? "숨은 배지" : r.def.name} ${r.state.earned ? "획득" : "잠김"}`}
-                          className="relative flex min-w-0 flex-col items-center gap-1 rounded-xl border border-gray-100 bg-white px-1.5 pb-2.5 pt-3 text-center hover:border-gray-300">
+                          className="relative flex min-w-0 flex-col items-center gap-1 rounded-xl border border-slate-100 bg-white px-1.5 pb-2.5 pt-3 text-center hover:border-slate-300">
                           {fresh.has(r.def.id) && <span className="badge-new">NEW</span>}
                           <BadgeMedal img={r.def.img} tier={r.def.tier} locked={!r.state.earned} hidden={hidden} size="sm" />
-                          <span className="break-keep text-xs font-bold leading-tight text-gray-900">{hidden ? "???" : r.def.name}</span>
+                          <span className="break-keep text-xs font-bold leading-tight text-slate-900">{hidden ? "???" : r.def.name}</span>
                           <TileStatus row={r} />
                         </button>
                       );
@@ -150,7 +150,7 @@ export default function BadgesPage() {
                 </section>
               );
             })}
-            <p className="text-center text-px-11 text-gray-400">
+            <p className="text-center text-px-11 text-slate-400">
               배지는 한 번 얻으면 사라지지 않아요. 다른 사람에게는 보이지 않아요.
               {q.data.partial && " 일부 기록을 아직 읽지 못해 배지가 덜 보일 수 있어요."}
             </p>

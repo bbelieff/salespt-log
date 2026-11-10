@@ -26,19 +26,19 @@ export default function MeetingPickerModal({ meetings, onPick, onClose }: Props)
       className="rounded-2xl bg-white p-4 shadow-2xl"
     >
         <div className="mb-3 flex items-start justify-between gap-2">
-          <h3 className="text-sm font-black text-gray-900">
+          <h3 className="text-sm font-black text-slate-900">
             삭제할 미팅 선택
-            <span className="ml-1 font-normal text-gray-400">
+            <span className="ml-1 font-normal text-slate-400">
               ({meetings.length}건)
             </span>
           </h3>
           <AppDialogClose
-            className="shrink-0 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-500 hover:bg-gray-50"
+            className="shrink-0 rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-500 hover:bg-slate-50"
           >
             ✕ 닫기
           </AppDialogClose>
         </div>
-        <p className="mb-2 text-px-11 text-gray-500">
+        <p className="mb-2 text-px-11 text-slate-500">
           선택한 미팅이 삭제됩니다 (계약카드 있으면 함께). 미팅예약 -1.
         </p>
         <div className="space-y-1.5">
@@ -47,15 +47,15 @@ export default function MeetingPickerModal({ meetings, onPick, onClose }: Props)
               key={m.id}
               type="button"
               onClick={() => onPick(m)}
-              className="flex w-full items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-left transition-colors hover:border-red-300 hover:bg-red-50"
+              className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left transition-colors hover:border-red-300 hover:bg-red-50"
             >
-              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-800">
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-slate-800">
                 {m.업체명 || "(업체명 없음)"}
               </span>
-              <span className="shrink-0 text-xs text-gray-500">
+              <span className="shrink-0 text-xs text-slate-500">
                 {m.미팅날짜} {m.미팅시간}
               </span>
-              <span className="shrink-0 text-xs font-medium text-gray-400">
+              <span className="shrink-0 text-xs font-medium text-slate-400">
                 {m.상태}
               </span>
             </button>

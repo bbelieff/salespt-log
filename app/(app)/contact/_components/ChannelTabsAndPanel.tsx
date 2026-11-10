@@ -179,7 +179,7 @@ export default function ChannelTabsAndPanel({
       {contextHeader}
       <div className="px-3 pb-2 pt-3 text-xs font-semibold text-slate-700">입력할 채널 <span className="ml-2 font-normal text-slate-400">눌러서 바로 변경</span></div>
       {/* 채널 탭 — 길게 누른 후 드래그하여 순서 변경 (자동 저장) */}
-      <div className="flex border-b border-gray-100">
+      <div className="flex border-b border-slate-100">
         {order.map((c) => {
           const meta = CHANNEL_META[c];
           const colorCls = COLOR_CLASS[meta.color];
@@ -219,7 +219,7 @@ export default function ChannelTabsAndPanel({
                 setDragOver(null);
               }}
               className={`relative min-h-11 min-w-0 flex-1 px-1 py-2.5 transition-all ${
-                isActive ? colorCls.bg50 : "bg-white hover:bg-gray-50"
+                isActive ? colorCls.bg50 : "bg-white hover:bg-slate-50"
               } ${isDragging ? "opacity-40" : ""} ${
                 isDragOver ? "ring-2 ring-inset ring-blue-300" : ""
               }`}
@@ -230,7 +230,7 @@ export default function ChannelTabsAndPanel({
               <div className="flex flex-col items-center gap-1">
                 <span
                   className={`whitespace-nowrap text-xs font-bold ${
-                    isActive ? colorCls.text700 : "text-gray-500"
+                    isActive ? colorCls.text700 : "text-slate-500"
                   }`}
                 >
                   {c}
@@ -238,13 +238,13 @@ export default function ChannelTabsAndPanel({
                 {total > 0 ? (
                   <span
                     className={`rounded-full px-1.5 py-px text-px-11 font-semibold leading-none ${
-                      isActive ? `${colorCls.bg100} ${colorCls.text700}` : "bg-gray-100 text-gray-500"
+                      isActive ? `${colorCls.bg100} ${colorCls.text700}` : "bg-slate-100 text-slate-500"
                     }`}
                   >
                     {total}
                   </span>
                 ) : (
-                  <span className="text-px-11 leading-none text-gray-300">·</span>
+                  <span className="text-px-11 leading-none text-slate-300">·</span>
                 )}
               </div>
               {isActive && (
@@ -260,24 +260,24 @@ export default function ChannelTabsAndPanel({
       <div className={`flex items-center gap-2 border-b ${cls.border} ${cls.bg50} px-3 py-2`}>
         <span className="shrink-0 text-xs font-semibold text-slate-700">{Number(date.slice(5, 7))}/{Number(date.slice(8))}</span>
         <span className={`${ch.badgeClass} shrink-0 whitespace-nowrap`}>{active}</span>
-        <span className="break-keep text-xs text-gray-500">{ch.desc} · 이 채널에 기록합니다</span>
+        <span className="break-keep text-xs text-slate-500">{ch.desc} · 이 채널에 기록합니다</span>
       </div>
       {/* 입력 헤더 + 생산 첫 행 — 우측 '⭐ 오늘 합계' 제목 셀이 헤더+생산행 높이를 세로 병합 */}
-      <div className="flex items-stretch border-b border-gray-100">
+      <div className="flex items-stretch border-b border-slate-100">
         <div className="min-w-0 flex-1">
-          <div className="bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-500">채널 입력</div>
-          <div className="border-t border-gray-100 px-3 py-3">
+          <div className="bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-500">채널 입력</div>
+          <div className="border-t border-slate-100 px-3 py-3">
             {active === "직접생산" ? (
               directActive ? (
                 <div className="flex items-center justify-between gap-2">
                   <div className="min-w-0 pr-1">
-                    <div className="truncate text-sm font-medium text-gray-800">
+                    <div className="truncate text-sm font-medium text-slate-800">
                       진행중 · 생산 #{directIdx + 1}
-                      <span className="ml-1 text-gray-500">
+                      <span className="ml-1 text-slate-500">
                         ({strF(directActive as never, "소재") || "소재없음"})
                       </span>
                     </div>
-                    <div className="break-keep text-xs text-gray-400">
+                    <div className="break-keep text-xs text-slate-400">
                       {strF(directActive as never, "시작일")}~
                       {strF(directActive as never, "종료일")} ·{" "}
                       <Link href="/db?channel=직접생산" className="text-green-600 underline">
@@ -289,12 +289,12 @@ export default function ChannelTabsAndPanel({
                     <div className="num-mono text-sm font-bold text-green-700">
                       생산 {directLiveCount}건
                     </div>
-                    <div className="text-px-11 text-gray-400">유입 집계</div>
+                    <div className="text-px-11 text-slate-400">유입 집계</div>
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-medium text-gray-500">진행 중 생산 없음</span>
+                  <span className="text-sm font-medium text-slate-500">진행 중 생산 없음</span>
                   <Link
                     href="/db?channel=직접생산"
                     className="shrink-0 text-xs text-green-600 underline"
@@ -306,14 +306,14 @@ export default function ChannelTabsAndPanel({
             ) : active === "현수막" ? (
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0 pr-1">
-                  <div className="text-sm font-medium text-gray-800">게시</div>
+                  <div className="text-sm font-medium text-slate-800">게시</div>
                   {/* 설명 없으면 아래 「유입」에 적는 사고가 난다 — 2026-09-19 실제 발생. */}
-                  <div className="break-keep text-xs text-gray-400">{ch.helps.production} · 재고 {bannerStock}개</div>
+                  <div className="break-keep text-xs text-slate-400">{ch.helps.production} · 재고 {bannerStock}개</div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
                   <button
                     type="button"
-                    className="stepper-btn hit-44 bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    className="stepper-btn hit-44 bg-slate-100 text-slate-600 hover:bg-slate-200"
                     onClick={() => onStep("production", -1)}
                     aria-label="게시 감소"
                   >
@@ -335,7 +335,7 @@ export default function ChannelTabsAndPanel({
                     type="button"
                     className={`stepper-btn hit-44 ${
                       bannerStock <= 0
-                        ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                        ? "bg-slate-200 text-slate-400 cursor-not-allowed"
                         : `${cls.bg500} text-white ${cls.hover}`
                     }`}
                     onClick={() => onStep("production", 1)}
@@ -349,19 +349,19 @@ export default function ChannelTabsAndPanel({
             ) : (
               <div className="flex items-center justify-between gap-2">
                 <div className="min-w-0 pr-1">
-                  <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-sm font-medium text-gray-800">
+                  <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-sm font-medium text-slate-800">
                     <span className="whitespace-nowrap">{active === "매입DB" ? "유입대기" : "생산"}</span>
-                    <span className="whitespace-nowrap rounded bg-gray-100 px-1 py-px text-px-11 font-bold text-gray-500">
+                    <span className="whitespace-nowrap rounded bg-slate-100 px-1 py-px text-px-11 font-bold text-slate-500">
                       🔒 DB자동
                     </span>
                   </div>
-                  <div className="line-clamp-2 break-keep text-xs text-gray-400">
+                  <div className="line-clamp-2 break-keep text-xs text-slate-400">
                     {active === "매입DB"
                       ? "구매 누적 − 유입 누적 (유입할수록 감소)"
                       : "DB생산 탭에서 기록 · 자동 반영"}
                   </div>
                 </div>
-                <div className="shrink-0 num-mono text-sm font-semibold text-gray-700">
+                <div className="shrink-0 num-mono text-sm font-semibold text-slate-700">
                   {firstRow}
                 </div>
               </div>
@@ -387,7 +387,7 @@ export default function ChannelTabsAndPanel({
         const upstreamVal = m.upstream ? cell[m.upstream] : Infinity;
         const atLimit = m.upstream && cell[m.key] >= upstreamVal;
         const plusClass = atLimit
-          ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+          ? "bg-slate-200 text-slate-400 cursor-not-allowed"
           : `${cls.bg500} text-white ${cls.hover}`;
         const help = ch.helps[m.key as keyof typeof ch.helps];
         const isHighlight = highlightKey === m.key;
@@ -396,28 +396,28 @@ export default function ChannelTabsAndPanel({
         return (
           <div
             key={m.key}
-            className={`flex items-stretch ${mi < arr.length - 1 ? "border-b border-gray-50" : ""} ${
+            className={`flex items-stretch ${mi < arr.length - 1 ? "border-b border-slate-50" : ""} ${
               isHighlight ? "animate-pulse rounded-lg ring-2 ring-inset ring-blue-400" : ""
             }`}
           >
             <div className="flex min-w-0 flex-1 items-center gap-2 px-3 py-3">
               {/* 라벨 + 보조 도움말(최대 2줄 — 공간은 합계·스테퍼 우선, 좁은 화면에서 잘리지 않게 2026-11-07) */}
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-sm font-medium text-gray-800">
+                <div className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-sm font-medium text-slate-800">
                   <span className="whitespace-nowrap">{m.label}</span>
                   {isLeadInflow && (
-                    <span className="whitespace-nowrap rounded bg-gray-100 px-1 py-px text-px-11 font-bold text-gray-500">
+                    <span className="whitespace-nowrap rounded bg-slate-100 px-1 py-px text-px-11 font-bold text-slate-500">
                       🔒 DB자동
                     </span>
                   )}
                 </div>
-                <div className="line-clamp-2 break-keep text-xs text-gray-400">
+                <div className="line-clamp-2 break-keep text-xs text-slate-400">
                   {isLeadInflow ? "생산과 동일 · 자동" : help}
                 </div>
               </div>
               {isLeadInflow ? (
                 /* 파생값 — 입력 불가. 생산 행("발굴 N건")과 같은 라이브 소스라 항상 생산과 일치. */
-                <div className="shrink-0 num-mono text-sm font-semibold text-gray-700">
+                <div className="shrink-0 num-mono text-sm font-semibold text-slate-700">
                   {leadInflow}
                 </div>
               ) : (
@@ -425,7 +425,7 @@ export default function ChannelTabsAndPanel({
                 <div className="flex shrink-0 items-center gap-2">
                   <button
                     type="button"
-                    className="stepper-btn hit-44 bg-gray-100 text-gray-600 hover:bg-gray-200"
+                    className="stepper-btn hit-44 bg-slate-100 text-slate-600 hover:bg-slate-200"
                     disabled={cell[m.key] <= minimum}
                     title={minimum > 0 ? "DB 목록에서 잡힌 숫자는 DB 목록에서 바꿔 주세요" : undefined}
                     onClick={() => onStep(m.key, -1)}
@@ -461,7 +461,7 @@ export default function ChannelTabsAndPanel({
             <div className="flex w-20 shrink-0 flex-col items-center justify-center border-l-2 bg-indigo-50 py-2 text-center">
               <div
                 className={`num-mono text-2xl font-extrabold leading-none ${
-                  total > 0 ? cls.text700 : "text-gray-300"
+                  total > 0 ? cls.text700 : "text-slate-300"
                 }`}
               >
                 {total}
@@ -471,7 +471,7 @@ export default function ChannelTabsAndPanel({
         );
       })}
       {active === "콜·지·기·소" && leadBacklog > 0 && (
-        <div className="flex items-center gap-2 border-t border-gray-100 bg-violet-50 px-3 py-2.5 text-xs text-violet-900">
+        <div className="flex items-center gap-2 border-t border-slate-100 bg-violet-50 px-3 py-2.5 text-xs text-violet-900">
           <span aria-hidden="true">📌</span>
           <span>
             아직 미팅 안 잡은 영업기회 <b className="font-bold">{leadBacklog}건</b>

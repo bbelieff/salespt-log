@@ -64,7 +64,7 @@ export default function DoneForm({
       </div>
 
       <div>
-        <label className="mb-1 block text-xs text-gray-600">
+        <label className="mb-1 block text-xs text-slate-600">
           미팅사유
         </label>
         <textarea
@@ -72,7 +72,7 @@ export default function DoneForm({
           value={reason}
           onChange={(e) => setReason(e.target.value)}
           placeholder={`예: ${vendor}, 결정권자 부재로 보류`}
-          className="w-full resize-none rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-orange-500 focus:outline-none"
+          className="w-full resize-none rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-sm focus:border-orange-500 focus:outline-none"
         />
       </div>
 
@@ -80,7 +80,7 @@ export default function DoneForm({
         type="button"
         onClick={submit}
         disabled={pending}
-        className="w-full rounded-lg bg-orange-500 py-2.5 text-sm font-bold text-white transition-all hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-gray-300"
+        className="w-full rounded-lg bg-orange-500 py-2.5 text-sm font-bold text-white transition-all hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-slate-300"
       >
         {pending ? "저장중.." : "🟠 완료 확정"}
       </button>

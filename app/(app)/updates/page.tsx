@@ -100,8 +100,8 @@ export default function UpdatesArchivePage() {
           {notices.length > 0 && (
             <section className="mb-5">
               <div className="mb-2 flex items-center gap-2">
-                <span className="text-xs font-black text-gray-400">공지</span>
-                <div className="h-px flex-1 bg-gray-100" />
+                <span className="text-xs font-black text-slate-400">공지</span>
+                <div className="h-px flex-1 bg-slate-100" />
               </div>
               <div className="space-y-2">
                 {notices.map((n) => (
@@ -110,15 +110,15 @@ export default function UpdatesArchivePage() {
                     className={`rounded-xl p-3 ${
                       n.pinned
                         ? "border border-red-200 bg-red-50"
-                        : "border border-gray-100 bg-white"
+                        : "border border-slate-100 bg-white"
                     }`}
                   >
-                    <h3 className="mb-1 flex items-center gap-1 text-sm font-black text-gray-900">
+                    <h3 className="mb-1 flex items-center gap-1 text-sm font-black text-slate-900">
                       {n.pinned && <span aria-label="고정 공지">📌</span>}
                       {n.title}
                     </h3>
                     {noticeDate(n) && (
-                      <p className="mb-1.5 text-px-11 font-bold text-gray-400">
+                      <p className="mb-1.5 text-px-11 font-bold text-slate-400">
                         {noticeDate(n)}
                       </p>
                     )}
@@ -133,21 +133,21 @@ export default function UpdatesArchivePage() {
           {byMonth.map((m) => (
             <section key={m.label} className="mb-4">
               <div className="mb-1 flex items-center gap-2">
-                <span className="text-xs font-black text-gray-400">{m.label}</span>
-                <div className="h-px flex-1 bg-gray-100" />
+                <span className="text-xs font-black text-slate-400">{m.label}</span>
+                <div className="h-px flex-1 bg-slate-100" />
               </div>
               <UpdateAccordion updates={m.rows} />
             </section>
           ))}
           {rows.length === 0 && notices.length === 0 && !loading && !error && (
-            <p className="py-8 text-center text-sm text-gray-400">아직 새소식이 없어요.</p>
+            <p className="py-8 text-center text-sm text-slate-400">아직 새소식이 없어요.</p>
           )}
           {hasMore && (
             <button
               type="button"
               disabled={loading}
               onClick={() => void loadMore(offset)}
-              className="mb-6 h-11 w-full rounded-xl border border-gray-200 bg-white text-sm font-bold text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+              className="mb-6 h-11 w-full rounded-xl border border-slate-200 bg-white text-sm font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
             >
               {loading ? "불러오는 중…" : "더 보기"}
             </button>

@@ -16,7 +16,7 @@ export function ExpandHeader({
   reservationDate: string;
 }) {
   return (
-    <div className="flex items-center justify-between text-xs text-gray-400">
+    <div className="flex items-center justify-between text-xs text-slate-400">
       <span>예약생성 {reservationDate}</span>
       {saved ? (
         <span className="font-semibold text-blue-600">✓ 등록됨</span>
@@ -46,7 +46,7 @@ export function DateTimeRow({
       if (onBlurGroup && !e.currentTarget.contains(e.relatedTarget as Node)) onBlurGroup();
     }}>
       <div className="min-w-0 flex-1">
-        <label className="mb-1 block text-xs text-gray-500">미팅 일정</label>
+        <label className="mb-1 block text-xs text-slate-500">미팅 일정</label>
         <DateInputCustom
           value={미팅날짜}
           onChange={onDate}
@@ -54,7 +54,7 @@ export function DateTimeRow({
         />
       </div>
       <div className="shrink-0" style={{ width: 140 }}>
-        <label className="mb-1 block text-xs text-gray-500">시간</label>
+        <label className="mb-1 block text-xs text-slate-500">시간</label>
         <TimeSelectPair
           value={미팅시간}
           onChange={onTime}
@@ -79,11 +79,11 @@ export function FieldText({
   const id = useId();
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-xs text-gray-500">{label}</label>
+      <label htmlFor={id} className="mb-1 block text-xs text-slate-500">{label}</label>
       <input
         id={id}
         type="text"
-        className="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+        className="w-full rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -102,14 +102,14 @@ export function FieldNote({
   const id = useId();
   return (
     <div>
-      <label htmlFor={id} className="mb-1 flex items-center gap-1 text-xs font-semibold text-gray-600">
+      <label htmlFor={id} className="mb-1 flex items-center gap-1 text-xs font-semibold text-slate-600">
         <span>📝 예약비고</span>
-        <span className="font-normal text-gray-400">· 미팅 전 준비정보</span>
+        <span className="font-normal text-slate-400">· 미팅 전 준비정보</span>
       </label>
       <textarea
         id={id}
         rows={2}
-        className="w-full resize-none rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+        className="w-full resize-none rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
         placeholder="예: 사장님 부재 시간, 지참서류"
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -139,7 +139,7 @@ export function Actions({
             type="button"
             onClick={onPrimary}
             disabled={primaryDisabled}
-            className="flex-1 rounded-lg bg-blue-500 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
+            className="flex-1 rounded-lg bg-blue-700 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-800 disabled:opacity-50"
           >
             {primaryLabel}
           </button>
@@ -152,7 +152,7 @@ export function Actions({
           ✕ 삭제
         </button>
       </div>
-      <div className="text-center text-xs text-gray-400">{hint}</div>
+      <div className="text-center text-xs text-slate-400">{hint}</div>
     </>
   );
 }

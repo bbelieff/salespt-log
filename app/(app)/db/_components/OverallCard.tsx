@@ -37,13 +37,13 @@ export default function OverallCard({
   return (
     <div className="mb-3 rounded-xl bg-white p-4 shadow-sm">
       <div className="mb-2">
-        <div className="text-sm font-semibold text-gray-800">전체 종합</div>
+        <div className="text-sm font-semibold text-slate-800">전체 종합</div>
       </div>
       {items.map((it) => (
         <div
           key={it.key}
           className={`flex items-center justify-between py-1.5 ${
-            it.key === activeCh ? "-mx-2 rounded-md bg-gray-50 px-2" : ""
+            it.key === activeCh ? "-mx-2 rounded-md bg-slate-50 px-2" : ""
           }`}
         >
           <div className="flex min-w-0 items-center gap-2">
@@ -51,16 +51,16 @@ export default function OverallCard({
               className="h-2 w-2 shrink-0 rounded-full"
               style={{ background: it.color }}
             />
-            <span className="truncate text-sm text-gray-700">{it.name}</span>
+            <span className="truncate text-sm text-slate-700">{it.name}</span>
           </div>
           <div className="flex shrink-0 items-baseline gap-3">
-            <span className="text-sm text-gray-500" style={numStyle}>
+            <span className="text-sm text-slate-500" style={numStyle}>
               {fmtWon(it.count)}
               {it.unit}
             </span>
             <span
               className={`w-24 text-right text-sm font-semibold ${
-                it.isCost ? "text-red-600" : "text-gray-300"
+                it.isCost ? "text-red-600" : "text-slate-300"
               }`}
               style={numStyle}
             >
@@ -69,10 +69,10 @@ export default function OverallCard({
           </div>
         </div>
       ))}
-      <div className="mt-2 flex items-center justify-between border-t border-gray-100 pt-2">
-        <span className="text-sm font-semibold text-gray-800">총 매입 합계</span>
+      <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2">
+        <span className="text-sm font-semibold text-slate-800">총 매입 합계</span>
         <div className="flex items-baseline gap-3">
-          <span className="text-sm text-gray-600" style={numStyle}>
+          <span className="text-sm text-slate-600" style={numStyle}>
             {fmtWon(totalCount)}건
           </span>
           <span
@@ -83,7 +83,7 @@ export default function OverallCard({
           </span>
         </div>
       </div>
-      {goalSummary && <div className="mt-2 border-t border-gray-100 pt-1">{goalSummary}</div>}
+      {goalSummary && <div className="mt-2 border-t border-slate-100 pt-1">{goalSummary}</div>}
     </div>
   );
 }

@@ -30,7 +30,7 @@ function Choice({ code, name, path, lead, onPick }: { code: string; name: string
     <button type="button" onClick={onPick} title={path} className="flex w-full min-w-0 items-center gap-1.5 rounded px-1 py-1 text-left hover:bg-white">
       {lead && <span className="shrink-0 text-px-11 font-semibold text-brand-red">{lead}</span>}
       <span className={chip}>{code}</span>
-      <span className="min-w-0 truncate text-xs text-gray-800">{name}</span>
+      <span className="min-w-0 truncate text-xs text-slate-800">{name}</span>
     </button>
   );
 }
@@ -77,7 +77,7 @@ export function KsicLine({ draft, onPatch }: { draft: CompanyInfo; onPatch: (p: 
   return (
     <div className="w-full min-w-0" data-ksic-line>
       <div className="flex min-w-0 items-center gap-1.5">
-        <span className="shrink-0 whitespace-nowrap text-px-11 text-gray-500">산업분류</span>
+        <span className="shrink-0 whitespace-nowrap text-px-11 text-slate-500">산업분류</span>
         {cur ? (
           <>
             {cur.code && (
@@ -90,13 +90,13 @@ export function KsicLine({ draft, onPatch }: { draft: CompanyInfo; onPatch: (p: 
                 {cur.code}
               </button>
             )}
-            <span className="min-w-0 truncate text-xs text-gray-800" title={first && !saved ? `${first.sectionName} › ${first.midName}` : undefined}>
+            <span className="min-w-0 truncate text-xs text-slate-800" title={first && !saved ? `${first.sectionName} › ${first.midName}` : undefined}>
               {cur.name}
             </span>
             {!saved && <AutoTag />}
           </>
         ) : (
-          <span className="min-w-0 truncate text-xs text-gray-400">맞는 분류를 못 찾았어요</span>
+          <span className="min-w-0 truncate text-xs text-slate-400">맞는 분류를 못 찾았어요</span>
         )}
         <button
           type="button"
@@ -108,7 +108,7 @@ export function KsicLine({ draft, onPatch }: { draft: CompanyInfo; onPatch: (p: 
         </button>
       </div>
       {open && (
-        <div className="mt-1 space-y-0.5 rounded-md border border-gray-200 bg-gray-50 p-1">
+        <div className="mt-1 space-y-0.5 rounded-md border border-slate-200 bg-slate-50 p-1">
           {saved && first && (
             <Choice
               lead="자동 추천으로 두기"
@@ -124,7 +124,7 @@ export function KsicLine({ draft, onPatch }: { draft: CompanyInfo; onPatch: (p: 
             <Choice key={h.code} code={h.code} name={h.name} path={`${h.sectionName} › ${h.midName}`} onPick={() => pick(h.code, h.name)} />
           ))}
           <input
-            className="w-full rounded-md border border-gray-300 bg-white px-2 py-1 text-xs focus:border-brand-red focus:outline-none"
+            className="w-full rounded-md border border-slate-300 bg-white px-2 py-1 text-xs focus:border-brand-red focus:outline-none"
             placeholder="코드나 낱말로 찾기 (예: 47711, 화초)"
             aria-label="표준산업분류 찾기"
             value={q}
@@ -133,7 +133,7 @@ export function KsicLine({ draft, onPatch }: { draft: CompanyInfo; onPatch: (p: 
           {found.map((h) => (
             <Choice key={`s-${h.code}`} code={h.code} name={h.name} path={`${h.sectionName} › ${h.midName}`} onPick={() => pick(h.code, h.name)} />
           ))}
-          {q.trim() !== "" && found.length === 0 && <p className="px-1 text-xs text-gray-400">찾는 분류가 없어요</p>}
+          {q.trim() !== "" && found.length === 0 && <p className="px-1 text-xs text-slate-400">찾는 분류가 없어요</p>}
         </div>
       )}
       {copied && <AppToast>산업분류 코드 {cur?.code} 복사됨</AppToast>}

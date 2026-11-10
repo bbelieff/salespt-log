@@ -40,7 +40,7 @@ export default function LoadingOverlay({
             <img src="/salespt-logo.png" alt="" className="object-contain" aria-hidden />
           </span>
         </div>
-        <p key={message} className="lo-msg whitespace-nowrap text-center text-sm font-bold text-gray-800">
+        <p key={message} className="lo-msg whitespace-nowrap text-center text-sm font-bold text-slate-800">
           {message}
         </p>
         <span className="lo-progress" aria-hidden />

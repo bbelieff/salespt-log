@@ -35,7 +35,7 @@ interface Props {
   onMessage: (message: string) => void;
 }
 
-const controlClass = "min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-left text-sm text-gray-900 focus:border-blue-500 focus:outline-none";
+const controlClass = "min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-left text-sm text-slate-900 focus:border-blue-500 focus:outline-none";
 const refKey = (ref: ExpenseReclassificationRef) => `${ref.kind}:${ref.id}`;
 const isSystemCategory = (category: ExpenseCategoryR6) => category.isSystem === true || category.name === "미분류" || category.id.startsWith("system:");
 const isDeletedCategory = (category: ExpenseCategoryR6) => Boolean(category.deletedAt || category.archivedAt);
@@ -155,37 +155,37 @@ export default function ExpenseCategoryPicker(props: Props) {
     finally { setActionBusy(false); }
   }
 
-  if (loading || (!loaded && !errorMessage)) return <div role="status" className="rounded-lg border border-gray-200 bg-slate-50 p-3 text-xs font-semibold text-gray-600">카테고리를 불러오고 있습니다.</div>;
+  if (loading || (!loaded && !errorMessage)) return <div role="status" className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs font-semibold text-slate-600">카테고리를 불러오고 있습니다.</div>;
   if (errorMessage) return <div role="alert" className="rounded-lg border border-red-100 bg-red-50 p-3 text-xs text-red-800"><p className="font-semibold">{errorMessage}</p><button type="button" disabled={retrying} onClick={onRetry} className="mt-3 min-h-11 rounded-lg border border-red-200 bg-white px-4 font-bold disabled:opacity-50">{retrying ? "다시 불러오는 중…" : "다시 시도"}</button></div>;
 
   return (
     <div className="relative">
       <button type="button" role="combobox" aria-controls={listId} aria-expanded={open} aria-haspopup="listbox" aria-label="비용 카테고리" onClick={() => { setOpen((value) => !value); setActionError(null); }} className={`${controlClass} flex items-center justify-between gap-3 font-semibold`}>
-        <span className={selected ? "" : "text-gray-400"}>{selected?.name ?? (visible.length === 0 ? "첫 카테고리를 추가하세요" : "카테고리를 선택하세요")}</span><DisclosureChevron open={open} className="text-gray-400" />
+        <span className={selected ? "" : "text-slate-400"}>{selected?.name ?? (visible.length === 0 ? "첫 카테고리를 추가하세요" : "카테고리를 선택하세요")}</span><DisclosureChevron open={open} className="text-slate-400" />
       </button>
-      {visible.length === 0 && <p className="mt-2 text-xs text-gray-500">등록된 카테고리가 없습니다. 목록을 열어 새 카테고리를 추가해 주세요.</p>}
+      {visible.length === 0 && <p className="mt-2 text-xs text-slate-500">등록된 카테고리가 없습니다. 목록을 열어 새 카테고리를 추가해 주세요.</p>}
 
-      {open && <div className="absolute left-0 right-0 z-30 mt-2 max-h-[70vh] overflow-y-auto rounded-xl border border-gray-200 bg-white p-3 shadow-xl" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setOpen(false); } }}>
-        <label className="block text-xs font-semibold text-gray-600">카테고리 검색<input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-gray-300 px-3 text-sm" placeholder="이름 검색" /></label>
+      {open && <div className="absolute left-0 right-0 z-30 mt-2 max-h-[70vh] overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 shadow-xl" onKeyDown={(event) => { if (event.key === "Escape") { event.preventDefault(); setOpen(false); } }}>
+        <label className="block text-xs font-semibold text-slate-600">카테고리 검색<input ref={searchRef} value={query} onChange={(event) => setQuery(event.target.value)} className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 px-3 text-sm" placeholder="이름 검색" /></label>
         <div id={listId} role="listbox" aria-label="카테고리 선택" className="mt-2 max-h-40 space-y-1 overflow-y-auto">
-          {filtered.length === 0 ? <p className="px-2 py-3 text-xs text-gray-400">일치하는 카테고리가 없습니다.</p> : filtered.map((category) => {
+          {filtered.length === 0 ? <p className="px-2 py-3 text-xs text-slate-400">일치하는 카테고리가 없습니다.</p> : filtered.map((category) => {
             const system = isSystemCategory(category);
-            return <div key={category.id} className="flex items-center gap-1 rounded-lg border border-transparent hover:border-gray-100">
-              <button type="button" role="option" aria-selected={category.id === value} onClick={() => onChange(category.id)} className={`min-h-11 min-w-0 flex-1 rounded-lg px-3 text-left text-sm ${category.id === value ? "bg-blue-50 font-bold text-blue-700" : "hover:bg-slate-50"}`}>{category.name}{system && <span className="ml-2 text-xs font-normal text-gray-400">고정</span>}</button>
+            return <div key={category.id} className="flex items-center gap-1 rounded-lg border border-transparent hover:border-slate-100">
+              <button type="button" role="option" aria-selected={category.id === value} onClick={() => onChange(category.id)} className={`min-h-11 min-w-0 flex-1 rounded-lg px-3 text-left text-sm ${category.id === value ? "bg-blue-50 font-bold text-blue-700" : "hover:bg-slate-50"}`}>{category.name}{system && <span className="ml-2 text-xs font-normal text-slate-400">고정</span>}</button>
               {!system && <button type="button" aria-label={`${category.name} 카테고리 삭제`} onClick={() => { setDeleteId(category.id); setActionError(null); }} className="min-h-[44px] min-w-[44px] rounded-lg text-xl font-bold text-red-600 hover:bg-red-50">×</button>}
             </div>;
           })}
         </div>
 
-        <div className="mt-3 border-t border-gray-100 pt-3"><p className="text-xs font-bold text-gray-700">새 카테고리</p><div className="mt-1 flex gap-2"><input aria-label="새 카테고리 이름" value={createName} onChange={(event) => setCreateName(event.target.value)} className="min-h-11 min-w-0 flex-1 rounded-lg border border-gray-300 px-3 text-sm" maxLength={40} placeholder="예: 소모품" /><button type="button" disabled={busy || actionBusy || !createName.trim()} onClick={() => void createCategory()} className="min-h-11 rounded-lg border border-blue-200 px-3 text-xs font-bold text-blue-700 disabled:opacity-40">추가</button></div></div>
+        <div className="mt-3 border-t border-slate-100 pt-3"><p className="text-xs font-bold text-slate-700">새 카테고리</p><div className="mt-1 flex gap-2"><input aria-label="새 카테고리 이름" value={createName} onChange={(event) => setCreateName(event.target.value)} className="min-h-11 min-w-0 flex-1 rounded-lg border border-slate-300 px-3 text-sm" maxLength={40} placeholder="예: 소모품" /><button type="button" disabled={busy || actionBusy || !createName.trim()} onClick={() => void createCategory()} className="min-h-11 rounded-lg border border-blue-200 px-3 text-xs font-bold text-blue-700 disabled:opacity-40">추가</button></div></div>
 
-        {selected && !isSystemCategory(selected) && <div className="mt-3 border-t border-gray-100 pt-3"><p className="text-xs font-bold text-gray-700">선택 카테고리 이름</p><input aria-label="선택 카테고리 이름 수정" value={renameName} onChange={(event) => setRenameName(event.target.value)} onBlur={() => { void autosaveRename(); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void autosaveRename(); } }} className="mt-1 min-h-11 w-full rounded-lg border border-gray-300 px-3 text-sm" maxLength={40} /><p aria-live="polite" className="mt-1 min-h-4 text-xs text-gray-400">{actionBusy ? "이름 변경 중…" : shouldAutosaveRename(selected.name, renameName) ? "입력 그룹을 벗어나면 자동으로 바뀌어요." : ""}</p></div>}
+        {selected && !isSystemCategory(selected) && <div className="mt-3 border-t border-slate-100 pt-3"><p className="text-xs font-bold text-slate-700">선택 카테고리 이름</p><input aria-label="선택 카테고리 이름 수정" value={renameName} onChange={(event) => setRenameName(event.target.value)} onBlur={() => { void autosaveRename(); }} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void autosaveRename(); } }} className="mt-1 min-h-11 w-full rounded-lg border border-slate-300 px-3 text-sm" maxLength={40} /><p aria-live="polite" className="mt-1 min-h-4 text-xs text-slate-400">{actionBusy ? "이름 변경 중…" : shouldAutosaveRename(selected.name, renameName) ? "입력 그룹을 벗어나면 자동으로 바뀌어요." : ""}</p></div>}
 
         {deleteCategory && <section aria-label={`${deleteCategory.name} 카테고리 삭제 확인`} className="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-900">
           <p className="font-bold">{deleteCategory.name}을 삭제할까요?</p>
           {usage.isLoading ? <p role="status" className="mt-2">사용량을 확인하고 있습니다.</p> : usage.error ? <div role="alert" className="mt-2"><p>{safeActionError(usage.error, "삭제")}</p><button type="button" onClick={() => { void usage.refetch(); }} className="mt-2 min-h-11 rounded-lg border border-red-200 bg-white px-3 font-bold">사용량 다시 확인</button></div> : usage.data && <p className="mt-2 leading-relaxed">항목 {usage.data.usage.entryCount}건, 반복 {usage.data.usage.ruleCount}건, 발생 {usage.data.usage.occurrenceCount}건이 미분류로 이동합니다. 기록과 금액은 삭제되지 않습니다.</p>}
           {actionError && <p role="alert" className="mt-2 rounded-lg bg-white p-2 font-semibold">{actionError}</p>}
-          <div className="mt-3 grid grid-cols-2 gap-2"><button type="button" disabled={actionBusy} onClick={() => { setDeleteId(""); setActionError(null); }} className="min-h-11 rounded-lg border border-gray-300 bg-white font-bold">취소</button><button type="button" disabled={actionBusy || !usage.data} onClick={() => void deleteSelectedCategory()} className="min-h-11 rounded-lg bg-red-600 px-2 font-bold text-white disabled:opacity-50">{actionBusy ? "삭제 중…" : actionError ? "삭제 다시 시도" : "카테고리 삭제 확인"}</button></div>
+          <div className="mt-3 grid grid-cols-2 gap-2"><button type="button" disabled={actionBusy} onClick={() => { setDeleteId(""); setActionError(null); }} className="min-h-11 rounded-lg border border-slate-300 bg-white font-bold">취소</button><button type="button" disabled={actionBusy || !usage.data} onClick={() => void deleteSelectedCategory()} className="min-h-11 rounded-lg bg-red-600 px-2 font-bold text-white disabled:opacity-50">{actionBusy ? "삭제 중…" : actionError ? "삭제 다시 시도" : "카테고리 삭제 확인"}</button></div>
         </section>}
 
         {unclassified && <section className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950"><div className="flex items-start justify-between gap-3"><div><p className="font-black">미분류</p><p className="mt-1 text-amber-800">고정 카테고리이며 이름 변경·삭제할 수 없습니다.</p></div><span className="shrink-0 font-bold">{unclassifiedRefs.length}건</span></div>

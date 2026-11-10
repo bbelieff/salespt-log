@@ -48,7 +48,7 @@ export default function TimePicker15({ value, onChange }: Props) {
         aria-label="시"
         value={h}
         onChange={(e) => setH(e.target.value)}
-        className="w-16 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
+        className="w-16 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
       >
         {hourOptions(h).map((hh) => (
           <option key={hh} value={hh}>
@@ -56,7 +56,7 @@ export default function TimePicker15({ value, onChange }: Props) {
           </option>
         ))}
       </select>
-      <div className="flex flex-1 rounded-lg border border-gray-200 bg-white">
+      <div className="flex flex-1 rounded-lg border border-slate-200 bg-white">
         {MINUTES.map((mm) => {
           const active = mm === mSnap;
           return (
@@ -66,8 +66,8 @@ export default function TimePicker15({ value, onChange }: Props) {
               onClick={() => setM(mm)}
               className={`hit-44-y flex-1 px-1 py-1.5 text-xs font-semibold transition-colors first:rounded-l-md last:rounded-r-md ${
                 active
-                  ? "bg-blue-500 text-white"
-                  : "bg-white text-gray-600 hover:bg-gray-50"
+                  ? "bg-blue-700 text-white"
+                  : "bg-white text-slate-600 hover:bg-slate-50"
               }`}
             >
               :{mm}

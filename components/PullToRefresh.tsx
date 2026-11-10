@@ -138,7 +138,7 @@ export default function PullToRefresh() {
       aria-live="polite"
       aria-label={refreshing ? "새로고침 중" : "당겨서 새로고침"}
     >
-      <div className="flex h-9 w-9 items-center justify-center rounded-full border border-gray-100 bg-white shadow-md">
+      <div className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-100 bg-white shadow-md">
         <svg
           className={`h-5 w-5 text-brand-red ${refreshing ? "animate-spin" : ""}`}
           style={refreshing ? undefined : { transform: `rotate(${pull * 3}deg)` }}
