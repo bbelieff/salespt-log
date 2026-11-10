@@ -20,9 +20,13 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     background_color: "#ffffff",
     theme_color: "#d71617",
+    // 안드로이드는 앱 아이콘으로 열 때 시작 화면(배경색 + 이 아이콘)을 강제로 띄운다.
+    // 아이콘은 아이폰과 같은 빨간 $, 시작 화면 배경은 흰색 = 우리 첫 로딩 화면(흰 바탕 + 로고 링)과 같은 바탕으로 맞춰
+    // 두 화면이 하나로 이어져 보이게 한다(2026-11-10).
     icons: [
-      // Next.js 가 app/icon.tsx, app/apple-icon.tsx 를 자동 등록.
-      // 별도 PNG 자산이 있으면 여기에 추가 (현재는 없음).
+      { src: "/icons/app-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icons/app-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icons/app-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
   };
 }
