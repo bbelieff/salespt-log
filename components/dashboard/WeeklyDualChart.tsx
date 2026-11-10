@@ -13,6 +13,11 @@
  * 좌Y축: 활동량 (slate-300 bar) — 0~max 자동 스케일
  * 우Y축: 계약수 (blue-500 line) — 0~max(계약수) 자동 스케일
  *
+ * 이번 주(2026-11-10 belie 「추천대로」): currentWeek(진행도 줄과 같은 computeCourseBanner 값 — lib/util/week 정본)를
+ *   받으면 그 주 막대를 brand-red 로 칠하고 위에 「이번 주」를 단다. 그 뒤 주는 아직 안 온 주라 값 없이 옅은 점선 빈 칸만,
+ *   계약수 선은 이번 주에서 끊는다(0으로 떨어뜨리지 않음). 최근 8주 보기는 마지막 칸이 이번 주.
+ *   제목 옆 한 줄 요약 「N주차까지 계약 M건」.
+ *
  * 시트 출처:
  *   계약수 = 01 영업관리!N{38,72,106,140,174,208,242,276}
  *   활동량 = 대시보드(자동작성) C33:H40 의 마지막(6번째) 컬럼
@@ -27,6 +32,8 @@ interface Props {
   points: DashboardWeeklyPoint[]; // 길이 = 기수 통계 창(8 또는 12주)
   period?: DashboardView['weeklyTrendPeriod'];
   onRetry?: () => void;
+  /** 코스 몇 주차인지(1부터). 모르거나 수료 뒤면 생략 — 이번 주 강조·미래 빈 칸 없이 전부 지난 주로 그린다. */
+  currentWeek?: number;
 }
 
 const X0 = 30;
@@ -35,7 +42,13 @@ const Y_TOP = 16;
 const Y_BOT = 160;
 
 
-export default function WeeklyDualChart({ points, period, onRetry }: Props) {
+/** 이번 주 칸(0부터)과 아직 안 온 주인지 — 최근 8주는 마지막 칸이 이번 주, 코스 주차는 currentWeek 기준. */
+export function weekSlots(length: number, recent: boolean, currentWeek?: number) {
+  const current = recent ? length - 1 : currentWeek && currentWeek > 0 ? Math.min(currentWeek, length) - 1 : -1;
+  return { current, isFuture: (i: number) => !recent && current >= 0 && i > current };
+}
+
+export default function WeeklyDualChart({ points, period, onRetry, currentWeek }: Props) {
   // 열 때마다: 막대가 차례로 올라오고, 계약수 선이 왼쪽부터 그려지고, 점이 톡 나타난다(belie 2026-10-09).
   const play = usePlayOnOpen("weekly-trend");
   const recent = period?.kind === 'recent';
@@ -51,9 +64,14 @@ export default function WeeklyDualChart({ points, period, onRetry }: Props) {
     (_, i) => points[i] ?? { 주차: i + 1, 계약수: 0, 활동량: 0 },
   );
 
-  // 자동 스케일 (max 기준, 데이터 0이면 1로 fallback)
-  const actMax = Math.max(...data.map((d) => d.활동량), 1);
-  const contractMax = Math.max(...data.map((d) => d.계약수), 1);
+  const { current, isFuture } = weekSlots(data.length, recent, currentWeek);
+  const shown = data.filter((_, i) => !isFuture(i));
+  const contractSum = shown.reduce((sum, d) => sum + d.계약수, 0);
+  const summary = recent ? `지난 8주 계약 ${contractSum}건` : current >= 0 ? `${current + 1}주차까지 계약 ${contractSum}건` : `누적 계약 ${contractSum}건`;
+
+  // 자동 스케일 (max 기준, 데이터 0이면 1로 fallback) — 아직 안 온 주는 값이 없으니 뺀다
+  const actMax = Math.max(...shown.map((d) => d.활동량), 1);
+  const contractMax = Math.max(...shown.map((d) => d.계약수), 1);
   // 시각상 위쪽 여백 10% — Math.ceil(max * 1.1)
   const actScale = Math.ceil(actMax * 1.1) || 1;
   const contractScale = Math.ceil(contractMax * 1.1) || 1;
@@ -62,16 +80,18 @@ export default function WeeklyDualChart({ points, period, onRetry }: Props) {
   const yContract = (v: number) =>
     Y_BOT - (v / contractScale) * (Y_BOT - Y_TOP);
 
-  const linePoints = data
+  // 아직 안 온 주로는 선을 잇지 않는다(0으로 떨어지는 착시 방지).
+  const linePoints = shown
     .map((d, i) => `${xAt(i)},${yContract(d.계약수)}`)
     .join(" ");
 
   return (
     <section className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
       {/* 섹션 제목 + 범례 */}
-      <div className="mb-2 flex items-center gap-2">
+      <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="h-5 w-1 rounded-full bg-slate-500" />
         <h2 className="text-base font-extrabold text-gray-900">{title}</h2>
+        <span className="text-xs font-semibold tabular-nums text-slate-700" data-testid="weekly-trend-summary">{summary}</span>
         {!recent && <span className="text-xs text-slate-600">코스 {weeks}주 기준</span>}
         <div className="ml-auto flex items-center gap-3 text-xs">
           <span className="flex items-center gap-1">
@@ -91,7 +111,7 @@ export default function WeeklyDualChart({ points, period, onRetry }: Props) {
       <div className="chart-fill flex flex-1 items-center">
       <svg role="img" viewBox="0 0 358 200" preserveAspectRatio="xMidYMid meet" className="weekly-trend-svg w-full" aria-label={recent ? `${title}, ${period.startISO}부터 ${period.endISO}까지` : `코스 ${weeks}주 주차 추이`}>
         <title>{title}</title>
-        <desc>{data.map(d => `${d.startISO || `${d.주차}주`}: 활동량 ${d.활동량}건, 계약 ${d.계약수}건`).join('; ')}</desc>
+        <desc>{data.map((d, i) => `${d.startISO || `${d.주차}주`}${i === current ? '(이번 주)' : ''}: ${isFuture(i) ? '아직 안 옴' : `활동량 ${d.활동량}건, 계약 ${d.계약수}건`}`).join('; ')}</desc>
         {/* 가로 그리드 (활동량 50%, 100%) */}
         <line
           x1={X0}
@@ -140,22 +160,31 @@ export default function WeeklyDualChart({ points, period, onRetry }: Props) {
           0
         </text>
 
-        {/* 활동량 막대 (slate-300) */}
+        {/* 활동량 막대 (slate-300, 이번 주 brand-red) · 아직 안 온 주는 값 없는 옅은 점선 빈 칸 */}
         {data.map((d, i) => {
           const cx = xAt(i);
+          if (isFuture(i)) return (
+            <rect key={`bar-${d.주차}`} data-slot="future" x={cx - BAR_W / 2} y={Y_TOP} width={BAR_W} height={Y_BOT - Y_TOP}
+              fill="none" stroke="#e2e8f0" strokeWidth={1} strokeDasharray="3 3" rx={2} />
+          );
           const y = yAct(d.활동량);
+          const now = i === current;
           return (
-            <rect
-              key={`bar-${d.주차}`}
-              x={cx - BAR_W / 2}
-              y={y}
-              width={BAR_W}
-              height={Math.max(0, Y_BOT - y)}
-              fill="#cbd5e1"
-              rx={2}
-              className={play ? "fx-box fx-grow-y" : undefined}
-              style={play ? { animationDelay: `${i * 50}ms` } : undefined}
-            />
+            <g key={`bar-${d.주차}`}>
+              <rect
+                data-slot={now ? "current" : "past"}
+                x={cx - BAR_W / 2}
+                y={y}
+                width={BAR_W}
+                height={Math.max(0, Y_BOT - y)}
+                fill={now ? undefined : "#cbd5e1"}
+                rx={2}
+                className={[now ? "fill-brand-red" : "", play ? "fx-box fx-grow-y" : ""].filter(Boolean).join(" ") || undefined}
+                style={play ? { animationDelay: `${i * 50}ms` } : undefined}
+              />
+              {/* 최근 8주 보기는 x축 라벨이 이미 「이번 주」 */}
+              {now && !recent && <text x={cx} y={Math.max(10, y - 5)} textAnchor="middle" fontSize="9" fontWeight={700} className="fill-brand-red">이번 주</text>}
+            </g>
           );
         })}
 
@@ -171,15 +200,15 @@ export default function WeeklyDualChart({ points, period, onRetry }: Props) {
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        {data.map((d, i) => (
+        {shown.map((d, i) => (
           <circle
             key={`pt-${d.주차}`}
             cx={xAt(i)}
             cy={yContract(d.계약수)}
-            r={i === data.length - 1 ? 4.5 : 3.5}
+            r={i === current ? 4.5 : 3.5}
             fill="#3b82f6"
-            stroke={i === data.length - 1 ? "#fff" : undefined}
-            strokeWidth={i === data.length - 1 ? 1.5 : 0}
+            stroke={i === current ? "#fff" : undefined}
+            strokeWidth={i === current ? 1.5 : 0}
             className={play ? "fx-box fx-pop" : undefined}
             style={play ? { animationDelay: `${900 + i * 30}ms` } : undefined}
           />
@@ -194,8 +223,9 @@ export default function WeeklyDualChart({ points, period, onRetry }: Props) {
             y={178}
             textAnchor="middle"
             fontSize="10"
-            fill={i === data.length - 1 ? "#1d4ed8" : "#64748b"}
-            fontWeight={i === data.length - 1 ? 700 : undefined}
+            fill={i === current ? undefined : isFuture(i) ? "#cbd5e1" : "#64748b"}
+            className={i === current ? "fill-brand-red" : undefined}
+            fontWeight={i === current ? 700 : undefined}
           >
             {recent ? (i === data.length - 1 ? '이번 주' : d.startISO ? md(d.startISO) : `${data.length - i - 1}주 전`) : `${d.주차}주`}
           </text>

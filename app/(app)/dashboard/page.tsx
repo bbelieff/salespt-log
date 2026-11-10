@@ -135,7 +135,7 @@ export default function DashboardPage() {
               {/* 1024 미만: 차트 3종을 옆으로 넘기는 카드(인터랙션 ②, 2026-10-09). PC 는 래퍼가 풀려 그리드 칸 그대로. */}
               <MobileChartCarousel labels={dash.data.weeklyTrendPeriod?.kind === 'recent' ? ['영업 퍼널', '지난 8주간 추이', '채널별 성과'] : CHART_LABELS}>
                 <div className={CHART_SLIDE}><FunnelChart weeks={weeks} matrix={dash.data.channelMatrix} /></div>
-                <div className={CHART_SLIDE}><WeeklyDualChart points={dash.data.weeklyTrend} period={dash.data.weeklyTrendPeriod} onRetry={() => { void dash.refetch(); }} /></div>
+                <div className={CHART_SLIDE}><WeeklyDualChart points={dash.data.weeklyTrend} period={dash.data.weeklyTrendPeriod} currentWeek={banner.hasDates && !banner.graduated ? banner.currentWeek : undefined} onRetry={() => { void dash.refetch(); }} /></div>
                 <div className={CHART_SLIDE}>
                   <ChannelPerformance weeks={weeks}
                     costBreakdown={dash.data.costBreakdown}

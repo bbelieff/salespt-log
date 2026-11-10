@@ -26,9 +26,8 @@ describe("오늘 활동", () => {
       if (init?.method === "POST") { posts.push(JSON.parse(String(init.body))); return new Response('{"ok":true}', { status: 200 }); }
       return new Response(JSON.stringify(day()), { status: 200 });
     }));
-    const onAdd = vi.fn();
     host = document.createElement("div"); document.body.append(host); root = createRoot(host);
-    act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity, { onAdd }))));
+    act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity))));
     await flush();
     const peek = host.querySelector('section[aria-label="오늘 활동"]')!;
     expect(peek.textContent).toContain("12생산");
@@ -37,8 +36,8 @@ describe("오늘 활동", () => {
     expect(peek.textContent).toContain("2미팅");
     const btn = (t: string) => [...peek.querySelectorAll("button")].find(b => b.textContent?.startsWith(t))!;
     expect(btn("＋ 현수막 게시").textContent).toContain("재고 14");
-    act(() => btn("＋ DB 추가").click());
-    expect(onAdd).toHaveBeenCalledTimes(1);
+    // DB 추가 입구는 목록 위 버튼 하나 — 이 패널(닫힘·펼침 어디에도)엔 없다(2026-11-10)
+    expect(btn("＋ DB 추가")).toBeUndefined();
     act(() => btn("＋ 현수막 게시").click());
     const input = host.querySelector<HTMLInputElement>('input[aria-label="오늘 현수막 게시 수"]')!;
     expect(document.activeElement).toBe(input); // 바로 적게
@@ -50,7 +49,7 @@ describe("오늘 활동", () => {
   it("PC 중간 폭 띠: 숫자 네 칸이 보이고, 띠 아무 데나 누르면 펼친다(belie 2026-11-09)", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(day()), { status: 200 })));
     host = document.createElement("div"); document.body.append(host); root = createRoot(host);
-    act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity, { onAdd: vi.fn() }))));
+    act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity))));
     await flush();
     const pill = host.querySelector(".ta-pc-pill section")!;
     expect(pill.textContent).toContain("12생산");
@@ -67,13 +66,14 @@ describe("오늘 활동", () => {
       return new Response(JSON.stringify(day()), { status: 200 });
     }));
     host = document.createElement("div"); document.body.append(host); root = createRoot(host);
-    act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity, { onAdd: vi.fn() }))));
+    act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity))));
     await flush();
     act(() => [...host!.querySelectorAll("button[aria-expanded]")][0]!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(host.textContent).toContain("재고 14개");
     // 매입DB 유입대기 = inflowWaitBase 8 − 오늘 유입 5 = 3
     expect(host.textContent).toMatch(/유입대기.*유입 안 된 수3개/);
     expect(host.querySelector('a[href="/contact"]')!.textContent).toContain("일별 기록에서 고치기");
+    expect([...host.querySelectorAll("button")].some(b => b.textContent?.includes("DB 추가"))).toBe(false);
     expect(host.querySelectorAll("tbody tr")).toHaveLength(4);
     // 장수 칸에 바로 적기 — 15 를 적고 Enter 면 현수막 줄 production 15 만 보낸다(belie 2026-11-08 대량 게시)
     const input = host.querySelector<HTMLInputElement>('input[aria-label="오늘 현수막 게시 수"]')!;
@@ -90,7 +90,7 @@ describe("오늘 활동", () => {
   it("폰: 띠를 위로 쓸어 올리면 열리고, 펼친 머리를 아래로 쓸면 닫힌다", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(day()), { status: 200 })));
     host = document.createElement("div"); document.body.append(host); root = createRoot(host);
-    act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity, { onAdd: vi.fn() }))));
+    act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity))));
     await flush();
     const touch = (el: Element, type: string, y: number) => {
       const ev = new Event(type, { bubbles: true });
@@ -113,7 +113,7 @@ describe("오늘 활동", () => {
     for (const [data, rows] of [[zeroDirect, 3], [allZero, 0]] as const) {
       vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(data), { status: 200 })));
       host = document.createElement("div"); document.body.append(host); root = createRoot(host);
-      act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity, { onAdd: vi.fn() }))));
+      act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity))));
       await flush();
       act(() => [...host!.querySelectorAll("button[aria-expanded]")][0]!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
       expect(host.querySelectorAll("tbody tr")).toHaveLength(rows);
@@ -128,7 +128,7 @@ describe("오늘 활동", () => {
     const none = { ...day(), bannerOrderQty: 0, bannerStockBase: 3, channels: { ...day().channels, 현수막: { ...z, production: 3 } } };
     vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify(none), { status: 200 })));
     host = document.createElement("div"); document.body.append(host); root = createRoot(host);
-    act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity, { onAdd: vi.fn() }))));
+    act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity))));
     await flush();
     expect(host.textContent).not.toContain("현수막 게시");
     act(() => [...host!.querySelectorAll("button[aria-expanded]")][0]!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
@@ -143,7 +143,7 @@ describe("오늘 활동", () => {
       return new Response(JSON.stringify(day()), { status: 200 });
     }));
     host = document.createElement("div"); document.body.append(host); root = createRoot(host);
-    act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity, { onAdd: vi.fn() }))));
+    act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity))));
     await flush();
     act(() => [...host!.querySelectorAll("button[aria-expanded]")][0]!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     const input = host.querySelector<HTMLInputElement>('input[aria-label="오늘 현수막 게시 수"]')!;
@@ -165,7 +165,7 @@ describe("오늘 활동", () => {
     const today = todayKST();
     const yest = addDays(new Date(`${today}T12:00:00+09:00`), -1).toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
     host = document.createElement("div"); document.body.append(host); root = createRoot(host);
-    act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity, { onAdd: vi.fn() }))));
+    act(() => root!.render(h(QueryClientProvider, { client: new QueryClient() }, h(TodayActivity))));
     await flush();
     act(() => [...host!.querySelectorAll("button[aria-expanded]")][0]!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
     expect(btnIn(host, "하루 뒤").disabled).toBe(true);
