@@ -300,6 +300,7 @@ export function ReservedSection({
   onPick,
   linkedBySheet,
   viewOnly = false,
+  forceOpen,
 }: {
   list: Trainee[];
   busy: string | null;
@@ -310,11 +311,14 @@ export function ReservedSection({
   onPick?: (email: string) => void;
   linkedBySheet?: Map<string, string[]>;
   viewOnly?: boolean;
+  /** 검색 중이면 펼침. */
+  forceOpen?: boolean;
 }) {
   return (
     <PersistentDetails
       persistKey="reserved"
       defaultOpen={false}
+      forceOpen={forceOpen}
       className="group overflow-hidden rounded-2xl border border-amber-200 bg-amber-50/40 open:bg-white"
     >
       <summary className="disclosure-summary flex cursor-pointer items-center justify-between gap-2 px-4 py-3 hover:bg-amber-50">
@@ -326,7 +330,7 @@ export function ReservedSection({
       <div className="space-y-2 border-t border-amber-200 px-4 py-4">
         <p className="mb-2 text-px-11 text-gray-500">
           명단에서 숨겨진 수강생. 복귀 시 정규 기수 그룹으로 돌아갑니다.
-          퇴출은 registry row 영구 삭제 (개인 시트·권한은 그대로 유지).
+          퇴출하면 등록 정보만 완전히 지워져요(개인 시트·권한은 그대로).
         </p>
         {list.map((u) => {
           const assigned = parseAssigned(u.assignedTrainer);
@@ -374,7 +378,7 @@ export function ReservedSection({
                     type="button"
                     onClick={() => onPurge(u.email, u.name)}
                     disabled={busy !== null}
-                    title="registry row 영구 삭제"
+                    title="등록 정보 완전히 삭제"
                     className="rounded-full border border-red-200 bg-red-50 px-3 py-2 text-px-11 font-bold text-red-700 hover:bg-red-100 disabled:opacity-50"
                   >
                     퇴출
@@ -384,7 +388,7 @@ export function ReservedSection({
                       type="button"
                       onClick={() => onPick(u.email)}
                       disabled={busy !== null}
-                      title="웹앱 (5탭 UI) 으로 진입 — impersonation"
+                      title="이 수강생 화면으로 보기"
                       className="rounded-full bg-gray-900 px-3 py-2 text-xs font-bold text-white hover:bg-black disabled:opacity-50"
                     >
                       {busy === u.email ? "여는 중..." : "웹앱 →"}

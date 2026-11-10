@@ -42,7 +42,7 @@ it('uses a low-opacity horizontal freeze-edge fade without occupying the drag-in
 it('keeps compact parallel filters and save signals without shipping synthetic labels',()=>{
  const page=readFileSync('app/(app)/db-sheet/page.tsx','utf8'),css=readFileSync('app/(app)/db-sheet/compact.css','utf8'),options=readFileSync('app/(app)/db-sheet/_components/MobileViewOptions.tsx','utf8');
  expect(page).toContain('sheet-mobile-date-trigger');expect(page).toContain('sheet-mobile-status-trigger');expect(css).toContain('height:48px;min-height:48px');
- expect(page).toContain("data.error?'오류':'저장됨'");expect(page).toContain("data.loading?'불러오는 중…':data.pending?'저장 중…'");expect(page).not.toContain('(합성)');
+ expect(page).toContain("data.error?'오류':'저장됨'");expect(page).toContain("data.loading?'불러오는 중…':data.pending?'저장중..'");expect(page).not.toContain('(합성)');
  expect(options).not.toContain('sheet-options-note');expect(page).not.toContain('최초상담일은 수정할 수 있어요.');
  expect(page).toContain('onReset={resetFilters}><div ref={setMobileToolsTarget}/>');
 });

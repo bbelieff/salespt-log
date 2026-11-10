@@ -71,7 +71,7 @@ export default function ContactScriptPanel() {
             {save.isError && <p className="text-xs text-red-600" aria-live="polite">{save.error.message}</p>}
             <div className="flex flex-wrap items-center gap-2">
               <button type="button" disabled={save.isPending} onClick={() => submit({ script: data.script, sms: data.sms, [field]: edit.value })} className="rounded-md bg-slate-800 px-3 py-1 text-xs font-bold text-white hover:bg-slate-900 disabled:opacity-50">
-                {save.isPending ? "저장 중…" : "저장"}
+                {save.isPending ? "저장중.." : "저장"}
               </button>
               <button type="button" disabled={save.isPending} onClick={() => { save.reset(); setEdit(null); }} className={btnCls}>취소</button>
               {data.custom && (

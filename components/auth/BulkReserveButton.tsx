@@ -40,7 +40,7 @@ export default function BulkReserveButton({ trainees, onDone }: Props) {
     if (selected.size === 0) return;
     if (
       !window.confirm(
-        `선택한 ${selected.size}명을 유보 처리합니다. 계속할까요?\n(row 는 보존, 명단에서 숨김)`,
+        `선택한 ${selected.size}명을 유보 처리합니다. 계속할까요?\n(기록은 그대로 두고 명단에서만 숨겨요)`,
       )
     )
       return;

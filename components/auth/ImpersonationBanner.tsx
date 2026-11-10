@@ -54,19 +54,19 @@ export default function ImpersonationBanner({
         if (e.key === "Enter" || e.key === " ") visit();
       }}
       className="mb-4 flex cursor-pointer items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm transition-all hover:border-red-300 hover:bg-red-100"
-      title="클릭하여 이 시트로 진입"
+      title="눌러서 이 수강생 화면으로"
     >
       <span className="rounded bg-red-600 px-1.5 py-0.5 text-px-9 font-bold uppercase tracking-wider text-white">
-        Impersonating
+        대신 보는 중
       </span>
       <span className="min-w-0 flex-1 truncate text-red-800">
-        <strong>{impersonating}</strong> 으로 시트 이동 →
+        <strong>{impersonating}</strong> 화면으로 가기 →
       </span>
       <button
         type="button"
         onClick={clear}
         disabled={busy}
-        aria-label="impersonation 해제"
+        aria-label="대신 보기 끝내기"
         title="해제 (본인 모드로 돌아가기)"
         className="shrink-0 rounded-full border border-red-200 bg-white px-2 py-0.5 text-px-10 font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
       >

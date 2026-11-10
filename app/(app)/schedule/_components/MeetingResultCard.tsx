@@ -110,7 +110,8 @@ export default function MeetingResultCard({
   };
   const confirmContractDrop = (): boolean => // 계약→완료/취소 시 계약카드 삭제 경고.
     state !== "contract" ||
-    window.confirm(`상태 변경 시 수납탭 계약카드 1건 삭제 (₩${fmtMoney(meeting.수임비)}). 진행?`);
+    window.confirm(`상태를 바꾸면 실무/수납의 계약 1건(₩${fmtMoney(meeting.수임비)})이 함께 지워져요.
+계속할까요?`);
   const handleDone = (reason: string) => {
     if (!confirmContractDrop()) return;
     onPatch(withCi({ 상태: "완료", 계약여부: false, 미팅사유: accumulateReason(reason) }));
@@ -375,10 +376,10 @@ export default function MeetingResultCard({
               onClick={() => {
                 const label =
                   state === "contract"
-                    ? "계약 → 예약 (수임비/조건 초기화 + 02 계약수납관리 row 삭제)"
+                    ? "계약 → 예약 (수임비·조건이 비워지고, 실무/수납의 계약도 함께 지워져요)"
                     : state === "done"
-                      ? "완료 → 예약 (사유 초기화)"
-                      : "취소 → 예약 (사유 초기화)";
+                      ? "완료 → 예약 (적어 둔 사유가 비워져요)"
+                      : "취소 → 예약 (적어 둔 사유가 비워져요)";
                 if (window.confirm(`미팅 결과를 되돌릴까요?\n\n${label}`)) {
                   onRevert();
                 }

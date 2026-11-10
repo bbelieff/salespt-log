@@ -206,7 +206,7 @@ export default function ContractRow({
       <button type="button" onClick={retryAll} className="min-h-9 underline underline-offset-2">다시 시도</button>
     </span>
   ) : status === "pending" || ciState.saving ? (
-    <span className="whitespace-nowrap text-slate-500">저장 중…</span>
+    <span className="whitespace-nowrap text-slate-500">저장중..</span>
   ) : dirty || ciDirty ? (
     <span className="whitespace-nowrap text-slate-400">입력 중</span>
   ) : (
@@ -301,7 +301,7 @@ export default function ContractRow({
     <div data-payment-pc-status data-payment-feedback-dock data-payment-feedback-owner={dirtyEntryId} className="flex min-w-0 flex-col items-end gap-1">
       <AutosaveStatus status={status} error={error} savedAt={savedAt} onRetry={retryAll} canUndo={canUndo} onUndo={undo} />
       {ciState.error && status !== "error" && <button type="button" onClick={retryAll} className="min-h-11 text-px-11 underline underline-offset-2">다시 시도</button>}
-      {ciState.saving && status === "idle" && !ciState.error && <span className="text-px-11 text-gray-400" aria-live="polite">저장 중…</span>}
+      {ciState.saving && status === "idle" && !ciState.error && <span className="text-px-11 text-gray-400" aria-live="polite">저장중..</span>}
     </div>
   ) : null;
 

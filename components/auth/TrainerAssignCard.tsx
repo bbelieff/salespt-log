@@ -182,7 +182,7 @@ export default function TrainerAssignCard({
               busy === `remove:${trainer.email}`
             }
             className="shrink-0 rounded-full border border-amber-200 bg-white px-2.5 py-1 text-px-11 font-bold text-amber-700 hover:bg-amber-50 disabled:opacity-50"
-            title="이 사람을 관리부서로 이동 (담당 매핑 자동 정리)"
+            title="이 사람을 관리부서로 옮기기 (맡은 수강생 배정 자동 정리)"
           >
             {busy === `dept:${trainer.email}` ? "..." : "관리부서"}
           </button>
@@ -196,9 +196,9 @@ export default function TrainerAssignCard({
               busy === `remove:${trainer.email}`
             }
             className="shrink-0 rounded-full border border-red-200 bg-white px-2.5 py-1 text-px-11 font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
-            title="이 트레이너를 퇴출 (담당 매핑 자동 정리 + row 삭제)"
+            title="이 트레이너 내보내기 (맡은 수강생 배정도 함께 정리)"
           >
-            {busy === `remove:${trainer.email}` ? "..." : "퇴출"}
+            {busy === `remove:${trainer.email}` ? "..." : "내보내기"}
           </button>
         )}
       </div>

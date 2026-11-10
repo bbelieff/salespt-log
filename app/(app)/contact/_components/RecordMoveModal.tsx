@@ -456,7 +456,7 @@ export default function RecordMoveModal({
               }
               className="flex-1 rounded-lg bg-slate-900 py-3 text-px-13 font-bold text-white hover:bg-slate-800 disabled:bg-gray-200 disabled:text-gray-400"
             >
-              {saving ? "저장 중…" : step === "review" ? "저장하기" : "이동 내용 확인"}
+              {saving ? "저장중.." : step === "review" ? "저장하기" : "이동 내용 확인"}
             </button>
           )}
         </div>

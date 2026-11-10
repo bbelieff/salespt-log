@@ -5,6 +5,7 @@
  * 4개 segmented 버튼으로 빠른 선택.
  *
  * value/onChange: "HH:MM" 문자열 (zero-padded).
+ * 시 범위 = 08~21시(컨택 TimeSelectPair 와 통일, belie 2026-11-10). 범위 밖 기존 값은 그대로 보인다.
  */
 "use client";
 
@@ -24,6 +25,14 @@ function pad2(n: number): string {
   return n.toString().padStart(2, "0");
 }
 
+const HOUR_MIN = 8, HOUR_MAX = 21;
+/** 08~21시 + 범위 밖 현재 값(있으면). */
+export function hourOptions(current: string): string[] {
+  const hours = Array.from({ length: HOUR_MAX - HOUR_MIN + 1 }, (_, i) => pad2(HOUR_MIN + i));
+  if (current && !hours.includes(current)) hours.push(current);
+  return hours.sort();
+}
+
 export default function TimePicker15({ value, onChange }: Props) {
   const { h, m } = parse(value);
   const mSnap = MINUTES.includes(m as (typeof MINUTES)[number])
@@ -41,7 +50,7 @@ export default function TimePicker15({ value, onChange }: Props) {
         onChange={(e) => setH(e.target.value)}
         className="w-16 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm focus:border-blue-500 focus:outline-none"
       >
-        {Array.from({ length: 24 }, (_, i) => pad2(i)).map((hh) => (
+        {hourOptions(h).map((hh) => (
           <option key={hh} value={hh}>
             {hh}시
           </option>

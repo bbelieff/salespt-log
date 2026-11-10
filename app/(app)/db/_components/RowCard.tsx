@@ -444,7 +444,7 @@ export default function RowCard({
         {channel.manualSave && saveStatus !== "pending" && saveStatus !== "error" && dirty && !invalidHint && (
           <span className="font-medium text-amber-700">저장하지 않은 변경이 있어요</span>
         )}
-        {saveStatus === "pending" && <span className="text-slate-500">저장 중…</span>}
+        {saveStatus === "pending" && <span className="text-slate-500">저장중..</span>}
         {saveStatus === "saved" && (
           <span className="text-slate-400">
             저장됨
@@ -485,7 +485,7 @@ export default function RowCard({
             disabled={!dirty || saveStatus === "pending"}
             className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400"
           >
-            {saveStatus === "pending" ? "저장 중…" : "저장"}
+            {saveStatus === "pending" ? "저장중.." : "저장"}
           </button>
         </div>
       )}

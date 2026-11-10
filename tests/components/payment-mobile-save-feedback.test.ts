@@ -32,7 +32,7 @@ it("does not invent an initial saved notification or add a flow element", () => 
 });
 it("delays pending, updates one notice after ACK, fades, and retains an independent undo action", () => {
   render({ status: "pending", dirty: true }); advance(179); expect(toast()).toBeNull();
-  advance(1); expect(toast()?.textContent).toBe("저장중");
+  advance(1); expect(toast()?.textContent).toBe("저장중..");
   render({ status: "saved", savedAt: 1, dirty: false, canUndo: true });
   expect(document.querySelectorAll("[data-payment-save-toast]")).toHaveLength(1); expect(toast()?.textContent).toBe("저장완료");
   expect(toast()?.querySelector('.payment-save-check svg')).not.toBeNull();

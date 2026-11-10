@@ -26,6 +26,8 @@ interface Props {
   className?: string;
   disabled?: boolean;
   "aria-label"?: string;
+  /** 이름표(label htmlFor) 연결용. */
+  id?: string;
 }
 
 export default function MoneyInput({
@@ -35,10 +37,12 @@ export default function MoneyInput({
   className,
   disabled,
   "aria-label": ariaLabel,
+  id,
 }: Props) {
   return (
     <input
       type="text"
+      id={id}
       inputMode="numeric"
       value={formatMoneyInput(value)}
       placeholder={placeholder}
