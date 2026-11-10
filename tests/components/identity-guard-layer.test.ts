@@ -25,7 +25,7 @@ function files(dir: string, out: string[] = []): string[] {
 }
 
 describe("차단막 층", () => {
-  it("★앱의 어떤 창·로딩·팝오버보다 위에 있다", () => {
+  it("★앱의 어떤 창·로딩·팝오버보다 위에 있다 (z 값 — 기본 대화상자는 아래 showModal 시험)", () => {
     const own = Number(IDENTITY_GUARD_LAYER.match(/\d+/)![0]);
     let max = 0;
     for (const f of [...files("app"), ...files("components")]) {
@@ -49,6 +49,9 @@ describe("막히면 초점을 차단막으로", () => {
   });
 
   it("★뒤쪽 저장 창 입력칸에 있던 초점이 버튼으로 옮겨지고, Tab 으로 돌아가지 못한다", async () => {
+    // 기본 대화상자(SheetDialog 등) 위에 오려면 차단막도 showModal 로 맨 위 층에 올라가야 한다.
+    const showModal = vi.fn(function (this: HTMLDialogElement) { this.setAttribute("open", ""); });
+    Object.defineProperty(HTMLDialogElement.prototype, "showModal", { value: showModal, configurable: true });
     let fp = "fp-a";
     vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, json: async () => ({ activeFingerprint: fp, activeMasked: "합*" }) })));
     const input = document.createElement("input");
@@ -67,6 +70,8 @@ describe("막히면 초점을 차단막으로", () => {
     const dialog = document.querySelector("[role=alertdialog]") as HTMLElement;
     expect(dialog).not.toBeNull();
     expect(dialog.className).toContain(IDENTITY_GUARD_LAYER);
+    expect(dialog.tagName).toBe("DIALOG");
+    expect(showModal).toHaveBeenCalledTimes(1);
     const button = dialog.querySelector("button")!;
     expect(document.activeElement).toBe(button);
 

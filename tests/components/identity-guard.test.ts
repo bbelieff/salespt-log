@@ -54,7 +54,9 @@ describe("★소스 가드", () => {
   });
 
   it("★whoami 는 이메일 원문을 내보내지 않는다 — 지문 + 마스킹만", () => {
-    expect(whoami).toContain("createHash");
+    // 지문 계산은 쓰기 검사와 공용(lib/auth/identity-fingerprint.ts) — 해시만 내보낸다.
+    expect(whoami).toContain("identityFingerprint");
+    expect(readFileSync("lib/auth/identity-fingerprint.ts", "utf8")).toContain("createHash");
     expect(whoami).toMatch(/activeFingerprint/);
     expect(whoami).toMatch(/activeMasked/);
     // 응답 본문에 원문 이메일 필드를 싣지 않는다.
