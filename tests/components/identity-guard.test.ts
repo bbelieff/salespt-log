@@ -48,13 +48,15 @@ describe("★소스 가드", () => {
 
   it("★자동 새로고침을 걸지 않는다 — 사용자가 버튼을 누른다(입력 유실 방지)", () => {
     // reload 는 onClick 핸들러 안에만 있어야 한다. useEffect 안에서 부르면 입력이 날아간다.
-    const inEffect = guard.slice(guard.indexOf("useEffect("), guard.indexOf("if (!shouldBlockTab"));
+    const inEffect = guard.slice(guard.indexOf("useEffect("), guard.indexOf("if (!blocked) return null;"));
     expect(inEffect).not.toContain("location.reload");
     expect(guard).toContain("onClick={() => window.location.reload()}");
   });
 
   it("★whoami 는 이메일 원문을 내보내지 않는다 — 지문 + 마스킹만", () => {
-    expect(whoami).toContain("createHash");
+    // 지문 계산은 쓰기 검사와 공용(lib/auth/identity-fingerprint.ts) — 해시만 내보낸다.
+    expect(whoami).toContain("identityFingerprint");
+    expect(readFileSync("lib/auth/identity-fingerprint.ts", "utf8")).toContain("createHash");
     expect(whoami).toMatch(/activeFingerprint/);
     expect(whoami).toMatch(/activeMasked/);
     // 응답 본문에 원문 이메일 필드를 싣지 않는다.

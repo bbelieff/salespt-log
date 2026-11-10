@@ -12,7 +12,9 @@
  *   - trainer: 자기 담당 수강생만
  *   - trainee: 불가
  */
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { identityFingerprint } from "@/auth/identity-fingerprint";
+import { TAB_IDENTITY_HEADER, TAB_IDENTITY_MISMATCH } from "@/auth/tab-identity";
 import { auth } from "@/auth";
 import { isDevStubAuthed } from "@/auth/dev-stub";
 import { adminEmails } from "@/config";
@@ -267,9 +269,28 @@ export async function getActiveUserEmail(operation: "read" | "write" = "read"): 
  * 미인증 throw 는 동일 — 인증 자체는 그대로 요구한다.
  */
 export async function getWritableUserEmail(): Promise<string> {
+  await assertTabIdentity();
   const context = await resolveStudentViewContext();
   if (context.ok && context.mode === "arena") return context.email;
   return getActiveUserEmail("write");
+}
+
+/** 탭 신원 오류 — 다른 탭에서 대리접속 대상이 바뀐 뒤 이 탭이 저장하려 할 때. */
+export class TabIdentityMismatchError extends Error {
+  readonly status = 409;
+  constructor() { super(TAB_IDENTITY_MISMATCH); this.name = "TabIdentityMismatchError"; }
+}
+
+/**
+ * 쓰기 요청에 실린 탭 지문(lib/auth/tab-identity.ts)이 지금 신원과 다르면 막는다.
+ * 지문은 /api/whoami 와 같은 계산(getActiveUserEmail 읽기 기준). 머리말이 없으면 검사하지 않는다.
+ */
+export async function assertTabIdentity(): Promise<void> {
+  let stamped: string | null = null;
+  try { stamped = (await headers()).get(TAB_IDENTITY_HEADER); } catch { return; } // 요청 밖(스크립트) — 검사 없음
+  if (!stamped) return;
+  const active = await getActiveUserEmail();
+  if (identityFingerprint(active) !== stamped) throw new TabIdentityMismatchError();
 }
 
 /** admin/trainer 만 impersonation 설정 가능. 권한 위반 시 throw. */
