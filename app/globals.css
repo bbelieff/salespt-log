@@ -1022,7 +1022,10 @@ body {
   }
   .desktop-shell .payment-detail-shell::-webkit-scrollbar { display: none; }
   .desktop-shell .payment-detail-scroll::-webkit-scrollbar { width: 6px; }
-  .desktop-shell .payment-detail-scroll::-webkit-scrollbar-track { background: transparent; }
+  /* 2026-11-11 belie 「2뎁스 좌우 열 스크롤 상한·하한을 라운드박스 안으로, 우측 여백도」: 막대 위아래를 둥근 모서리만큼 띄우고,
+     열 오른쪽에 여백을 둬 내용(카드)과 막대 사이·막대와 틀 끝 사이가 붙지 않게 한다. */
+  .desktop-shell .payment-detail-scroll { padding-right: 12px; }
+  .desktop-shell .payment-detail-scroll::-webkit-scrollbar-track { background: transparent; margin-block: 16px; }
   .desktop-shell .payment-detail-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
   .desktop-shell .payment-detail-scroll::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
   /* 상세 두 칸 넓히기 강조 — 「한 장 유리」(2026-11-05 belie, Figma 시안 C 선택).
