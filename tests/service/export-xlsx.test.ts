@@ -21,6 +21,9 @@ vi.mock("@/repo/users", () => ({ findUserByEmail }));
 vi.mock("@/repo/meetings", () => ({ readAllMeetings }));
 vi.mock("@/repo/contract-payment", () => ({ readAll: readAllContracts }));
 vi.mock("@/repo/db", () => ({ readPurchases, readProductions, readBanners, readLeads }));
+// 시트 없는 수강생(ADR-0038) DB 경로 — 이 파일의 시트 번호 사례에서는 호출되지 않는다.
+vi.mock("@/repo/db/read-daily", () => ({ readMeetingsFromDb: vi.fn(), readContractsFromDb: vi.fn() }));
+vi.mock("@/repo/db/read-db-tab", () => ({ readDbTabFromDb: vi.fn() }));
 
 import { buildExportWorkbookData, exportFileName, serializeExportWorkbook } from "@/service/export-xlsx";
 

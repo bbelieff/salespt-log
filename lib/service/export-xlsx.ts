@@ -20,6 +20,9 @@ import {
   readLeads,
 } from "@/repo/db";
 import type { Meeting, ContractPayment, PaymentSlot } from "@/types";
+import { readContractsFromDb, readMeetingsFromDb } from "@/repo/db/read-daily";
+import { readDbTabFromDb } from "@/repo/db/read-db-tab";
+import { isSheetlessTenantKey } from "@/util/tenant-key";
 
 /** 화면 라벨 기준 헤더(코드 필드명 아님 — 사람이 열어보는 용도, 설계문서 §3). */
 const MEETING_HEADERS: [keyof Meeting, string][] = [
@@ -85,6 +88,20 @@ export async function buildExportWorkbookData(email: string): Promise<ExportWork
   const user = await findUserByEmail(email);
   if (!user) throw new Error(`[export-xlsx] 등록되지 않은 사용자: ${email}`);
   const sid = user.spreadsheetId;
+
+  if (isSheetlessTenantKey(sid)) {
+    // ADR-0038: 시트 없는 수강생 — 내보내기 원본은 DB 정본(시트 read 0).
+    const [meetings, contracts, tab] = await Promise.all([readMeetingsFromDb(sid), readContractsFromDb(sid), readDbTabFromDb(sid)]);
+    const strip = <R extends { row: number }>(rows: R[]) => rows.map(({ row: _row, ...rest }) => rest);
+    return {
+      meetings: meetings.map(meetingRow),
+      contracts: contracts.map(contractRow),
+      purchases: strip(tab.purchases),
+      productions: strip(tab.productions),
+      banners: strip(tab.banners),
+      leads: strip(tab.leads),
+    };
+  }
 
   const [meetings, contracts, purchases, productions, banners, leads] = await Promise.all([
     readAllMeetings(sid),

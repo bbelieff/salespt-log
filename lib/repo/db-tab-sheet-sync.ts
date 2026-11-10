@@ -21,6 +21,7 @@ import { resolveWriteKey } from "./db/row-key";
 import { readDbRowPayload } from "./db/db-tab-sync";
 import { clearMirrorPending, listMirrorPending, markMirrorPending } from "./db/mirror-pending";
 import { dbEnabled } from "./db/client";
+import { isSheetlessTenantKey } from "@/util/tenant-key";
 
 export type DbSection = "매입DB" | "직접생산" | "현수막" | "콜지기소";
 
@@ -29,6 +30,7 @@ const sheetSyncTails = new Map<string, Promise<void>>();
 /** 한 row 수렴 미러를 큐에 태운다(비차단). 같은 시트 잡은 **직렬**(contract-sheet-sync.ts 동일 패턴)
  *  — 인터리빙으로 옛 값이 이기지 않게. 잡 끝에 같은 시트의 다른 pending 행도 재드라이브(self-heal). */
 export function queueDbTabRowSync(spreadsheetId: string, section: DbSection, row: number): void {
+  if (isSheetlessTenantKey(spreadsheetId)) return; // ADR-0038: 시트 없는 수강생 — 시트로 보낼 미러가 없다
   const key = spreadsheetId;
   const tail = (sheetSyncTails.get(key) ?? Promise.resolve())
     .then(() => runDbTabRowSync(spreadsheetId, section, row))

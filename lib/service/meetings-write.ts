@@ -44,6 +44,7 @@ import {
   syncMeetingRemoved,
 } from "@/service/gcal-sync";
 import { Meeting } from "@/types";
+import { isSheetlessTenantKey } from "@/util/tenant-key";
 
 /** 프리미티브 공통 컨텍스트 — 호출 서비스가 resolve 해 전달(추가 레지스트리 read 방지). */
 export interface MeetingCtx {
@@ -64,6 +65,7 @@ const sheetSyncTails = new Map<string, Promise<void>>();
 /** DB 쓰기 성공 후 호출 — 해당 미팅 행을 최신 DB 상태로 시트에 수렴시키는 잡을 적재.
  * 잡 끝에 같은 시트의 다른 pending 행도 재드라이브(§7-3 self-heal). */
 export function queueMeetingSheetSync(ctx: MeetingCtx, id: string): void {
+  if (isSheetlessTenantKey(ctx.spreadsheetId)) return; // ADR-0038: 시트 없는 수강생 — 시트로 보낼 미러가 없다
   const key = ctx.spreadsheetId;
   const tail = (sheetSyncTails.get(key) ?? Promise.resolve())
     .then(() => runSheetSync(ctx, id))

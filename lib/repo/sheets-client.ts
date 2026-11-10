@@ -14,7 +14,7 @@
  */
 import { google, type sheets_v4 } from "googleapis";
 import { serviceAccount } from "@/config";
-import { recordSheetsCall } from "@/lib/analytics/api-timing";
+import { captureServerEvent, recordSheetsCall } from "@/lib/analytics/api-timing";
 import { isSheetlessTenantKey } from "@/util/tenant-key";
 
 /** 시트 없는 수강생 번호로 시트 API 를 부르려 했다 — 네트워크 호출 전에 막는다(재시도 안 함). */
@@ -26,6 +26,13 @@ export class SheetlessTenantError extends Error {
 }
 
 let cached: sheets_v4.Sheets | null = null;
+let sheetlessBlocks = 0;
+
+/** 관문이 막은 횟수(프로세스 누적). 시트 없는 수강생 경로가 시트를 부르려 한 흔적 — 0 이어야 정상.
+ *  샌드박스 시험(tests/service/sheetless-screens.pglite.test.ts)과 운영 계측이 같은 값을 본다. */
+export function sheetlessBlockCount(): number {
+  return sheetlessBlocks;
+}
 
 function isRateLimitError(e: unknown): boolean {
   if (!e || typeof e !== "object") return false;
@@ -59,7 +66,11 @@ function patchMethods<T extends object>(obj: T, names: readonly string[]): void 
     (obj as unknown as Record<string, unknown>)[name] = async (...args: unknown[]) => {
       // ADR-0038: 시트 없는 수강생(local:<uuid>)의 번호가 구글로 새어 나가지 않게 막는 단일 관문.
       const target = (args[0] as { spreadsheetId?: unknown } | undefined)?.spreadsheetId;
-      if (typeof target === "string" && isSheetlessTenantKey(target)) throw new SheetlessTenantError();
+      if (typeof target === "string" && isSheetlessTenantKey(target)) {
+        sheetlessBlocks += 1;
+        captureServerEvent("sheetless_sheet_blocked", { method: name });
+        throw new SheetlessTenantError();
+      }
       const t0 = Date.now();
       try {
         return await withRetry(() => bound(...args));

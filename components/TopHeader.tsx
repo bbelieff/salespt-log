@@ -17,6 +17,7 @@ import { useBadges } from "@/query/badge-hooks";
 import { BADGES_SEEN_EVENT, newBadgeIds, readSeen } from "./badges/badge-seen";
 import { BADGES } from "@/lib/analytics/badge-catalog";
 import { todayKST } from "@/util/week";
+import { hasRealSheet } from "@/util/tenant-key"; // ADR-0038: 시트 없는 수강생은 「시트 열기」 링크 없음
 import PageContainer from "./PageContainer";
 import { PanelLeftOpen } from "lucide-react";
 import { MOBILE_NAV_ID, setMobileNavOpen, useMobileNavOpen } from "./desktop/mobile-nav";
@@ -179,7 +180,7 @@ export default function TopHeader({
           </button>
           {/* 남은 폭은 이름에 배분하고 긴 이름만 말줄임 */}
           <div data-header-info className="order-2 flex h-14 min-w-0 flex-1 items-center">
-            {!sessionIdentity && me.data?.spreadsheetId ? <a href={`https://docs.google.com/spreadsheets/d/${me.data.spreadsheetId}/edit`} target="_blank" rel="noopener noreferrer" className="min-w-8 truncate text-xs font-black text-gray-900 hover:underline sm:text-sm">{display}</a>
+            {!sessionIdentity && me.data?.spreadsheetId && hasRealSheet(me.data.spreadsheetId) ? <a href={`https://docs.google.com/spreadsheets/d/${me.data.spreadsheetId}/edit`} target="_blank" rel="noopener noreferrer" className="min-w-8 truncate text-xs font-black text-gray-900 hover:underline sm:text-sm">{display}</a>
               : <span className="min-w-8 truncate text-xs font-black text-gray-900 sm:text-sm">{trainer.data?.name && display === "—" ? trainer.data.name : display}</span>}
 
 
@@ -344,7 +345,7 @@ export default function TopHeader({
                 <span>트레이너 페이지 →</span>
               </Link>
             )}
-            {me.data?.archivedSpreadsheetId && (
+            {me.data?.archivedSpreadsheetId && hasRealSheet(me.data.archivedSpreadsheetId) && (
               <a
                 href={`https://docs.google.com/spreadsheets/d/${me.data.archivedSpreadsheetId}/edit`}
                 target="_blank"

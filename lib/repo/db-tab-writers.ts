@@ -5,6 +5,7 @@
  */
 import { SHEET_RANGES } from "@/config";
 import { sheetsClient } from "./sheets-client";
+import { isSheetlessTenantKey } from "@/util/tenant-key";
 
 const TAB = SHEET_RANGES.dbManagement.tab;
 
@@ -35,6 +36,7 @@ export async function writeRow(
   row: number,
   values: (string | number | boolean)[],
 ): Promise<void> {
+  if (isSheetlessTenantKey(spreadsheetId)) return; // ADR-0038: 시트 없는 수강생 — 행은 DB 에만 둔다
   // 수식 컬럼은 spec.formulas에 정의된 수식 문자열로 치환 (시트 템플릿 누락 방지).
   const out = values.map((v, i) => {
     const formulaFor = spec.formulas[i];
