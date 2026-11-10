@@ -45,6 +45,11 @@ vi.mock("@/repo/codef-client", () => ({
       await new Promise<void>((r) => { h.release = r; });
       return ok(VAT);
     }
+    if (path.endsWith("standard-financial-statements")) {
+      // 사업장이 여럿인 개인사업자: 사업자번호 없이는 거절(운영 실측 문구), 있으면 그 사업자 것만.
+      if (!params.identity) return { code: "CF-13000", message: "사용자 주민번호/사업자 번호를 입력하지 않았습니다. 확인 후 거래하시기 바랍니다.", extraMessage: "", data: null };
+      return ok({ resCompanyIdentityNo: params.identity, resCompanyNm: "가상", resAttrYear: params.startDate, resIssueDate: "20261109" });
+    }
     return { code: "CF-12100", message: "실패", extraMessage: "가상 오류", data: null };
   },
 }));
@@ -119,6 +124,26 @@ describe("간편인증 보내기 → 승인 확인 → 결과", () => {
     const pdf = await originalOf(who, req.id, "214-88-77123", "biz");
     expect(pdf.fileName).toBe("가상정밀 사업자등록증명.pdf");
     expect(pdf.pdf.subarray(0, 4).toString()).toBe("%PDF");
+  });
+
+  it("재무제표가 「사업자 번호를 입력하지 않았습니다」로 거절되면 다른 서류의 사업자번호마다 같은 세션으로 다시 받는다", async () => {
+    const req = await startSimpleAuth(who, { ...input, docs: ["biz", "vat", "fs"] });
+    await wait(async () => h.calls.length >= 2);
+    h.approved = true;
+    await actSimpleAuth(who, req.id, { action: "confirm" });
+    await wait(async () => (await listSimpleAuth(who))[0]!.status === "done");
+    const fsCalls = h.calls.filter((c) => c.path.endsWith("standard-financial-statements"));
+    const retried = fsCalls.filter((c) => c.params.identity);
+    expect(new Set(retried.map((c) => c.params.identity))).toEqual(new Set(["2148877123", "2141290311"]));
+    expect(retried.every((c) => c.params.applicationType === "01" && c.params.id === fsCalls[0]!.params.id)).toBe(true);
+    const [done] = await listSimpleAuth(who);
+    for (const b of done!.businesses) expect(b.results.find((r) => r.key === "fs")!.reason ?? "").not.toMatch(/사업자 번호를 입력/);
+  });
+
+  it("국세 완납증명은 주소 공개여부(isAddrViewYn)를 함께 보낸다", async () => {
+    await startSimpleAuth(who, { ...input, docs: ["biz", "tax"] });
+    await wait(async () => h.calls.some((c) => c.path.endsWith("tax-cert-all")));
+    expect(h.calls.find((c) => c.path.endsWith("tax-cert-all"))!.params).toMatchObject({ isAddrViewYn: "0" });
   });
 
   it("업체정보 반영: 받은 서류에 있는 칸만 DB 업체정보에 합치고 반영 표시", async () => {
