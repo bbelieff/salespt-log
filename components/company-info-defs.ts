@@ -91,7 +91,8 @@ export const LEASE_PARTS = {
   area: ["면적", "㎡", "빌린 면적을 ㎡ 숫자로. 예: 33 (1평 = 3.3058㎡)"],
 } as const;
 
-export const RRN_HINT = "13자리를 적어 주세요. 앞 6자리 뒤에 하이픈(-)이 자동으로 들어가요.";
+export const EMAIL_HINT = "자료·서류를 주고받을 대표자 이메일. 예: ceo@example.com";
+export const RRN_HINT ="13자리를 적어 주세요. 앞 6자리 뒤에 하이픈(-)이 자동으로 들어가요.";
 /** 주민등록번호가 비어 생년월일에서 보여 주는 값일 때의 설명. */
 export const RRN_DERIVED_HINT = `생년월일에서 자동으로 채운 값이에요. 무엇이든 고치면 함께 저장돼요. 지우면 생년월일도 함께 지워져요. ${RRN_HINT}`;
 
@@ -113,6 +114,9 @@ export const 대표자_ITEMS: EditorItem[] = [
     ],
     wideSecond: true,
   },
+  // 이메일 — 연락처 줄 바로 아래 전폭 한 칸(company-info-email-v2 2026-11-10). 확장보기에만 — 기본보기에는 넣지
+  // 않는다(연락처와 같은 기준). 적혀 있으면 기본보기의 「확장보기에 적힌 항목 N개」에 들어간다. DB 전용 키(시트 열 없음).
+  f(["이메일", "이메일", EMAIL_HINT, 2]),
   f(["기대출개인", "기대출 개인", "캐피탈 38백만\n카드론 10백만\n00은행 20백만", 2, true]),
   f(["자택주소지", "자택주소지", "주소지", 2]),
   { kind: "ownership", spec: 대표자_OWNERSHIP },

@@ -55,7 +55,8 @@ export type FileProposal = { fileName: string; fields: ParsedField[] };
 
 export const KEEP_NOTE = "지금 값이 있어 기본으로 안 덮어요";
 export const SAME_NOTE = "지금 값과 같아요";
-export const INVALID_NOTE = "번호가 맞지 않아 기본으로 안 넣어요";
+// 사업자등록번호(검증번호)·이메일(모양) 공용 — "번호"라고 쓰면 이메일 칸에서 틀린 말이 된다(company-info-email-v2).
+export const INVALID_NOTE = "형식이 맞지 않아 기본으로 안 넣어요";
 export const OTHER_COMPANY_NOTE = "다른 회사 서류에서 읽은 값이라 기본으로 안 넣어요";
 
 /**

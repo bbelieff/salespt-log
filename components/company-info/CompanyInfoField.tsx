@@ -8,6 +8,9 @@
  * - 주민등록번호: 13자리 전체(ADR-0035, belie 2026-10-23). 입력 중 7번째 숫자에서 하이픈 자동,
  *   13자리 초과분은 버림, blur 에 normalizeRrn 마무리(6자리 미만이면 비움) — 버리거나 비운 이유를
  *   칸 아래에 알린다. 서버 스키마도 같은 모양으로 한 번 더 맞춘다.
+ * - 이메일(company-info-email-v2): blur 에만 tidyContactEmail(공백·전각 ＠·mailto: 정리, 대소문자 유지).
+ *   모양이 아니어도 막지 않고 적은 그대로 저장 — 포커스가 없을 때 amber 안내(role=status)만. type=text
+ *   (type=email 은 브라우저가 값을 고쳐 커서가 튄다) + 모바일 @ 키보드(inputMode=email), 자동완성·맞춤법·첫 글자 대문자 끔.
  */
 "use client";
 
@@ -18,6 +21,7 @@ import HintTooltip from "@/components/ui/HintTooltip";
 import { RRN_MAX_DIGITS, normalizeRrn, sanitizeRrnTyping } from "@/util/rrn-front";
 import type { FieldDef } from "@/components/company-info-defs";
 import { bizNoTyping } from "@/util/live-format";
+import { looksLikeContactEmail, tidyContactEmail } from "@/util/contact-email";
 import { useLiveInput } from "./useLiveInput";
 
 /** 위계(§3-2 contrast): 값 gray-900 / 테두리 gray-300 / 예시(placeholder)만 gray-300 옅게. */
@@ -29,6 +33,7 @@ export const readOnlyCls =
 
 const RRN_CUT_MSG = "주민등록번호는 13자리까지만 적을 수 있어요.";
 const RRN_SHORT_MSG = "앞 6자리를 모두 입력해야 저장돼요.";
+export const EMAIL_SHAPE_MSG = "이메일 모양이 아니에요(예: ceo@example.com). 적은 그대로 저장돼요.";
 
 /** 설명이 라벨과 다를 때만 (?) 와 sr-only 설명을 단다 — 그 설명 요소 id. */
 export function hintIdOf(inputId: string, label: string, hint?: string): string | undefined {
@@ -72,12 +77,17 @@ export default function CompanyInfoField({ def, value: v, onChange, id, classNam
   const [k, label, hint, , multi] = def;
   // 주민등록번호 칸이 13자리 초과분을 버렸거나 비웠을 때 그 이유(말없이 사라지지 않게).
   const [rrnNotice, setRrnNotice] = useState("");
+  // 이메일 칸에 포커스가 있는 동안은 모양 안내를 감춘다(적는 도중 깜빡이지 않게).
+  const [focused, setFocused] = useState(false);
   const isPhone = k === "연락처통신사";
   const isRrn = k === "주민등록번호";
+  const isEmail = k === "이메일";
   const hintId = hintIdOf(id, label, hint);
-  const normalizeOnBlur = isPhone ? formatPhone : isRrn ? normalizeRrn : null;
+  const normalizeOnBlur = isPhone ? formatPhone : isRrn ? normalizeRrn : isEmail ? tidyContactEmail : null;
+  const emailNotice = isEmail && !focused && !looksLikeContactEmail(v);
   const onBlur = normalizeOnBlur
     ? () => {
+        if (isEmail) setFocused(false);
         const next = normalizeOnBlur(v);
         if (isRrn && v.trim() !== "" && next === "") setRrnNotice(RRN_SHORT_MSG);
         if (next !== v) onChange(k, next);
@@ -109,17 +119,25 @@ export default function CompanyInfoField({ def, value: v, onChange, id, classNam
           id={id}
           className={inputCls}
           aria-describedby={hintId}
-          inputMode={isPhone ? "tel" : isRrn || isBizNo ? "numeric" : undefined}
-          autoComplete={isRrn ? "off" : undefined}
+          inputMode={isPhone ? "tel" : isRrn || isBizNo ? "numeric" : isEmail ? "email" : undefined}
+          autoComplete={isRrn || isEmail ? "off" : undefined}
+          autoCapitalize={isEmail ? "none" : undefined}
+          spellCheck={isEmail ? false : undefined}
           ref={isBizNo ? bizLive.ref : undefined}
           value={v}
           onChange={isBizNo ? bizLive.onChange : (e) => onInput(e.target.value)}
+          onFocus={isEmail ? () => setFocused(true) : undefined}
           onBlur={onBlur}
         />
       )}
       {isRrn && rrnNotice && (
         <p className="mt-0.5 text-xs text-amber-700" role="status">
           {rrnNotice}
+        </p>
+      )}
+      {emailNotice && (
+        <p className="mt-0.5 text-xs text-amber-700" role="status">
+          {EMAIL_SHAPE_MSG}
         </p>
       )}
     </div>

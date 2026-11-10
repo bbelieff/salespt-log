@@ -21,6 +21,7 @@ import {
   COMPANY_FIELDS_EXT4,
   COMPANY_FIELDS_EXT5,
   COMPANY_FIELDS_EXT6,
+  COMPANY_FIELDS_DB_ONLY,
   MEETING_ROW_WIDTH,
   rowToMeeting,
 } from "../meetings";
@@ -394,6 +395,10 @@ export function companyInfoFromDbPayload(
     // BR = EXT5(BM..BQ) 다음 1열. 옛 행(키 없음)은 "".
     const v = p[f] ?? p[colName(ext6Letter + i)];
     ci[f] = String(v ?? "").trim();
+  });
+  COMPANY_FIELDS_DB_ONLY.forEach((f) => {
+    // 시트 열 없음 — upsert 미러(필드명) payload 에만 있다. 열문자 backfill·rename 키행은 "".
+    ci[f] = String(p[f] ?? "").trim();
   });
   const custom = p["커스텀"];
   if (custom && typeof custom === "object") {

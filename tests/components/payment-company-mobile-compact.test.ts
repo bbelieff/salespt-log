@@ -20,7 +20,7 @@ it("opts in explicitly and uses the same layout/view state, counts and memory wi
  render(true);expect(host.querySelector('[data-payment-company-compact]')).not.toBeNull();
  expect(host.querySelectorAll('.payment-ci-native')).toHaveLength(2);
  const view=host.querySelector<HTMLSelectElement>('select[aria-label="업체정보 항목 보기"]')!;
- expect([...view.options].map(o=>o.text)).toEqual(["전체","적은 것 0","안 적은 것 34"]);
+ expect([...view.options].map(o=>o.text)).toEqual(["전체","적은 것 0","안 적은 것 35"]); // 35 = 확장보기 칸 수(2026-11-10 이메일 칸 +1)
  select("업체정보 항목 보기","empty");expect(localStorage.getItem("salespt:company-info-view")).toBe("empty");
  select("업체정보 보기 범위 선택","basic");expect(host.querySelector('select[aria-label="업체정보 항목 보기"]')).toBeNull();
  expect(localStorage.getItem("salespt:company-info-layout:extended")).toBe("basic");

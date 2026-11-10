@@ -5,8 +5,12 @@
  * - "● 라벨 <탭/공백 2칸+> 값" 줄을 항목으로 읽고, 들여쓴 다음 줄은 위 항목 값에 잇는다(매출 여러 해).
  * - 아이디·비번·계좌·주민번호 전체는 칸이 아니라 vault 로만 보낸다 — fields·info·경고·leftover 에는 싣지 않는다.
  * - 칸에 안 맞는 줄(">>" 질문, "=====" 아래 자유 메모, 모르는 라벨)은 leftover — 「기타메모에 붙이기」 용.
+ * - 이메일(company-info-email-v2 2026-11-10): 라벨이 이메일/메일/E-mail 이면 [대표자] 이메일 칸 제안. 대표·사업장
+ *   분기보다 먼저 본다("대표 이메일"이 대표자이름으로 가지 않게). 아이디·비번 같은 계정 라벨("이메일 ID/PW")은
+ *   그대로 보관함. 모양이 아니면 valid:false — 비교표에서 기본으로 체크하지 않는다.
  * 초안: Muse(muse-spark-1.3-contributor) — 총괄 검수.
  */
+import { looksLikeContactEmail, tidyContactEmail } from "@/util/contact-email";
 import { wonToMillion, parseSalesAmount } from "@/util/company-money";
 import { salesSlotOf, SALES_YEAR_KEYS, SALES_HALF_KEYS } from "@/util/company-sales";
 import { formatBizNo, isValidBizNo } from "./bizno";
@@ -22,6 +26,7 @@ export type MemoParseResult = DocParseResult & {
 };
 
 const BANKS = ["농협", "국민", "기업", "신한", "우리", "하나", "카카오", "IBK", "NH", "수협", "우체국", "토스", "부산", "대구"];
+const EMAIL_WARN = "이메일 모양이 아니에요. 확인해 주세요.";
 const ACCOUNT_LABELS = ["공동인증서", "인증서", "소진공", "홈택스", "위택스", "정부24", "은행", "아이디", "비번", "비밀번호", "ID", "PW"];
 
 function isBullet(line: string): boolean {
@@ -157,7 +162,16 @@ export function parseMeetingMemo(text: string, ctx?: DocParseContext): MemoParse
     const value = rawValue.trim();
     if (!label) continue;
 
-    if (has(label, "대표자", "대표")) {
+    // 이메일 라벨 — 단, 계정 라벨("이메일 ID/PW"·"메일 비번")은 아래 보관함 분기로 보낸다(영문 id/pw 는 대소문자 무시).
+    const isEmailLabel =
+      (has(label, "이메일", "메일") || /e-?mail/i.test(noSpace(label))) &&
+      !has(label, ...ACCOUNT_LABELS) &&
+      !/\b(?:id|pw|password)\b/i.test(label);
+    if (isEmailLabel) {
+      const v = tidyContactEmail(value.split("\n")[0] ?? "");
+      const ok = looksLikeContactEmail(v);
+      if (v) fields.push({ key: "이메일", value: v, confidence: ok ? 0.9 : 0.5, warnings: ok ? [] : [EMAIL_WARN], valid: ok });
+    } else if (has(label, "대표자", "대표")) {
       repName = value.split("\n")[0]!.trim() || repName;
       push("대표자이름", repName);
     } else if (has(label, "창업일자", "창업연월", "개업일")) {
@@ -212,8 +226,6 @@ export function parseMeetingMemo(text: string, ctx?: DocParseContext): MemoParse
       } else vault.push(same ? { ...item, label: label.trim() } : item);
     } else if (has(label, "인증", "특허")) {
       push("특허및인증", value);
-    } else if (has(label, "이메일", "메일")) {
-      if (value) info.push({ label: "이메일", value });
     } else if (has(label, "매출") || /^(20)?\d{2}년/.test(noSpace(label))) {
       readSales(label, value);
     } else {

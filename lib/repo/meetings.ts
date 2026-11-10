@@ -49,6 +49,7 @@ export {
   COMPANY_FIELDS_EXT5,
   COMPANY_EXT5_START,
   COMPANY_FIELDS_EXT6,
+  COMPANY_FIELDS_DB_ONLY,
   MEETING_ROW_WIDTH,
   rowToMeeting,
 } from "./meetings-rows";
