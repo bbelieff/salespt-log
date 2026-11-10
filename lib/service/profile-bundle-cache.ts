@@ -30,6 +30,7 @@
 import { readProfileBundle } from "@/repo/sales";
 import { readSheetlessProfileFromDb } from "@/repo/db/course-dates";
 import { isSheetlessTenantKey } from "@/util/tenant-key";
+import { isSheetDetached } from "@/repo/sheet-detach";
 import { profileStatsFromDb } from "./profile-stats-db";
 
 const FRESH_MS = 600_000; // 10분 — 기존 TTL 과 동일(신선 판정)
@@ -60,6 +61,10 @@ async function fetchBundle(spreadsheetId: string): Promise<Bundle> {
   if (inFlight) return inFlight;
   const p = (async () => {
     if (isSheetlessTenantKey(spreadsheetId)) return readSheetlessBundle(spreadsheetId);
+    // ADR-0038 5단계: 시트에서 떼어 낸 기수 — 통계는 DB 로(시트는 얼어붙음). DB 에 날짜가 없으면 시트(날짜는 안 변한다).
+    if (await isSheetDetached(spreadsheetId)) {
+      try { return await readSheetlessBundle(spreadsheetId); } catch { /* 아래 시트 경로 */ }
+    }
     _sheetBundleFetchCount++;
     return readProfileBundle(spreadsheetId);
   })();

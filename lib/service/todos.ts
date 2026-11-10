@@ -20,6 +20,7 @@
  */
 import { sameContractRef } from "@/util/contract-ref";
 import { isSheetlessTenantKey } from "@/util/tenant-key";
+import { whenSheetAttached } from "@/repo/sheet-detach";
 import { randomUUID } from "node:crypto";
 import * as Sentry from "@sentry/nextjs";
 import { findUserByEmail } from "@/repo/users";
@@ -85,8 +86,10 @@ function queueSheetSync(ctx: SheetCtx, id: string): void {
   if (isSheetlessTenantKey(ctx.spreadsheetId)) return; // ADR-0038: 시트 없는 수강생 — 수렴할 시트가 없다
   const key = ctx.spreadsheetId;
   const tail = (sheetSyncTails.get(key) ?? Promise.resolve())
-    .then(() => runSheetSync(ctx, id))
-    .then(() => drainPendingTodoSheet(ctx, id))
+    .then(() => whenSheetAttached(key, async () => { // ADR-0038 5단계
+      await runSheetSync(ctx, id);
+      await drainPendingTodoSheet(ctx, id);
+    }))
     .catch(() => {}); // runSheetSync 가 Sentry 계수 — 큐는 항상 전진
   sheetSyncTails.set(key, tail);
   void tail.finally(() => {

@@ -54,7 +54,7 @@ export {
   rowToMeeting,
 } from "./meetings-rows";
 import { colName } from "@/util/sheet-column";
-import { isSheetlessTenantKey } from "@/util/tenant-key";
+import { isSheetDetached } from "./sheet-detach";
 
 function tabRef(tab: string): string {
   return /[\s()]/.test(tab) ? `'${tab}'` : tab;
@@ -80,7 +80,7 @@ export async function readMeetingRows(
   spreadsheetId: string,
   rangeFor: (lastCol: string) => string,
 ): Promise<unknown[][]> {
-  if (isSheetlessTenantKey(spreadsheetId)) return []; // ADR-0038: 시트 없음 — 미팅은 DB 정본에만
+  if (await isSheetDetached(spreadsheetId)) return []; // ADR-0038: 시트 없음 — 미팅은 DB 정본에만
   const get = async (lastCol: string) => {
     const res = await sheetsClient().spreadsheets.values.get({
       spreadsheetId,

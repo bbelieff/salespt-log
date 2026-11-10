@@ -35,6 +35,7 @@ import type { Channel, ChannelDailyRow } from "@/types";
 import { MAX_SHEET_WEEK } from "@/config/cohort-dates";
 import { parseISO, weekIndexOf } from "@/util/week";
 import { isSheetlessTenantKey } from "@/util/tenant-key";
+import { whenSheetAttached } from "@/repo/sheet-detach";
 import { chooseWriteSource, usesDbStorage } from "./daily-source";
 
 export interface SalesCtx {
@@ -57,8 +58,11 @@ export function queueSalesRowSync(ctx: SalesCtx, date: string, channel: Channel)
   if (isSheetlessTenantKey(ctx.spreadsheetId)) return; // ADR-0038: 시트 없는 수강생 — 시트로 보낼 미러가 없다
   const key = ctx.spreadsheetId;
   const tail = (sheetSyncTails.get(key) ?? Promise.resolve())
-    .then(() => runSalesRowSync(ctx, date, channel))
-    .then(() => drainPendingSalesSheet(ctx, `${date}:${channel}`))
+    // ADR-0038 5단계: 시트에서 떼어 낸 기수면 미러를 보내지 않는다(판정은 잡 안에서 — 순서 보존).
+    .then(() => whenSheetAttached(key, async () => {
+      await runSalesRowSync(ctx, date, channel);
+      await drainPendingSalesSheet(ctx, `${date}:${channel}`);
+    }))
     .catch(() => {}); // runSalesRowSync 가 Sentry 계수 — 큐는 항상 전진
   sheetSyncTails.set(key, tail);
   void tail.finally(() => {
