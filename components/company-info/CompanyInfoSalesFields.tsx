@@ -19,7 +19,7 @@
 import { useState } from "react";
 import type { CompanyInfo } from "@/types";
 import { baseYearInputError, resolveBaseYear, salesYearTag, salesYearToken } from "@/util/company-sales";
-import { formatTenths, moneyHint } from "@/util/company-money";
+import { formatTenthsDisplay, moneyHint } from "@/util/company-money";
 import {
   computeSalesGrowth,
   legacyMoneyConvertPatch,
@@ -187,7 +187,7 @@ export default function CompanyInfoSalesFields({ draft, onField, onPatch, idBase
                             className={`${readOnlyCls} pr-7 text-right font-semibold tabular-nums`}
                             readOnly
                             aria-readonly="true"
-                            value={formatTenths(row.total)}
+                            value={formatTenthsDisplay(row.total)}
                           />
                           <span aria-hidden className="pointer-events-none absolute inset-y-0 right-1.5 flex items-center text-xs text-slate-300">백만</span>
                         </div>

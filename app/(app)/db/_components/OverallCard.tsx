@@ -4,8 +4,9 @@
  */
 "use client";
 
-import { fmtWon, type ChannelKey } from "../_lib/channels";
+import { type ChannelKey } from "../_lib/channels";
 import type { ReactNode } from "react";
+import { formatCount, formatWon } from "@/lib/format/money";
 
 interface Item {
   key: ChannelKey;
@@ -55,7 +56,7 @@ export default function OverallCard({
           </div>
           <div className="flex shrink-0 items-baseline gap-3">
             <span className="text-sm text-slate-500" style={numStyle}>
-              {fmtWon(it.count)}
+              {formatCount(it.count)}
               {it.unit}
             </span>
             <span
@@ -64,7 +65,7 @@ export default function OverallCard({
               }`}
               style={numStyle}
             >
-              {it.isCost ? "₩" + fmtWon(it.cost ?? 0) : "–"}
+              {it.isCost ? formatWon(it.cost ?? 0) : "–"}
             </span>
           </div>
         </div>
@@ -73,13 +74,13 @@ export default function OverallCard({
         <span className="text-sm font-semibold text-slate-800">총 매입 합계</span>
         <div className="flex items-baseline gap-3">
           <span className="text-sm text-slate-600" style={numStyle}>
-            {fmtWon(totalCount)}건
+            {formatCount(totalCount)}건
           </span>
           <span
             className="w-24 text-right text-base font-bold text-red-600"
             style={numStyle}
           >
-            ₩{fmtWon(totalCost)}
+            {formatWon(totalCost)}
           </span>
         </div>
       </div>

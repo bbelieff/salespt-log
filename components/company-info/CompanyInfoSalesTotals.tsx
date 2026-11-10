@@ -9,7 +9,7 @@
 
 import type { CompanyInfo } from "@/types";
 import { resolveBaseYear, salesYearToken } from "@/util/company-sales";
-import { formatTenths } from "@/util/company-money";
+import { formatTenthsDisplay } from "@/util/company-money";
 import { salesRowView } from "@/service/company-finance";
 import { salesDefs } from "@/components/company-info-defs";
 import { readOnlyCls } from "./CompanyInfoField";
@@ -45,7 +45,7 @@ export default function CompanyInfoSalesTotals({ draft, onField, idBase, today, 
                 <span className="sr-only"> {label}</span>
               </label>
               {row.auto && row.total !== null ? (
-                <input id={id} className={`${readOnlyCls} text-right font-semibold tabular-nums`} readOnly aria-readonly="true" value={formatTenths(row.total)} />
+                <input id={id} className={`${readOnlyCls} text-right font-semibold tabular-nums`} readOnly aria-readonly="true" value={formatTenthsDisplay(row.total)} />
               ) : (
                 <MillionWonInput id={id} value={String(draft[k] ?? "")} signed={false} bare onChange={(v) => onField(k, v)} />
               )}

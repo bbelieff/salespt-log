@@ -11,7 +11,6 @@
  * 비용은 세 채널의 기간 DB 비용(periodDbCostByChannel). 추가 비용(원장)은 채널에 나누지 않는다.
  */
 import { CHANNEL_ORDER, type Channel, type DashboardContractChannel } from "@/types";
-import { formatMoney } from "@/lib/format/money";
 import { contractChannelKey, isManualContractLink } from "@/util/contract-link";
 import {
   periodDbCostByChannel,
@@ -138,21 +137,4 @@ export function channelHeadlineText(h: ChannelHeadline): string {
   }
 }
 
-/**
- * 표의 짧은 금액 — 만원으로 먼저 반올림하고, 0 이 아닐 때만 「−」를 붙인다(「−0만」 없음).
- * 1억 이상은 0.1억 단위(「1.9억」) — 320px 폭에서 숫자 세 칸이 한 줄에 들어가게.
- */
-export function formatManShort(won: number): string {
-  const man = Math.round(Math.abs(won) / 10_000);
-  const sign = won < 0 && man !== 0 ? "−" : "";
-  if (man >= 10_000) {
-    const eok = Math.round(man / 1_000) / 10;
-    return `${sign}${eok.toLocaleString("ko-KR", { maximumFractionDigits: 1 })}억`;
-  }
-  return `${sign}${man.toLocaleString("ko-KR")}만`;
-}
-
-/** 원 단위 전체 금액(제목·화면 읽기용) — 「−₩1,234,567」. */
-export function formatWonFull(won: number): string {
-  return `${won < 0 ? "−" : ""}₩${formatMoney(Math.abs(won))}`;
-}
+// 표의 짧은 금액·전체 금액은 공용 formatMoneyCompact·formatWon(@/lib/format/money) — 2026-11-10 금액 표기 규칙.

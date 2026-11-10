@@ -157,7 +157,7 @@ describe("optionLabel — 충돌 행 고르기 상자 이름", () => {
 describe("[재무] 금액 칸 — 백만원 표시·원문·기준 연도 (company-finance-won-grid)", () => {
   it("금액 칸 숫자는 '250.1백만원', 옛 글·다른 칸은 그대로", () => {
     expect(displayValue("과년도매출", "250.1")).toBe("250.1백만원");
-    expect(displayValue("영업이익", "-3.2")).toBe("-3.2백만원");
+    expect(displayValue("영업이익", "-3.2")).toBe("−3.2백만원"); // 화면 음수 U+2212(저장 글은 그대로)
     expect(displayValue("과년도매출", "25' 250백만")).toBe("25' 250백만");
     expect(displayValue("결산연도", "2025")).toBe("2025");
     expect(displayValue("과년도매출", "")).toBe("");

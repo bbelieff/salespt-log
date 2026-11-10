@@ -10,7 +10,8 @@
 "use client";
 
 import { useState } from "react";
-import { formatMoney } from "@/lib/format/money";
+import { formatWon, parseMoney } from "@/lib/format/money";
+import MoneyInput from "@/components/ui/MoneyInput";
 import type { RecognizedExpense } from "@/types/expense-ledger";
 import AutosaveStatus from "@/components/autosave/AutosaveStatus";
 import { isPartiallyRecognized, useExpenseEntryAutosave } from "./useExpenseEntryAutosave";
@@ -90,15 +91,14 @@ export default function ExpenseEntryEditor({ entry, categories, view, month }: P
         </label>
         <label className="block">
           <span className="mb-0.5 block text-xs text-slate-500">금액(원)</span>
-          <input
-            type="text"
-            inputMode="numeric"
+          {/* 다른 금액 입력칸처럼 천단위 쉼표(MoneyInput). 초안은 숫자 문자열 그대로 — 검사·저장 규칙 불변. */}
+          <MoneyInput
             aria-label="금액(원)"
             className={inputCls}
-            value={draft.amountText}
+            value={parseMoney(draft.amountText)}
             disabled={auto.amountLocked}
             title={auto.amountLocked ? "여러 달에 걸친 비용이라 원본 전액을 유지합니다" : undefined}
-            onChange={(e) => stage({ amountText: e.target.value })}
+            onChange={(n) => stage({ amountText: n > 0 ? String(n) : "" })}
           />
         </label>
         <label className="block">
@@ -125,12 +125,12 @@ export default function ExpenseEntryEditor({ entry, categories, view, month }: P
       {groupError && <p role="alert" className="text-xs font-semibold text-red-600">{groupError}</p>}
       {auto.amountLocked && (
         <p className="text-xs text-slate-400">
-          이 범위 인식액 ₩{formatMoney(entry.amountWon)} · 여러 달에 걸친 비용이라 금액은 원본 전액 그대로 유지됩니다.
+          이 범위 인식액 {formatWon(entry.amountWon)} · 여러 달에 걸친 비용이라 금액은 원본 전액 그대로 유지됩니다.
         </p>
       )}
       {showSplit && (
         <p className="text-xs text-slate-400">
-          전액 ₩{formatMoney(entry.originalAmountWon ?? entry.amountWon)} · 이 범위 인식액 ₩{formatMoney(entry.amountWon)}
+          전액 {formatWon(entry.originalAmountWon ?? entry.amountWon)} · 이 범위 인식액 {formatWon(entry.amountWon)}
         </p>
       )}
       <div className="flex items-center justify-between gap-2">

@@ -20,7 +20,7 @@ import BasicEditDetails from "./BasicEditDetails";
 import AddMeetingForm from "./AddMeetingForm";
 import CompanyInfoEditor from "@/components/CompanyInfoEditor";
 import CarryoverBadge from "@/components/CarryoverBadge";
-import { formatMoney } from "@/lib/format/money";
+import { formatWon } from "@/lib/format/money";
 import { todayKST } from "@/util/week";
 import MapRouteButton from "./MapRouteButton";
 
@@ -40,7 +40,6 @@ interface Props {
 }
 
 /** 공용 부품 별칭 — 중복 구현 제거(PR-1 lib/format/money 가 단일 원천). */
-const fmtMoney = formatMoney;
 
 export default function MeetingResultCard({
   meeting,
@@ -72,7 +71,7 @@ export default function MeetingResultCard({
   const placeCls = isCanceled ? "line-through text-slate-400" : "text-slate-500";
 
   const feeSummary = state === "contract" && meeting.수임비 > 0
-    ? <span className="shrink-0 text-xs font-bold text-green-700" style={{ fontVariantNumeric: "tabular-nums" }}>₩{fmtMoney(meeting.수임비)}</span>
+    ? <span className="shrink-0 text-xs font-bold text-green-700" style={{ fontVariantNumeric: "tabular-nums" }}>{formatWon(meeting.수임비)}</span>
     : null;
 
   const pickAction = (a: Exclude<Action, null>) =>
@@ -110,7 +109,7 @@ export default function MeetingResultCard({
   };
   const confirmContractDrop = (): boolean => // 계약→완료/취소 시 계약카드 삭제 경고.
     state !== "contract" ||
-    window.confirm(`상태를 바꾸면 실무/수납의 계약 1건(₩${fmtMoney(meeting.수임비)})이 함께 지워져요.
+    window.confirm(`상태를 바꾸면 실무/수납의 계약 1건(${formatWon(meeting.수임비)})이 함께 지워져요.
 계속할까요?`);
   const handleDone = (reason: string) => {
     if (!confirmContractDrop()) return;
@@ -188,7 +187,7 @@ export default function MeetingResultCard({
                         className="text-green-700"
                         style={{ fontVariantNumeric: "tabular-nums" }}
                       >
-                        ₩{fmtMoney(meeting.수임비)}
+                        {formatWon(meeting.수임비)}
                       </b>
                     </div>
                     <button

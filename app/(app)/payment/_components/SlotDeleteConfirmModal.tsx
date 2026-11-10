@@ -4,7 +4,8 @@
 
 import AppDialog, { AppDialogClose } from "@/components/ui/AppDialog";
 import type { PaymentSlot } from "@/types";
-import { fmtDate, fmtMoney } from "./nameHighlight";
+import { fmtDate } from "./nameHighlight";
+import { formatWon } from "@/lib/format/money";
 
 export default function SlotDeleteConfirmModal({ n, slot, onCancel, onConfirm }: {
   n: number;
@@ -16,8 +17,8 @@ export default function SlotDeleteConfirmModal({ n, slot, onCancel, onConfirm }:
     ["진행기관", slot.진행기관.trim()],
     ["진행상품", slot.진행상품.trim()],
     ["진행률", slot.진행률],
-    ["승인금액", slot.승인금액 ? fmtMoney(slot.승인금액) : ""],
-    ["수납액", slot.수납액 ? fmtMoney(slot.수납액) : ""],
+    ["승인금액", slot.승인금액 ? formatWon(slot.승인금액) : ""],
+    ["수납액", slot.수납액 ? formatWon(slot.수납액) : ""],
     ["수납일", slot.수납일 ? fmtDate(slot.수납일) : ""],
     ["메모", slot.메모.trim()],
   ];

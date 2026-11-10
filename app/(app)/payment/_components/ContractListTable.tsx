@@ -3,7 +3,7 @@
 
 import { Fragment, useState, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 import { isTerminatedContract, WAITING_PROGRESS } from "@/types";
-import { formatMoney } from "@/lib/format/money";
+import { formatWon } from "@/lib/format/money";
 import { allHalted, averageProgress, isHaltedSlot, slotOf } from "@/lib/analytics/contract-slots";
 import type { CompanyWorkItem } from "../_lib/company-work-view";
 import { fmtDate, renderNameWithHighlight } from "./nameHighlight";
@@ -85,8 +85,8 @@ export default function ContractListTable({ items, selectedKey, onSelect, highli
                 {data.진행률 === WAITING_PROGRESS && data.대기사유?.trim() && <span className="block truncate pl-7 text-px-11 text-violet-700">사유: {data.대기사유}</span>}
               </Fragment>);}) : <span className="mt-1 block truncate pl-7 text-px-11 font-semibold text-blue-700">진행건 미등록</span>}
               <span className="mt-0.5 grid grid-cols-[1fr_auto] gap-x-2 pl-7 text-px-11 tabular-nums">
-                <span className="truncate text-slate-500">{fmtDate(cp.계약일)} · 수임비 ₩{formatMoney(cp.수임비)}</span>
-                <span className="font-semibold text-emerald-600">수수료 ₩{formatMoney(fee)}</span>
+                <span className="truncate text-slate-500">{fmtDate(cp.계약일)} · 수임비 {formatWon(cp.수임비)}</span>
+                <span className="font-semibold text-emerald-600">수수료 {formatWon(fee)}</span>
                 <span className="col-span-2 mt-1 flex items-center gap-2 text-blue-600"><span>{allStopped ? "진행 중도중지" : `진행 ${pct}%${works.length > 1 ? ` (평균 · ${works.length}건)` : ""}`}</span><span className="h-1 flex-1 overflow-hidden rounded-full bg-slate-200"><span className="block h-full rounded-full bg-gradient-to-r from-sky-400 to-blue-600" style={{ width: `${pct}%` }}/></span></span>
               </span>
             </button>

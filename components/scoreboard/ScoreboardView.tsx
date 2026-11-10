@@ -12,6 +12,7 @@
 
 import { useState } from "react";
 import { STATS_WEEKS } from "@/config/cohort-dates";
+import { formatCount } from "@/lib/format/money";
 import { seasonDisplayLabel } from "@/service/arena-season-config";
 import AwardPodium, { type PodiumColor } from "./AwardPodium";
 import CohortSummaryBoard from "./CohortSummaryBoard";
@@ -226,7 +227,7 @@ function RankingTable({
                 </span>
               </span>
               <span className="font-black tabular-nums text-slate-800">
-                {Math.round(e.value).toLocaleString("ko-KR")}
+                {formatCount(e.value)}
                 <span className="ml-0.5 text-px-10 text-slate-400">{unit}</span>
               </span>
             </li>

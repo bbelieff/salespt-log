@@ -17,7 +17,7 @@ import { useEffect, useId, useState } from "react";
 import { HALTED_PROGRESS, WAITING_PROGRESS, type ContractPayment, type PaymentSlot, type Progress, type Todo } from "@/types";
 import MoneyInput from "@/components/ui/MoneyInput";
 import DateInputCustom from "@/components/ui/DateInputCustom";
-import { formatMoneyInput } from "@/lib/format/money";
+import { formatMoneyInput, formatWon } from "@/lib/format/money";
 import TodoSection from "./TodoSection";
 import ProgressWaitFields, { WaitBadge } from "./ProgressWaitFields";
 import { sameInstitution } from "@/util/institution-match";
@@ -198,7 +198,7 @@ export default function PaymentSlotForm({
                   className="shrink-0"
                   style={{ fontVariantNumeric: "tabular-nums" }}
                 >
-                  · ₩{fmtComma(slot.수납액) || 0}/{fmtComma(slot.승인금액) || 0}
+                  · {formatWon(slot.수납액)} / {formatWon(slot.승인금액)}
                 </span>
               )}
             </span>

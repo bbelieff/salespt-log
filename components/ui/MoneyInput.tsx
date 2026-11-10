@@ -28,6 +28,8 @@ interface Props {
   "aria-label"?: string;
   /** 이름표(label htmlFor) 연결용. */
   id?: string;
+  /** 잠긴 칸 설명 등 마우스 올림 안내. */
+  title?: string;
 }
 
 export default function MoneyInput({
@@ -38,6 +40,7 @@ export default function MoneyInput({
   disabled,
   "aria-label": ariaLabel,
   id,
+  title,
 }: Props) {
   return (
     <input
@@ -48,6 +51,7 @@ export default function MoneyInput({
       placeholder={placeholder}
       disabled={disabled}
       aria-label={ariaLabel}
+      title={title}
       className={className}
       style={{ fontVariantNumeric: "tabular-nums" }}
       onChange={(e) => {

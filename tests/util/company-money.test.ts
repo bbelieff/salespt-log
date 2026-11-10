@@ -137,7 +137,7 @@ describe("③ 입력칸", () => {
     expect(moneyHint(12340)).toBe("약 12.3억");
     expect(moneyHint(1000)).toBe("약 1억");
     expect(moneyHint(5)).toBe("약 50만");
-    expect(moneyHint(-32)).toBe("약 -320만");
+    expect(moneyHint(-32)).toBe("약 −320만"); // 화면 음수는 진짜 마이너스(2026-11-10 금액 표기 규칙 ③)
     expect(moneyHint(0)).toBe("");
     expect(moneyHint(null)).toBe("");
   });
@@ -187,7 +187,7 @@ describe("⑤ 표기", () => {
     expect(formatMoneyTxt("250.1")).toBe("250.1백만원 (약 2.5억)");
     expect(formatMoneyTxt("1234")).toBe("1,234백만원 (약 12.3억)");
     expect(formatMoneyTxt("0")).toBe("0백만원");
-    expect(formatMoneyTxt("-3.2", true)).toBe("-3.2백만원 (약 -320만)");
+    expect(formatMoneyTxt("-3.2", true)).toBe("−3.2백만원 (약 −320만)");
     expect(formatMoneyTxt("25' 250백만")).toBe("25' 250백만");
   });
   it("비교표 — 숫자면 백만원", () => {

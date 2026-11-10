@@ -188,15 +188,15 @@ describe("expense ledger dashboard UI", () => {
     const view = render(createElement(FinanceSummaryBoxes, { ...financeProps, additionalCost: null }));
     act(() => view.querySelector<HTMLButtonElement>("#fin-col-cost")?.click());
     expect(view.textContent).toContain("추가 비용을 확인하지 못했습니다. 다시 시도해 주세요.");
-    expect(view.textContent).not.toContain("추가 비용 ₩");
-    expect(view.textContent).toContain("DB 비용 합계 ₩3,000");
+    expect(view.textContent).not.toMatch(/추가 비용\s*[\d,]+원/);
+    expect(view.textContent).toContain("DB 비용 합계 3,000원");
   });
 
   it("renders the record hub with autosave status instead of a generic save footer", () => {
     render(createElement(ExpenseLedgerDialog, { open: true, onClose: vi.fn(), dbCostTotal: 3_000, additionalCost: 300 }));
-    expect(document.body.textContent).toContain("DB 비용₩3,000");
-    expect(document.body.textContent).toContain("추가 비용₩300");
-    expect(document.body.textContent).toContain("총비용₩3,300");
+    expect(document.body.textContent).toContain("DB 비용3,000원");
+    expect(document.body.textContent).toContain("추가 비용300원");
+    expect(document.body.textContent).toContain("총비용3,300원");
     expect(document.querySelectorAll('[role="tab"][aria-controls]').length).toBe(2);
     expect([...document.querySelectorAll('[role="tab"]')].some((tab) => tab.textContent === "관리")).toBe(false);
     // Scope B autosave: no sticky generic CTA — one-off auto-records with a
@@ -221,7 +221,7 @@ describe("expense ledger dashboard UI", () => {
     const amountInput = document.querySelector<HTMLInputElement>('[aria-label="부가세 제외 비용 금액"]');
     if (!amountInput) throw new Error("amount input is missing");
     changeInput(amountInput, "100");
-    expect(document.body.textContent).toContain("3일 × ₩33 + 잔여 ₩1 (시작일 우선)");
+    expect(document.body.textContent).toContain("3일 × 33원 + 잔여 1원 (시작일 우선)");
 
     clickButton("매월 반복");
     expect(document.body.textContent).toContain("반복 시작일");
@@ -254,7 +254,7 @@ describe("expense ledger dashboard UI", () => {
     clickButton("기간"); dates = document.querySelectorAll<HTMLInputElement>('input[type="date"]'); changeInput(dates[0]!, "2026-07-31"); clearDateWithKeyboard(dates[1]!);
     expect(dates[1]?.required).toBe(true); expect(document.body.textContent).toContain("기간 종료일을 올바르게 입력해 주세요.");
     changeInput(dates[1]!, "2026-07-30"); expect(document.body.textContent).toContain("종료일은 시작일보다 빠를 수 없습니다."); await submitRecordForm(); expect(createExpenseMutation.mutateAsync).not.toHaveBeenCalled();
-    changeInput(dates[1]!, "2026-08-02"); expect(document.body.textContent).toContain("3일 × ₩33 + 잔여 ₩1 (시작일 우선)");
+    changeInput(dates[1]!, "2026-08-02"); expect(document.body.textContent).toContain("3일 × 33원 + 잔여 1원 (시작일 우선)");
     await submitRecordForm(); expect(createExpenseMutation.mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ periodStart: "2026-07-31", periodEnd: "2026-08-02" }));
   });
 
@@ -278,10 +278,10 @@ describe("expense ledger dashboard UI", () => {
     expect(table?.textContent).toContain("카테고리비중항목 수총비용");
     const rows = [...document.querySelectorAll("tbody tr")].map((row) => row.textContent);
     expect(rows).toEqual([
-      "마케팅40%1건₩120",
-      "인건비36%1건₩108",
-      "임차료24%1건₩72",
-      "미분류0%0건₩0",
+      "마케팅40%1건120원",
+      "인건비36%1건108원",
+      "임차료24%1건72원",
+      "미분류0%0건0원",
     ]);
   });
 
@@ -543,8 +543,8 @@ describe("expense category combobox", () => {
   it("reclassifies persisted unclassified items with one or many typed refs and an explicit target", async () => {
     const onReclassify = vi.fn(async (body) => ({ ok: true, operationId: body.operationId, unclassifiedCategoryId: "category-unclassified", targetCategoryId: body.targetCategoryId, movedEntryCount: 0, movedRuleCount: 1, movedOccurrenceCount: 0 }));
     const refs = [
-      { kind: "entry" as const, id: "entry-a", label: "영수증", detail: "일회성 · ₩10,000" },
-      { kind: "recurringRule" as const, id: "rule-a", label: "구독", detail: "반복 규칙 · ₩20,000" },
+      { kind: "entry" as const, id: "entry-a", label: "영수증", detail: "일회성 · 10,000원" },
+      { kind: "recurringRule" as const, id: "rule-a", label: "구독", detail: "반복 규칙 · 20,000원" },
     ];
     render(createElement(ExpenseCategoryPicker, pickerProps({ value: "category-unclassified", unclassifiedRefs: refs, onReclassify })));
     act(() => document.querySelector<HTMLButtonElement>('[role="combobox"]')?.click());

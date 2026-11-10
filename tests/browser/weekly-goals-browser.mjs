@@ -350,7 +350,7 @@ try {
     results.push("dashboard-first-screen-goals-" + width);
     const financialDetails = page.getByLabel("영업이익과 매출·비용 상세", { exact: true });
     await financialDetails.click();
-    assert.ok(await page.getByText("₩14,000,000", { exact: true }).isVisible());
+    assert.ok(await page.getByText("14,000,000원", { exact: true }).isVisible());
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await financialDetails.click();
     results.push("financial-details-retain-values-and-no-overflow-" + width);

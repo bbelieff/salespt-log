@@ -1,7 +1,7 @@
 "use client";
 
 import SkeletonBars from "@/components/ui/SkeletonBars";
-import { formatMoney } from "@/lib/format/money";
+import { formatWon } from "@/lib/format/money";
 import type { ExpenseLedgerView } from "@/types";
 import type { ExpenseViewMode } from "@/query/expense-ledger-hooks";
 import ExpenseEntryEditor from "./ExpenseEntryEditor";
@@ -64,7 +64,7 @@ export default function ExpenseLedgerTable({ data, loading, error, mode, onOpenR
                 <span className="mt-0.5 block text-xs text-slate-500">{entry.categoryName || "미분류"} · {entry.source === "recurring" ? "반복" : "일회성"}</span>
               </span>
               <span className="text-right">
-                <strong className="block whitespace-nowrap text-sm text-slate-900">₩{formatMoney(entry.amountWon)}</strong>
+                <strong className="block whitespace-nowrap text-sm text-slate-900">{formatWon(entry.amountWon)}</strong>
                 <span className="text-xs font-semibold text-blue-600 group-open:hidden">상세·관리</span>
                 <span className="hidden text-xs font-semibold text-blue-600 group-open:inline">접기</span>
               </span>
@@ -82,9 +82,9 @@ export default function ExpenseLedgerTable({ data, loading, error, mode, onOpenR
 
       <div className="rounded-xl bg-slate-100 px-3 py-3">
         <div className="space-y-1.5 text-xs text-slate-600">
-          {data.categoryTotals.map((row) => <div key={row.categoryId} className="flex justify-between gap-3"><span>{row.categoryName || "미분류"}</span><span className="font-semibold">₩{formatMoney(row.amountWon)}</span></div>)}
+          {data.categoryTotals.map((row) => <div key={row.categoryId} className="flex justify-between gap-3"><span>{row.categoryName || "미분류"}</span><span className="font-semibold">{formatWon(row.amountWon)}</span></div>)}
         </div>
-        <div className="mt-2 flex justify-between border-t border-slate-200 pt-2 text-sm font-black text-slate-900"><span>추가 비용 합계</span><span>₩{formatMoney(data.additionalCostTotal)}</span></div>
+        <div className="mt-2 flex justify-between border-t border-slate-200 pt-2 text-sm font-black text-slate-900"><span>추가 비용 합계</span><span>{formatWon(data.additionalCostTotal)}</span></div>
       </div>
     </div>
   );
@@ -97,12 +97,12 @@ function CategorySummary({ data }: { data: ExpenseLedgerView }) {
     <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
       <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-3 py-3">
         <div><h4 className="text-sm font-black text-slate-900">카테고리 전체 범위</h4><p className="text-xs text-slate-400">비용 내림차순 · 보관/미분류 포함</p></div>
-        <strong className="text-sm text-slate-900">₩{formatMoney(total)}</strong>
+        <strong className="text-sm text-slate-900">{formatWon(total)}</strong>
       </div>
       <table className="w-full table-auto text-left text-xs">
         <thead className="bg-slate-50 text-slate-500"><tr><th className="px-3 py-2 font-semibold">카테고리</th><th className="px-1 py-2 text-right font-semibold">비중</th><th className="px-1 py-2 text-right font-semibold">항목 수</th><th className="px-3 py-2 text-right font-semibold">총비용</th></tr></thead>
         <tbody className="divide-y divide-slate-100">
-          {rows.map((row) => <tr key={row.id}><td className="truncate px-3 py-2.5 font-semibold text-slate-800">{row.name}{row.archived ? <span className="ml-1 text-xs font-normal text-slate-400">보관</span> : null}</td><td className="px-1 py-2.5 text-right text-slate-500">{share(row.amountWon, total)}</td><td className="px-1 py-2.5 text-right text-slate-500">{row.itemCount}건</td><td className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-slate-900">₩{formatMoney(row.amountWon)}</td></tr>)}
+          {rows.map((row) => <tr key={row.id}><td className="truncate px-3 py-2.5 font-semibold text-slate-800">{row.name}{row.archived ? <span className="ml-1 text-xs font-normal text-slate-400">보관</span> : null}</td><td className="px-1 py-2.5 text-right text-slate-500">{share(row.amountWon, total)}</td><td className="px-1 py-2.5 text-right text-slate-500">{row.itemCount}건</td><td className="whitespace-nowrap px-3 py-2.5 text-right font-bold text-slate-900">{formatWon(row.amountWon)}</td></tr>)}
         </tbody>
       </table>
     </div>

@@ -43,7 +43,7 @@ function column(id: string) {
 
 function amountOf(id: string) {
   const button = column(id);
-  const amount = [...button.querySelectorAll("span")].find((s) => s.textContent?.includes("₩"));
+  const amount = [...button.querySelectorAll("span")].find((s) => /\d원/.test(s.textContent ?? ""));
   if (!amount) throw new Error(`amount in '${id}' is missing`);
   return amount as HTMLSpanElement;
 }
@@ -80,7 +80,7 @@ describe("finance three-column row", () => {
       expect(button.getAttribute("aria-controls")).toBe("fin-detail-panel");
       // 라벨이 금액보다 먼저 나온다.
       const label = [...button.querySelectorAll("span")].find((s) => ["매출", "비용", "영업이익"].includes(s.textContent ?? ""));
-      const amount = [...button.querySelectorAll("span")].find((s) => s.textContent?.includes("₩"));
+      const amount = [...button.querySelectorAll("span")].find((s) => /\d원/.test(s.textContent ?? ""));
       expect(label).not.toBeNull();
       expect(amount).not.toBeNull();
       expect(label!.compareDocumentPosition(amount!) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
@@ -89,9 +89,9 @@ describe("finance three-column row", () => {
     }
 
     // 전체 금액 그대로 — 축약·절단 없음.
-    expect(view.textContent).toContain("₩12,345,678");
-    expect(view.textContent).toContain("₩3,500,000");
-    expect(view.textContent).toContain("₩8,845,678"); // 영업이익 = 매출 − 비용
+    expect(view.textContent).toContain("12,345,678원");
+    expect(view.textContent).toContain("3,500,000원");
+    expect(view.textContent).toContain("8,845,678원"); // 영업이익 = 매출 − 비용
 
     // 한 줄 보장: 잘라 숨기기(truncate/ellipsis/overflow-hidden) · anywhere 분할 금지.
     // 금액 자체는 white-space:nowrap 한 줄이 정본이다.
@@ -108,7 +108,7 @@ describe("finance three-column row", () => {
       expect(amount.style.overflow).toBe("");
       expect(amount.style.textOverflow).toBe("");
       // 접근성 텍스트는 전체 금액 그대로.
-      expect(amount.textContent).toMatch(/₩-?[\d,]+/);
+      expect(amount.textContent).toMatch(/−?[\d,]+원/);
     }
     expect(panel().hidden).toBe(true);
   });
@@ -121,13 +121,13 @@ describe("finance three-column row", () => {
         cost: 99_999_999,
       }),
     );
-    // 양수 최댓값 전체 표시 (₩99,999,999).
-    expect(view.textContent).toContain("₩99,999,999");
+    // 양수 최댓값 전체 표시 (99,999,999원).
+    expect(view.textContent).toContain("99,999,999원");
     for (const id of ["fin-col-revenue", "fin-col-cost", "fin-col-profit"]) {
       expect(amountOf(id).style.whiteSpace).toBe("nowrap");
     }
 
-    // 음수 최댓값: 매출 0 − 비용 99,999,999 = ₩-99,999,999, 부호 포함 전체.
+    // 음수 최댓값: 매출 0 − 비용 99,999,999 = −99,999,999원, 부호 포함 전체.
     rerender(
       createElement(FinanceSummaryBoxes, {
         ...baseProps,
@@ -137,7 +137,7 @@ describe("finance three-column row", () => {
     );
     const neg = view.querySelector("#fin-col-profit [data-profit-sign]");
     expect(neg?.getAttribute("data-profit-sign")).toBe("negative");
-    expect(neg?.textContent).toContain("-99,999,999");
+    expect(neg?.textContent).toContain("−99,999,999원");
     expect((neg as HTMLElement).style.whiteSpace).toBe("nowrap");
     expect((neg as HTMLElement).style.overflowWrap).toBe("normal");
     // 잘라 숨기기 없음.
@@ -150,7 +150,7 @@ describe("finance three-column row", () => {
     expect(amountOf("fin-col-revenue").textContent).toContain("12,345,678");
     rerender(createElement(FinanceSummaryBoxes, { ...baseProps, revenue: 99_999_999 }));
     const amount = amountOf("fin-col-revenue");
-    expect(amount.textContent).toContain("₩99,999,999");
+    expect(amount.textContent).toContain("99,999,999원");
     expect(amount.style.whiteSpace).toBe("nowrap");
     expect(view.innerHTML).not.toContain("anywhere");
   });
@@ -203,7 +203,7 @@ describe("finance three-column row", () => {
     expect(new Set(sizes).size).toBe(1);
     for (const amt of amounts) {
       expect(amt.style.whiteSpace).toBe("nowrap");
-      expect(amt.textContent).toMatch(/₩-?[\d,]+/);
+      expect(amt.textContent).toMatch(/−?[\d,]+원/);
     }
 
     // 정리: 관찰자 해제 (중복 unmount 방지를 위해 root 비움).
@@ -216,7 +216,7 @@ describe("finance three-column row", () => {
     render(createElement(FinanceSummaryBoxes, { ...baseProps, refunded: 300_000 }));
     clickColumn("fin-col-revenue");
     expect(panel().textContent).toContain("반환(계약해지)");
-    expect(panel().textContent).toContain("−₩300,000");
+    expect(panel().textContent).toContain("−300,000원");
     act(() => root?.unmount());
     container?.remove();
     root = undefined;
@@ -269,8 +269,8 @@ describe("finance three-column row", () => {
     // #7c3aed = rgb(124, 58, 237). 0 이상 파랑 rgb(29, 78, 216)과 다르다.
     expect(neg?.getAttribute("style")).toContain("rgb(124, 58, 237)");
     expect(neg?.getAttribute("style")).not.toContain("rgb(29, 78, 216)");
-    // 기존 음수 부호 유지 (₩-6,500,000).
-    expect(neg?.textContent).toContain("-6,500,000");
+    // 기존 음수 부호 유지 (−6,500,000원).
+    expect(neg?.textContent).toContain("−6,500,000원");
     // 비용 컬럼은 기존 빨강 그대로.
     expect(view.querySelector("#fin-col-cost span.text-red-600")).not.toBeNull();
   });
@@ -308,14 +308,14 @@ describe("finance three-column row", () => {
     const onOpenExpenseLedger = vi.fn();
     render(createElement(FinanceSummaryBoxes, { ...baseProps, onOpenExpenseLedger }));
     clickColumn("fin-col-revenue");
-    expect(panel().textContent).toContain("₩10,345,678");
-    expect(panel().textContent).toContain("₩2,000,000");
+    expect(panel().textContent).toContain("10,345,678원");
+    expect(panel().textContent).toContain("2,000,000원");
 
     clickColumn("fin-col-cost");
-    expect(panel().textContent).toContain("DB 비용 합계 ₩3,000,000");
+    expect(panel().textContent).toContain("DB 비용 합계 3,000,000원");
     const trigger = panel().querySelector<HTMLButtonElement>('button[aria-label="추가 비용: 비용 원장 열기"]');
     expect(trigger?.textContent).toContain("추가 비용");
-    expect(trigger?.textContent).toContain("₩500,000");
+    expect(trigger?.textContent).toContain("500,000원");
     act(() => trigger?.click());
     expect(onOpenExpenseLedger).toHaveBeenCalledOnce();
   });
@@ -324,7 +324,7 @@ describe("finance three-column row", () => {
     render(createElement(FinanceSummaryBoxes, { ...baseProps, additionalCost: null }));
     clickColumn("fin-col-cost");
     expect(panel().textContent).toContain("추가 비용을 확인하지 못했습니다. 다시 시도해 주세요.");
-    expect(panel().textContent).not.toContain("추가 비용 ₩");
+    expect(panel().textContent).not.toMatch(/추가 비용\s*[\d,]+원/);
   });
 
   it("never nests buttons and keeps focus styles on every toggle", () => {

@@ -179,7 +179,7 @@ function FieldCell({
   if (field.formula) {
     const calcVal = field.calc ? field.calc(allValues) : 0;
     const display = calcVal
-      ? `${fmtWon(calcVal)}${field.unit ? ` ${field.unit}` : ""}`
+      ? `${fmtWon(calcVal)}${field.unit ?? ""}`
       : "-";
     return (
       <div className="flex min-w-0 flex-col">

@@ -7,8 +7,9 @@
 import { useState } from "react";
 import type { ContractPayment, PaymentSlot, Todo } from "@/types";
 import PaymentSlotForm from "./PaymentSlotForm";
-import { fmtMoney } from "./nameHighlight";
+
 import { slotOf } from "@/lib/analytics/contract-slots";
+import { formatWon } from "@/lib/format/money";
 
 interface Props {
   desktopHeading?: boolean;
@@ -56,9 +57,9 @@ export default function ContractSlots({
       <div className={desktopHeading ? "payment-sticky-title -mx-3 -mt-3 mb-2 flex items-center justify-between rounded-t-lg bg-amber-50 px-3 py-2" : "mb-2 flex items-center justify-between"}>
         <span className={`text-sm text-slate-800 ${desktopHeading ? "font-bold" : "font-semibold"}`}>📈 {desktopHeading ? "실무진행" : "실무 진행"}</span>
         <span className="text-xs text-slate-500" style={{ fontVariantNumeric: "tabular-nums" }}>
-          <span className="font-medium text-slate-700">₩{fmtMoney(totalReceived)}</span>
+          <span className="font-medium text-slate-700">{formatWon(totalReceived)}</span>
           <span className="mx-0.5 text-slate-400">/</span>
-          <span className="font-medium text-slate-700">₩{fmtMoney(totalApproved)}</span>
+          <span className="font-medium text-slate-700">{formatWon(totalApproved)}</span>
         </span>
       </div>
       <div className="space-y-2">
