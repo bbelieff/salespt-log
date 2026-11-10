@@ -4,7 +4,7 @@
  * 2단: ① 보내기·가져오기 | ② 보낸 인증(날짜 → 사람 → 업체). 업체 밑에 받은 서류·DB 연결·업체정보 반영을 펼친다.
  * 진행 중(승인 대기·받는 중)인 요청이 있으면 3초마다 목록을 다시 읽는다.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import RequestForm from "./RequestForm";
 import RequestList from "./RequestList";
 import DocBox, { type LinkTo } from "./DocBox";
@@ -25,6 +25,10 @@ export default function SimpleAuthPanel() {
   const [now, setNow] = useState(() => Date.now());
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
+  // 실패 안내는 읽을 시간이 필요해 더 오래 둔다(3.5초 → 10초).
+  const [toastError, setToastError] = useState(false);
+  // 같은 요청이 두 번 가지 않게 — 화면의 disabled 보다 먼저 막는다(빠른 연타).
+  const inFlight = useRef(false);
   const [ready, setReady] = useState(true);
 
   const refresh = useCallback(async () => {
@@ -42,29 +46,35 @@ export default function SimpleAuthPanel() {
     const poll = active ? setInterval(() => void refresh(), 3000) : undefined;
     return () => { clearInterval(tick); if (poll) clearInterval(poll); };
   }, [active, refresh]);
-  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(""), 3500); return () => clearTimeout(t); }, [toast]);
+  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(""), toastError ? 10_000 : 3500); return () => clearTimeout(t); }, [toast, toastError]);
+  const fail = (m: string) => { setToastError(true); setToast(m); };
+  const ok = (m: string) => { setToastError(false); setToast(m); };
 
   /** 요청 한 건 동작 — 성공하면 목록을 다시 읽고 안내 문구를 띄운다. */
   async function act(id: string, body: Record<string, unknown>, done?: string): Promise<boolean> {
+    if (inFlight.current) return false;
+    inFlight.current = true;
     setBusy(true);
     try {
       const j = await call<{ message?: string }>(`/api/simple-auth/${id}`, { method: "POST", body: JSON.stringify(body) });
       await refresh();
-      setToast(j.message ?? done ?? "");
+      if (j.message) fail(j.message); else ok(done ?? "");
       return !j.message;
-    } catch (e) { setToast(e instanceof Error ? e.message : "처리하지 못했어요."); return false; }
-    finally { setBusy(false); }
+    } catch (e) { fail(e instanceof Error ? e.message : "처리하지 못했어요."); return false; }
+    finally { inFlight.current = false; setBusy(false); }
   }
 
   async function send(body: Record<string, unknown>): Promise<boolean> {
+    if (inFlight.current) return false;
+    inFlight.current = true;
     setBusy(true);
     try {
       await call("/api/simple-auth", { method: "POST", body: JSON.stringify(body) });
       await refresh();
-      setToast(body.mode === "cert" ? "공동인증서로 서류를 가져오고 있어요" : "대표 휴대폰으로 인증을 보냈어요. 고객이 승인하면 「승인 확인」을 눌러 주세요");
+      ok(body.mode === "cert" ? "공동인증서로 서류를 가져오고 있어요" : "대표 휴대폰으로 인증을 보냈어요. 고객이 승인하면 「승인 확인」을 눌러 주세요");
       return true;
-    } catch (e) { setToast(e instanceof Error ? e.message : "보내지 못했어요."); return false; }
-    finally { setBusy(false); }
+    } catch (e) { fail(e instanceof Error ? e.message : "보내지 못했어요."); return false; }
+    finally { inFlight.current = false; setBusy(false); }
   }
 
   const detail = (reqId: string, bizNo: string) => {
@@ -88,16 +98,16 @@ export default function SimpleAuthPanel() {
         <div className="min-w-0 flex-1">
           {loadError && <p role="alert" className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{loadError}</p>}
           {loaded
-            ? <RequestList items={items} now={now} detail={detail}
+            ? <RequestList items={items} now={now} busy={busy} detail={detail}
                 onApproved={(id) => void act(id, { action: "confirm" }, "서류를 받는 중이에요")}
                 onResend={(id) => void act(id, { action: "resend" }, "인증을 다시 보냈어요")}
-                onCancel={(id) => void act(id, { action: "cancel" }, "취소했어요")}
+                onCancel={(id) => { if (window.confirm("보낸 인증을 취소할까요?\n대표 휴대폰의 승인 요청도 더 이상 쓸 수 없어요.")) void act(id, { action: "cancel" }, "취소했어요"); }}
                 onDelete={(id) => void act(id, { action: "delete" }, "기록을 삭제했어요")} />
             : <p className="rounded-xl border border-gray-200 bg-white px-4 py-10 text-center text-sm text-gray-500">불러오는 중…</p>}
         </div>
       </div>
       <div aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-20 z-50 flex justify-center px-4">
-        {toast && <p className="max-w-md rounded-lg bg-gray-900 px-4 py-2 text-sm text-white shadow-lg">{toast}</p>}
+        {toast && <p role={toastError ? "alert" : undefined} className={`pointer-events-auto flex max-w-md items-start gap-2 rounded-lg px-4 py-2 text-sm text-white shadow-lg ${toastError ? "bg-red-700" : "bg-gray-900"}`}>{toast}{toastError && <button type="button" aria-label="안내 닫기" className="-my-1 -mr-2 min-h-8 min-w-8 rounded text-white/80 hover:text-white" onClick={() => setToast("")}>✕</button>}</p>}
       </div>
     </>
   );

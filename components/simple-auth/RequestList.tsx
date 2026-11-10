@@ -20,7 +20,7 @@ const USAGE: [string, string[]][] = [
 ];
 
 
-const GHOST = "rounded-md px-2 py-1 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500";
+const GHOST = "rounded-md px-2 py-1 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500";
 const CHIP = "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-sm font-semibold";
 
 function LinkChip({ link }: { link: Link }) {
@@ -49,29 +49,29 @@ function StatusPill({ r, now }: { r: AuthRequest; now: number }) {
 
 type Opens = { isOpen: (k: string) => boolean; toggle: (k: string) => void };
 type Actions = { detail: (reqId: string, bizNo: string) => React.ReactNode; onApproved: (id: string) => void; onResend: (id: string) => void; onCancel: (id: string) => void; onDelete: (id: string) => void };
-type Props = Actions & { items: AuthRequest[]; now: number };
+type Props = Actions & { items: AuthRequest[]; now: number; busy?: boolean };
 
 /** 상태 + 할 수 있는 일(승인 확인·다시 보내기·취소 / 다시 보내기·기록 삭제). */
-function StatusActions({ r, now, a }: { r: AuthRequest; now: number; a: Actions }) {
+function StatusActions({ r, now, a, busy }: { r: AuthRequest; now: number; a: Actions; busy: boolean }) {
   const failed = r.status === "expired" || r.status === "canceled" || r.status === "failed";
   return (
         <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1.5">
           <StatusPill r={r} now={now} />
           {r.status === "waiting" && <>
-            <button type="button" onClick={() => a.onApproved(r.id)} className={`${GHOST} border border-blue-200 text-blue-700 hover:bg-blue-50`}>승인 확인</button>
-            <button type="button" onClick={() => a.onResend(r.id)} title="인증 다시 보내기" aria-label="인증 다시 보내기" className={`${GHOST} inline-flex items-center gap-1 text-gray-700 hover:bg-gray-100`}><RotateCcw className="h-3.5 w-3.5" aria-hidden />다시</button>
-            <button type="button" onClick={() => a.onCancel(r.id)} className={`${GHOST} inline-flex items-center gap-1 text-gray-500 hover:bg-gray-100`}><X className="h-3.5 w-3.5" aria-hidden />취소</button>
+            <button type="button" onClick={() => a.onApproved(r.id)} disabled={busy} className={`${GHOST} border border-blue-200 text-blue-700 hover:bg-blue-50`}>승인 확인</button>
+            <button type="button" onClick={() => a.onResend(r.id)} disabled={busy} title="인증 다시 보내기" aria-label="인증 다시 보내기" className={`${GHOST} inline-flex items-center gap-1 text-gray-700 hover:bg-gray-100`}><RotateCcw className="h-3.5 w-3.5" aria-hidden />다시</button>
+            <button type="button" onClick={() => a.onCancel(r.id)} disabled={busy} className={`${GHOST} inline-flex items-center gap-1 text-gray-500 hover:bg-gray-100`}><X className="h-3.5 w-3.5" aria-hidden />취소</button>
           </>}
           {failed && <>
-            <button type="button" onClick={() => a.onResend(r.id)} title="인증 다시 보내기" aria-label="인증 다시 보내기" className={`${GHOST} inline-flex items-center gap-1 border border-gray-300 text-gray-700 hover:bg-gray-50`}><RotateCcw className="h-3.5 w-3.5" aria-hidden />다시</button>
-            <button type="button" onClick={() => a.onDelete(r.id)} className={`${GHOST} inline-flex items-center gap-1 text-red-600 hover:bg-red-50`}><Trash2 className="h-3.5 w-3.5" aria-hidden />기록 삭제</button>
+            <button type="button" onClick={() => a.onResend(r.id)} disabled={busy} title="인증 다시 보내기" aria-label="인증 다시 보내기" className={`${GHOST} inline-flex items-center gap-1 border border-gray-300 text-gray-700 hover:bg-gray-50`}><RotateCcw className="h-3.5 w-3.5" aria-hidden />다시</button>
+            <button type="button" onClick={() => a.onDelete(r.id)} disabled={busy} className={`${GHOST} inline-flex items-center gap-1 text-red-600 hover:bg-red-50`}><Trash2 className="h-3.5 w-3.5" aria-hidden />기록 삭제</button>
           </>}
         </div>
   );
 }
 
 /** 요청 한 건 — 상태·할 일, 사업자들. inline 이면 상태·할 일은 이름 줄에 이미 있으므로 사업자만 그린다. */
-function RequestCard({ r, now, o, a, inline }: { r: AuthRequest; now: number; o: Opens; a: Actions; inline: boolean }) {
+function RequestCard({ r, now, o, a, inline, busy }: { r: AuthRequest; now: number; o: Opens; a: Actions; inline: boolean; busy: boolean }) {
   const why = r.status === "failed" && r.error ? <p className="text-sm text-red-700">{r.error}</p> : null;
   if (inline && r.status !== "done") return why;
   return (
@@ -80,7 +80,7 @@ function RequestCard({ r, now, o, a, inline }: { r: AuthRequest; now: number; o:
       {!inline && (
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           <MethodBadge method={r.method} time={r.sentAt} />
-          <StatusActions r={r} now={now} a={a} />
+          <StatusActions r={r} now={now} a={a} busy={busy} />
         </div>
       )}
       {r.status === "done" && (
@@ -127,7 +127,7 @@ function OwnerSummary({ reqs }: { reqs: AuthRequest[] }) {
 
 const bizKey = (reqId: string, bizNo: string) => `b|${reqId}|${bizNo}`;
 
-export default function RequestList({ items, now, ...a }: Props) {
+export default function RequestList({ items, now, busy = false, ...a }: Props) {
   // 끝난 사업자를 뺀 뒤 보여 줄 게 없는 요청은 목록에서 뺀다.
   const visible = items.filter(r => r.status !== "done" || r.businesses.some(b => !isFinished(b)));
   const isActive = (r: AuthRequest) => r.status === "waiting" || r.status === "scraping";
@@ -228,11 +228,11 @@ export default function RequestList({ items, now, ...a }: Props) {
                         </span>
                       </button>
                       {!ownerOpen && <span className="ml-auto py-2">{live ? <StatusPill r={live} now={now} /> : <OwnerSummary reqs={reqs} />}</span>}
-                      {ownerOpen && reqs.length === 1 && <span className="ml-auto cursor-default py-1" onClick={e => e.stopPropagation()}><StatusActions r={first} now={now} a={a} /></span>}
+                      {ownerOpen && reqs.length === 1 && <span className="ml-auto cursor-default py-1" onClick={e => e.stopPropagation()}><StatusActions r={first} now={now} a={a} busy={busy} /></span>}
                       </div>
                       {ownerOpen && (
                         <div className="flex flex-col gap-3 pb-3 pl-3 pr-3 empty:hidden 2xl:pl-9 2xl:pr-4">
-                          {reqs.map(r => <RequestCard key={r.id} r={r} now={now} o={o} a={a} inline={reqs.length === 1} />)}
+                          {reqs.map(r => <RequestCard key={r.id} r={r} now={now} o={o} a={a} inline={reqs.length === 1} busy={busy} />)}
                         </div>
                       )}
                     </li>
