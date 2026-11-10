@@ -138,3 +138,4 @@ export { getDbPilotStatus, type DbPilotStatus } from "./db-pilot";
 
 export { getAdminPendingCounts } from "./admin-pending";
 export { getContactScript, saveContactScript, resetContactScript } from "./contact-script";
+export { getFirstSteps, saveFirstSteps, listFirstStepsProgress } from "./first-steps";

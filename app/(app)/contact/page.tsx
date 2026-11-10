@@ -388,7 +388,8 @@ export default function ContactPage() {
         {/* PC(1024+) 5:5 분할(belie 2026-10-09, 옛 1440+): 좌 날짜→채널→수치 입력 | 우 미팅 슬롯 목록.
             DOM 순서는 입력→목록 그대로라 모바일 stacked 순서·날짜→채널→입력
             워크플로·클릭 수 무변경. 목록은 unbounded 자연 스크롤. */}
-        {weekQuery.data && <FirstStepTourOffer tour="meeting" alreadyDone={weekFunnel.미팅예약 > 0} />}
+        {weekQuery.data && <FirstStepTourOffer tour="contact" alreadyDone={weekFunnel.컨택진행 > 0} />}
+        {weekQuery.data && <FirstStepTourOffer tour="meeting" alreadyDone={weekFunnel.미팅예약 > 0} available={weekFunnel.컨택진행 > 0} />}
         <div className="pc:grid pc:grid-cols-2 pc:items-start pc:gap-4">
         <div className="min-w-0">
         <ChannelTabsAndPanel

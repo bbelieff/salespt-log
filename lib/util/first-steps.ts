@@ -5,8 +5,8 @@
  */
 
 export type FirstStepKey = "purchase" | "lead" | "contact" | "meeting" | "result" | "payment" | "review";
-/** 화면에서 스포트라이트로 따라 하는 안내(1차: DB 넣기·미팅 예약). */
-export type FirstStepTour = "db-add" | "meeting";
+/** 화면에서 스포트라이트로 따라 하는 안내(1차 DB 넣기·미팅 예약, 2차 구매·컨택·결과·수납). */
+export type FirstStepTour = "purchase" | "db-add" | "contact" | "meeting" | "result" | "payment";
 
 export interface FirstStep {
   key: FirstStepKey;
@@ -17,12 +17,12 @@ export interface FirstStep {
 }
 
 export const FIRST_STEPS: readonly FirstStep[] = [
-  { key: "purchase", label: "첫 DB 구매 기록", href: "/db" },
+  { key: "purchase", label: "첫 DB 구매 기록", href: "/db?tour=purchase", tour: "purchase" },
   { key: "lead", label: "첫 DB 넣기", href: "/db-sheet?tour=db-add", tour: "db-add" },
-  { key: "contact", label: "첫 컨택 기록", href: "/contact" },
+  { key: "contact", label: "첫 컨택 기록", href: "/contact?tour=contact", tour: "contact" },
   { key: "meeting", label: "첫 미팅 예약", href: "/contact?tour=meeting", tour: "meeting" },
-  { key: "result", label: "첫 미팅 결과·계약", href: "/schedule" },
-  { key: "payment", label: "첫 수납 기록", href: "/payment" },
+  { key: "result", label: "첫 미팅 결과·계약", href: "/schedule?tour=result", tour: "result" },
+  { key: "payment", label: "첫 수납 기록", href: "/payment?tour=payment", tour: "payment" },
   { key: "review", label: "첫 주 돌아보기", href: "/dashboard" },
 ] as const;
 
@@ -76,9 +76,9 @@ export function firstStepsStorageKey(email: string): string {
   return `salespt-first-steps:v1:${email.trim().toLowerCase()}`;
 }
 
-const TOURS: readonly FirstStepTour[] = ["db-add", "meeting"];
+export const FIRST_STEP_TOURS: readonly FirstStepTour[] = ["purchase", "db-add", "contact", "meeting", "result", "payment"];
 const tourList = (v: unknown): FirstStepTour[] =>
-  Array.isArray(v) ? TOURS.filter((t) => v.includes(t)) : [];
+  Array.isArray(v) ? FIRST_STEP_TOURS.filter((t) => v.includes(t)) : [];
 
 /** 저장값 → 기억. 모르는 모양이면 빈 기억. */
 export function parseFirstStepsMemory(raw: string | null | undefined): FirstStepsMemory {

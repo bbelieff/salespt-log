@@ -144,7 +144,7 @@ export default function MeetingResultCard({
     >
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen((v) => !v)} data-first-steps="meeting-card-toggle"
         className={`flex w-full items-center gap-2 py-3 text-left transition-colors active:bg-black/5 ${open ? "px-3" : "px-1"}`}
         aria-expanded={open}
       >
@@ -301,7 +301,7 @@ export default function MeetingResultCard({
           )}
 
           {showActions && (
-            <div className="grid grid-cols-2 gap-2 pt-1">
+            <div data-first-steps="meeting-actions" className="grid grid-cols-2 gap-2 pt-1">
               <ActionButton
                 label="💵 계약"
                 active={action === "contract"}

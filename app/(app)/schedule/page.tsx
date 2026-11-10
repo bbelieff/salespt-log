@@ -36,6 +36,7 @@ import SummaryBar from "./_components/SummaryBar";
 import DaySection from "./_components/DaySection";
 import WeekFallback from "./_components/WeekFallback";
 import TopHeader from "@/components/TopHeader";
+import FirstStepTourOffer from "@/components/onboarding/FirstStepTourOffer";
 import { addDays, fmtISO, parseISO, weekIndexOf } from "./_lib/week";
 import { useWeekStartSync } from "./_lib/useWeekStartSync";
 
@@ -482,6 +483,10 @@ export default function SchedulePage() {
         </PageContainer>
       </div>
 
+      <PageContainer width="fluid"><div className="px-4 pt-3 pc:px-0">
+        <FirstStepTourOffer tour="result" available={allMeetings.some((m) => m.상태 === "예약" || m.상태 === "변경")}
+          alreadyDone={allMeetings.some((m) => m.상태 === "계약" || m.상태 === "완료")} />
+      </div></PageContainer>
       <WeekBody
         firstDays={daysByMeetingDate.slice(0, 3).map((day, j) => renderDay(day, j))}
         lastDays={daysByMeetingDate.slice(3).map((day, j) => renderDay(day, j + 3))} />

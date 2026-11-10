@@ -6,6 +6,7 @@ import PageContainer from "@/components/PageContainer";
 import TopHeader from "@/components/TopHeader";
 import WeeklyGoalSummary from "@/components/weekly-goals/WeeklyGoalSummary";
 import { useDBOverview } from "@/query/db-hooks";
+import FirstStepTourOffer from "@/components/onboarding/FirstStepTourOffer";
 import { CHANNELS, CHANNEL_KEYS, KEY_TO_BACKEND, summarizeCost, type ChannelKey } from "./_lib/channels";
 import ChannelTabs from "./_components/ChannelTabs";
 import OverallCard from "./_components/OverallCard";
@@ -86,6 +87,7 @@ export default function DbPage() {
         activeCh={activeCh} goalSummary={<WeeklyGoalSummary compact metrics={["production", "inflow"]} />} />
       </div>
       {/* 화면 마감 v2: 구역은 상자 대신 제목 + 구분선. */}
+      {overview.data && <FirstStepTourOffer tour="purchase" alreadyDone={CHANNEL_KEYS.some((k) => rowsByChannel[k].length > 0)} />}
       <section aria-label="입력할 채널" className="mb-4 pt-1">
         <h2 className="section-head">어떤 DB를 기록할까요?</h2>
         <p className="mb-3 mt-2 text-xs text-slate-500">채널을 누르면 바로 입력할 수 있어요.</p>

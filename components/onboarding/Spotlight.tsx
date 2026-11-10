@@ -154,7 +154,7 @@ export default function Spotlight({ label, steps, final, onFinish, onLater, onNe
         {done ? (
           <>
             <strong className="text-base text-slate-900">{final.title}</strong>
-            <p aria-live="polite">{final.body}</p>
+            {final.body && <p aria-live="polite">{final.body}</p>}
             <div className="flex items-center justify-end gap-2">
               {final.href && (
                 <a href={final.href} className="btn-depth-blue hit-44 rounded-lg px-3 py-2 text-sm font-semibold">
@@ -177,7 +177,7 @@ export default function Spotlight({ label, steps, final, onFinish, onLater, onNe
               <span>{idx + 1} / {steps.length}</span>
             </div>
             <strong className="text-base text-slate-900" aria-live="polite">{step!.title}</strong>
-            <p>{rect ? step!.body : "안내할 칸이 화면에 나오면 다시 밝혀 드릴게요."}</p>
+            {rect ? step!.body && <p>{step!.body}</p> : <p>안내할 칸이 화면에 나오면 다시 밝혀 드릴게요.</p>}
             <div className="flex flex-wrap items-center justify-between gap-2">
               <button type="button" onClick={onNever} className="hit-44 text-xs text-slate-500 underline underline-offset-2">
                 다시 보지 않기

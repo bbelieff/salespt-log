@@ -324,6 +324,7 @@ export default function ContractRow({
     >
       {!bare && !inline && <button
         type="button"
+        data-first-steps="contract-open"
         onClick={
           selectable
             ? () => onSelect?.()

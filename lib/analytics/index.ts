@@ -52,6 +52,10 @@ export const EVENTS = {
   PUSH_UNSUBSCRIBED: "push_unsubscribed",
   PUSH_SETTINGS_CHANGED: "push_settings_changed",
   PUSH_TEST_SENT: "push_test_sent",
+  // 첫걸음 안내(2026-11-11) — tour: purchase|db-add|contact|meeting|result|payment
+  FIRST_STEP_TOUR_STARTED: "first_step_tour_started",
+  FIRST_STEP_TOUR_FINISHED: "first_step_tour_finished",
+  FIRST_STEP_TOUR_DISMISSED: "first_step_tour_dismissed",
   // 식별·에러
   USER_IDENTIFIED: "user_identified",
   API_ERROR: "api_error",
