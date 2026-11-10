@@ -10,6 +10,16 @@ import { MethodBadge } from "./AuthMethodIcon";
 import { docLabel, docShort, isFinished, type AuthRequest, type Biz, type Link } from "./view";
 
 const fmt = (ms: number) => { const s = Math.max(0, Math.floor(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+/** 보낸 인증이 없을 때 보여 주는 사용법 — [단계, 할 일들]. 미팅을 잡은 뒤 서류를 못 받은 상황 기준(belie 2026-11-09). */
+const USAGE: [string, string[]][] = [
+  ["대표에게 미리 말하기", ["「서류 대신 휴대폰에 오는 인증 한 번만 눌러 주시면 제가 받을게요」라고 안내해요", "대표가 어느 인증 앱(카카오톡 · 네이버 · 토스 등)을 쓰는지 물어봐요"]],
+  ["인증 보내기", ["대표 이름 · 생년월일 · 휴대폰을 넣고 인증 앱을 골라요", "미팅에 필요한 서류를 고르고 「인증 보내기」를 눌러요"]],
+  ["대표가 휴대폰에서 승인", ["대표 휴대폰의 인증 앱으로 요청이 가요(4분 30초 안에 승인)", "대표가 승인했다고 하면 「승인 확인」을 눌러요"]],
+  ["서류 받고 미팅 준비", ["서류가 사업자별로 이 목록에 들어오고, 미팅 잡은 업체 DB와 맞으면 자동으로 연결돼요", "「원문」으로 PDF를 내려받아 미팅 자료로 써요", "미팅이 잡힌 DB라 업체정보는 미팅 화면에서 받은 내용을 보고 채워요"]],
+  ["대표 인증서 파일을 받았다면", ["「공동인증서로 가져오기」 탭에서 인증서를 고르면 승인 없이 바로 받아요"]],
+];
+
+
 const GHOST = "rounded-md px-2 py-1 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500";
 const CHIP = "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-sm font-semibold";
 
@@ -158,9 +168,26 @@ export default function RequestList({ items, now, ...a }: Props) {
   const dateLabel = (d: string) => `${d === today ? "오늘 · " : ""}${Number(d.slice(0, 2))}월 ${Number(d.slice(3))}일`;
 
   if (visible.length === 0) return (
-    <section className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-gray-300 bg-white px-6 py-10 text-center">
-      <Smartphone className="h-6 w-6 text-gray-400" aria-hidden />
-      <h2 className="font-semibold text-gray-900">보낸 인증이 없어요</h2>
+    <section aria-label="보낸 인증" className="flex flex-col gap-4 rounded-xl border border-dashed border-gray-300 bg-white px-5 py-6">
+      <div className="flex items-center gap-2">
+        <Smartphone className="h-5 w-5 shrink-0 text-gray-400" aria-hidden />
+        <h2 className="font-semibold text-gray-900">보낸 인증이 없어요 · 이렇게 써요</h2>
+      </div>
+      <p className="-mt-2 text-sm text-gray-600">미팅을 잡고 서류를 달라고 했는데 대표가 보내 주지 않을 때 써요.</p>
+      {/* 사용법 — 단계(1뎁스) 밑에 할 일(2뎁스). belie 2026-11-09. */}
+      <ol className="flex flex-col gap-3">
+        {USAGE.map(([step, items], i) => (
+          <li key={step} className="flex gap-3">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-700 tabular-nums">{i + 1}</span>
+            <div className="min-w-0">
+              <p className="font-semibold text-gray-900">{step}</p>
+              <ul className="mt-1 flex list-disc flex-col gap-0.5 pl-4 text-sm text-gray-600 marker:text-gray-300">
+                {items.map((t) => <li key={t}>{t}</li>)}
+              </ul>
+            </div>
+          </li>
+        ))}
+      </ol>
     </section>
   );
   return (

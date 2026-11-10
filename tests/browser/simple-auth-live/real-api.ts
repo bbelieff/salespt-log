@@ -31,6 +31,9 @@ const DATA: SimpleAuthRequest[] = [
     sentAt: iso(60 * 27), deadline: 0, resends: 0, progress: 0, error: "가상 오류 — 고객 정보가 홈택스와 달라요.", businesses: [] },
 ];
 
+// ?empty=1 — 보낸 인증이 없을 때(사용법 안내) 화면. App 이 주소를 바꾸기 전에 읽어 둔다.
+const EMPTY = new URLSearchParams(location.search).has("empty");
+
 export function installRealApi() {
   const real = window.fetch.bind(window);
   window.fetch = async (input, init) => {
@@ -44,7 +47,7 @@ export function installRealApi() {
       return json({ request: DATA.find((r) => r.id === id) });
     }
     if (url === "/api/simple-auth" && init?.method === "POST") return json({ error: "목업에서는 보내지 않아요." }, 503);
-    if (url === "/api/simple-auth") return json({ requests: DATA });
+    if (url === "/api/simple-auth") return json({ requests: EMPTY ? [] : DATA });
     return real(input, init);
   };
 }
