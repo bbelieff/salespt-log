@@ -10,6 +10,11 @@
  *   이어쓰기·늦은 응답이 타이핑을 덮어쓰지 않는다.
  * - 공지 전환 시 현재 폼이 dirty 면 먼저 보관한 뒤 대상 슬롯(초안 우선, 없으면 게시본)을
  *   로드 — dirty 내용을 조용히 버리거나 덮지 않는다.
+ *
+ * 2026-11-10 belie 「추천대로」:
+ * - 새 공지는 꺼짐(active=false)으로 시작 — 「켜기」를 누르고 게시해야 수강생에게 뜬다. 기존 공지는 저장된 값 그대로.
+ * - 「미리보기」= 수강생이 보는 새소식 팝업(NoticePopup) 그대로 지금 입력을 띄운다. 저장·게시·읽음 기록 없음,
+ *   닫기는 이 미리보기 창만 닫는다(진짜 수강생 팝업과 무관).
  */
 "use client";
 
@@ -17,6 +22,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import type { Notice } from "@/types";
+import NoticePopup from "@/components/announcements/NoticePopup";
 import {
   clearDraft,
   fingerprint,
@@ -41,7 +47,7 @@ const EMPTY = {
   start: "",
   end: "",
   pinned: false,
-  active: true,
+  active: false, // 새 공지는 꺼진 채 시작 — 「켜기」를 눌러야 게시 후 수강생에게 보인다(2026-11-10)
 };
 type Form = typeof EMPTY;
 
@@ -78,6 +84,7 @@ export default function NoticeManager({
   const [msg, setMsg] = useState("");
   const [justPublished, setJustPublished] = useState(false);
   const [conflict, setConflict] = useState(false);
+  const [preview, setPreview] = useState(false);
   const formRef = useRef(form);
   formRef.current = form;
 
@@ -217,7 +224,9 @@ export default function NoticeManager({
         if (store) clearDraft(store, scopeEmail, sentSlot);
         setForm({ ...EMPTY, ...data.notice });
         setJustPublished(true);
-        setMsg("게시됨. 수강생 팝업에 바로 반영돼요.");
+        setMsg(data.notice?.active === false
+          ? "저장됨 — 아직 꺼져 있어요. 「켜기」를 누르고 게시 반영하면 수강생 팝업에 떠요."
+          : "게시됨. 수강생 팝업에 바로 반영돼요.");
       } else {
         // 저장 중 이어쓴 내용 보존 — 폼을 서버값으로 덮지 않고 초안으로 유지.
         if (store) saveDraft(store, scopeEmail, sentSlot, formRef.current, sentBase);
@@ -248,6 +257,14 @@ export default function NoticeManager({
           </span>
         ) : null}
         <div className="ml-auto flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            disabled={!form.title.trim() && !form.bodyMd.trim()}
+            onClick={() => setPreview(true)}
+            className="rounded-full border border-gray-200 px-3 py-1.5 text-xs font-bold text-gray-600 hover:bg-gray-50 disabled:text-gray-300"
+          >
+            미리보기
+          </button>
           <button
             type="button"
             disabled={busy}
@@ -363,18 +380,39 @@ export default function NoticeManager({
             />
             📌 상단 고정
           </label>
-          <label className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
-            <input
-              type="checkbox"
-              checked={form.active}
-              onChange={(e) => update({ active: e.target.checked })}
-            />
-            활성 (체크 해제 = 노출 중단)
-          </label>
+          <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
+            수강생에게
+            <span
+              data-testid="notice-active-state"
+              className={`rounded-full px-2 py-0.5 text-px-11 font-bold ${form.active ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"}`}
+            >
+              {form.active ? "켜짐" : "꺼짐"}
+            </span>
+            <button
+              type="button"
+              aria-pressed={form.active}
+              onClick={() => update({ active: !form.active })}
+              className="rounded-full border border-gray-200 px-2.5 py-1 text-xs font-bold text-gray-700 hover:bg-gray-50"
+            >
+              {form.active ? "끄기" : "켜기"}
+            </button>
+          </div>
         </div>
+        {!form.active && (
+          <p className="text-xs text-gray-500">꺼져 있으면 게시해도 수강생에게 안 떠요. 미리보기로 확인한 뒤 「켜기」를 누르고 게시하세요.</p>
+        )}
 
         {msg && <p className="text-xs font-semibold text-gray-500">{msg}</p>}
       </div>
+      {/* 수강생 화면과 같은 팝업 — 지금 입력 그대로, 저장·게시·읽음 기록 없이 이 창만 닫는다. */}
+      {preview && (
+        <NoticePopup
+          notices={[{ ...form, id: form.id || "preview", updated: "" } as Notice]}
+          updates={[]}
+          onConfirm={() => setPreview(false)}
+          onDismiss={() => setPreview(false)}
+        />
+      )}
     </section>
   );
 }

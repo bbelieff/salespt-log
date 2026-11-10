@@ -90,7 +90,7 @@ export default function DbSheetPage(){
    <button className={`sheet-btn${summaryOpen?' is-on':''}`} aria-expanded={summaryOpen} aria-controls="db-supplier-summary" onClick={()=>toggleSummary(!summaryOpen)}><span className="app-header-pill sheet-toolbar-pill">공급처별 성과 <DisclosureChevron open={summaryOpen} /></span></button>
    <button className={`sheet-btn${settings?' is-on':''}`} aria-expanded={settings} aria-controls="db-visible-fields" onClick={()=>setSettings(!settings)}><span className="app-header-pill sheet-toolbar-pill">보여줄 항목 <DisclosureChevron open={settings} /></span></button>
   </div>;
- const summary=summaryOpen&&<SupplierSummary leads={rows} from={rangeFrom} to={rangeTo} selected="" selectedSuppliers={selectedSuppliers} loading={data.loading} error={data.error} onSelect={pickSupplier} onImport={()=>{setOptionsOpen(false);setImporting(true);}} onResetRange={()=>{setFrom('');setTo('');setPeriod('all');}} onClose={()=>toggleSummary(false)}/>;
+ const summary=summaryOpen&&<SupplierSummary leads={rows} from={rangeFrom} to={rangeTo} selected="" selectedSuppliers={selectedSuppliers} loading={data.loading} error={data.error} onSelect={pickSupplier} onResetRange={()=>{setFrom('');setTo('');setPeriod('all');}} onClose={()=>toggleSummary(false)}/>;
  const dateFilter=<div className="sheet-filter-group sheet-date-group rounded-xl border border-slate-200/80 bg-slate-200/65 p-2 shadow-inner shadow-white/70">
  <InflowPeriod period={period} from={from} to={to} onPeriod={setPeriod} onFrom={setFrom} onTo={setTo}/></div>;
  const statusFilter=<div className="sheet-filter-group sheet-status-group rounded-xl border border-slate-200/80 bg-slate-200/65 p-2 shadow-inner shadow-white/70"><div className="sheet-status-filter-row">
@@ -136,7 +136,7 @@ export default function DbSheetPage(){
  {recording&&rows.find(r=>r.id===recording.id)&&<RecordingDialog row={rows.find(r=>r.id===recording.id)!} deleting={recording.deleting} onClose={()=>setRecording(null)} onPreview={v=>data.recordingPreview(recording.id,v,recording.deleting)} onConfirm={async v=>{await data.configure(recording.id,v,recording.deleting);if(recording.deleting)setDetail('');}}/>}
  {trashOpen&&<TrashDialog onList={data.listTrash} onRestore={data.restoreTrash} onEmpty={data.emptyTrash} onClose={()=>setTrashOpen(false)}/>}
  {/* 오늘 활동(2026-11-07 belie): 일별 기록을 목록 옆으로 — 닫혀도 살짝 나와 있다. DB 전환 전 기수는 이 화면에 오지 않는다. */}
- {!data.loading&&!data.errorCode&&<TodayActivity onAdd={()=>setImporting(true)}/>}
+ {!data.loading&&!data.errorCode&&<TodayActivity/>}
  {callUi.layer}
  {supplierOpen&&<BulkSupplierDialog count={chosen.size} suppliers={data.suppliers} onApply={bulkSupplier} onClose={()=>setSupplierOpen(false)}/>}
  </SupplierOptions.Provider>;

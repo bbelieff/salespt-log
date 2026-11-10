@@ -15,7 +15,7 @@ import {
 
 type Props = {
   leads: DbSheetLead[]; from: string; to: string; selected: string; selectedSuppliers?: readonly string[]; loading: boolean; error: string;
-  onSelect(supplier: string): void; onImport(): void; onResetRange(): void; onClose(): void;
+  onSelect(supplier: string): void; onResetRange(): void; onClose(): void;
 };
 /** supplier = 누를 수 있는 공급처 줄 · blank = 공급처 미입력(못 누름) · total = 합계(누르면 필터 해제). */
 type Kind = "supplier" | "blank" | "total";
@@ -109,7 +109,7 @@ function Notice({ children }: { children: ReactNode }) {
   return <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-600">{children}</div>;
 }
 
-export function SupplierSummary({ leads, from, to, selected, selectedSuppliers, loading, error, onSelect, onImport, onResetRange, onClose }: Props) {
+export function SupplierSummary({ leads, from, to, selected, selectedSuppliers, loading, error, onSelect, onResetRange, onClose }: Props) {
   const [expanded, setExpanded] = useState(false);
   const summary = useMemo(() => summarizeSuppliers(leads, { from, to }), [leads, from, to]);
   const selection = selectedSuppliers ?? (selected ? [selected] : []);
@@ -124,9 +124,9 @@ export function SupplierSummary({ leads, from, to, selected, selectedSuppliers, 
   const totalProps: RowProps = { row: summary.total, kind: "total", onToggle: () => onSelect("") };
   let body: ReactNode;
   if (loading) body = <SkeletonBars label="불러오는 중…" rows={3} className="mt-2" />;
-  // 첫 조회가 실패하면 leads 가 비어 있다 — 「DB가 없어요 · 가져오기」를 보이면 이미 있는 DB를 또 가져오게 된다.
+  // 첫 조회가 실패하면 leads 가 비어 있다 — 「DB가 없어요」를 보이면 이미 있는 DB를 또 넣게 된다. DB 추가 입구는 목록 위 버튼 하나(2026-11-10).
   else if (!leads.length && error) body = <Notice><span>공급처 요약을 불러오지 못했어요. 새로고침해 주세요.</span></Notice>;
-  else if (!leads.length) body = <Notice><span>아직 DB가 없어요. DB를 가져오면 공급처별로 상담·미팅·계약을 비교해 드려요.</span><button type="button" className="sheet-btn primary" onClick={onImport}>DB 가져오기</button></Notice>;
+  else if (!leads.length) body = <Notice><span>아직 DB가 없어요. 목록 위 「＋ DB 추가」로 넣으면 공급처별로 상담·미팅·계약을 비교해 드려요.</span></Notice>;
   else if (!summary.total.total) body = <Notice><span>이 유입 기간에 들어온 DB가 없어요.</span><button type="button" className="sheet-btn" onClick={onResetRange}>기간 초기화</button></Notice>;
   else body = <>
     <div className="mt-2 hidden overflow-hidden rounded-xl border border-slate-200 bg-white pc:block">

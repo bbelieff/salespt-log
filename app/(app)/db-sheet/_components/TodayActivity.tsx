@@ -6,6 +6,7 @@
  * 숫자는 일별 기록(GET /api/daily/오늘) 그대로 — DB 목록에서 한 일은 이미 들어 있다. 손으로 더하는 건 현수막 게시(사람이 없는 활동) 하나.
  * 펼친 머리의 날짜 양옆 ‹ › 로 어제·그제 숫자를 그 자리에서 넘겨 본다(belie 2026-11-08). 닫으면 오늘로 돌아온다.
  * 기록 옮기기·자세한 고치기는 일별 기록 탭.
+ * DB 추가 입구는 목록 위 「＋ DB 추가」 하나(+ 빈 목록 안내) — 이 패널엔 따로 두지 않는다(2026-11-10 belie 「추천대로」).
  * 현수막은 한 번에 여러 장 붙이므로 게시 수를 칸에 바로 적는다(−/＋ 는 미세 조정, belie 2026-11-08).
  * PC 닫힘 카드는 오른쪽 아래 「오늘 챙길 일」 버튼과 겹치지 않게 그 왼쪽에 두고, 그 창을 열면 창 왼쪽으로 비켜 준다(.ta-pc-card, db-sheet.css).
  */
@@ -22,7 +23,7 @@ type Key = (typeof STEPS)[number][0];
 const shiftDay = (iso: string, n: number) => addDays(new Date(`${iso}T12:00:00+09:00`), n).toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
 const dayLabel = (iso: string) => new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", month: "long", day: "numeric", weekday: "short" }).format(new Date(`${iso}T12:00:00+09:00`));
 
-export function TodayActivity({ onAdd }: { onAdd: () => void }) {
+export function TodayActivity() {
   const today = todayKST();
   // 오늘 기록은 띠·카드와 「못 읽는 계정이면 숨기기」 판단에, 보고 있는 날(date)은 펼친 내용에 쓴다. 같은 날이면 같은 캐시.
   const todayQ = useDay(today);
@@ -92,7 +93,6 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
     if (draft.trim() !== "") void setBannerCount(n);
   }
   const openBanner = () => { setFocusBanner(true); setOpen(true); };
-  const add = () => { setOpen(false); onAdd(); };
   const funnel = (row: boolean, viewed = false) => { const num = (k: Key) => { const v = viewed ? total(k) : todayTotal(k); return v === null ? "–" : String(v); };
   return <ol className={row ? "flex items-center gap-1" : "grid gap-1"} aria-label={viewed && !isToday ? `${dayLabel(date)} 숫자` : "오늘 숫자"}>
     {STEPS.map(([k, label], i) => <li key={k} className={`flex flex-1 items-center gap-1 rounded-lg ${row ? "justify-center px-1 py-1.5" : "justify-between px-3 py-2"} ${i === 3 ? "bg-emerald-50" : "bg-slate-50"}`}>
@@ -101,8 +101,7 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
     </li>)}
   </ol>; };
   const chips = (column: boolean) => <div className={column ? "flex flex-col gap-1.5" : "flex gap-1.5"}>
-    <button type="button" className={`rounded-full border border-emerald-600 bg-emerald-600 px-3 py-1.5 text-sm font-semibold text-white ${column ? "rounded-lg py-2 text-left" : "shrink-0"}`} onClick={add}>＋ DB 추가</button>
-    {showBanner && <button type="button" className={`rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 ${column ? "rounded-lg py-2 text-left" : "shrink-0"}`} onClick={openBanner}>＋ 현수막 게시{stock !== null && <span className="ml-1 text-xs font-normal tabular-nums text-slate-500">재고 {stock}</span>}</button>}
+    <button type="button" className={`rounded-full border border-slate-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 ${column ? "rounded-lg py-2 text-left" : "shrink-0"}`} onClick={openBanner}>＋ 현수막 게시{stock !== null && <span className="ml-1 text-xs font-normal tabular-nums text-slate-500">재고 {stock}</span>}</button>
   </div>;
 
   const head = <div {...swipe("down", () => setOpen(false))} className="relative flex items-start justify-between gap-3 border-b border-slate-100 px-4 pb-3 pt-3">
@@ -172,7 +171,6 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
     </div>
     <div className="flex items-center justify-between gap-2 border-t border-slate-100 px-4 py-2.5 pb-[max(10px,env(safe-area-inset-bottom))]">
       <Link href="/contact" className="text-sm font-semibold text-emerald-700">일별 기록에서 고치기 →</Link>
-      <button type="button" className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white" onClick={add}>＋ DB 추가</button>
     </div>
   </section>;
 
@@ -192,7 +190,7 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
             <span className="flex items-center gap-0.5 text-xs font-semibold text-emerald-700">펼치기<ChevronUp size={14} aria-hidden="true" /></span>
           </button>
           <div className="mt-2">{funnel(true)}</div>
-          <div className="mt-2 overflow-x-auto">{chips(false)}</div>
+          {showBanner && <div className="mt-2 overflow-x-auto">{chips(false)}</div>}
         </section>
       </div>
       {/* PC 중간 폭(1024~1599px): 표를 덮지 않게 숫자만 한 줄 띠. 목록은 띠 높이만큼 위에서 끝난다(db-sheet.css). */}
@@ -210,7 +208,7 @@ export function TodayActivity({ onAdd }: { onAdd: () => void }) {
             <span className="flex items-center gap-0.5 text-xs font-semibold text-emerald-700">펼치기<ChevronUp size={14} aria-hidden="true" /></span>
           </button>
           <div className="mt-3">{funnel(false)}</div>
-          <div className="mt-3">{chips(true)}</div>
+          {showBanner && <div className="mt-3">{chips(true)}</div>}
         </section>
       </div>
     </>}

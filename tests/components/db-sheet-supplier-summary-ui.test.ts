@@ -17,7 +17,7 @@ function lead(supplier: string, funnel: DbSheetFunnelStep, date = "2026-10-05", 
 }
 const many = (n: number, supplier: string, funnel: DbSheetFunnelStep, channel?: "매입DB" | "직접생산") => Array.from({ length: n }, () => lead(supplier, funnel, undefined, channel));
 const leads = [...many(38, "샘플디비A", "유입"), ...many(2, "샘플디비A", "계약"), ...many(28, "메타 광고", "연락", "직접생산"), ...many(2, "메타 광고", "계약", "직접생산"), ...many(3, "", "유입")];
-const handlers = { onSelect: vi.fn(), onImport: vi.fn(), onResetRange: vi.fn(), onClose: vi.fn() };
+const handlers = { onSelect: vi.fn(), onResetRange: vi.fn(), onClose: vi.fn() };
 type Props = Parameters<typeof SupplierSummary>[0];
 async function render(overrides: Partial<Props> = {}) {
   await act(async () => { root.render(createElement(SupplierSummary, { leads, from: "", to: "", selected: "", loading: false, error: "", ...handlers, ...overrides })); });
@@ -74,10 +74,11 @@ describe("SupplierSummary", () => {
     expect(handlers.onResetRange).toHaveBeenCalledOnce();
   });
 
-  it("offers import only when the list really is empty — a failed first load never invites duplicate imports", async () => {
+  it("empty list points to the one 「＋ DB 추가」 above the list (no second import button); a failed first load never says 'no DB'", async () => {
     await render({ leads: [] });
-    act(() => rowButton(host, "DB 가져오기").click());
-    expect(handlers.onImport).toHaveBeenCalledOnce();
+    expect(host.textContent).toContain("아직 DB가 없어요");
+    expect(rowButton(host, "DB 가져오기")).toBeUndefined();
+    expect(host.querySelector("button.primary")).toBeNull();
     await render({ leads: [], error: "저장소에 연결하지 못했습니다." });
     expect(host.textContent).toContain("공급처 요약을 불러오지 못했어요. 새로고침해 주세요.");
     expect(rowButton(host, "DB 가져오기")).toBeUndefined();
