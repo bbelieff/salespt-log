@@ -143,6 +143,10 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
   const showTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shownAt = useRef(0);
+  // 앱을 연 뒤 첫 로딩이 끝나기 전까지는 흰 바탕(뒤 화면 안 보임). 그 뒤 로딩은 기존 반투명.
+  const booting = useRef(true);
+  const everActive = useRef(false);
+  const [solid, setSolid] = useState(false);
 
   // 표시 중엔 현재 문구를 박제(페이드아웃 동안 기본문구로 안 튐).
   useEffect(() => {
@@ -151,6 +155,7 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (active) {
+      everActive.current = true;
       if (hideTimer.current) {
         clearTimeout(hideTimer.current);
         hideTimer.current = null;
@@ -159,10 +164,12 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
         showTimer.current = setTimeout(() => {
           showTimer.current = null;
           shownAt.current = Date.now();
+          setSolid(booting.current);
           setVisible(true);
         }, SHOW_DELAY);
       }
     } else {
+      if (everActive.current) booting.current = false;
       if (showTimer.current) {
         clearTimeout(showTimer.current); // 아직 표시 전 → 취소(깜빡임 방지)
         showTimer.current = null;
@@ -189,7 +196,7 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
   return (
     <LoadingContext.Provider value={api}>
       {children}
-      {visible && <LoadingOverlay message={shownMessage} />}
+      {visible && <LoadingOverlay message={shownMessage} solid={solid} />}
     </LoadingContext.Provider>
   );
 }

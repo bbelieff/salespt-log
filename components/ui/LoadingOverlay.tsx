@@ -17,8 +17,11 @@
 
 export default function LoadingOverlay({
   message = "불러오고 있어요",
+  solid = false,
 }: {
   message?: string;
+  /** 앱 첫 로딩: 뒤 화면(회색 자리 표시)을 가리는 흰 바탕 — 안드로이드 시작 화면과 이어지게. */
+  solid?: boolean;
 }) {
   return (
     <div
@@ -27,7 +30,7 @@ export default function LoadingOverlay({
       aria-label={message}
       className="fixed inset-0 z-[400] flex items-center justify-center"
     >
-      <div className="lo-dim absolute inset-0" />
+      <div className={`absolute inset-0 ${solid ? "bg-white" : "lo-dim"}`} data-testid="loading-overlay-backdrop" />
       <div className="lo-card relative flex w-auto min-w-56 max-w-sm flex-col items-center gap-4 rounded-2xl px-8 py-7">
         <div className="lo-ring relative h-24 w-24">
           <span className="lo-ring-spin absolute inset-0 rounded-full" aria-hidden />
