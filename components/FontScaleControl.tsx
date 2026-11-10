@@ -16,12 +16,12 @@ interface Props {
 export default function FontScaleControl({ step, onChange, label }: Props) {
   // 버튼 자체는 박스 배율과 무관하게 같은 크기(style 로 고정 — 누르다 버튼이 커져 밀리지 않게).
   const btn =
-    "flex h-6 w-6 items-center justify-center rounded-full font-bold leading-none text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent";
+    "hit-44 flex h-6 w-6 items-center justify-center rounded-full font-bold leading-none text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent";
   return (
     <div role="group" aria-label={`${label} 글자 크기`} data-font-scale-control style={{ fontSize: 14 }}
       className="inline-flex shrink-0 items-center rounded-full border border-slate-200 bg-white">
       <button type="button" onClick={() => onChange(step - 1)} disabled={step === 0} aria-label={`${label} 글자 작게`} className={btn}>−</button>
-      <span className="select-none px-0.5 font-bold text-slate-700" title={`글자 크기 ${step + 1}/${MAX_FONT_STEP + 1}단계`}>
+      <span className="select-none px-1 font-bold text-slate-700" title={`글자 크기 ${step + 1}/${MAX_FONT_STEP + 1}단계`}>
         가<span className="sr-only"> {step + 1}단계</span>
       </span>
       <button type="button" onClick={() => onChange(step + 1)} disabled={step === MAX_FONT_STEP} aria-label={`${label} 글자 크게`} className={btn}>+</button>

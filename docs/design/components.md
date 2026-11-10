@@ -221,7 +221,15 @@
 
 ### Date Input (커스텀 박스 + **직접 그리는 달력**) ⭐
 
-**컴포넌트**: `components/ui/DateInputCustom.tsx` · props `{ value, onChange, ariaLabel?, min?, max?, placeholder? }`
+**컴포넌트**: `components/ui/DateInputCustom.tsx` · props `{ value, onChange, ariaLabel?, min?, max?, placeholder?, id?, className?, compact?, disabled?, required?, name? }`
+
+**앱 전체 날짜 칸 = 이것 하나 (2026-11-10 결정 5)**: 일정 변경·추가 미팅·미팅 날짜, 수납 계약일·수납일·이전 계약·업체추가, 할 일(팝업·바로 추가·「+ 다음」), 캘린더 일반 일정이 모두 이 컴포넌트다. 값은 그대로 `YYYY-MM-DD` 문자열이라 저장 로직은 안 바뀐다.
+- 겉 칸은 진짜 `<button type="button">` — `<label htmlFor={id}>` 나 감싼 `<label>` 을 눌러도 열린다. `disabled` 지원.
+- `required`·`name` 을 주면 같은 값을 든 숨은 입력(`.custom-date-proxy`)이 브라우저 필수 검사·FormData 를 받는다(비어 있으면 제출이 막히고 겉 칸으로 초점).
+- `compact` = 좁은 칸(일정 130px·할 일 줄 128px)용: 여백 6×8px·13px 글자·📅 숨김. 높이는 `className`(`h-9`·`h-10`)으로 옆 칸에 맞춘다(너비를 줄일 땐 `!w-32` — 기본 `width:100%`).
+- Enter/Space 로 열 때·열린 상태 Esc 는 감싼 줄의 Enter=저장/Esc=닫기 단축키로 새지 않는다.
+- 비우기(빈 값으로 되돌리기)는 없다. 비어 있으면 기본값을 쓰는 곳(할 일 바로 추가 = 내일)은 그 기본값이 처음부터 들어 있다.
+- 아직 네이티브 칸이 남은 곳(범위 밖·허용 목록): DB 목록(`db-sheet` — 셀 편집기·기간·부재 기록·가져오기·통화 확인), 관리자 공지, 기수 만들기·시즌 시작, 가계부, `PeriodPicker`. `tests/components/ui-touch-date.test.ts` 가 목록 밖에 새로 생기면 잡는다.
 
 **왜 커스텀 박스인가**:
 - 한국어 UX는 `2026-04-25 (목)` 처럼 **요일 표시**가 필수
@@ -246,10 +254,10 @@
 **구조:**
 ```html
 <!-- 트리거 박스 -->
-<div class="custom-date-wrapper" role="button" tabindex="0" aria-haspopup="dialog">
+<button type="button" class="custom-date-wrapper" aria-haspopup="dialog">
   <span class="custom-date-display">2026-04-25 (목)</span>
-  <span aria-hidden="true">📅</span>
-</div>
+  <span class="custom-date-icon" aria-hidden="true">📅</span>
+</button>
 
 <!-- 클릭 시 렌더되는 달력 (position:fixed — 부모 overflow 에 안 잘린다) -->
 <div class="date-pop" role="dialog">
@@ -1309,7 +1317,7 @@ app/(app)/dashboard/page.tsx
 | **MoneyInput** | `components/ui/MoneyInput.tsx` | 금액 입력 — 타이핑 중 자동 천단위 콤마 + 커서 보정. Props: `value: number` / `onChange: (n: number) => void` / `placeholder` / `className` / `disabled`. **표시=콤마 문자열, 방출=number** 를 타입으로 강제(콤마 문자열이 시트로 새면 수식 파괴 — 쓰기는 USER_ENTERED). `type="text"+inputMode="numeric"`(type=number 는 콤마를 invalid 로 보고 0 저장). 유틸: `@/lib/format/money`(formatMoney·formatMoneyInput·parseMoney). 🚫 카운트 스테퍼·만원축약·서술형 매출엔 쓰지 않음 |
 | **PhoneInput** | `components/ui/PhoneInput.tsx` | 연락처 입력 — 타이핑 중 자동 하이픈(010-0000-0000 · 02 지역번호 변형). Props: `value: string` / `onChange: (s: string) => void` / `placeholder` / `className` / `disabled`. 하이픈 포함 문자열 저장(시트 USER_ENTERED 가 숫자만 문자열의 선행 0 을 날리므로 하이픈 저장이 안전). 유틸: `@/lib/format/phone`(formatPhone·maskPhoneInput·normalizePhoneDigits). 🚫 `연락처통신사`("010-…(SKT)") 같은 **합본 필드엔 쓰지 않음** — 표시 정규화는 `formatPhone`(선행 숫자만 포맷·접미 보존) |
 | **ChannelBadge** | `components/ui/ChannelBadge.tsx` | §4 채널 배지 4종 진입점. Props: `channel: Channel` (4종 enum) |
-| **DateInputCustom** | `components/ui/DateInputCustom.tsx` | §2 Date Input — 커스텀 박스 + 숨겨진 native input |
+| **DateInputCustom** | `components/ui/DateInputCustom.tsx` | §2 Date Input — 요일 보이는 버튼 칸 + 직접 그리는 달력(앱 전체 날짜 칸, 2026-11-10) |
 | **TimeSelectPair** | `components/ui/TimeSelectPair.tsx` | §2 Time Input — 시·분 분리 select (15분 단위 강제) |
 | **CrossTabHintModal** | `components/ui/CrossTabHintModal.tsx` | 탭 간 cascade 안내 모달 (2026-05-17 [DB-1/C-2]). Props: `open`, `title`, `body: ReactNode`, `navLabel`, `onNavigate`, `onClose`. [화면 유지 / 바로가기] 통일 패턴. |
 | **HintTooltip** | `components/ui/HintTooltip.tsx` | 라벨 옆 (?) 설명 버튼(h-4 원, slate 테두리) + 다크 말풍선(bg-slate-800·text-xs·max-w-60). Props: `label`(aria-label "<라벨> 설명 보기"), `text`(`\n` 줄바꿈 표시). 스크롤되면 닫힘(버튼이 가려진 뒤 말풍선만 남지 않게), 입력칸 화면낭독 설명은 사용처가 sr-only + aria-describedby 로 따로 둔다. 마우스 올림·키보드 포커스로 열림, 터치/클릭은 토글 고정, Esc·blur·바깥 누르기로 닫힘, 한 번에 하나만. 말풍선은 body portal + fixed 좌표(가로 8px clamp, 아래 공간 없으면 위로) → overflow 부모에 안 잘림. role=tooltip + aria-describedby/aria-expanded. 첫 사용처: `CompanyInfoEditor` 필드 설명(2026-09-28). 2026-10-28: `trigger` prop — (?) 대신 넘긴 것(예: STEP 배지)을 눌러 연다. 누르면 바깥 줄 클릭·링크로 번지지 않음(preventDefault·stopPropagation). DB관리 「도달 STEP」 배지가 사용(설명 = db-sheet model `STEP_HINTS`). |

@@ -236,7 +236,7 @@ export default function TraineeCard({
                 type="button"
                 onClick={() => setTrainerOpen((v) => !v)}
                 aria-expanded={trainerOpen}
-                className="inline-flex min-w-0 items-center gap-1 rounded text-left font-bold text-indigo-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                className="hit-44 inline-flex min-w-0 items-center gap-1 rounded text-left font-bold text-indigo-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                 title="담당 트레이너 변경 — 토글 즉시 저장"
               >
                 <span className="shrink-0 font-semibold text-gray-400">담당</span>
@@ -280,7 +280,7 @@ export default function TraineeCard({
               <button
                 type="button"
                 onClick={() => setTeamOpen(true)}
-                className="shrink-0 rounded text-gray-400 hover:text-indigo-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
+                className="hit-44 shrink-0 rounded text-gray-400 hover:text-indigo-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
                 title="이 수강생의 팀을 바꿔요(같은 팀 안 순서는 왼쪽 ⋮⋮ 를 끌어서)"
               >
                 {u.team?.trim() ? "팀 변경" : "팀 정하기"}

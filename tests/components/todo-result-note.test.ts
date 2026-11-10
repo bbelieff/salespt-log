@@ -6,6 +6,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Todo } from "@/types";
 import TodoRow from "@/app/(app)/payment/_components/TodoRow";
+import { pickDate } from "./pick-date";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -66,8 +67,8 @@ describe("「+ 다음」 연계 할 일", () => {
   });
   it("누르면 제목+날짜(기본 내일) 한 줄 → Enter 로 새 할 일 저장 후 닫힘", async () => {
     render({ 기록종류: "history", 완료여부: false }); act(() => q('[aria-label$="다음 할 일 적기"]')!.click());
-    expect(document.activeElement).toBe(next()); expect(nextDate()!.value).toBe(kst1());
-    fill(next()!, " 보완 서류 받기 "); fill(nextDate()!, "2026-10-30");
+    expect(document.activeElement).toBe(next()); expect(nextDate()!.textContent).toContain(kst1());
+    fill(next()!, " 보완 서류 받기 "); pickDate(nextDate()!, "2026-10-30");
     await act(async () => { next()!.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })); });
     expect(createNext).toHaveBeenCalledWith("보완 서류 받기", "2026-10-30"); expect(next()).toBeNull();
   });

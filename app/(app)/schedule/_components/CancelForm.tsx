@@ -43,13 +43,13 @@ export default function CancelForm({
         🔴 취소 / 노쇼
       </div>
 
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-2">
         {PRESETS.map((p) => (
           <button
             key={p}
             type="button"
             onClick={() => setReason(`${vendor}, ${p}`)}
-            className="rounded-md border border-red-200 bg-white px-2 py-0.5 text-xs text-red-800 transition-colors hover:bg-red-100"
+            className="hit-44 rounded-md border border-red-200 bg-white px-2 py-0.5 text-xs text-red-800 transition-colors hover:bg-red-100"
           >
             {p}
           </button>

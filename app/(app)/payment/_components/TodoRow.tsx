@@ -2,6 +2,7 @@
 
 import { forwardRef, useRef, useState } from "react";
 import type { Todo, TodoType } from "@/types";
+import DateInputCustom from "@/components/ui/DateInputCustom";
 
 const TYPE_BADGE: Record<TodoType, string> = { 미팅: "bg-blue-100 text-blue-700", 전화: "bg-green-100 text-green-700", 메시지: "bg-violet-100 text-violet-700", 기타: "bg-gray-100 text-gray-600", 일반: "bg-teal-100 text-teal-700" };
 /** 「+ 결과」·「+ 다음」 점선 태그 — 부모(group) hover 때 실선·옅은 파랑. */
@@ -137,7 +138,7 @@ function NextTodoInput({ onCreate, onClose }: { onCreate: (title: string, date: 
       <div className="flex min-w-0 flex-wrap items-center gap-1.5">
         <input autoFocus aria-label="다음 할 일" value={title} maxLength={100} disabled={busy} onChange={(e) => setTitle(e.target.value)} placeholder="다음 할 일" enterKeyHint="done" className={`min-w-0 flex-1 basis-40 ${INPUT}`}/>
         <div className="flex shrink-0 items-center gap-1.5">
-          <input aria-label="다음 할 일 날짜" type="date" value={date} disabled={busy} onChange={(e) => setDate(e.target.value)} className={`w-32 min-w-0 appearance-none px-1.5 leading-9 ${INPUT}`}/>
+          <DateInputCustom ariaLabel="다음 할 일 날짜" value={date} disabled={busy} onChange={setDate} compact className="h-9 !w-32 shrink-0"/>
           <button type="button" onClick={() => void submit()} disabled={busy || !title.trim()} className="h-9 shrink-0 rounded-md bg-slate-900 px-3 text-xs font-bold text-white disabled:opacity-40">{busy ? "저장중.." : "저장"}</button>
           <button type="button" onClick={onClose} disabled={busy} aria-label="다음 할 일 적기 취소" className="h-9 shrink-0 rounded-md px-2 text-xs font-semibold text-slate-500 hover:bg-slate-100">취소</button>
         </div>

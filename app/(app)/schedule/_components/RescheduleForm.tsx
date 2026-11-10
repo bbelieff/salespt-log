@@ -16,6 +16,7 @@
 
 import { useEffect, useState } from "react";
 import TimePicker15 from "@/components/ui/TimePicker15";
+import DateInputCustom from "@/components/ui/DateInputCustom";
 import { todayKST } from "@/util/week";
 
 interface Props {
@@ -83,13 +84,7 @@ export default function RescheduleForm({
       <div className="flex gap-2">
         <div className="shrink-0" style={{ width: 130 }}>
           <label className="mb-1 block text-xs text-gray-600">새 날짜</label>
-          <input
-            type="date"
-            value={newDate}
-            min={todayISO}
-            onChange={(e) => setNewDate(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm focus:border-purple-500 focus:outline-none"
-          />
+          <DateInputCustom value={newDate} min={todayISO} onChange={setNewDate} ariaLabel="새 날짜" compact />
         </div>
         <div className="min-w-0 flex-1">
           <label className="mb-1 block text-xs text-gray-600">새 시간</label>
@@ -97,13 +92,13 @@ export default function RescheduleForm({
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-1">
+      <div className="flex flex-wrap gap-2">
         {PRESETS.map((p) => (
           <button
             key={p}
             type="button"
             onClick={() => setReason(`${vendor}, ${p}`)}
-            className="rounded-md border border-purple-200 bg-white px-2 py-0.5 text-xs text-purple-800 transition-colors hover:bg-purple-100"
+            className="hit-44 rounded-md border border-purple-200 bg-white px-2 py-0.5 text-xs text-purple-800 transition-colors hover:bg-purple-100"
           >
             {p}
           </button>

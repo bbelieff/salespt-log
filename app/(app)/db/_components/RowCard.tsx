@@ -418,13 +418,13 @@ export default function RowCard({
           <span className={`badge ${badgeCls}`}>{channel.name}</span>
           <DisclosureChevron open className="text-gray-400" />
         </button>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={onDeleteRequest}
             disabled={pending}
             aria-label={`${channel.name} ${displayNum}행 삭제`}
-            className="rounded-lg px-2 py-1 text-xs font-medium text-red-500 hover:bg-red-50 disabled:opacity-50"
+            className="hit-44 rounded-lg px-2 py-1 text-xs font-medium text-red-500 hover:bg-red-50 disabled:opacity-50"
           >
             삭제
           </button>
@@ -432,7 +432,7 @@ export default function RowCard({
             type="button"
             onClick={finishEditing}
             aria-label="접기"
-            className="h-8 w-8 text-xl leading-none text-gray-400 hover:text-gray-700"
+            className="hit-44 h-8 w-8 text-xl leading-none text-gray-400 hover:text-gray-700"
           >
             ×
           </button>

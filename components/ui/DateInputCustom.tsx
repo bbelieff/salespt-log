@@ -104,6 +104,17 @@ interface Props {
   min?: string;
   max?: string;
   placeholder?: string;
+  /** `<label htmlFor>` 연결용. 겉 칸이 진짜 `<button>` 이라 라벨 클릭도 달력을 연다. */
+  id?: string;
+  /** 겉 칸에 더할 클래스(너비·높이 맞춤). */
+  className?: string;
+  /** 좁은 칸(일정 변경·할 일 줄)용 — 여백·글자 축소, 📅 숨김. */
+  compact?: boolean;
+  disabled?: boolean;
+  /** 폼 제출 검증용. 숨은 입력이 같은 값을 들고 브라우저 required 검사를 받는다. */
+  required?: boolean;
+  /** FormData 로 읽는 폼용 이름(숨은 입력에 붙는다). */
+  name?: string;
 }
 
 export default function DateInputCustom({
@@ -113,9 +124,16 @@ export default function DateInputCustom({
   min,
   max,
   placeholder = "날짜 선택",
+  id: idProp,
+  className,
+  compact = false,
+  disabled = false,
+  required = false,
+  name,
 }: Props) {
-  const id = useId();
-  const wrapRef = useRef<HTMLDivElement>(null);
+  const autoId = useId();
+  const id = idProp ?? autoId;
+  const wrapRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   // 팝오버가 보고 있는 달. 열 때마다 현재 값(없으면 오늘) 기준으로 맞춘다.
@@ -190,20 +208,25 @@ export default function DateInputCustom({
 
   return (
     <>
-      <div
+      <button
         ref={wrapRef}
         id={id}
-        className="custom-date-wrapper"
-        role="button"
-        tabIndex={0}
+        type="button"
+        className={["custom-date-wrapper", compact ? "is-compact" : "", className ?? ""].filter(Boolean).join(" ")}
+        disabled={disabled}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={ariaLabel}
         onClick={openPicker}
         onKeyDown={(e) => {
+          // 감싼 줄·폼의 Enter=저장 / Esc=닫기 단축키가 달력 조작까지 먹지 않게 여기서 멈춘다.
           if (e.key === "Enter" || e.key === " ") {
             e.preventDefault();
+            e.stopPropagation();
             openPicker();
+          } else if (e.key === "Escape" && open) {
+            e.stopPropagation();
+            setOpen(false);
           }
         }}
       >
@@ -214,10 +237,24 @@ export default function DateInputCustom({
             <span className="text-gray-400 font-normal">{placeholder}</span>
           )}
         </span>
-        <span className="text-gray-400" aria-hidden="true">
+        <span className="custom-date-icon text-gray-400" aria-hidden="true">
           📅
         </span>
-      </div>
+      </button>
+      {(required || name) && (
+        // 브라우저 required 검사·FormData 용 숨은 입력. readOnly 면 검사에서 빠지므로 빈 onChange 로 둔다.
+        <input
+          className="custom-date-proxy"
+          tabIndex={-1}
+          aria-hidden="true"
+          name={name}
+          required={required}
+          disabled={disabled}
+          value={value}
+          onChange={() => {}}
+          onInvalid={() => wrapRef.current?.focus()}
+        />
+      )}
 
       {open && pos && (
         <div
@@ -227,6 +264,8 @@ export default function DateInputCustom({
           aria-modal="false"
           aria-label={`${ariaLabel ?? "날짜"} 선택`}
           style={{ top: pos.top, left: pos.left }}
+          // <label> 안에 놓이면 팝오버 빈 곳 클릭이 라벨을 거쳐 겉 칸을 다시 누른다(#654 류) — 막는다.
+          onClick={(e) => e.preventDefault()}
         >
           <div className="date-pop-head">
             <button

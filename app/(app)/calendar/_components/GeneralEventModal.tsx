@@ -11,6 +11,7 @@ import { useState } from "react";
 import { useDirtyEntry, useGuardedNav } from "@/components/DirtyGuard";
 import { newTodoOperationId } from "@/query/todos-hooks";
 import { apiErrorMessage } from "@/lib/util/api-error-message";
+import DateInputCustom from "@/components/ui/DateInputCustom";
 
 const HINT_KEY = "hideGeneralEventHint";
 const inputCls =
@@ -141,7 +142,7 @@ export default function GeneralEventModal({ defaultDate, onClose, onCreated }: P
           />
           <textarea className={inputCls} rows={2} placeholder="상세 내용" value={상세} onChange={(e) => set상세(e.target.value)} />
           <div className="grid grid-cols-2 gap-2">
-            <input type="date" className={inputCls} value={날짜} onChange={(e) => set날짜(e.target.value)} />
+            <DateInputCustom value={날짜} onChange={set날짜} ariaLabel="날짜" compact className="h-full" />
             <input type="time" className={inputCls} value={시각} onChange={(e) => set시각(e.target.value)} />
           </div>
           {err && <p className="text-xs text-red-600">{err}</p>}
