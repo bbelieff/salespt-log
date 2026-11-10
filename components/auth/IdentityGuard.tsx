@@ -17,10 +17,18 @@
  * **자동 새로고침은 하지 않는다** — 입력 중이던 내용이 날아갈 수 있어, 사람이 누르게 한다.
  *
  * 오탐 방지: 지문을 못 받아오면(오프라인·401) 아무것도 하지 않는다. 막는 쪽이 기본이 아니다.
+ *
+ * ## 층 (2026-11-10 UI 점검)
+ * 저장·삭제 창(z-[300])·로딩(z-[400])·팝오버(z-[500])·DB 시트 공급처 목록(10000)보다 **위**여야 한다. z-50 이던 때는
+ * 저장 창이 열려 있으면 차단막이 그 아래 깔려 [저장]을 그대로 누를 수 있었다.
+ * 막히는 순간 뒤쪽 입력칸의 초점도 빼서, Enter 로 저장되지 않게 한다.
  */
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+
+/** 앱의 모든 창·로딩·팝오버보다 위(tokens.md 적층 표). 더 높은 층을 새로 만들면 시험이 잡는다. */
+export const IDENTITY_GUARD_LAYER = "z-[20000]";
 
 interface WhoAmI {
   activeFingerprint: string;
@@ -67,14 +75,30 @@ export default function IdentityGuard() {
     };
   }, []);
 
-  if (!shouldBlockTab(firstRef.current, now?.activeFingerprint ?? null)) return null;
+  const blocked = shouldBlockTab(firstRef.current, now?.activeFingerprint ?? null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (!blocked) return;
+    // 뒤에 열린 창의 입력칸에 초점이 남아 있으면 Enter 로 저장될 수 있다 — 버튼으로 옮긴다.
+    buttonRef.current?.focus();
+  }, [blocked]);
+
+  if (!blocked) return null;
 
   return (
     <div
       role="alertdialog"
       aria-modal="true"
       aria-label="다른 사람 화면으로 바뀌었어요"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 p-6"
+      className={`fixed inset-0 ${IDENTITY_GUARD_LAYER} flex items-center justify-center bg-slate-900/70 p-6`}
+      onKeyDown={(e) => {
+        // Tab 으로 뒤쪽 입력칸에 돌아가지 못하게 초점을 버튼에 묶는다.
+        if (e.key === "Tab") {
+          e.preventDefault();
+          buttonRef.current?.focus();
+        }
+      }}
     >
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl">
         <p className="text-2xl">🔀</p>
@@ -89,6 +113,7 @@ export default function IdentityGuard() {
           잘못 저장되지 않게 잠시 막아 뒀어요.
         </p>
         <button
+          ref={buttonRef}
           type="button"
           onClick={() => window.location.reload()}
           className="mt-5 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white"

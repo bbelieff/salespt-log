@@ -48,7 +48,7 @@ describe("★소스 가드", () => {
 
   it("★자동 새로고침을 걸지 않는다 — 사용자가 버튼을 누른다(입력 유실 방지)", () => {
     // reload 는 onClick 핸들러 안에만 있어야 한다. useEffect 안에서 부르면 입력이 날아간다.
-    const inEffect = guard.slice(guard.indexOf("useEffect("), guard.indexOf("if (!shouldBlockTab"));
+    const inEffect = guard.slice(guard.indexOf("useEffect("), guard.indexOf("if (!blocked) return null;"));
     expect(inEffect).not.toContain("location.reload");
     expect(guard).toContain("onClick={() => window.location.reload()}");
   });
