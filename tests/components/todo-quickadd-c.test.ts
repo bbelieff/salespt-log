@@ -3,6 +3,7 @@ import * as React from "react";
 import { act, createElement as h } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { readFileSync } from "node:fs";
 import type { Todo } from "@/types";
 import TodoSection from "@/app/(app)/payment/_components/TodoSection";
 import { pickDate } from "./pick-date";
@@ -80,5 +81,17 @@ describe("Todo 및 History 바로 추가", () => {
     const base = { id: "1", contractRef: "c", institutionRef: "i", 업체명: "가나", type: "기타", 예정일자: "2026-09-28", 예정시각: "09:00", 장소: "", 상세: "", showOnCalendar: true, 완료여부: false, 생성시각: "2026-09-27T00:00:00Z", 분류: "기타", slot: null, result: "", prevId: "" } as const;
     const node = render([{ ...base, 제목: "할 일", 기록종류: "todo" }, { ...base, id: "2", 제목: "한 일", 기록종류: "history" }] as Todo[]);
     expect(node.querySelectorAll('input[aria-label="완료 토글"]')).toHaveLength(1); expect(node.textContent).toContain("Todo"); expect(node.textContent).toContain("History");
+  });
+});
+
+describe("할 일 바로 추가 — 시각 고르기(2026-11-11 belie 「안 그럼 위클리에서 전부 오전 9시」)", () => {
+  const src = readFileSync("app/(app)/payment/_components/TodoSection.tsx", "utf8") as string;
+  it("추가 줄에 시각 고르기가 있고, 고른 시각으로 저장한다", () => {
+    expect(src).toContain('<TimeSelectPair value={time} onChange={setTime} ariaLabel="기록 시각"/>');
+    expect(src).toContain("예정시각: time || QUICK_HHMM");
+  });
+  it("날짜 칸은 요일까지 보이게 넓다(9.5rem)", () => {
+    expect(src).toContain("!w-[9.5rem]");
+    expect(src).not.toContain("!w-32");
   });
 });
