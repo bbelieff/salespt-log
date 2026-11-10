@@ -20,3 +20,33 @@ export function safeLoginReturn(value: unknown): string | null {
     ? value
     : null;
 }
+
+/** `/login` 별칭이 보낼 곳 — app/login/page.tsx. 목적지는 경로만 꺼내 다시 검증한다. */
+export type LoginAliasParams = Record<string, string | string[] | undefined>;
+
+function first(v: string | string[] | undefined): string | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+/** `https://host/dashboard?x=1` → `/dashboard?x=1`. 경로만 쓰므로 호스트는 버린다. */
+function pathOnly(v: string | undefined): string | undefined {
+  if (!v) return undefined;
+  if (v.startsWith("/")) return v;
+  try {
+    const u = new URL(v);
+    return u.pathname + u.search;
+  } catch {
+    return undefined;
+  }
+}
+
+export function loginRedirectTarget(params: LoginAliasParams): string {
+  const returnTo =
+    safeLoginReturn(pathOnly(first(params.returnTo))) ??
+    safeLoginReturn(pathOnly(first(params.callbackUrl)));
+  const q = new URLSearchParams();
+  if (returnTo) q.set("returnTo", returnTo);
+  if (first(params.error)) q.set("loginError", "1");
+  const qs = q.toString();
+  return qs ? `/?${qs}` : "/";
+}

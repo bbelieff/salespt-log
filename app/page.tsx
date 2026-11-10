@@ -43,11 +43,12 @@ export const dynamic = "force-dynamic";
 export default async function HomePage({
   searchParams,
 }: {
-  searchParams?: Promise<{ returnTo?: string | string[] }>;
+  searchParams?: Promise<{ returnTo?: string | string[]; loginError?: string | string[] }>;
 }) {
-  const returnTo = safeLoginReturn((await searchParams)?.returnTo);
+  const params = await searchParams;
+  const returnTo = safeLoginReturn(params?.returnTo);
   const sessionEmail = await getSessionEmail();
-  if (!sessionEmail) return <LoginScene returnTo={returnTo ?? "/"} />;
+  if (!sessionEmail) return <LoginScene returnTo={returnTo ?? "/"} loginError={!!params?.loginError} />;
 
   // An explicit application/invitation entry wins over the default role landing.
   // The destination still performs its normal authentication/authorization checks.
