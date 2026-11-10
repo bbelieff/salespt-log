@@ -1101,6 +1101,7 @@ app/(app)/dashboard/page.tsx
   PageContainer > 일반 본문
     FinanceSummaryBoxes # 매출·비용·영업이익 3열 1행 한 세트 (상세 패널 내장)
     [생산성 + DashboardWorkStatus] + WeeklyGoalSummary  # ≥1600px 윗줄 반반
+    p[data-testid=dashboard-chart-basis]  # 「아래 차트는 위 기간 선택과 별개로 코스 전체 누적 기준이에요」(최근 8주 추이면 덧붙임, 2026-11-10)
     MobileChartCarousel > FunnelChart / WeeklyDualChart / ChannelPerformance  # ≥1600px 아랫줄 3등분 (1024~1599: 2열) · <1024px 옆으로 넘기기
 ```
 
@@ -1265,7 +1266,7 @@ app/(app)/dashboard/page.tsx
 **용도**: 채널별 성과 — 좌·우 대칭 도넛 2개 (`grid-cols-2`) + 채널 표 1개. 높이를 줄이려고(2026-09-28 belie) 도넛 제목을 도넛 **왼쪽**에 붙이고, 도넛별 범례 2개와 계약단가 카드 4개를 채널 표 하나로 합쳤다(채널 색이 같아 범례가 중복이었다).
 
 **구조**:
-- **좌**: `채널별 비용` 제목(도넛 왼쪽, 2줄, `break-keep`로 글자 단위 줄바꿈 금지) + 비용 도넛 (3채널 — 매입DB/직접생산/현수막, 콜·지·기·소 제외), 가운데 `−총비용` (만원 단위, brand red)
+- **좌**: `채널별 비용` 제목(도넛 왼쪽, 2줄, `break-keep`로 글자 단위 줄바꿈 금지) + 비용 도넛 (3채널 — 매입DB/직접생산/현수막, 콜·지·기·소 제외), 가운데 `−누적 비용` (만원 단위, brand red — 코스 전체 누적이라 위 기간 선택 비용과 구분, 2026-11-10)
 - **우**: `채널별 DB유입` 제목 + 유입 도넛 (4채널 — 콜·지·기·소 포함), 가운데 총유입 건수 (blue-700)
 - **아래 채널 표**: 채널(색 dot) · 비용(만원 + %) · DB유입(건 + %) · 계약단가 — 4행
 
