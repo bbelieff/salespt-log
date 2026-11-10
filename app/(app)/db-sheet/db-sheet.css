@@ -286,3 +286,6 @@ body.db-sheet-route .db-meeting-booked-actions{display:flex;flex-wrap:wrap;gap:6
  body.db-sheet-route .db-sheet-frame.has-today-activity .db-sheet-panel .sheet-grid{max-height:calc(100dvh - 190px - 60px)}
 }
 @media(min-width:1600px){body.db-sheet-route .db-sheet-frame.has-today-activity .db-sheet-panel .sheet-grid{padding-bottom:340px}}
+
+/* 빈 목록 「＋ DB 추가」(2026-11-10) */
+body.db-sheet-route .sheet-empty-state .sheet-empty-add{margin-top:14px}
