@@ -112,6 +112,65 @@
   --app-tabbar-height: var(--app-safe-bottom, 0px);
 }
 
+/* ── 앱 공용 색·글자 변수 (tokens.md §CSS 색·글자 변수, 2026-11-10 refactor/dbsheet-design-a) ──
+ * 손으로 쓴 CSS 파일(DB관리시트·오늘 챙길 일·사서함·오류 신고·알림·교육일지)은 #색 대신 이 변수를 쓴다
+ * (tests/structural/css-color-vars.test.ts). 값 = Tailwind 기본 팔레트와 같은 색 — 화면 색은 그대로다.
+ * 의미 이름(--ui-text·--ui-border…)을 먼저 쓰고, 상태·채널 등 그 밖의 색은 팔레트 이름(--ui-amber-800)을 쓴다. */
+:root {
+  /* 의미 이름 */
+  --ui-text: #0f172a;            /* slate-900 진한 글자 */
+  --ui-text-body: #334155;       /* slate-700 일반 글자 */
+  --ui-text-muted: #475569;      /* slate-600 보조 글자 */
+  --ui-text-subtle: #64748b;     /* slate-500 옅은 보조 글자 — 흰 바탕 글자의 하한(4.8:1) */
+  --ui-icon-faint: #94a3b8;      /* slate-400 글자 금지(2.6:1) — 비활성·끌기 중·장식만 */
+  --ui-border: #e2e8f0;          /* slate-200 선 */
+  --ui-border-strong: #cbd5e1;   /* slate-300 진한 선·입력 칸 */
+  --ui-surface: #fff;            /* 바탕(카드·표) */
+  --ui-surface-subtle: #f8fafc;  /* slate-50 옅은 바탕 */
+  --ui-surface-muted: #f1f5f9;   /* slate-100 회색 바탕 */
+  --ui-white: #fff;              /* 진한 바탕 위 흰 글자 */
+  --ui-black: #000;
+  --ui-accent: #2563eb;          /* blue-600 강조·흰 글자 파란 버튼 */
+  --ui-accent-strong: #1d4ed8;   /* blue-700 강조 글자·버튼 누름 */
+  --ui-accent-bright: #3b82f6;   /* blue-500 초점 테두리·선 — 흰 글자 바탕 금지(3.7:1) */
+  --ui-accent-soft: #eff6ff;     /* blue-50 선택 바탕 */
+  --ui-brand-red: #d71617;
+  --ui-brand-red-dark: #b91213;
+  /* 채널 4색(tokens.md §채널별 색상 좌측바 진한값) */
+  --ui-ch-purchase: #1d4ed8;
+  --ui-ch-direct: #15803d;
+  --ui-ch-banner: #b45309;
+  --ui-ch-call: #7c3aed;
+  /* 팔레트(Tailwind 기본값. 25·40·60·75·150·250·750 은 기존 화면이 쓰던 중간 색) */
+  --ui-slate-75: #eef2f7; --ui-slate-150: #dbe1e8; --ui-slate-800: #1e293b;
+  --ui-blue-25: #f8fbff; --ui-blue-40: #f0f7ff; --ui-blue-100: #dbeafe; --ui-blue-200: #bfdbfe; --ui-blue-300: #93c5fd;
+  --ui-blue-400: #60a5fa; --ui-blue-800: #1e40af; --ui-blue-900: #1e3a8a;
+  --ui-amber-25: #fffcf5; --ui-amber-50: #fffbeb; --ui-amber-100: #fef3c7; --ui-amber-200: #fde68a; --ui-amber-300: #fcd34d;
+  --ui-amber-400: #fbbf24; --ui-amber-500: #f59e0b; --ui-amber-600: #d97706; --ui-amber-700: #b45309; --ui-amber-800: #92400e;
+  --ui-amber-900: #78350f;
+  --ui-red-50: #fef2f2; --ui-red-200: #fecaca; --ui-red-300: #fca5a5; --ui-red-500: #ef4444; --ui-red-600: #dc2626; --ui-red-700: #b91c1c;
+  --ui-rose-50: #fff1f2; --ui-rose-200: #fecdd3; --ui-rose-300: #fda4af; --ui-rose-600: #e11d48; --ui-rose-700: #be123c;
+  --ui-yellow-500: #eab308; --ui-yellow-700: #a16207;
+  --ui-green-25: #f3fcf7; --ui-green-40: #eaf8f0; --ui-green-50: #f0fdf4; --ui-green-60: #e5f3ec; --ui-green-100: #dcfce7;
+  --ui-green-250: #a7d9c5; --ui-green-500: #22c55e; --ui-green-600: #16a34a; --ui-green-700: #15803d; --ui-green-750: #16794b;
+  --ui-green-800: #166534;
+  --ui-emerald-50: #ecfdf5; --ui-emerald-100: #d1fae5; --ui-emerald-200: #a7f3d0; --ui-emerald-300: #6ee7b7;
+  --ui-emerald-600: #059669; --ui-emerald-700: #047857; --ui-emerald-800: #065f46;
+  --ui-teal-700: #0f766e;
+  --ui-cyan-500: #06b6d4; --ui-cyan-800: #155e75;
+  --ui-indigo-50: #eef2ff; --ui-indigo-100: #e0e7ff; --ui-indigo-200: #c7d2fe; --ui-indigo-500: #6366f1; --ui-indigo-600: #4f46e5;
+  --ui-indigo-700: #4338ca; --ui-indigo-800: #3730a3; --ui-indigo-900: #312e81;
+  --ui-violet-50: #f5f3ff; --ui-violet-100: #ede9fe; --ui-violet-400: #a78bfa; --ui-violet-600: #7c3aed; --ui-violet-700: #6d28d9;
+  --ui-purple-50: #faf5ff; --ui-purple-300: #d8b4fe; --ui-purple-500: #a855f7; --ui-purple-600: #9333ea; --ui-purple-700: #7e22ce;
+  --ui-pink-500: #ec4899;
+  /* 폰·태블릿 글자 하한(px 수, 단위 없음). 12px 보다 작은 글자는
+     calc(max(N, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1)) — PC 는 0 이라 원래 크기. */
+  --ui-fs-floor: 0;
+}
+@media (max-width: 1023.98px) {
+  :root { --ui-fs-floor: 12; }
+}
+
 /* ── App shell main bottom padding ─────────────────────
  * Mobile keeps var(--app-tabbar-height) (TabBar + safe-area).
  * Desktop TabBar is pc:hidden so the shell reserves nothing there —

@@ -2,44 +2,44 @@ body.db-sheet-route .db-detail-shell,body.db-sheet-route .db-detail-shell.with-c
 body.db-sheet-route .db-info-pane{min-width:0;container-type:inline-size}
 /* Saved px survive contact toggles. Center growth consumes left slack before widening the shell. */
 @media(min-width:1024px){body.db-sheet-route .db-detail-shell .db-detail-columns>.db-info-pane{flex:0 0 var(--db-left-width);width:var(--db-left-width)}body.db-sheet-route .db-detail-shell .db-detail-columns>.db-contact-pane{flex:0 0 var(--db-right-width);width:var(--db-right-width)}body.db-sheet-route .db-detail-shell .db-detail-columns>.db-split-grip{flex:0 0 1px}}
-.db-detail-title{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;min-width:0}.db-detail-title h2{min-width:0;overflow-wrap:anywhere}.db-title-inflow{display:flex;align-items:center;gap:6px;flex:none;align-self:center;margin-right:4px;padding-right:12px;border-right:1px solid #e2e8f0}.db-title-inflow>span{font-size:11px;color:#64748b;white-space:nowrap}
+.db-detail-title{display:flex;align-items:center;flex-wrap:wrap;gap:8px 14px;min-width:0}.db-detail-title h2{min-width:0;overflow-wrap:anywhere}.db-title-inflow{display:flex;align-items:center;gap:6px;flex:none;align-self:center;margin-right:4px;padding-right:12px;border-right:1px solid var(--ui-border)}.db-title-inflow>span{font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-text-subtle);white-space:nowrap}
 body.db-sheet-route .db-detail-header{flex-wrap:wrap;gap:8px}body.db-sheet-route .db-detail-header>div:first-child{flex:1 1 240px;min-width:0}
-.db-inflow-control{display:inline-flex;flex-wrap:wrap;gap:3px;align-items:center;max-width:240px}.db-inflow-toggle{display:inline-flex;gap:2px;border:1px solid #cbd5e1;border-radius:6px;padding:2px;background:#f8fafc;white-space:nowrap}.db-inflow-toggle button{min-height:24px;padding:0 6px;border:1px solid transparent;border-radius:4px;font-size:11px;font-weight:500;color:#64748b;line-height:1.4}.db-inflow-toggle button[aria-checked=true]{background:white;color:#334155;box-shadow:0 1px 2px #0f172a1a;border-color:#cbd5e1}.db-inflow-toggle button:first-child[aria-checked=true]{background:#ecfdf5;color:#047857;border-color:#6ee7b7}.db-inflow-toggle button:disabled{cursor:not-allowed;opacity:.6}.db-inflow-toggle button:focus-visible{outline:2px solid #64748b;outline-offset:2px}.db-inflow-control small{font-size:10px;color:#64748b;line-height:1.4}.db-inflow-control [role=alert]{color:#b91c1c}
+.db-inflow-control{display:inline-flex;flex-wrap:wrap;gap:3px;align-items:center;max-width:240px}.db-inflow-toggle{display:inline-flex;gap:2px;border:1px solid var(--ui-border-strong);border-radius:6px;padding:2px;background:var(--ui-surface-subtle);white-space:nowrap}.db-inflow-toggle button{min-height:24px;padding:0 6px;border:1px solid transparent;border-radius:4px;font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1));font-weight:500;color:var(--ui-text-subtle);line-height:1.4}.db-inflow-toggle button[aria-checked=true]{background:white;color:var(--ui-text-body);box-shadow:0 1px 2px color-mix(in srgb, var(--ui-text) 10.2%, transparent);border-color:var(--ui-border-strong)}.db-inflow-toggle button:first-child[aria-checked=true]{background:var(--ui-emerald-50);color:var(--ui-emerald-700);border-color:var(--ui-emerald-300)}.db-inflow-toggle button:disabled{cursor:not-allowed;opacity:.6}.db-inflow-toggle button:focus-visible{outline:2px solid var(--ui-text-subtle);outline-offset:2px}.db-inflow-control small{font-size:calc(max(10, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-text-subtle);line-height:1.4}.db-inflow-control [role=alert]{color:var(--ui-red-700)}
 body.db-sheet-route .db-call-fields .db-contact-controls{grid-template-columns:minmax(0,180px)}
 /* 컨택일·상담메모 한 줄(2026-10-25 belie 「한 줄 병렬로, 공간 낭비」) — 날짜 180px, 메모가 나머지. 메모는 날짜칸 높이(한 줄)에서 시작해 글만큼 늘어난다. 아주 좁으면 위아래. */
 body.db-sheet-route .db-call-fields .db-contact-controls.db-contact-inline{grid-template-columns:minmax(0,180px) minmax(0,1fr);align-items:end}
-body.db-sheet-route .db-call-fields .db-contact-inline .db-note-label textarea{height:auto;min-height:0;field-sizing:content;max-height:160px;resize:vertical;padding:6px 10px;font-size:13px;line-height:1.45}
-@media(max-width:767px){body.db-sheet-route .db-call-fields .db-contact-inline .db-note-label textarea{font-size:16px}}
+body.db-sheet-route .db-call-fields .db-contact-inline .db-note-label textarea{height:auto;min-height:0;field-sizing:content;max-height:160px;resize:vertical;padding:6px 10px;font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1));line-height:1.45}
+@media(max-width:767px){body.db-sheet-route .db-call-fields .db-contact-inline .db-note-label textarea{font-size:calc(16 * var(--app-px, 1px) * var(--font-scale, 1))}}
 @media(max-width:359px){body.db-sheet-route .db-call-fields .db-contact-controls.db-contact-inline{grid-template-columns:1fr}}
 body.db-sheet-route .db-detail-shell .db-call-left{margin-top:10px}
-@media(max-width:767px){.db-detail-title{gap:6px}.db-title-inflow{flex-direction:column;align-items:flex-start;gap:2px;padding-right:8px;margin-right:0}.db-title-inflow>span{font-size:10px}.db-inflow-toggle button{min-height:30px}/* 닫기(✕)는 업체명 줄 오른쪽에 나란히(2026-11-01 belie) — 줄바꿈하면 버튼이 아래로 떨어진다. */body.db-sheet-route .db-detail-header{flex-wrap:nowrap;align-items:flex-start}body.db-sheet-route .db-detail-header>div:first-child{flex:1 1 0}body.db-sheet-route .db-detail-header>.sheet-btn{flex:none}}
+@media(max-width:767px){.db-detail-title{gap:6px}.db-title-inflow{flex-direction:column;align-items:flex-start;gap:2px;padding-right:8px;margin-right:0}.db-title-inflow>span{font-size:calc(max(10, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1))}.db-inflow-toggle button{min-height:30px}/* 닫기(✕)는 업체명 줄 오른쪽에 나란히(2026-11-01 belie) — 줄바꿈하면 버튼이 아래로 떨어진다. */body.db-sheet-route .db-detail-header{flex-wrap:nowrap;align-items:flex-start}body.db-sheet-route .db-detail-header>div:first-child{flex:1 1 0}body.db-sheet-route .db-detail-header>.sheet-btn{flex:none}}
 body.db-sheet-route .db-detail-shell .db-info-fields,body.db-sheet-route .db-detail-shell.with-contact .db-info-fields{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 body.db-sheet-route .db-info-fields .db-field-full-narrow{grid-column:auto!important}
 /* 스크롤 최소화(2026-10-25 belie 「한 프레임에 들어오는 게 미덕」): 왼쪽 칸 안쪽 폭이 520px 이상이면(기본 너비 640px 포함) 정보 칸을 3열로. 주소는 그대로 한 줄 전체. */
 @container (min-width:520px){body.db-sheet-route .db-detail-shell .db-info-fields,body.db-sheet-route .db-detail-shell.with-contact .db-info-fields{grid-template-columns:repeat(3,minmax(0,1fr))}}
 body.db-sheet-route .db-info-fields input,body.db-sheet-route .db-info-fields select{min-width:0;width:100%}
-.db-detail-header>.db-width-toggle{margin-left:auto;margin-right:12px;font-size:12px;white-space:nowrap}
-body.db-sheet-route .db-contact-actions{padding:10px 16px 8px;display:grid;gap:5px;border-bottom:1px solid #e2e8f0;background:#f8fafc}
+.db-detail-header>.db-width-toggle{margin-left:auto;margin-right:12px;font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1));white-space:nowrap}
+body.db-sheet-route .db-contact-actions{padding:10px 16px 8px;display:grid;gap:5px;border-bottom:1px solid var(--ui-border);background:var(--ui-surface-subtle)}
 .db-contact-action-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:end;gap:10px}
-.db-contact-action-row label{display:grid;gap:5px;font-size:12px;font-weight:700;color:#2563eb;min-width:0}
-body.db-sheet-route .db-contact-action-row select.sheet-input{width:100%;min-width:0;height:34px;min-height:34px;background:#eff6ff;border-color:#93c5fd;color:#1e40af;font-weight:700;font-size:13px}
-.db-contact-open{display:flex;align-items:center;justify-content:center;gap:5px;height:34px;padding:0 10px;border:1px solid #bfdbfe;border-radius:8px;background:white;color:#2563eb;font-size:12px;font-weight:600;white-space:nowrap}
-.db-contact-open:hover,.db-contact-open[aria-expanded=true]{background:#dbeafe}
-.db-contact-open:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
-.db-contact-count{font-size:10px;color:#64748b}
-.db-as-box{margin-top:5px;padding:12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;display:grid;gap:10px}
+.db-contact-action-row label{display:grid;gap:5px;font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1));font-weight:700;color:var(--ui-accent);min-width:0}
+body.db-sheet-route .db-contact-action-row select.sheet-input{width:100%;min-width:0;height:34px;min-height:34px;background:var(--ui-accent-soft);border-color:var(--ui-blue-300);color:var(--ui-blue-800);font-weight:700;font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1))}
+.db-contact-open{display:flex;align-items:center;justify-content:center;gap:5px;height:34px;padding:0 10px;border:1px solid var(--ui-blue-200);border-radius:8px;background:white;color:var(--ui-accent);font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1));font-weight:600;white-space:nowrap}
+.db-contact-open:hover,.db-contact-open[aria-expanded=true]{background:var(--ui-blue-100)}
+.db-contact-open:focus-visible{outline:2px solid var(--ui-accent-bright);outline-offset:2px}
+.db-contact-count{font-size:calc(max(10, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-text-subtle)}
+.db-as-box{margin-top:5px;padding:12px;background:var(--ui-amber-50);border:1px solid var(--ui-amber-200);border-radius:8px;display:grid;gap:10px}
 .db-as-box>div{display:flex;justify-content:space-between;gap:6px;align-items:center;flex-wrap:wrap}
-.db-as-box strong{font-size:13px;color:#92400e}.db-as-box span{font-size:11px;color:#a16207}
-.db-as-check{display:flex;align-items:center;gap:8px;font-size:12px}.db-as-check input{accent-color:#3b82f6;width:17px;height:17px}
+.db-as-box strong{font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-amber-800)}.db-as-box span{font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-yellow-700)}
+.db-as-check{display:flex;align-items:center;gap:8px;font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1))}.db-as-check input{accent-color:var(--ui-accent-bright);width:17px;height:17px}
 .db-as-box textarea{width:100%;min-width:0;resize:vertical}
-.db-inflow-choices{display:flex;gap:8px}.db-inflow-choices button{flex:1;padding:11px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px}
-.db-inflow-choices button[aria-pressed=true]{background:#eff6ff;color:#2563eb;border-color:#3b82f6}
+.db-inflow-choices{display:flex;gap:8px}.db-inflow-choices button{flex:1;padding:11px;border:1px solid var(--ui-border-strong);border-radius:8px;font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1))}
+.db-inflow-choices button[aria-pressed=true]{background:var(--ui-accent-soft);color:var(--ui-accent);border-color:var(--ui-accent-bright)}
 .db-detail-bottom-actions{display:flex;justify-content:flex-end;margin-top:16px}
 @media(max-width:699px){body.db-sheet-route .db-detail-shell,body.db-sheet-route .db-detail-shell.with-contact{width:100%;max-width:100%;border-radius:0}.db-detail-header>.db-width-toggle{display:none}body.db-sheet-route .db-contact-actions{padding:9px 12px 7px}.db-contact-action-row{gap:7px}.db-contact-open{padding:0 8px;gap:4px}body.db-sheet-route .db-info-fields{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 /* 부재·재통화의 다음 연락일 — 자동으로 잡힌 칸을 노랗게(2026-10-25 belie, 예전 노란 안내 박스 대신). */
-body.db-sheet-route .db-detail-shell .db-info-fields .db-next-auto .sheet-input{background:#fffbeb;border-color:#fbbf24}
-body.db-sheet-route .db-detail-shell .db-info-fields .db-next-auto{color:#92400e}
-.db-next-hint{display:block;margin-top:3px;font-size:11px;color:#a16207;line-height:1.35}
+body.db-sheet-route .db-detail-shell .db-info-fields .db-next-auto .sheet-input{background:var(--ui-amber-50);border-color:var(--ui-amber-400)}
+body.db-sheet-route .db-detail-shell .db-info-fields .db-next-auto{color:var(--ui-amber-800)}
+.db-next-hint{display:block;margin-top:3px;font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-yellow-700);line-height:1.35}
 /* 아이폰 날짜칸(2026-10-25 belie 「날짜칸이 전체 필드 크기와 일관성 있게」): 사파리 기본 날짜칸은 높이·폭 지정을 무시해 옆 칸보다
    크고(칸 밖으로 삐져나옴) 글자가 가운데로 간다 → 기본 모양을 끄고 다른 칸과 같은 높이·폭·왼쪽 정렬. 높이는 각 칸의 기존 규칙을 그대로 따른다. */
 body.db-sheet-route .db-detail-shell input[type=date]{-webkit-appearance:none;appearance:none;display:block;width:100%;min-width:0;max-width:100%;box-sizing:border-box;text-align:left;line-height:normal}
@@ -50,12 +50,12 @@ body.db-sheet-route .db-detail-shell .db-absence-add input[type=date]{width:auto
 @container (min-width:520px){body.db-sheet-route .db-detail-shell .db-info-fields .db-fill-row{grid-column:span 2}}
 body.db-sheet-route .db-detail-shell .db-info-fields.db-info-dates{margin-top:10px}
 /* 날짜 셋 강조(2026-10-26 belie 「[강조] 유입>최초상담>다음연락」): 옅은 파랑 상자 + 3열이면 칸 사이 「›」. */
-body.db-sheet-route .db-detail-shell .db-info-fields.db-info-dates{margin-top:12px;padding:10px 12px;border:1px solid #bfdbfe;border-radius:10px;background:#eff6ff80}
-body.db-sheet-route .db-detail-shell .db-info-dates>label{position:relative;font-weight:700;color:#1e3a8a}
-@container (min-width:520px){body.db-sheet-route .db-detail-shell .db-info-dates>label:not(:last-child)::after{content:"›";position:absolute;right:-9px;bottom:7px;color:#60a5fa;font-size:16px;font-weight:700;pointer-events:none}}
+body.db-sheet-route .db-detail-shell .db-info-fields.db-info-dates{margin-top:12px;padding:10px 12px;border:1px solid var(--ui-blue-200);border-radius:10px;background:color-mix(in srgb, var(--ui-accent-soft) 50.2%, transparent)}
+body.db-sheet-route .db-detail-shell .db-info-dates>label{position:relative;font-weight:700;color:var(--ui-blue-900)}
+@container (min-width:520px){body.db-sheet-route .db-detail-shell .db-info-dates>label:not(:last-child)::after{content:"›";position:absolute;right:-9px;bottom:7px;color:var(--ui-blue-400);font-size:calc(16 * var(--app-px, 1px) * var(--font-scale, 1));font-weight:700;pointer-events:none}}
 /* 컨택결과 묶음이 아래로 — 위쪽 고정(sticky)·맨 위용 아래 테두리를 풀고 위 테두리로 가른다. */
 body.db-sheet-route .db-detail-shell .db-contact-bottom{margin-top:14px;display:grid;gap:8px}
-body.db-sheet-route .db-detail-shell .db-contact-bottom .db-contact-actions{border:1px solid #e2e8f0;border-radius:10px}
+body.db-sheet-route .db-detail-shell .db-contact-bottom .db-contact-actions{border:1px solid var(--ui-border);border-radius:10px}
 body.db-sheet-route .db-detail-shell .db-contact-bottom .db-call-left{position:static;margin-bottom:0}
 /* 부재 기록 한 줄 */
 body.db-sheet-route .db-absence-add.db-absence-head strong{margin-right:4px;white-space:nowrap}
@@ -65,14 +65,14 @@ body.db-sheet-route .db-contact-open svg:last-child{transition:transform .15s}bo
 /* 날짜 바로 넣기(2026-10-31 belie): 칸 제목 줄 오른쪽 작은 버튼 — 칸 높이를 늘리지 않는다. 최초상담일 당일·익일, 다음 연락일 익일·1주일·1개월 후. */
 .db-date-head{display:flex;align-items:center;justify-content:space-between;gap:4px;min-width:0;white-space:nowrap}
 .db-date-picks{display:inline-flex;gap:2px;flex-wrap:nowrap}
-.db-date-picks button{min-height:20px;padding:0 5px;border:1px solid #bfdbfe;border-radius:5px;background:white;color:#1d4ed8;font-size:10px;font-weight:600;line-height:18px;white-space:nowrap}
-.db-date-picks button:hover{background:#eff6ff}.db-date-picks button[aria-pressed=true]{background:#2563eb;border-color:#2563eb;color:white}
-.db-date-picks button:focus-visible{outline:2px solid #3b82f6;outline-offset:1px}
-.db-date-picks .db-date-clear{border-color:#e2e8f0;color:#64748b}.db-date-picks .db-date-clear:hover{background:#f8fafc;color:#334155}
-@media(max-width:699px){.db-date-head{flex-wrap:wrap;row-gap:3px}.db-date-picks button{min-height:26px;padding:0 7px;font-size:11px}}
+.db-date-picks button{min-height:20px;padding:0 5px;border:1px solid var(--ui-blue-200);border-radius:5px;background:white;color:var(--ui-accent-strong);font-size:calc(max(10, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1));font-weight:600;line-height:18px;white-space:nowrap}
+.db-date-picks button:hover{background:var(--ui-accent-soft)}.db-date-picks button[aria-pressed=true]{background:var(--ui-accent);border-color:var(--ui-accent);color:white}
+.db-date-picks button:focus-visible{outline:2px solid var(--ui-accent-bright);outline-offset:1px}
+.db-date-picks .db-date-clear{border-color:var(--ui-border);color:var(--ui-text-subtle)}.db-date-picks .db-date-clear:hover{background:var(--ui-surface-subtle);color:var(--ui-text-body)}
+@media(max-width:699px){.db-date-head{flex-wrap:wrap;row-gap:3px}.db-date-picks button{min-height:26px;padding:0 7px;font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1))}}
 /* 장기관리 다음 연락일(1·3·6개월 후) — 「다시 챙기기」 아래 한 줄. */
-.db-long-next{flex-basis:100%;display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:11px;color:#92400e}.db-long-next b{font-variant-numeric:tabular-nums}
-.db-long-next .db-date-picks button{border-color:#fcd34d;color:#92400e}.db-long-next .db-date-picks button[aria-pressed=true]{background:#d97706;border-color:#d97706;color:white}
+.db-long-next{flex-basis:100%;display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-amber-800)}.db-long-next b{font-variant-numeric:tabular-nums}
+.db-long-next .db-date-picks button{border-color:var(--ui-amber-300);color:var(--ui-amber-800)}.db-long-next .db-date-picks button[aria-pressed=true]{background:var(--ui-amber-600);border-color:var(--ui-amber-600);color:white}
 /* DB정보 한 화면(2026-10-31 belie 「스크롤 없이 한 프레임」): PC 에서 칸 높이·사이 간격만 줄인다 — 칸 순서·글자 크기는 그대로. */
 @media(min-width:1024px){
 body.db-sheet-route .db-detail-shell .db-detail-header{padding:12px 20px}

@@ -398,6 +398,35 @@ transition: transform 0.2s;  /* hover/tap 효과 */
 
 **규칙**: 데스크탑 전용 스타일은 반드시 `pc:`/`wide:` 프리픽스. `lg`/`xl`/`2xl` 은 폰/태블릿이므로 데스크탑 의미로 쓰지 말 것. 페이지 폭은 `PageContainer`(components.md §10)로 통일.
 
+### CSS 색·글자 변수 (2026-11-10 refactor/dbsheet-design-a)
+손으로 쓴 CSS 파일(DB관리시트 9개 · 오늘 챙길 일 · 사서함 · 오류 신고 · 알림 · 교육일지)은 `#색` 대신 `app/globals.css` 「앱 공용 색·글자 변수」의
+`--ui-*` 변수를 쓴다. 값은 Tailwind 기본 팔레트와 같다(새 색 없음). `tests/structural/css-color-vars.test.ts` 가 #색·px 글자를 막는다.
+
+| 변수 | 값 | 용도 |
+|---|---|---|
+| `--ui-text` | #0f172a (slate-900) | 진한 글자·제목 |
+| `--ui-text-body` | #334155 (slate-700) | 일반 글자 |
+| `--ui-text-muted` | #475569 (slate-600) | 보조 글자 |
+| `--ui-text-subtle` | #64748b (slate-500) | 옅은 보조 글자 — **흰 바탕 글자의 하한**(4.8:1) |
+| `--ui-icon-faint` | #94a3b8 (slate-400) | 글자 금지(2.6:1). 비활성·끌기 중·장식선만 |
+| `--ui-border` / `--ui-border-strong` | #e2e8f0 / #cbd5e1 | 선 / 진한 선·입력 칸 |
+| `--ui-surface` / `-subtle` / `-muted` | #fff / #f8fafc / #f1f5f9 | 바탕 / 옅은 바탕 / 회색 바탕 |
+| `--ui-white` · `--ui-black` | #fff · #000 | 진한 바탕 위 흰 글자 · 그림자 |
+| `--ui-accent` | #2563eb (blue-600) | 강조 · **흰 글자 파란 버튼 바탕** |
+| `--ui-accent-strong` | #1d4ed8 (blue-700) | 강조 글자 · 버튼 누름 |
+| `--ui-accent-bright` | #3b82f6 (blue-500) | 초점 테두리·선만 — 흰 글자 바탕 금지(3.7:1) |
+| `--ui-accent-soft` | #eff6ff (blue-50) | 선택 바탕 |
+| `--ui-brand-red` / `-dark` | #d71617 / #b91213 | 브랜드 빨강 |
+| `--ui-ch-purchase·direct·banner·call` | #1d4ed8·#15803d·#b45309·#7c3aed | 채널 4색 진한값(위 §채널별 색상과 같음) |
+| `--ui-<색>-<단계>` | Tailwind 같은 값 | 그 밖의 상태색(예 `--ui-amber-800`). 중간 단계 25·40·60·75·150·250·750 은 기존 화면이 쓰던 색 |
+
+- 투명도가 있는 색은 `color-mix(in srgb, var(--ui-text) 15%, transparent)` 로 쓴다(옛 `#0f172a26` 과 같은 색).
+- **글자 크기**: px 글자는 `calc(N * var(--app-px, 1px) * var(--font-scale, 1))`(globals.css 와 같은 방식) — 「글자 크게」와 좁은 화면 축소가 먹는다.
+  12px 보다 작으면 `calc(max(N, var(--ui-fs-floor, 0)) * …)` — `--ui-fs-floor` 는 폰·태블릿(<1024px) 12, PC 0. 즉 **폰 글자 하한 12px, PC 는 원래 px**.
+  단계는 10·11·12·13·14·15·16·18·20·22·24px(9·10.5·11.5·17·19·21·26px 은 가까운 단계로 맞췄다). rem 글자는 `calc(Nrem * var(--font-scale, 1))`.
+- 대비 정리(2026-11-10): 흰 바탕 보조 글자 slate-400 → slate-500, 흰 글자 파란 버튼 blue-500 → blue-600(누름 blue-700), 오늘 활동 초록 버튼 emerald-600 → emerald-700.
+- DB관리시트 표 열 너비 손잡이는 터치 화면(`@media (hover: none)`)에서 늘 보이는 가는 세로줄.
+
 ## 데스크탑 글래스 (scoped, 2026-09-25)
 
 승인 목업값 그대로 — 새 토큰 발명 없음. 전부 `globals.css` 「Desktop glass shell」
