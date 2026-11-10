@@ -140,6 +140,15 @@ describe("간편인증 보내기 → 승인 확인 → 결과", () => {
     for (const b of done!.businesses) expect(b.results.find((r) => r.key === "fs")!.reason ?? "").not.toMatch(/사업자 번호를 입력/);
   });
 
+  it("폐업사실증명은 홈택스 폐업사실증명 상품으로 같은 세션에 보낸다", async () => {
+    await startSimpleAuth(who, { ...input, docs: ["biz", "closed"] });
+    await wait(async () => h.calls.some((c) => c.path.endsWith("business-discontinuance")));
+    const c = h.calls.find((x) => x.path.endsWith("business-discontinuance"))!;
+    expect(c.path).toBe("/v1/kr/public/nt/certificate/business-discontinuance");
+    expect(c.params).toMatchObject({ usePurposes: "99", submitTargets: "99", isIdentityViewYn: "0", originDataYN1: "1", loginTypeLevel: "1" });
+    expect(c.params.id).toBe(h.calls[0]!.params.id);
+  });
+
   it("국세 완납증명은 주소 공개여부(isAddrViewYn)를 함께 보낸다", async () => {
     await startSimpleAuth(who, { ...input, docs: ["biz", "tax"] });
     await wait(async () => h.calls.some((c) => c.path.endsWith("tax-cert-all")));

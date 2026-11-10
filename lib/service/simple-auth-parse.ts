@@ -199,6 +199,24 @@ export function parseIncome(data: unknown): DocParts {
   return parts;
 }
 
+/** 폐업사실증명 — 폐업한 사업장마다 개업일·폐업일(휴업기간)·업태. 업체정보 칸에는 넣지 않는다(폐업 사업장). */
+export function parseClosed(data: unknown): DocParts {
+  const parts: DocParts = new Map();
+  for (const o of asList(data)) {
+    const biz = bizOf(o);
+    if (!biz) continue;
+    const p = part(parts, biz, s(o, "resCompanyNm") || s(o, "resUserNm"));
+    p.owner ||= s(o, "resUserNm");
+    p.issuedAt = ymd(s(o, "resIssueDate"));
+    const open = s(o, "resOpenDate"), closed = s(o, "resClosingDate"), rest = s(o, "resPeriod");
+    p.facts.push([closed && `폐업일 ${ymd(closed)}`, open && `개업일 ${ymd(open)}`].filter(Boolean).join(" · "));
+    if (rest) p.facts.push(`휴업기간 ${rest.split("~").map((x) => ymd(x.trim())).join(" ~ ")}`);
+    const types = s(o, "resBusinessTypes"), items = s(o, "resBusinessItems");
+    if (types || items) p.facts.push([types && `업태 ${types}`, items && `종목 ${items}`].filter(Boolean).join(" · "));
+  }
+  return parts;
+}
+
 export const PARSERS: Record<SimpleAuthDocKey, (datas: unknown[], baseYear: number) => DocParts> = {
   biz: (d) => parseBizCert(d.flatMap(asList)),
   vat: (d, y) => parseVat(d.flatMap(asList), y),
@@ -207,4 +225,5 @@ export const PARSERS: Record<SimpleAuthDocKey, (datas: unknown[], baseYear: numb
   localTax: (d) => parseLocalTax(d.flatMap(asList)),
   ins: (d) => parseIns(d.flatMap(asList)),
   income: (d) => parseIncome(d.flatMap(asList)),
+  closed: (d) => parseClosed(d.flatMap(asList)),
 };

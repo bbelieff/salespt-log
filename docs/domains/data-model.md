@@ -841,7 +841,7 @@ DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서
 - `TrainingLogItem`: 노션 기수 「[○○N기] 트레이닝 일지」 DB 의 내 행 한 줄(id·title·week(제목의 N주차, 없으면 null)·createdTime). `TrainingLogDetail` = Item + `blocks: LogBlock[]`(노션 블록을 화면용으로 줄인 모양, `LogText` 글자 조각). `TrainingLogList` = `{status, items}` — status `ok`·`not_configured`(NOTION_TOKEN 없음)·`no_cohort`·`no_database`·`unavailable`. 저장 없음(노션 읽기 전용, 서버 5분 캐시). 소유 판정 = 레지스트리 기수·이름(서버), 계획 `docs/plans/completed/training-log-own-only.md`.
 
 ## 간편인증 서류 조회 (2026-11-09, `lib/types/simple-auth.ts` · migration 0018)
-- `SimpleAuthDocKey` = biz 사업자등록증명 · vat 부가세 과세표준증명 · fs 표준재무제표증명 · tax 국세 납세증명 · localTax 지방세 납세증명(정부24) · ins 4대보험 가입자명부(공동인증서 전용) · income 소득금액증명(간편인증 전용). 목록·CODEF 경로는 `lib/config/simple-auth.ts`.
+- `SimpleAuthDocKey` = biz 사업자등록증명 · vat 부가세 과세표준증명 · fs 표준재무제표증명 · tax 국세 납세증명 · localTax 지방세 납세증명(정부24) · ins 4대보험 가입자명부(공동인증서 전용) · income 소득금액증명(간편인증 전용) · closed 폐업사실증명(홈택스, 폐업 사업장만 · 간편인증 토스 제외). 목록·CODEF 경로는 `lib/config/simple-auth.ts`.
 - `SimpleAuthMethod` = 간편인증 앱 6개(카카오톡·네이버·PASS·토스·삼성패스·KB모바일) + 공동인증서. `SimpleAuthStatus` = waiting(고객 승인 대기) · scraping(받는 중) · done · expired · canceled · failed(사유 error).
 - `SimpleAuthField`: 업체정보 칸 후보 {key(CompanyInfo 키), value(저장 형식, 금액은 백만원), confidence, sourceWon?}. `SimpleAuthDocResult`: 서류 한 종류 {key, ok, reason?, issuedAt?, facts(화면 요약 줄), fields, hasOriginal}.
 - `SimpleAuthLink` = linked{dbId, company, why: bizNo·phone·picked·created} · pick{candidates} · none · later. 연결 순서: 사업자번호 → 대표 휴대폰+비슷한 상호 → 비슷한 상호만(pick) → 없으면 새 DB(유입 반영 안 함, supplier 「간편인증」·channel 직접생산).

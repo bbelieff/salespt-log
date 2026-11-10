@@ -1,6 +1,6 @@
 /** 간편인증 CODEF 응답 → 사업자별 요약·업체정보 후보(순수). 합성 응답만(필드 이름은 CODEF 상품 문서 출력부). */
 import { describe, expect, it } from "vitest";
-import { originalPdf, parseBizCert, parseFs, parseIncome, parseIns, parseLocalTax, parseTax, parseVat } from "@/service/simple-auth-parse";
+import { originalPdf, parseBizCert, parseClosed, parseFs, parseIncome, parseIns, parseLocalTax, parseTax, parseVat } from "@/service/simple-auth-parse";
 
 const PDF = "JVBERi0xLjQK".padEnd(200, "A");
 const field = (parts: ReturnType<typeof parseVat>, biz: string, key: string) => parts.get(biz)?.fields.filter((f) => f.key === key).map((f) => f.value);
@@ -82,5 +82,19 @@ describe("원문 PDF 필드", () => {
     expect(originalPdf({ reqOriginalData1: PDF })).toBe(PDF);
     expect(originalPdf({ resOriGinalData: PDF })).toBe("");
     expect(originalPdf({ resOriGinalData: PDF }, "resOriGinalData")).toBe(PDF);
+  });
+});
+
+describe("폐업사실증명", () => {
+  it("폐업 사업장마다 폐업일·개업일·휴업기간·업태 — 업체정보 칸은 만들지 않는다", () => {
+    const parts = parseClosed([
+      { resCompanyIdentityNo: "2141290311", resCompanyNm: "가상물산", resUserNm: "김가상", resOpenDate: "20210101", resClosingDate: "20250630", resPeriod: "20250101~20250331", resBusinessTypes: "도매", resBusinessItems: "철강", resIssueDate: "20261110" },
+      { resCompanyIdentityNo: "", resCompanyNm: "번호 없음" },
+    ]);
+    expect([...parts.keys()]).toEqual(["214-12-90311"]);
+    const p = parts.get("214-12-90311")!;
+    expect(p.facts).toEqual(["폐업일 2025-06-30 · 개업일 2021-01-01", "휴업기간 2025-01-01 ~ 2025-03-31", "업태 도매 · 종목 철강"]);
+    expect(p.issuedAt).toBe("2026-11-10");
+    expect(p.fields).toEqual([]);
   });
 });

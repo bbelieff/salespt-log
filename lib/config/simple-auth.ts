@@ -27,6 +27,8 @@ export const SIMPLE_AUTH_DOCS: readonly SimpleAuthDocDef[] = [
   { key: "fs", label: "표준재무제표증명", short: "재무제표", note: "3년", site: "홈택스" },
   { key: "tax", label: "국세 완납증명", short: "국세", site: "홈택스" },
   { key: "income", label: "소득금액증명", short: "소득금액", note: "개인사업자", site: "홈택스", simpleOnly: true },
+  // 폐업한 사업장만 나온다(계속사업장은 「신청가능한 계속사업장이 없습니다」 대신 이걸로). CODEF 간편인증 목록에 토스 없음.
+  { key: "closed", label: "폐업사실증명", short: "폐업", note: "토스 제외", site: "홈택스" },
   { key: "localTax", label: "지방세 완납증명", short: "지방세", site: "정부24" },
   { key: "ins", label: "4대보험 가입자명부", short: "4대보험", site: "4대사회보험 정보연계센터", certOnly: true },
 ];
@@ -56,6 +58,7 @@ export const CODEF_PATH = {
   fs: "/v1/kr/public/nt/proof-issue/standard-financial-statements",
   tax: "/v1/kr/public/nt/proof-issue/tax-cert-all",
   income: "/v1/kr/public/nt/proof-issue/proof-income",
+  closed: "/v1/kr/public/nt/certificate/business-discontinuance",
   localTax: "/v1/kr/public/mw/localtax-payment-certificate/inquiry",
   localTaxCorp: "/v1/kr/public/mw/corporation-localtax-payment-certificate/inquiry",
   ins: "/v1/kr/public/pp/4insure/business-establishment-subscribers",
