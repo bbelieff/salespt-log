@@ -1700,7 +1700,7 @@ button:focus, input:focus, select:focus {
 - `TrainerInvites`: 관리자 전용 수신 이메일 링크 생성/복사/목록/취소. 링크는 생성 시만 표시, 7일 만료.
 - `TopHeader`: 모바일 첫 행은 로고·대시보드·역할 전환, 정보 행은 기수·이름·대리접속. D-day는 DashboardProgressBanner에만 표시한다. 768px부터 한 행. 이름의 첫 글자는 표시 가능해야 하며 기존 대시보드 진입 조건은 유지한다.
 
-- `TrainerInvitationEntry`: 공개 고정 초대 경로. URL fragment 토큰을 즉시 제거하고 탭 sessionStorage에서 로그인 동안만 유지; OAuth/마지막 페이지 쿠키에 토큰 전달 금지.
+- `TrainerInvitationEntry`: 공개 고정 초대 경로. URL fragment 토큰을 즉시 제거하고 탭 sessionStorage에서 로그인 동안만 유지; OAuth/마지막 페이지 쿠키에 토큰 전달 금지. 잘못된 링크는 가운데 카드 「초대 링크를 열 수 없어요」 + 「처음 화면으로」(/) 버튼(2026-11-10).
 
 - Header stack: `app-header`는 <768px 6rem / >=768px 3.5rem이며, 배너3rem을 더한 `top-app-content`는 각각9rem /6.5rem. PC 전역 글자 크기에 따라 함께 축소한다. PC 캘린더 패널의 별도 offset은 유지한다.
 
