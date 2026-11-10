@@ -127,6 +127,10 @@ export default function DashboardPage() {
               channelsRefreshing={dash.isFetching}
             /></div>
 
+            {/* 위 매출·비용은 기간 선택을 따르고, 아래 차트는 코스 전체 기준이다 — 같은 화면에서 비용이 두 가지로 보여 헷갈리지 않게(2026-11-10 UI 점검). */}
+            {hasDashboardChartRecords(dash.data) && <p className="-mb-1 px-1 text-xs text-slate-500" data-testid="dashboard-chart-basis">
+              아래 차트는 위 기간 선택과 별개로 <b className="font-semibold text-slate-700">코스 전체 누적</b> 기준이에요{dash.data.weeklyTrendPeriod?.kind === 'recent' ? ' (추이는 최근 8주)' : ''}.
+            </p>}
             {hasDashboardChartRecords(dash.data) ? <div className="space-y-3 pc:grid pc:grid-cols-3 pc:items-stretch pc:gap-3 pc:space-y-0">
               {/* 1024 미만: 차트 3종을 옆으로 넘기는 카드(인터랙션 ②, 2026-10-09). PC 는 래퍼가 풀려 그리드 칸 그대로. */}
               <MobileChartCarousel labels={dash.data.weeklyTrendPeriod?.kind === 'recent' ? ['영업 퍼널', '지난 8주간 추이', '채널별 성과'] : CHART_LABELS}>
