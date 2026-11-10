@@ -271,10 +271,60 @@ export default function FinanceSummaryBoxes({
   const columnClass = (selected: boolean, ring: string) =>
     `flex min-w-0 flex-col gap-1 text-left transition hover:bg-white/50 focus-visible:outline-none focus-visible:ring-2 ${selected ? "bg-white/70" : ""} ${ring}`;
 
+  // 상세는 누른 칸 바로 아래, 그 칸 너비 안에서만 펼친다(2026-11-11 belie 「누른 그 영역 아래 영역 한정」). 한 번에 하나.
+  const detail = (
+    <div
+      id="fin-detail-panel"
+      role="region"
+      aria-labelledby={open ? `fin-col-${open}` : undefined}
+      className="mt-2 border-t border-slate-200/80 pr-2 pt-3"
+    >
+    {open === "revenue" && (
+      <div className="space-y-1 text-xs leading-relaxed text-slate-500" style={{ fontVariantNumeric: "tabular-nums" }}>
+        <div className="flex items-baseline justify-between gap-2"><span>수임비</span><span className="break-all">{formatWon(feeIncome)}</span></div>
+        <div className="flex items-baseline justify-between gap-2"><span>수수료</span><span className="break-all">{formatWon(commissionIncome)}</span></div>
+        {refunded > 0 && (
+          <div className="flex items-baseline justify-between gap-2"><span>반환(계약해지)</span><span className="break-all">{formatWon(-refunded)}</span></div>
+        )}
+      </div>
+    )}
+    {open === "cost" && (
+      <div className="text-xs leading-relaxed text-slate-500">
+        <div>DB 비용 합계 {formatWon(dbCostTotal)}</div>
+        <button
+          type="button"
+          onClick={onOpenExpenseLedger}
+          aria-label="추가 비용: 비용 원장 열기"
+          className="mt-0.5 flex min-h-6 w-full items-center justify-between gap-1 rounded text-left font-normal text-slate-500 transition hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+        >
+          <span className="min-w-0">
+            {additionalCost === null ? (
+              <span className="text-amber-700">추가 비용을 확인하지 못했습니다. 다시 시도해 주세요.</span>
+            ) : (
+              <span className="flex flex-wrap items-baseline gap-x-1"><span>추가 비용</span><span className="break-all tabular-nums">{formatWon(additionalCost)}</span></span>
+            )}
+          </span>
+          <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="m9 5 7 7-7 7" /></svg>
+        </button>
+      </div>
+    )}
+    {open === "profit" && (
+      <>
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <span className="text-slate-500">{periodLabel}{typeof contractCount === "number" && ` · 계약 ${contractCount}건`}</span>
+          <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">이익률 <b style={{ color: profit < 0 ? PROFIT_NEG : PROFIT_OK }}>{profitRate.toFixed(1)}%</b></span>
+        </div>
+        {profitDetail}
+      </>
+    )}
+    </div>
+  );
+
   return (
     <div ref={containerRef} style={{ containerType: "inline-size" }}>
-      <div role="group" aria-label="매출·비용·영업이익" className="stat-split grid min-w-0 grid-cols-3 pc:grid-cols-4">
+      <div role="group" aria-label="매출·비용·영업이익" className="stat-split grid min-w-0 grid-cols-3">
         {/* 매출 컬럼 */}
+        <div className="flex min-w-0 flex-col">
         <button
           type="button"
           id="fin-col-revenue"
@@ -282,7 +332,7 @@ export default function FinanceSummaryBoxes({
           aria-controls="fin-detail-panel"
           onClick={() => toggle("revenue")}
           style={columnStyle}
-          className={`${columnClass(open === "revenue", "focus-visible:ring-slate-500")} pl-2 pc:col-span-2`}
+          className={`${columnClass(open === "revenue", "focus-visible:ring-slate-500")} pl-2`}
         >
           <span className="flex min-w-0 items-center gap-1">
             <span aria-hidden="true" className="hidden h-4 w-4 shrink-0 items-center sm:flex justify-center rounded-full bg-slate-200 text-xs font-bold leading-none text-slate-700">
@@ -295,8 +345,11 @@ export default function FinanceSummaryBoxes({
             <Amount value={revenue} play={play} />
           </span>
         </button>
+        {open === "revenue" && detail}
+        </div>
 
         {/* 비용 컬럼 */}
+        <div className="flex min-w-0 flex-col">
         <button
           type="button"
           id="fin-col-cost"
@@ -317,8 +370,11 @@ export default function FinanceSummaryBoxes({
             <Amount value={cost} play={play} />
           </span>
         </button>
+        {open === "cost" && detail}
+        </div>
 
         {/* 영업이익 컬럼 — 0 이상 파랑 #1d4ed8, 음수 보라 #7c3aed (비용 빨강과 구분) */}
+        <div className="flex min-w-0 flex-col">
         <button
           type="button"
           id="fin-col-profit"
@@ -344,56 +400,11 @@ export default function FinanceSummaryBoxes({
             <Amount value={profit} play={play} />
           </span>
         </button>
+        {open === "profit" && detail}
+        </div>
       </div>
 
-      {/* 공용 상세 패널 — 행 아래 전체 폭, 한 번에 하나. 패널은 컬럼 버튼의
-          형제이므로 중첩 버튼이 생기지 않는다. */}
-      <div
-        id="fin-detail-panel"
-        role="region"
-        aria-labelledby={open ? `fin-col-${open}` : undefined}
-        hidden={open === null}
-        className="mt-2 border-t border-slate-200/80 px-2 pt-3"
-      >
-        {open === "revenue" && (
-          <div className="space-y-1 text-xs leading-relaxed text-slate-500" style={{ fontVariantNumeric: "tabular-nums" }}>
-            <div className="flex items-baseline justify-between gap-2"><span>수임비</span><span className="break-all">{formatWon(feeIncome)}</span></div>
-            <div className="flex items-baseline justify-between gap-2"><span>수수료</span><span className="break-all">{formatWon(commissionIncome)}</span></div>
-            {refunded > 0 && (
-              <div className="flex items-baseline justify-between gap-2"><span>반환(계약해지)</span><span className="break-all">{formatWon(-refunded)}</span></div>
-            )}
-          </div>
-        )}
-        {open === "cost" && (
-          <div className="text-xs leading-relaxed text-slate-500">
-            <div>DB 비용 합계 {formatWon(dbCostTotal)}</div>
-            <button
-              type="button"
-              onClick={onOpenExpenseLedger}
-              aria-label="추가 비용: 비용 원장 열기"
-              className="mt-0.5 flex min-h-6 w-full items-center justify-between gap-1 rounded text-left font-normal text-slate-500 transition hover:bg-slate-50 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500"
-            >
-              <span className="min-w-0">
-                {additionalCost === null ? (
-                  <span className="text-amber-700">추가 비용을 확인하지 못했습니다. 다시 시도해 주세요.</span>
-                ) : (
-                  <span className="flex flex-wrap items-baseline gap-x-1"><span>추가 비용</span><span className="break-all tabular-nums">{formatWon(additionalCost)}</span></span>
-                )}
-              </span>
-              <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="m9 5 7 7-7 7" /></svg>
-            </button>
-          </div>
-        )}
-        {open === "profit" && (
-          <>
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-              <span className="text-slate-500">{periodLabel}{typeof contractCount === "number" && ` · 계약 ${contractCount}건`}</span>
-              <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">이익률 <b style={{ color: profit < 0 ? PROFIT_NEG : PROFIT_OK }}>{profitRate.toFixed(1)}%</b></span>
-            </div>
-            {profitDetail}
-          </>
-        )}
-      </div>
+      {open === null && <div id="fin-detail-panel" role="region" hidden />}
     </div>
   );
 }
