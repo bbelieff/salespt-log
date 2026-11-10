@@ -23,6 +23,7 @@ vi.mock("@/repo/users-drive-db", () => ({
 }));
 vi.mock("@/repo/users-rows", () => ({
   cachedRegistryRows: rowsMod.cached,
+  registryRowsWithSource: async (o?: { fresh?: boolean }) => ({ rows: await rowsMod.cached(o), fromDb: true }),
   invalidateRegistry: rowsMod.invalidate,
 }));
 vi.mock("@/repo/sheets-client", () => ({

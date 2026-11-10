@@ -75,8 +75,16 @@ belie 지시(2026-11-10): "조심스럽게 — 샌드박스에서 테스트 후 
 **아직 남은 것(다음 단계 전 처리)**
 - 아레나 전광판(`scoreboard.ts` — 주간 성과를 시트 대시보드 탭에서 읽음): 시트 없는 수강생은 순위에서 빠진다. 아레나 시트 없는 생성은 4단계 뒤라 그때 DB 집계로.
 - 관리자 화면 일괄 집계 중 시트 직접 read 경로 — 3단계 실전 1명 때 관리자 화면으로 확인.
-- 레지스트리 쓰기 시트 우선(4단계) · 레지스트리 DB 읽기 실패 시 시트 폴백(3단계 전 결정).
+- 레지스트리 쓰기 시트 우선(4단계).
+- ~~레지스트리 DB 읽기 실패 시 시트 폴백~~ → **결정·구현(2026-11-10, belie 권장안 승인)**: 시트 명단으로 넘어갔는데
+  그 이메일이 없으면 0.3초·1초 뒤 DB 를 다시 읽는다(`findUserByEmail`). 시트 명단에 있는 수강생은 재시도 0.
 - 관문 막힘은 운영에서 `sheetless_sheet_blocked` 이벤트로 보인다 — 3단계에서 0 인지 본다.
+
+## 7. 3단계 실행 방법
+- 합성 수강생 1명: 마이그레이션 `0020_sheetless_pilot_student.sql`(db-migrate 워크플로, dry-run 먼저).
+  0기 · `local:5a1e7c0d-…` · 이메일 `sheetless-pilot@salesptlog.invalid`(존재 불가 주소) · 날짜는 0기 기존 행 복사.
+- 확인: 관리자 「보고 편집」으로 열기 → 화면 표시·저장·새로고침 재조회 → 운영 로그 `[no-sheet]`·`sheetless_sheet_blocked` 0.
+- 되돌리기: `delete from users where email = 'sheetless-pilot@salesptlog.invalid'` (+ 그 번호의 sheet_rows).
 
 ## 체크리스트
 - [x] 1단계 구현·시험
