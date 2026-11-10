@@ -27,7 +27,7 @@ import {
 import * as Sentry from "@sentry/nextjs";
 import { dbEnabled } from "@/repo/db/client";
 import { readDbTabFromDb } from "@/repo/db/read-db-tab";
-import { isSheetlessTenantKey } from "@/util/tenant-key";
+import { isSheetDetached } from "@/repo/sheet-detach";
 import { readMeetingsFromDb } from "@/repo/db/read-daily";
 import { readAllMeetings } from "@/repo/meetings";
 import { chooseDailySource, chooseWriteSource, sourceCohort, usesDbStorage } from "./daily-source";
@@ -367,7 +367,7 @@ export async function assertNoOverlapDirect(
   if (!start || !end) throw new Error("직접생산: 시작일·종료일을 모두 입력해주세요.");
   if (start > end) throw new Error("직접생산: 시작일이 종료일보다 늦습니다.");
   // ADR-0038: 시트 없는 수강생은 DB 정본에서 겹침을 본다(시트 read 0).
-  const rows = isSheetlessTenantKey(sid) ? (await readDbTabFromDb(sid)).productions : (await readProductions(sid)).rows;
+  const rows = await isSheetDetached(sid) ? (await readDbTabFromDb(sid)).productions : (await readProductions(sid)).rows;
   for (const r of rows) {
     if (r.row === excludeRow) continue;
     if (periodsOverlap(start, end, r.시작일, r.종료일))

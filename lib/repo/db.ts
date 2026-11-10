@@ -18,7 +18,7 @@ import type {
 import { sheetsClient } from "./sheets-client";
 import { mirrorDbTabRowDurable } from "./db-tab-append-mirror";
 import { appendSheetlessDbTabRow, nextFreeRow } from "./db-tab-sheetless";
-import { isSheetlessTenantKey } from "@/util/tenant-key";
+import { isSheetDetached } from "./sheet-detach";
 import { mintRowKey } from "./db/row-key";
 import { SPEC, T, writeRow } from "./db-tab-writers";
 import {
@@ -181,7 +181,7 @@ async function readSection<T>(
   isMeaningful: (parsed: T) => boolean,
   firstDataRow: number = FIRST_DATA_ROW,
 ): Promise<RawSectionData<T>> {
-  if (isSheetlessTenantKey(spreadsheetId)) return { rows: [] }; // ADR-0038: 시트 없음 = 시트 행 0
+  if (await isSheetDetached(spreadsheetId)) return { rows: [] }; // ADR-0038: 시트 없음 = 시트 행 0
   const range = `${T}!${startCol}${firstDataRow}:${endCol}${MAX_ROW}`;
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
@@ -243,7 +243,7 @@ async function readPresenceRows(
   isPhantom: (r: unknown[]) => boolean,
   firstDataRow: number = FIRST_DATA_ROW,
 ): Promise<Set<number>> {
-  if (isSheetlessTenantKey(spreadsheetId)) return new Set(); // ADR-0038: 시트 없음 = 채워진 행 없음
+  if (await isSheetDetached(spreadsheetId)) return new Set(); // ADR-0038: 시트 없음 = 채워진 행 없음
   const range = `${T}!${probeStartCol}${firstDataRow}:${probeEndCol}${MAX_ROW}`;
   const res = await sheetsClient().spreadsheets.values.get({ spreadsheetId, range });
   const values = (res.data.values ?? []) as unknown[][];
@@ -319,7 +319,7 @@ async function findFirstEmptyRowExcluding(
   firstDataRow: number = FIRST_DATA_ROW,
 ): Promise<{ row: number; needInsert: boolean }> {
   // ADR-0038: 시트 없는 수강생 — 번호는 DB 가 정한다(합계 행·MAX_ROW 없음).
-  if (isSheetlessTenantKey(spreadsheetId)) return { row: nextFreeRow(firstDataRow, excluded), needInsert: false };
+  if (await isSheetDetached(spreadsheetId)) return { row: nextFreeRow(firstDataRow, excluded), needInsert: false };
   const range = `${T}!${startCol}${firstDataRow}:${endCol}${MAX_ROW}`;
   const res = await sheetsClient().spreadsheets.values.get({
     spreadsheetId,
@@ -369,7 +369,7 @@ async function appendKeyless(
     return { row, replayed: false };
   }
   const pool = getDbPool() as unknown as IdemPool;
-  if (isSheetlessTenantKey(spreadsheetId)) return appendSheetlessDbTabRow(pool, spreadsheetId, section, FIRST_DATA_ROW, mirrorPayload);
+  if (await isSheetDetached(spreadsheetId)) return appendSheetlessDbTabRow(pool, spreadsheetId, section, FIRST_DATA_ROW, mirrorPayload);
   const row = await withScopeLock(pool, spreadsheetId, section, async (db) => {
     const reserved = await readReservedRows(db, spreadsheetId, section);
     const found = await findFirstEmptyRowExcluding(

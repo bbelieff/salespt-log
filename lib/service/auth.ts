@@ -24,6 +24,8 @@
  *   readProfileBundle 로 1회 fetch → registry I~L 캐시에 stamp. 평시 시트 read 0회
  *   목표의 두 번째 단계. 실패 시 빈값으로 진행 (B-3 sync 버튼이 backfill).
  */
+import { isSheetlessTenantKey } from "@/util/tenant-key";
+import { readSheetlessProfileFromDb } from "@/repo/db/course-dates";
 import {
   findSheetByCohortName,
   findExistingSheetIdByCohortName,
@@ -77,6 +79,11 @@ function toISO(d: Date): string {
  */
 async function fetchCachedLabels(spreadsheetId: string): Promise<CachedLabels> {
   if (!spreadsheetId) return EMPTY_CACHED;
+  if (isSheetlessTenantKey(spreadsheetId)) {
+    // ADR-0038: 시트 없는 수강생 — 기수·이름·날짜는 사전등록 DB 행에 이미 있다(시트 read 0).
+    const p = await readSheetlessProfileFromDb(spreadsheetId).catch(() => null);
+    return p ? { cohortLabel: p.cohort, nameLabel: p.name, courseStartISO: p.courseStartISO, graduationISO: p.graduationISO } : EMPTY_CACHED;
+  }
   try {
     const b = await readProfileBundle(spreadsheetId);
     return {

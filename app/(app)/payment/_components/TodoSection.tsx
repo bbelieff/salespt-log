@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Todo, TodoRecordKind } from "@/types";
 import DateInputCustom from "@/components/ui/DateInputCustom";
+import TimeSelectPair from "@/components/ui/TimeSelectPair";
 import { newTodoOperationId, useCreateTodo, usePatchTodo, useRemoveTodo } from "@/query/todos-hooks";
 import { useFocusScroll } from "@/lib/hooks/useFocusScroll";
 import TodoFormModal, { seedFromTodo, type TodoDraftSeed } from "./TodoFormModal";
@@ -13,8 +14,9 @@ const SLOT_ACCENT = {
   blue: { shell: "border-blue-300 bg-blue-100", active: "bg-blue-600" },
   violet: { shell: "border-violet-300 bg-violet-100", active: "bg-violet-600" },
 } as const;
-/** 바로 추가에 쓰는 기본 시각 — 시각을 고르려면 「자세히」. */
+/** 바로 추가의 처음 시각. 2026-11-11 belie 「시간까지 설정할 수 있게 — 안 그럼 위클리에서 전부 오전 9시」 → 추가 줄에서 바로 고른다. */
 const QUICK_TIME = { hour: "09", minute: "00" } as const;
+const QUICK_HHMM = `${QUICK_TIME.hour}:${QUICK_TIME.minute}`;
 const FRESH_MS = 2000;
 const kstISO = (offsetDays = 0) => new Date(Date.now() + offsetDays * 86_400_000).toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
 /** 날짜를 비우면 할 일은 내일, 한 일은 오늘. */
@@ -42,6 +44,7 @@ export default function TodoSection({ contractRef, institutionRef, draftInstitut
   const [kind, setKind] = useState<TodoRecordKind>("todo");
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(() => defaultDate("todo"));
+  const [time, setTime] = useState(QUICK_HHMM);
   const [dateTouched, setDateTouched] = useState(false);
   const [opId, setOpId] = useState(newTodoOperationId);
   const [freshId, setFreshId] = useState<string | null>(null);
@@ -63,7 +66,7 @@ export default function TodoSection({ contractRef, institutionRef, draftInstitut
   }, [freshId]);
 
   const pickKind = (k: TodoRecordKind) => { setKind(k); if (!dateTouched) setDate(defaultDate(k)); };
-  const resetDraft = () => { setTitle(""); setDate(defaultDate(kind)); setDateTouched(false); setOpId(newTodoOperationId()); };
+  const resetDraft = () => { setTitle(""); setDate(defaultDate(kind)); setTime(QUICK_HHMM); setDateTouched(false); setOpId(newTodoOperationId()); };
 
   /** 제목·날짜만으로 바로 저장(팝업 없음) — 모달과 같은 생성 경로(진행건 번호·기관·계약 연결). */
   const quickAdd = async () => {
@@ -71,7 +74,7 @@ export default function TodoSection({ contractRef, institutionRef, draftInstitut
     if (!saved) onEnsureSaved?.();
     setError("");
     try {
-      const res = await create.mutateAsync({ contractRef, institutionRef: effective, slot: slot ?? null, 업체명: companyName, 기록종류: kind, type: "기타", 제목: title.trim(), 예정일자: date || defaultDate(kind), 예정시각: `${QUICK_TIME.hour}:${QUICK_TIME.minute}`, 장소: "", 상세: "", showOnCalendar: true, operationId: opId });
+      const res = await create.mutateAsync({ contractRef, institutionRef: effective, slot: slot ?? null, 업체명: companyName, 기록종류: kind, type: "기타", 제목: title.trim(), 예정일자: date || defaultDate(kind), 예정시각: time || QUICK_HHMM, 장소: "", 상세: "", showOnCalendar: true, operationId: opId });
       setFreshId(res.todo.id);
       resetDraft();
       titleRef.current?.focus({ preventScroll: true });
@@ -87,7 +90,8 @@ export default function TodoSection({ contractRef, institutionRef, draftInstitut
   const openDetail = () => {
     if (!effective) return;
     if (!saved) onEnsureSaved?.();
-    setSeed({ 기록종류: kind, 제목: title.trim(), 예정일자: date || defaultDate(kind), ...QUICK_TIME });
+    const [hour = QUICK_TIME.hour, minute = QUICK_TIME.minute] = (time || QUICK_HHMM).split(":");
+    setSeed({ 기록종류: kind, 제목: title.trim(), 예정일자: date || defaultDate(kind), hour, minute });
   };
 
   return (
@@ -111,16 +115,17 @@ export default function TodoSection({ contractRef, institutionRef, draftInstitut
           onRemove={() => remove.mutate({ contractRef, id: t.id })}
         />
       ))}</div>}
-      {/* 추가 칸 2줄(2026-10-27 belie 「칸 사용이 주먹구구」): 1줄 Todo/History + 제목, 2줄 날짜·추가·자세히. */}
+      {/* 추가 칸 2줄(2026-10-27 belie 「칸 사용이 주먹구구」): 1줄 Todo/History + 제목, 2줄 날짜(요일까지 보이게)·시각·추가·자세히(2026-11-11). 좁으면 버튼이 다음 줄로. */}
       <form className="flex min-w-0 flex-col gap-1.5" onSubmit={(e) => { e.preventDefault(); void quickAdd(); }}>
         <div className="flex min-w-0 items-center gap-1.5">
         <div className="flex shrink-0 rounded-md bg-white p-0.5 ring-1 ring-slate-200">{(["todo", "history"] as TodoRecordKind[]).map((k) => <button type="button" key={k} onClick={() => pickKind(k)} aria-pressed={kind === k} className={`h-8 rounded px-2 text-px-11 font-bold ${kind === k ? `${accent.active} text-white` : "text-slate-500"}`}>{k === "todo" ? "Todo" : "History"}</button>)}</div>
         <input ref={titleRef} aria-label="기록 제목" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={effective ? (kind === "todo" ? "할 일" : "한 일") : "진행기관 먼저 입력"} disabled={!effective} autoComplete="off" enterKeyHint="done" className="h-9 min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-2 text-xs focus:border-blue-500 focus:outline-none disabled:bg-slate-100"/>
         </div>
-        <div className="flex min-w-0 items-center gap-1.5">
-          <DateInputCustom ariaLabel="기록 날짜" value={date} onChange={(v) => { setDate(v); setDateTouched(true); }} compact className="h-9 !w-32 shrink-0"/>
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+          <DateInputCustom ariaLabel="기록 날짜" value={date} onChange={(v) => { setDate(v); setDateTouched(true); }} compact className="h-9 !w-[9.5rem] shrink-0"/>
+          <div className="w-[8.5rem] shrink-0"><TimeSelectPair value={time} onChange={setTime} ariaLabel="기록 시각"/></div>
           <button type="submit" disabled={!canAdd} className="h-9 shrink-0 whitespace-nowrap rounded-md bg-slate-900 px-3 text-xs font-bold text-white disabled:opacity-40">{create.isPending ? "저장중.." : "추가"}</button>
-          <button type="button" onClick={openDetail} disabled={!effective} title="시각·종류·상세 내용까지 적기" className="h-9 shrink-0 whitespace-nowrap rounded-md border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40">자세히</button>
+          <button type="button" onClick={openDetail} disabled={!effective} title="종류·장소·상세 내용까지 적기" className="h-9 shrink-0 whitespace-nowrap rounded-md border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40">자세히</button>
         </div>
       </form>
       {error && <p role="alert" className="mt-1 text-px-11 font-medium text-red-600">{error}</p>}

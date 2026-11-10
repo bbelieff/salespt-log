@@ -88,7 +88,7 @@ export default function DbPage() {
       </div>
       {/* 화면 마감 v2: 구역은 상자 대신 제목 + 구분선. */}
       {overview.data && <FirstStepTourOffer tour="purchase" alreadyDone={CHANNEL_KEYS.some((k) => rowsByChannel[k].length > 0)} />}
-      <section aria-label="입력할 채널" className="mb-4 pt-1">
+      <section aria-label="입력할 채널" className="surface-panel mb-4">
         <h2 className="section-head">어떤 DB를 기록할까요?</h2>
         <p className="mb-3 mt-2 text-xs text-slate-500">채널을 누르면 바로 입력할 수 있어요.</p>
         <ChannelTabs activeCh={activeCh} onSwitch={switchChannel} />

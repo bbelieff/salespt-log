@@ -19,6 +19,7 @@ import { dbEnabled } from "./db/client";
 import { resolveLayout, tabRef } from "./contract-payment";
 import { cpToFullRow } from "./contract-payment-row";
 import { isSheetlessTenantKey } from "@/util/tenant-key";
+import { whenSheetAttached } from "./sheet-detach";
 
 const sheetSyncTails = new Map<string, Promise<void>>();
 
@@ -28,8 +29,10 @@ export function queueContractRowSync(spreadsheetId: string, row: number): void {
   if (isSheetlessTenantKey(spreadsheetId)) return; // ADR-0038: 시트 없는 수강생 — 시트로 보낼 미러가 없다
   const key = spreadsheetId;
   const tail = (sheetSyncTails.get(key) ?? Promise.resolve())
-    .then(() => runContractRowSync(spreadsheetId, row))
-    .then(() => drainPendingContractSheet(spreadsheetId, row))
+    .then(() => whenSheetAttached(spreadsheetId, async () => { // ADR-0038 5단계
+      await runContractRowSync(spreadsheetId, row);
+      await drainPendingContractSheet(spreadsheetId, row);
+    }))
     .catch(() => {}); // runContractRowSync 가 실패를 계수 — 큐는 항상 전진
   sheetSyncTails.set(key, tail);
   void tail.finally(() => {

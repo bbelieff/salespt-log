@@ -49,6 +49,7 @@ import {
 } from "@/repo/db/cohort-pending";
 import { withApiTiming } from "@/lib/analytics/api-timing";
 import { extractDriveFolderId } from "@/util/drive-folder-id";
+import { createSheetlessMembers, sheetlessCreateBlocker } from "@/service/cohort-create-sheetless";
 
 interface MemberInput {
   name?: unknown;
@@ -119,6 +120,7 @@ async function POST_handler(req: Request) {
     members?: unknown;
     config?: unknown;
     courseStartISO?: unknown;
+    noSheet?: unknown;
   } = {};
   try {
     body = await req.json();
@@ -156,6 +158,19 @@ async function POST_handler(req: Request) {
       { error: "too_many", hint: "한 번에 최대 100명." },
       { status: 400 },
     );
+  }
+
+  // ADR-0038 4단계: 「시트 없이 만들기」 — 시트 복제·폴더 매칭 없이 DB 명단 사전등록 행만.
+  // 기존 create/link 경로는 아래 그대로(이 분기를 고르지 않으면 동작 변화 0).
+  if (mode === "create" && body.noSheet === true) {
+    const blocker = sheetlessCreateBlocker({ label: parsed.label, type: parsed.type, courseStartISO, graduationISO });
+    if (blocker) return NextResponse.json({ error: "sheetless_not_allowed", hint: blocker }, { status: 400 });
+    const r = await createSheetlessMembers(
+      { label: parsed.label, courseStartISO, graduationISO },
+      members.map((m) => String(m.name ?? "")),
+    );
+    revalidateAdminPages();
+    return NextResponse.json({ ok: true, label: parsed.label, display: parsed.display, type: parsed.type, ...r, pending: [], dates: [] });
   }
 
   // 기수 설정 조회. create 모드에서 body.config 가 오면 먼저 영속화(upsertCohortConfig)

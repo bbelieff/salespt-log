@@ -22,6 +22,7 @@ import { readDbRowPayload } from "./db/db-tab-sync";
 import { clearMirrorPending, listMirrorPending, markMirrorPending } from "./db/mirror-pending";
 import { dbEnabled } from "./db/client";
 import { isSheetlessTenantKey } from "@/util/tenant-key";
+import { whenSheetAttached } from "./sheet-detach";
 
 export type DbSection = "매입DB" | "직접생산" | "현수막" | "콜지기소";
 
@@ -33,8 +34,10 @@ export function queueDbTabRowSync(spreadsheetId: string, section: DbSection, row
   if (isSheetlessTenantKey(spreadsheetId)) return; // ADR-0038: 시트 없는 수강생 — 시트로 보낼 미러가 없다
   const key = spreadsheetId;
   const tail = (sheetSyncTails.get(key) ?? Promise.resolve())
-    .then(() => runDbTabRowSync(spreadsheetId, section, row))
-    .then((rowKey) => drainPendingDbTabSheet(spreadsheetId, rowKey))
+    .then(() => whenSheetAttached(spreadsheetId, async () => { // ADR-0038 5단계
+      const rowKey = await runDbTabRowSync(spreadsheetId, section, row);
+      await drainPendingDbTabSheet(spreadsheetId, rowKey);
+    }))
     .catch(() => {}); // runDbTabRowSync 가 실패를 계수 — 큐는 항상 전진
   sheetSyncTails.set(key, tail);
   void tail.finally(() => {

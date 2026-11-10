@@ -8,10 +8,10 @@ export default function WeekBody({ firstDays, lastDays }: {
 }) {
   return <main className="px-4 pb-20 pt-1 pc:px-0 pc:pb-6">
     <PageContainer width="fluid">
-      {/* 화면 마감 v2: 주간 본문 = 흰 판 하나(상자 1단). 하루는 제목 줄, 미팅은 줄 목록. */}
-      <div className="rounded-2xl border border-slate-200/70 bg-white px-3 pb-1 pt-4 pc:grid pc:grid-cols-2 pc:items-start pc:gap-8 pc:px-6">
-        <div className="min-w-0">{firstDays}</div>
-        <div className="min-w-0 pc:border-l pc:border-slate-100 pc:pl-8">{lastDays}</div>
+      {/* 화면 마감 v2 구역 판(2026-11-11 belie 「섹션 구분은 있어야」): 하루 = 흰 판 하나, 판 안 미팅은 줄 목록(상자 2단). */}
+      <div className="pc:grid pc:grid-cols-2 pc:items-start pc:gap-4">
+        <div className="flex min-w-0 flex-col gap-3">{firstDays}</div>
+        <div className="mt-3 flex min-w-0 flex-col gap-3 pc:mt-0">{lastDays}</div>
       </div>
     </PageContainer>
   </main>;

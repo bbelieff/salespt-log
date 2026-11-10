@@ -18,7 +18,6 @@ import { useDBOverview } from "@/query/db-hooks";
 import { useExpenseLedger } from "@/query/expense-ledger-hooks";
 import {
   PERIOD_LABEL,
-  customIncomplete,
   periodBounds,
   periodDbCost,
   periodLedgerCost,
@@ -85,7 +84,6 @@ export default function DashboardFinance({ contractChannels, onRefreshChannels, 
   return (
     <section aria-label="매출·비용·영업이익">
       <div className="mb-2 flex flex-wrap items-center gap-1.5">
-        <strong className="mr-1 whitespace-nowrap text-sm text-slate-700">매출·비용·영업이익</strong>
         <PeriodPicker
           period={period}
           from={from}
@@ -93,7 +91,6 @@ export default function DashboardFinance({ contractChannels, onRefreshChannels, 
           onPeriod={setPeriod}
           onFrom={setFrom}
           onTo={setTo}
-          incomplete={customIncomplete(period, range)}
         />
       </div>
       {failed ? (

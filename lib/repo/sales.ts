@@ -17,6 +17,7 @@ import { salesDbPayload } from "./db/sales-payload";
 import { readSalesRowsFromDb } from "./db/client";
 import { readCourseDatesFromDb, courseDateDbReadEnabled } from "./db/course-dates";
 import { isSheetlessTenantKey } from "@/util/tenant-key";
+import { isSheetDetached } from "./sheet-detach";
 
 // ── 좌표 계산 (순수 함수, 단위 테스트 가능) ───────────────────
 // 주차 계산 정본은 lib/util/week.ts (R4 W1-0 단일화, G8). 기존 소비처
@@ -184,7 +185,8 @@ async function readGraduationFromSheet(spreadsheetId: string): Promise<Date> {
  */
 export async function readCourseStart(spreadsheetId: string): Promise<Date> {
   const sheetless = isSheetlessTenantKey(spreadsheetId); // ADR-0038: 시트 없는 수강생은 DB 가 유일한 출처
-  if (sheetless || courseDateDbReadEnabled()) {
+  // 5단계: 떼어 낸 기수도 DB 먼저(없으면 얼어붙은 시트 O1 — 날짜는 안 변한다).
+  if (sheetless || courseDateDbReadEnabled() || (await isSheetDetached(spreadsheetId))) {
     const dbRow = await readCourseDatesFromDb(spreadsheetId);
     if (dbRow?.courseStartISO) return parseISO(dbRow.courseStartISO);
     if (sheetless) throw new Error("[course-dates] 시트 없는 수강생의 수강시작일이 DB 에 없습니다");
@@ -195,7 +197,7 @@ export async function readCourseStart(spreadsheetId: string): Promise<Date> {
 /** 종강총회일 — DB 우선, 없으면 시트(O2) 폴백. 게이트·폴백 사유는 readCourseStart 와 동일. */
 export async function readGraduation(spreadsheetId: string): Promise<Date> {
   const sheetless = isSheetlessTenantKey(spreadsheetId);
-  if (sheetless || courseDateDbReadEnabled()) {
+  if (sheetless || courseDateDbReadEnabled() || (await isSheetDetached(spreadsheetId))) {
     const dbRow = await readCourseDatesFromDb(spreadsheetId);
     if (dbRow?.graduationISO) return parseISO(dbRow.graduationISO);
     if (sheetless) throw new Error("[course-dates] 시트 없는 수강생의 종강일이 DB 에 없습니다");

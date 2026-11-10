@@ -38,7 +38,7 @@ export default function CollapsibleGoalCard({ layout, className = "" }: { layout
   };
 
   if (open) return <WeeklyGoalSummary className={className} onCollapse={() => toggle(false)} />;
-  return <section aria-label="주간 목표" className={className + " border-b border-slate-200/80"}>
+  return <section aria-label="주간 목표" className={className}>
     <button type="button" aria-expanded="false" onClick={() => toggle(true)}
       className="flex min-h-11 w-full items-center gap-2 rounded-lg px-1 py-2 text-left hover:bg-slate-100/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500">
       <Target className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
