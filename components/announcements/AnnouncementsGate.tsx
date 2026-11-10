@@ -95,7 +95,7 @@ export default function AnnouncementsGate() {
   };
 
   return (
-    <NoticePopup notices={q.data.notices} updates={q.data.updates} onConfirm={confirm} />
+    <NoticePopup notices={q.data.notices} updates={q.data.updates} onConfirm={confirm} onDismiss={() => setOpen(false)} />
   );
 }
 
