@@ -30,6 +30,7 @@ import {
 import { headerBackfillPlan } from "./meetings-rows";
 import { colName } from "@/util/sheet-column";
 import { isSheetlessTenantKey } from "@/util/tenant-key";
+import { whenSheetAttached } from "./sheet-detach";
 import { normalizeRrn } from "@/util/rrn-front";
 import { CompanyInfo } from "@/types";
 import { dbEnabled } from "./db/client";
@@ -227,8 +228,10 @@ const sheetSyncTails = new Map<string, Promise<void>>();
 function queueCompanyArchiveSheetSync(spreadsheetId: string, rowKey: string): void {
   if (isSheetlessTenantKey(spreadsheetId)) return; // ADR-0038: 시트 없는 수강생 — 수렴할 시트가 없다
   const tail = (sheetSyncTails.get(spreadsheetId) ?? Promise.resolve())
-    .then(() => runSheetSync(spreadsheetId, rowKey))
-    .then(() => drainPendingCompanyArchiveSheet(spreadsheetId, rowKey))
+    .then(() => whenSheetAttached(spreadsheetId, async () => { // ADR-0038 5단계
+      await runSheetSync(spreadsheetId, rowKey);
+      await drainPendingCompanyArchiveSheet(spreadsheetId, rowKey);
+    }))
     .catch(() => {}); // runSheetSync 가 실패를 계수 — 큐는 항상 전진
   sheetSyncTails.set(spreadsheetId, tail);
   void tail.finally(() => {
