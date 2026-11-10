@@ -20,6 +20,7 @@ import { readRange, sheetsClient } from "./sheets-client";
 import { nextRegistryRowNumber } from "./registry-row";
 import { invalidateRegistry, isAdminSynthCandidate } from "./users";
 import { mirrorUserCells, mirrorUserRow, registryRowFromUser } from "./db/registry-mirror";
+import { setSheetlessSortOrders } from "./users-sheetless";
 
 const DATA_RANGE = (tab: string) => `${tab}!A2:M`;
 const CHUNK_SIZE = 100;
@@ -53,6 +54,7 @@ export async function setUserSortOrders(
     email: string; cohort: string; name: string; sortOrder: number;
   }[] = [];
   let skipped = 0;
+  const dbOnly: { email: string; sortOrder: number }[] = [];
 
   for (const o of orders) {
     const lc = o.email.toLowerCase();
@@ -96,9 +98,13 @@ export async function setUserSortOrders(
       ]);
     } else {
       // 등록 안 된 일반 email — skip (트레이니도 admin 도 아닌데 들어온 경우).
-      skipped++;
+      // ADR-0038: 시트 없는 수강생이면 아래에서 DB 명단에 바로 쓴다.
+      dbOnly.push(o);
     }
   }
+  const dbDone = await setSheetlessSortOrders(dbOnly);
+  skipped += dbOnly.length - dbDone.size;
+  if (dbDone.size > 0) invalidateRegistry();
 
   if (appendData.length > 0) {
     // 결정적 좌표 + RAW(PR D) — values.append 열밀림과 숫자 자동변환을 함께 방지.
@@ -143,7 +149,7 @@ export async function setUserSortOrders(
     }));
   }
   return {
-    updated: updates.length,
+    updated: updates.length + dbDone.size,
     skipped,
     created: appendData.length,
   };
