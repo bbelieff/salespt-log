@@ -20,6 +20,7 @@ import WeeklyDualChart from "@/components/dashboard/WeeklyDualChart";
 import ChannelPerformance from "@/components/dashboard/ChannelPerformance";
 import DashboardSkeleton, { HeroFinanceSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import Link from 'next/link';
+import FirstStepsCard from '@/components/onboarding/FirstStepsCard';
 import {hasDashboardChartRecords} from '@/components/dashboard/chart-records';
 
 /** 모바일 차트 카드: 다음 카드가 살짝 보이는 폭 + 한 장씩 멈춤. PC 는 그리드 칸(폭 자동). */
@@ -131,6 +132,8 @@ export default function DashboardPage() {
         {!dash.data && !dash.isError && <DashboardSkeleton />}
         {dash.data && (
           <>
+            {/* 새 수강생 「첫걸음」(2026-11-11) — 처음 하는 일 일곱 가지, 다 하면 사라진다. */}
+            <FirstStepsCard view={dash.data} />
             <DashboardActionOverview matrix={dash.data.channelMatrix} weeks={weeks}
               todayISO={today} courseStartISO={me.data?.courseStartISO} graduated={graduated} />
             {/* [3] 매출·비용·영업이익(기간 선택, ADR-0034)은 맨 위 .surface-hero 띠로 옮겼다(화면 마감 v2).
