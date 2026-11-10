@@ -4,10 +4,12 @@
  * 구조: 상단 공지(pinned 우선 — 서버 정렬 그대로, MD 렌더) → 구분선 →
  * "새로워졌어요 ✨" UpdateAccordion → 하단 [확인].
  * 기존 모달 패턴(z-[300], GeneralEventModal) 재사용 — 외곽 overflow-y-auto 스크롤.
- * 닫기(✕·확인) 전부 onConfirm — "본 것" 처리 일원화 (Gate 가 localStorage 기록).
- * 배경 탭으로는 닫지 않는다 — 스크롤하다 바깥을 스친 것만으로 읽음 처리돼 다시 안 뜨던 문제.
+ * 「본 것」 기록(onConfirm)은 ✕·[확인]·링크처럼 직접 누른 것만. 배경 탭·Esc 는 닫기만(onDismiss) —
+ * 스크롤하다 배경을 스친 것으로 한 번만 보이는 공지가 영영 사라지지 않게(2026-11-10 UI 점검).
  */
 "use client";
+
+import { useEffect, useRef } from "react";
 
 import { guideUrl } from "@/config";
 import type { Notice, UpdateItem } from "@/types";
@@ -18,21 +20,42 @@ interface Props {
   notices: Notice[];
   updates: UpdateItem[];
   onConfirm: () => void;
+  /** 기록 없이 닫기(배경 탭·Esc). 다음에 다시 뜬다. */
+  onDismiss: () => void;
 }
 
-export default function NoticePopup({ notices, updates, onConfirm }: Props) {
+export default function NoticePopup({ notices, updates, onConfirm, onDismiss }: Props) {
   const empty = notices.length === 0 && updates.length === 0;
+  const panel = useRef<HTMLDivElement>(null);
+  const dismiss = useRef(onDismiss);
+  dismiss.current = onDismiss;
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    panel.current?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") dismiss.current(); };
+    window.addEventListener("keydown", onKey);
+    return () => { window.removeEventListener("keydown", onKey); previous?.focus?.(); };
+  }, []);
   return (
     <div
       className="fixed inset-0 z-[300] flex items-start justify-center overflow-y-auto bg-black/40 p-4"
+      onClick={onDismiss}
     >
-      <div className="mt-8 mb-8 w-full max-w-sm rounded-2xl bg-white shadow-xl 2xl:max-w-md">
+      <div
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-label="새소식"
+        tabIndex={-1}
+        className="mt-8 mb-8 w-full max-w-sm rounded-2xl bg-white shadow-xl outline-none 2xl:max-w-md"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-2.5">
           <h3 className="text-sm font-black text-gray-900">새소식</h3>
           <button
             type="button"
             onClick={onConfirm}
-            className="rounded-full px-2 text-gray-400 hover:bg-gray-100"
+            className="-mr-2 flex h-11 w-11 items-center justify-center rounded-full text-gray-400 hover:bg-gray-100"
             aria-label="닫기"
           >
             ✕

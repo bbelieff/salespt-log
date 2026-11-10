@@ -17,10 +17,21 @@
  * **자동 새로고침은 하지 않는다** — 입력 중이던 내용이 날아갈 수 있어, 사람이 누르게 한다.
  *
  * 오탐 방지: 지문을 못 받아오면(오프라인·401) 아무것도 하지 않는다. 막는 쪽이 기본이 아니다.
+ *
+ * ## 층 (2026-11-10 UI 점검)
+ * 저장·삭제 창(z-[300])·로딩(z-[400])·팝오버(z-[500])·DB 시트 공급처 목록(10000)보다 **위**여야 한다. z-50 이던 때는
+ * 저장 창이 열려 있으면 차단막이 그 아래 깔려 [저장]을 그대로 누를 수 있었다.
+ * 막히는 순간 뒤쪽 입력칸의 초점도 빼서, Enter 로 저장되지 않게 한다.
+ * 브라우저 기본 대화상자(`showModal` — DB 시트 창·미팅 안전 확인)는 z 값과 상관없이 맨 위 층에 그려지므로,
+ * 차단막도 `<dialog>.showModal()` 로 띄운다 — 나중에 연 것이 그 위에 온다. Esc 로는 닫히지 않는다.
  */
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { installTabIdentityStamp } from "./tab-identity-stamp";
+
+/** 앱의 모든 창·로딩·팝오버보다 위(tokens.md 적층 표). 더 높은 층을 새로 만들면 시험이 잡는다. */
+export const IDENTITY_GUARD_LAYER = "z-[20000]";
 
 interface WhoAmI {
   activeFingerprint: string;
@@ -57,26 +68,51 @@ export default function IdentityGuard() {
       }
     };
     void check();
+    // 쓰기 요청마다 이 탭이 처음 본 지문을 싣는다 — 30초 확인 사이에 바뀌어도 서버가 저장을 거부한다.
+    const uninstall = installTabIdentityStamp(() => firstRef.current);
     const timer = setInterval(check, POLL_MS);
     const onFocus = () => void check();
     window.addEventListener("focus", onFocus);
     return () => {
       alive = false;
+      uninstall();
       clearInterval(timer);
       window.removeEventListener("focus", onFocus);
     };
   }, []);
 
-  if (!shouldBlockTab(firstRef.current, now?.activeFingerprint ?? null)) return null;
+  const blocked = shouldBlockTab(firstRef.current, now?.activeFingerprint ?? null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
-  // z-[600] — 모든 모달(z-[300]~[350])·로딩(z-[400])·팝오버(z-[500]) 위. 아래에 깔리면
-  // 열린 저장 창의 [저장]을 그대로 눌러 다른 사람 기록에 써진다(tokens.md 모달 z-stack).
+  useEffect(() => {
+    if (!blocked) return;
+    const el = dialogRef.current;
+    if (el && !el.open) {
+      if (typeof el.showModal === "function") el.showModal();
+      else el.setAttribute("open", "");
+    }
+    // 뒤에 열린 창의 입력칸에 초점이 남아 있으면 Enter 로 저장될 수 있다 — 버튼으로 옮긴다.
+    buttonRef.current?.focus();
+  }, [blocked]);
+
+  if (!blocked) return null;
+
   return (
-    <div
+    <dialog
+      ref={dialogRef}
       role="alertdialog"
       aria-modal="true"
       aria-label="다른 사람 화면으로 바뀌었어요"
-      className="fixed inset-0 z-[600] flex items-center justify-center bg-slate-900/70 p-6"
+      className={`fixed inset-0 ${IDENTITY_GUARD_LAYER} m-0 flex h-full max-h-none w-full max-w-none items-center justify-center border-0 bg-slate-900/70 p-6 backdrop:bg-transparent`}
+      onCancel={(e) => e.preventDefault()}
+      onKeyDown={(e) => {
+        // Tab 으로 뒤쪽 입력칸에 돌아가지 못하게 초점을 버튼에 묶는다.
+        if (e.key === "Tab") {
+          e.preventDefault();
+          buttonRef.current?.focus();
+        }
+      }}
     >
       <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-xl">
         <p className="text-2xl">🔀</p>
@@ -91,6 +127,7 @@ export default function IdentityGuard() {
           잘못 저장되지 않게 잠시 막아 뒀어요.
         </p>
         <button
+          ref={buttonRef}
           type="button"
           onClick={() => window.location.reload()}
           className="mt-5 w-full rounded-xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white"
@@ -101,6 +138,6 @@ export default function IdentityGuard() {
           원래 보던 분으로 돌아가려면 그 탭에서 다시 여세요.
         </p>
       </div>
-    </div>
+    </dialog>
   );
 }

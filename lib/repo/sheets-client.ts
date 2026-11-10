@@ -15,6 +15,15 @@
 import { google, type sheets_v4 } from "googleapis";
 import { serviceAccount } from "@/config";
 import { recordSheetsCall } from "@/lib/analytics/api-timing";
+import { isSheetlessTenantKey } from "@/util/tenant-key";
+
+/** 시트 없는 수강생 번호로 시트 API 를 부르려 했다 — 네트워크 호출 전에 막는다(재시도 안 함). */
+export class SheetlessTenantError extends Error {
+  constructor() {
+    super("[no-sheet] 시트 없이 만든 수강생이라 구글 시트를 쓰지 않습니다");
+    this.name = "SheetlessTenantError";
+  }
+}
 
 let cached: sheets_v4.Sheets | null = null;
 
@@ -48,6 +57,9 @@ function patchMethods<T extends object>(obj: T, names: readonly string[]): void 
     if (typeof orig !== "function") continue;
     const bound = (orig as (...a: unknown[]) => Promise<unknown>).bind(obj);
     (obj as unknown as Record<string, unknown>)[name] = async (...args: unknown[]) => {
+      // ADR-0038: 시트 없는 수강생(local:<uuid>)의 번호가 구글로 새어 나가지 않게 막는 단일 관문.
+      const target = (args[0] as { spreadsheetId?: unknown } | undefined)?.spreadsheetId;
+      if (typeof target === "string" && isSheetlessTenantKey(target)) throw new SheetlessTenantError();
       const t0 = Date.now();
       try {
         return await withRetry(() => bound(...args));

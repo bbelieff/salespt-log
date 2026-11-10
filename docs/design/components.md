@@ -1101,6 +1101,7 @@ app/(app)/dashboard/page.tsx
   PageContainer > 일반 본문
     FinanceSummaryBoxes # 매출·비용·영업이익 3열 1행 한 세트 (상세 패널 내장)
     [생산성 + DashboardWorkStatus] + WeeklyGoalSummary  # ≥1600px 윗줄 반반
+    p[data-testid=dashboard-chart-basis]  # 「아래 차트는 위 기간 선택과 별개로 코스 전체 누적 기준이에요」(최근 8주 추이면 덧붙임, 2026-11-10)
     MobileChartCarousel > FunnelChart / WeeklyDualChart / ChannelPerformance  # ≥1600px 아랫줄 3등분 (1024~1599: 2열) · <1024px 옆으로 넘기기
 ```
 
@@ -1265,7 +1266,7 @@ app/(app)/dashboard/page.tsx
 **용도**: 채널별 성과 — 좌·우 대칭 도넛 2개 (`grid-cols-2`) + 채널 표 1개. 높이를 줄이려고(2026-09-28 belie) 도넛 제목을 도넛 **왼쪽**에 붙이고, 도넛별 범례 2개와 계약단가 카드 4개를 채널 표 하나로 합쳤다(채널 색이 같아 범례가 중복이었다).
 
 **구조**:
-- **좌**: `채널별 비용` 제목(도넛 왼쪽, 2줄, `break-keep`로 글자 단위 줄바꿈 금지) + 비용 도넛 (3채널 — 매입DB/직접생산/현수막, 콜·지·기·소 제외), 가운데 `−총비용` (만원 단위, brand red)
+- **좌**: `채널별 비용` 제목(도넛 왼쪽, 2줄, `break-keep`로 글자 단위 줄바꿈 금지) + 비용 도넛 (3채널 — 매입DB/직접생산/현수막, 콜·지·기·소 제외), 가운데 `−누적 비용` (만원 단위, brand red — 코스 전체 누적이라 위 기간 선택 비용과 구분, 2026-11-10)
 - **우**: `채널별 DB유입` 제목 + 유입 도넛 (4채널 — 콜·지·기·소 포함), 가운데 총유입 건수 (blue-700)
 - **아래 채널 표**: 채널(색 dot) · 비용(만원 + %) · DB유입(건 + %) · 계약단가 — 4행
 
@@ -1313,6 +1314,7 @@ app/(app)/dashboard/page.tsx
 | **AppToast** | `components/ui/AppToast.tsx` | 알림 한 줄(2026-10-28 효과 ⑦). `.app-toast` = 휴대폰 아래 탭 위 12px 가운데·PC 아래 24px, 진한 slate 둥근 상자·흰 글자, 0.22초 떠오름, z 450(창 위). `raised` = 화면 아래 고정 버튼 줄 위로(컨택). 사용: 일정·컨택·캘린더·DB·실무/수납·과거계약 등록. 실무/수납 저장 알림(PaymentMobileSaveFeedback)·DB관리 `.sheet-toast` 는 별도 유지. |
 | **SkeletonBars** | `components/ui/SkeletonBars.tsx` | 불러오는 동안 글자 대신 회색 줄(`fx-skeleton`) n줄 + 화면 읽기용 `label`(sr-only, role=status·aria-busy). Props: `label`, `rows`(기본 2), `className`. 사용: 대시보드 진행 현황·비용 내역, 업체정보, 공급처 요약. 대시보드 매출 3칸·실무/수납 성과 요약은 같은 클래스로 칸 모양 그대로 자리표시. |
 | **LoadingOverlay** | `components/ui/LoadingOverlay.tsx` | 전역 로딩 팝업(loading-overlay/v3 글로우 링). Props: `message?`(기본 "불러오고 있어요"). **라이트 프로스트 글래스 카드**+회전 conic 링(96px)+궤도 점+**세일즈PT 로고 원본 호흡**(`/salespt-logo.png`, 무가공·`alt=""` 장식)+문구 페이드(다크 잉크)+하단 sweep. fixed z-[400] 중앙·dim(어둡게 유지), role=status, prefers-reduced-motion 정적 폴백. 스타일=globals.css `.lo-*`(tokens.md overlay 토큰). ※2026-07-15 이전: 다크 카드 + 가운데 'S' 글자. |
+| **confirmDiscard** | `components/ui/confirm-discard.ts` | 적던 내용이 있는 창을 닫을 때 한 번 묻는 공용 문구 「작성 중인 내용이 있어요. 저장하지 않고 닫을까요?」(`window.confirm`). 바꾼 게 없으면 묻지 않는다. 쓰는 곳: DB 추가 창(Esc·✕·취소), 통화 정리 확인(닫기·나중에, 고친 게 있을 때), 계약 해지 창(바깥·취소). 창마다 다른 문구를 새로 만들지 말고 이것을 쓴다. |
 | **LoadingProvider** | `components/ui/LoadingProvider.tsx` | 전역 로딩 상태 + `useGlobalLoading()` 훅. providers.tsx(QueryClientProvider 안)에서 1회 마운트, 내부 `<LoadingOverlay>` 렌더. 명령형 show(문구)/hide(카운터) + `useIsMutating()>0` 자동("저장하고 있어요"). useIsFetching 은 안 검(과노출 방지). |
 
 ### 10-2. contact 탭 (`app/(app)/contact/_components/`)
@@ -1439,7 +1441,7 @@ D R7 PC bare 상세는 `page.tsx` 기존 제목줄의 `data-payment-pc-status-sl
 | **SortableList** | Generic dnd-kit wrapper (render prop). PR C-2 (2026-05-13). Props: `items: T[]`, `getId: (t) => string`, `onReorder?(ids)`, `renderItem: (t, drag) => ReactNode`, `disabled?`. DndContext + SortableContext + 3 Sensors (Pointer 5px, Touch 200ms, Keyboard). 사용처: SortableTraineeBox (/admin/users), SectionAssign (/admin/trainers). disabled / onReorder 없음 → plain 렌더 (dnd 비활성). 정렬 전략 `rectSortingStrategy` + `CSS.Translate` (2026-11-03 — 여러 열 격자에서도 드래그, 세로 목록은 그대로). |
 | **TrainerAssignCard** | /admin/trainers SectionAssign 의 단일 트레이너 카드. 카드 헤더(이름·email·담당 N명) + [관리부서]·[퇴출] 버튼. 펼침: 기수별 수강생 다중 체크박스 (optimistic toggle) + 기수/전체 일괄. PR C-2 에서 TrainerMgmtSections.tsx 에서 분리(500줄 cap) + dragRef/dragStyle/dragAttributes/dragListeners/isDragging optional props 추가 → 좌측 [⋮⋮] 핸들 노출 시 SortableList 가 reorder. |
 | **UnifiedPrepCard** | 신규 수강생 사전 등록 (단일/일괄 paste 모드 토글 통합 카드). Props: `busy`, `onSubmitSingle`, `onSubmitBulk`. 기존 BulkPrepForm + TraineePrepForm 두 카드 통합 (2026-05-13). 내부 SingleForm / BulkForm 모드 전환. parsePrepText 는 TraineePrepBulkForm 에서 import. **2026-11-06**: 세 번째 탭 「이메일 연결」(`LinkForm`) — 사전등록 줄(기수·이름)에 로그인 이메일을 바로 연결(POST /api/admin/link-prep-email, 본인 /claim 과 같은 claimRegistry). 결과·막힌 이유를 카드 안 한 줄로, 성공 시 목록 새로고침. |
-| **IdentityGuard** | (app) 셸 전역. Props 없음. `/api/whoami`(세션+쿠키만 읽는 초경량 라우트)를 마운트·창 포커스·30초 주기로 확인해, **탭이 열릴 때의 사람**과 지문이 달라지면 전체 화면 오버레이로 조작을 막는다. 대리접속 신원(`salespt_as`)이 httpOnly 쿠키(브라우저 공용)인데 전환은 새 탭을 여는 방식이라, A 학생 탭이 열린 채 B 를 열면 A 탭도 B 로 동작하고 **저장이 B 기록에 써진다**(2026-09-01 belie 신고). 자동 새로고침은 하지 않는다(입력 유실 방지) — 사람이 버튼을 누른다. 지문을 못 받으면 아무것도 막지 않는다(오탐 금지). 차단막은 `z-[600]`으로 모든 모달·로딩 위에 뜬다(tokens.md 모달 z-stack). |
+| **IdentityGuard** | (app) 셸 전역. Props 없음. `/api/whoami`(세션+쿠키만 읽는 초경량 라우트)를 마운트·창 포커스·30초 주기로 확인해, **탭이 열릴 때의 사람**과 지문이 달라지면 전체 화면 `<dialog>.showModal()` 오버레이(`z-[20000]` + 브라우저 최상단 층 — 열린 저장 창·SheetDialog 위, Esc 로 안 닫힘)로 조작을 막고, 초점을 [새로고침] 버튼으로 옮겨 Tab 으로 뒤쪽 입력칸에 돌아가지 못하게 한다. 또 같은 사이트 /api 쓰기 요청마다 탭이 처음 본 지문을 `x-salespt-tab-identity` 머리말로 실어, 서버가 지금 신원과 다르면 저장을 거부한다(30초 확인 사이 공백 차단). 대리접속 신원(`salespt_as`)이 httpOnly 쿠키(브라우저 공용)인데 전환은 새 탭을 여는 방식이라, A 학생 탭이 열린 채 B 를 열면 A 탭도 B 로 동작하고 **저장이 B 기록에 써진다**(2026-09-01 belie 신고). 자동 새로고침은 하지 않는다(입력 유실 방지) — 사람이 버튼을 누른다. 지문을 못 받으면 아무것도 막지 않는다(오탐 금지). |
 | **ImpersonationBanner** | Admin 페이지 상단 impersonation 상태 표시 + 해제 버튼. Props: `impersonating: string`. 클릭 → POST /api/admin/switch `{email:null}` → router.refresh. |
 | **WebviewWarning** | 카카오톡·네이버·인스타·페북 등 in-app 웹뷰 감지 시 풀스크린 오버레이 노출. Props 없음. KakaoTalk 안드로이드는 `kakaotalk://web/openExternal?url=` scheme 으로 외부 Chrome 점프, 그 외는 단계 안내 + URL 복사. Google OAuth가 webview UA를 차단(disallowed_useragent)하는 문제 우회. |
 | **CohortMgmtPanel** | Admin 전용 기수 관리 (`/admin/cohorts`). Props: `sessionEmail`, `cohorts: {label, status, note, traineeCount, type?}[]`, `viewOnly?`, `pendingCreateCount?`. 활성/보관 두 섹션 + 토글 버튼. 헤더에 CohortCreateModal·ArenaCreateModal·CohortPendingRetryButton(admin only). 표시 라벨: 아레나 "A1회" / 일반 "8기". POST /api/admin/set-cohort-status. |
@@ -1468,7 +1470,7 @@ D R7 PC bare 상세는 `page.tsx` 기존 제목줄의 `data-payment-pc-status-sl
 | **PeriodPicker** | `components/ui/PeriodPicker.tsx` — 전체·이번 달·이번 주·직접 설정 칩 + 직접 설정 시 시작·종료 날짜(덜 고르면 안내 한 줄). 상태는 부모 소유, 기간 계산은 `@/util/finance-period` `periodBounds`(KST). 실무/수납 성과 요약·대시보드 매출 묶음 공용(2026-10-08) |
 | **ArenaCarryoverButton** | admin 아레나 관리 사용자별 "↩ 이월 실행"(backfill, carryover §2-b). Props: `email`. POST /api/admin/arena-carryover — 멱등, 결과(복사/스킵/실패) inline 표시. 미클레임(email 없음)은 미노출. |
 | **AnnouncementsGate** | `(app)` layout mount 시 새소식 자동 팝업 게이트 (announcement-popup §3). Props 없음. useAnnouncements(GET /api/announcements, 10분 stale) → 자동 조건: ① localStorage `lastSeenPr` < latestPr ② display_mode 충족 활성 공지(once=`noticeSeen:{id}`, daily=`noticeSeen:{id}:{YYYY-MM-DD}`, always=매번). 둘 다 아니면 안 띄움. 수동 재열람 = window `salespt:open-announcements` CustomEvent 수신(TopHeader 발신). [확인] 시 lastSeenPr 갱신 + 표시 공지 seen 마킹. **통화 중 미루기(2026-11-07)**: `call-focus.ts` `useCallFocus`(DB관리시트 거는 창·대본·녹음 올리기·통화 정리 확인이 열린 동안)면 자동 팝업을 미뤘다가 `salespt:call-focus-end` 에 띄운다. 수동 재열람은 바로. |
-| **NoticePopup** | 새소식 모달 (z-[300], GeneralEventModal 패턴). Props: `notices`, `updates`, `onConfirm`. 상단 공지(pinned 우선 — 서버 정렬, 📌, MD 렌더) → 구분선 → "새로워졌어요 ✨" UpdateAccordion → 하단 [확인]. 내용 없으면 "아직 새소식이 없어요". 모바일 우선(max-w-sm). 닫기는 ✕·[확인]만 — 배경 탭으로는 닫히지 않는다(닫기 = 읽음 처리라서). |
+| **NoticePopup** | 새소식 모달 (z-[300], GeneralEventModal 패턴). Props: `notices`, `updates`, `onConfirm`(「본 것」 기록 — ✕·[확인]·링크), `onDismiss`(기록 없이 닫기 — 배경 탭·Esc, 다음에 다시 뜸). role=dialog·aria-modal, 열리면 팝업에 초점·닫히면 복귀, ✕ 44px. 상단 공지(pinned 우선 — 서버 정렬, 📌, MD 렌더) → 구분선 → "새로워졌어요 ✨" UpdateAccordion → 하단 [확인]. 내용 없으면 "아직 새소식이 없어요". 모바일 우선(max-w-sm). |
 | **UpdateAccordion** | 업데이트 묶음 아코디언 (§7-4, grouped-updates 개편). Props: `updates`(행) — groupUpdates 로 항목(그룹=1)화. 접힘=고객용 제목+메타줄(그룹 "개발 M/D~M/D · 적용 M/D"/단건 "적용 M/D"), 펼침="339·340…번째 업데이트" + [전]/[후] 뱃지 문단(`전:`/`후:` 포맷, 없으면 MarkdownView 폴백) + 그룹 내 개별 변경 보조 줄(작게, 단건 생략). 항목은 전부 동일 카드형 평면 나열(종속감 차단), 정렬=그룹 마지막 머지일 최신순 (group-render 정정 2026-06-11). 팝업·보관함 공용. |
 | **UpdatesArchivePage** | `/updates` 보관함 (§7-4). visible 업데이트 전체 최신순 — 항목(그룹) 단위 더보기 페이징(GET /api/announcements/archive), 월별 구분선, 항목 형식 팝업과 동일(UpdateAccordion). 헤더 "새소식" 진입점·팝업 "지난 업데이트 모두 보기"가 연결. |
 | **MarkdownView** | 공지/업데이트 MD 렌더 래퍼. Props: `markdown`. react-markdown — raw HTML 미렌더(rehype-raw 없음 = sanitize by construction) + 기본 urlTransform(javascript: 차단). 이미지 max-w-full rounded. |
@@ -1700,7 +1702,7 @@ button:focus, input:focus, select:focus {
 - `TrainerInvites`: 관리자 전용 수신 이메일 링크 생성/복사/목록/취소. 링크는 생성 시만 표시, 7일 만료.
 - `TopHeader`: 모바일 첫 행은 로고·대시보드·역할 전환, 정보 행은 기수·이름·대리접속. D-day는 DashboardProgressBanner에만 표시한다. 768px부터 한 행. 이름의 첫 글자는 표시 가능해야 하며 기존 대시보드 진입 조건은 유지한다.
 
-- `TrainerInvitationEntry`: 공개 고정 초대 경로. URL fragment 토큰을 즉시 제거하고 탭 sessionStorage에서 로그인 동안만 유지; OAuth/마지막 페이지 쿠키에 토큰 전달 금지.
+- `TrainerInvitationEntry`: 공개 고정 초대 경로. URL fragment 토큰을 즉시 제거하고 탭 sessionStorage에서 로그인 동안만 유지; OAuth/마지막 페이지 쿠키에 토큰 전달 금지. 잘못된 링크는 가운데 카드 「초대 링크를 열 수 없어요」 + 「처음 화면으로」(/) 버튼(2026-11-10).
 
 - Header stack: `app-header`는 <768px 6rem / >=768px 3.5rem이며, 배너3rem을 더한 `top-app-content`는 각각9rem /6.5rem. PC 전역 글자 크기에 따라 함께 축소한다. PC 캘린더 패널의 별도 offset은 유지한다.
 
@@ -1798,6 +1800,7 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - SupplierSummary는 유입일 기간 안의 리드를 공급처별로 DB/상담/미팅/계약/계약률로 비교. 검색·공급처 선택으로 비교 모수가 바뀌지 않음. 행 선택은 기존 공급처 필터와 연결.
 - PC 표/모바일 카드, 공급처 미입력은 마지막 비선택 행. 기본 8곳과 선택한 공급처 표시. 20건 이상만 순위 계산하며 요약문에도 표본 기준 표시. 4채널 모두 표시.
 - Grid 모바일 정렬: 항목을 한 번씩만 선택, 옆 버튼으로 오름/내림 전환. 기본 순서는 방향 버튼 비활성. 기존 표 정렬·틀고정·크기 저장 유지.
+- Grid 빈 목록(2026-11-10): `loading` 이면 「DB 목록을 불러오고 있어요」, 전체 DB 0건(`total===0`)이면 「아직 DB가 없어요 · 첫 DB를 추가해 보세요」 + 「＋ DB 추가」(`onAdd`), 걸러져 0건이면 「조건에 맞는 업체가 없습니다」.
 - 합성 화면: tests/browser/db-sheet-supplier-server.mjs, empty/few/many/error 시나리오 지원. 운영 API 접근 없이 PGlite로 저장·조회 검증.
 
 
@@ -1841,6 +1844,7 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - `ImportDialog`: 가져오기 선택과 유입기록 체크 분리, 기본 전체 체크·부분 체크·전체 해제, 상담/미팅 설정. PC 전체 열·5행 기준, 모바일 라벨 필드.
 - `TrashTable`(`app/(app)/trash/_components`, 2026-10-28 앱 휴지통): 지운 할 일·미팅·DB관리시트를 한 표로 — 체크·종류 배지·이름(휴대폰은 내용을 이름 아래)·지운 때. 행을 눌러도 고르기(누름 색), 되살릴 수 없는 줄은 흐리게+이유·선택 불가. 되살리기만(영구 삭제 없음), 아래 붙는 「N개 골랐어요 · 되살리기」 막대. 데이터 `lib/service/trash.ts`, 진입 = 로고 메뉴 「휴지통」.
 - `DeletedMeetings`, `MeetingSafetyDialog`, `use-meeting-delete-confirm`: 삭제 전 일정 변경 우선 안내. 삭제된 단순 예약은 원래 ID로 복원; 계약·후속 미팅 이력이 연결된 복합건은 별도 안내로 개별 복원 차단.
+- `use-draft-remove-confirm`: 아직 등록 안 한 새 미팅 카드의 「✕ 삭제」. 업체명·장소·시간·비고·업체정보 중 적은 게 있으면 「적던 미팅 카드를 지울까요?」(돌아가기 / 카드 지우기)를 묻고, 빈 카드는 바로 지운다. 컨택 −버튼 동작은 그대로.
 
 - DB관리시트 컨택결과 선택지: 집계 제외 / STEP 2 컨택진행 +1 표시. 활동 기록 OFF는 기록 꺼짐. 저장하는 결과 문자열은 기존값을 유지하고 업체별 하루 1건 안내.
 
@@ -1906,11 +1910,11 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 
 | 컴포넌트 | 설명 |
 |---|---|
-| **SimpleAuthPanel** | 화면 본문. 목록 읽기·진행 중이면 3초마다 다시 읽기·동작 호출·안내 토스트. PC ① `pc:w-96`(wide 1/3) + ② 나머지, 좁으면 위아래. |
+| **SimpleAuthPanel** | 화면 본문. 목록 읽기·진행 중이면 3초마다 다시 읽기·동작 호출·안내 토스트(실패는 빨간 바탕 10초 + ✕, 성공 3.5초). 요청이 끝나기 전 두 번째 요청은 막고(`inFlight`), 진행 중 취소는 확인을 묻는다. PC ① `pc:w-96`(wide 1/3) + ② 나머지, 좁으면 위아래. |
 | **CertPicker** | 「인증서 선택」 한 버튼 → 펼침 창: 찾은 인증서 목록(개인/법인 띠·이름·만료일, 만료는 빨강)이 맨 위, 그 아래 버튼 하나 「내 PC에서 인증서 찾기」(지난번 폴더가 있으면 「허용」 한 번, 없으면 폴더 창, 막히면 폴더 올리기) + 글자 링크 「파일로 고르기(.pfx)」. NPKI 경로·복사는 접힌 「어느 폴더를 고르나요?」 안. 끌어 놓기도 받는다. 고르면 한 줄 요약 + 「바꾸기」(belie 2026-11-09 「너무 복잡」 → 단순화). |
 | **RequestForm** | 탭 「간편인증 보내기」(대표 이름·생년월일·휴대폰·인증 수단 아이콘 3열·PASS 통신사) / 「공동인증서로 가져오기」(인증서·비밀번호, 6종 기본). 받을 서류 칩은 발급 기관별 묶음 — 작은 제목 「홈택스」·「정부24」·「4대사회보험 정보연계센터」 아래 칩 가로 줄바꿈(belie 2026-11-09 「홈택스와 기관을 나눠서」). 기관은 config `site`. 지방세를 고르면 주소(+간편인증은 주민번호 뒷자리). |
 | **AddressSearch** | 카카오(다음) 우편번호 서비스로 도로명주소 검색 → 「도로명 + 건물번호」·상세주소. 키 없음. |
-| **RequestList** | 날짜 → 사람 → 업체 3단 목록. 칸마다 펼침을 고정(저절로 닫히지 않음, 새로 보내거나 다시 보낸 요청만 저절로 열림). 사람 줄 = 이름(고정 폭)·번호·수단 띠 + 상태·버튼(승인 확인·다시·취소 / 다시·기록 삭제) 한 줄. 업체 줄은 제목행 전체가 여닫기, 업체 1곳이면 바로 펼침, 실패 서류 이름 칩. DB 연결+반영이 끝난 업체는 빠진다. 보낸 인증이 없으면 사용법(미팅 잡고 서류를 못 받았을 때 기준, 단계 → 할 일 2단 목록)을 보여 준다. |
+| **RequestList** | 날짜 → 사람 → 업체 3단 목록. 칸마다 펼침을 고정(저절로 닫히지 않음, 새로 보내거나 다시 보낸 요청만 저절로 열림). 사람 줄 = 이름(고정 폭)·번호·수단 띠 + 상태·버튼(승인 확인·다시·취소 / 다시·기록 삭제) 한 줄. 처리 중(`busy`)엔 이 버튼들이 잠긴다. 업체 줄은 제목행 전체가 여닫기, 업체 1곳이면 바로 펼침, 실패 서류 이름 칩. DB 연결+반영이 끝난 업체는 빠진다. 보낸 인증이 없으면 사용법(미팅 잡고 서류를 못 받았을 때 기준, 단계 → 할 일 2단 목록)을 보여 준다. |
 | **DocBox** | 업체 줄 밑 서류함: DB 연결(후보 고르기·「DB 등록」/「새 DB로 등록」·「등록 안 함」·바꾸기) · 서류별 요약·발급일·「원문」 PDF(「사업자명 서류이름.pdf」, 재무제표는 연도별) · 「업체정보에 반영」(CompanyDocDiffTable 재사용, 미팅 연결 DB 는 안내만). |
 | **AuthMethodIcon** | 인증 수단 아이콘 — 각 사 공식 앱 아이콘(`public/auth-methods/*.png` 96px, App Store·Galaxy Store 공식 아이콘), 공동인증서만 중립 마크. 목록용 `MethodBadge`(회사색 띠 + 시각). |
 

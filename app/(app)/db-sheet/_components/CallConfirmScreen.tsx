@@ -6,6 +6,7 @@
  * 「＋ DB 추가」로 녹음부터 올린 새 DB(업체명·대표가 빈 줄)는 맨 위 「새 DB」 칸에서 AI가 들은 업체명·대표를 고친다(2026-11-07).
  * 글자는 50대 기준 최소(belie 2026-11-04): 같은 말 반복·내부 용어(STEP)·「빈칸 채움」 꼬리표·같은 값 줄을 뺀다. 부품·용어는 DB정보와 같게.
  */
+import { confirmDiscard } from "@/components/ui/confirm-discard";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft } from "lucide-react";
 import type { CallRecord } from "@/types/call";
@@ -31,11 +32,10 @@ export function CallConfirmScreen({ lead, call, onSaved, onClose }: { lead: DbSh
     meeting: x.meeting ? { ...x.meeting, place: meetingPlace(x.meeting.place, x.company.소재지 || lead.contact.ci.소재지 || "") } : { meetingDate: "", time: "", place: "", reservationNote: "" },
   }));
   const [busy, setBusy] = useState(false), [error, setError] = useState("");
+  // 고친 게 있으면 「나중에」·닫기 전에 묻는다 — 통화 정리 자체는 남아 다시 열 수 있지만 고친 내용은 사라진다.
+  const initial = useRef(s);
+  const close = () => { if (confirmDiscard(s !== initial.current)) onClose(); };
   const top = useRef<HTMLDivElement>(null);
-  // 처음 값 — setS 는 늘 새 객체를 만들어서, 같은 객체면 아무것도 안 고친 것이다.
-  const untouched = useRef(s);
-  // 「나중에」·뒤로 — 고친 메모·미팅 날짜가 말없이 사라지지 않게 한 번 묻는다.
-  const leave = () => { if (s !== untouched.current && !window.confirm("고친 내용은 저장되지 않아요. 닫을까요?")) return; onClose(); };
   useEffect(() => { top.current?.focus(); document.body.style.overflow = "hidden"; return () => { document.body.style.overflow = ""; }; }, []);
 
   const setRow = (key: string, patch: Partial<CiRow>) => setS(v => ({ ...v, rows: v.rows.map(r => r.key === key ? { ...r, ...patch } : r) }));
@@ -57,7 +57,7 @@ export function CallConfirmScreen({ lead, call, onSaved, onClose }: { lead: DbSh
 
   return <div className="dbs-cc" role="dialog" aria-modal="true" aria-labelledby="dbs-cc-title">
     <header className="dbs-cc-top"><div className="dbs-cc-top-in" ref={top} tabIndex={-1}>
-      <button type="button" className="dbs-cc-back" aria-label="닫기" disabled={busy} onClick={leave}><ChevronLeft size={20} aria-hidden="true" /></button>
+      <button type="button" className="dbs-cc-back" aria-label="닫기" disabled={busy} onClick={close}><ChevronLeft size={20} aria-hidden="true" /></button>
       <h1 id="dbs-cc-title">통화 정리 확인</h1>
     </div></header>
 
@@ -129,7 +129,7 @@ export function CallConfirmScreen({ lead, call, onSaved, onClose }: { lead: DbSh
 
     <footer className="dbs-cc-foot"><div className="dbs-cc-foot-in">
       <p role="status">{error ? <span className="dbs-cc-err">{error}</span> : blocker ? <span className="dbs-cc-block">{blocker}</span> : null}</p>
-      <button type="button" className="dbs-button" disabled={busy} onClick={leave}>나중에</button>
+      <button type="button" className="dbs-button" disabled={busy} onClick={close}>나중에</button>
       <button type="button" className="dbs-button primary" disabled={busy || !!blocker} onClick={() => void save()}>{busy ? "저장 중…" : "저장하기"}</button>
     </div></footer>
   </div>;

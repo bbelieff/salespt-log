@@ -173,19 +173,18 @@ export default function GeneralEventModal({ defaultDate, onClose, onCreated }: P
               />
               다시 보지 않기
             </label>
-            {/* 안내만 보고 입력으로 돌아갈 길 — 「확인하고 추가」만 있으면 취소할 수 없었다. 입력은 그대로 남는다. */}
             <div className="mt-3 flex gap-2">
               <button
                 type="button"
                 onClick={() => setHint(false)}
-                className="flex-1 rounded-lg border border-gray-300 py-2 text-sm font-bold text-gray-700 hover:bg-gray-50"
+                className="min-h-11 flex-1 rounded-lg border border-gray-300 py-2 text-sm text-gray-700 hover:bg-gray-50"
               >
-                돌아가기
+                취소
               </button>
               <button
                 type="button"
                 onClick={confirmHint}
-                className="flex-1 rounded-lg bg-gray-900 py-2 text-sm font-bold text-white hover:bg-black"
+                className="min-h-11 flex-1 rounded-lg bg-gray-900 py-2 text-sm font-bold text-white hover:bg-black"
               >
                 확인하고 추가
               </button>

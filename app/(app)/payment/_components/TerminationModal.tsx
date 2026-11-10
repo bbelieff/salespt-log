@@ -6,6 +6,7 @@
 "use client";
 
 import { useState } from "react";
+import { confirmDiscard } from "@/components/ui/confirm-discard";
 import type { ContractPayment } from "@/types";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { formatMoney } from "@/lib/format/money";
@@ -37,6 +38,9 @@ export default function TerminationModal({ cp, pending, onClose, onConfirm }: Pr
   const fullAmount = (cp.수임비 || 0) + receivedSum;
   const 반환액 = mode === "none" ? 0 : mode === "full" ? fullAmount : partial;
 
+  // 사유·반환액을 적었으면 바깥 클릭·취소 전에 묻는다.
+  const close = () => { if (confirmDiscard(!!사유.trim() || mode !== "none" || 숨김)) onClose(); };
+
   const submit = () => {
     if (!사유.trim()) {
       setErr("해지 사유를 입력해 주세요");
@@ -53,8 +57,7 @@ export default function TerminationModal({ cp, pending, onClose, onConfirm }: Pr
   return (
     <div
       className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4"
-      // 사유·반환액을 적은 뒤 바깥을 잘못 누르면 다 사라졌다 — 적은 게 있으면 배경으로는 닫지 않는다(취소 버튼은 그대로).
-      onClick={사유.trim() || mode !== "none" || 숨김 ? undefined : onClose}
+      onClick={close}
     >
       <div
         className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl"
@@ -150,7 +153,7 @@ export default function TerminationModal({ cp, pending, onClose, onConfirm }: Pr
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={onClose}
+            onClick={close}
             className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             취소

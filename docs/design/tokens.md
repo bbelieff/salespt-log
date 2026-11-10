@@ -263,6 +263,7 @@ shadow-lg shadow-green-500/25  /* 초록색 25% 투명도 */
 | 3a | 실무/수납 D R5 승인 대기: <=767 전용 알림 portal / >=768 기존 상세 상태 줄 | portal `z-40` / 기존 줄 `z-20` | portal `calc(var(--app-header-height) + 2px)`·right12 / 기존 줄 `top-app-content` | portal 최소44px·알림30px·undo44px, 본문 예약0 / 기존 줄24px·행동36px |
 | 3b | 실무/수납 상세 섹션 제목 `.payment-sticky-title` | `z-10` | D R5 <=767 `top-app-content` / 768~1279 inline `calc(var(--app-header-height) + 4.5rem)`, 상태 행동 `+ 5.25rem` / 1280 이상 PC 열 안 `0` | 내용 |
 | 4 | 모달/Toast/Sheet 등 floating | `z-50` 이상(별도) | — | — |
+| 최상단 | `IdentityGuard` 「다른 분의 화면으로 바뀌었어요」 차단막 (`<dialog>.showModal()` — 기본 대화상자보다도 위) | `z-[20000]` — 저장 창·로딩·팝오버·DB 시트 공급처 목록(10000)보다 위. 더 높은 층을 만들면 `identity-guard-layer` 시험이 실패한다 | `inset-0` | 전체 |
 | 3c | 우하단 「오늘 챙길 일」 빠른 보기 버튼 / 창 (`followups-launcher.css`) | 버튼 `45`(헤더·탭바·모달 아래) / 열린 창 `55`(고정 요약줄 위, 로딩 팝업 아래) | 모바일 bottom `var(--app-tabbar-height) + 12px` · PC bottom 20px · 오른쪽 모바일 16px / PC 24px(안전영역 더함) | 버튼 56px · 창 최대 360px |
 | 0 | 본문 `main`, 대시보드 매출·비용·영업이익 | 없음 | — | 일반 흐름 |
 | -1 | `BottomNav`(모바일) | `z-50`(fixed bottom) | bottom-0 | `h-[60px]` |
@@ -274,7 +275,7 @@ shadow-lg shadow-green-500/25  /* 초록색 25% 투명도 */
 - 360/390px 실제 스크롤에서 수납 검색 sticky 상단은 배너 하단 144px과 일치해야 한다. PC 실제 px는 전역 루트 13.5px로 환산한다. PC 캘린더 상세의 `app-calendar-panel`은 11.25rem을 유지한다.
 - 일정 WeekHeader + SummaryBar처럼 함께 고정할 영역은 한 부모에 묶는다. 대시보드도 페이지 래퍼만 sticky이며 `DashboardProgressBanner` 자체에는 중복 지정하지 않는다.
 - D-day는 공용 헤더 정보 영역에 보존한다. 매출·비용·영업이익은 일반 본문에서 함께 스크롤하며 고정 영역에 포함하지 않는다.
-- 모달은 별도 z-stack(`z-50` 이상)을 사용한다. 쌓이는 순서: 일반 모달 `z-[300]` < 모달 위 확인창 `z-[310]`·미저장 확인 `z-[350]` < 전역 로딩 `z-[400]` < 수납 진행 팝오버 `z-[500]` < **탭 신원 차단막(`IdentityGuard`) `z-[600]` — 항상 맨 위**(아래에 깔리면 열린 창의 저장이 눌린다).
+- 모달은 별도 z-stack(`z-50` 이상)을 사용한다.
 - 실무/수납 상세 섹션 제목은 터치 기기에서 상세 안 입력칸에 포커스가 있으면(키보드) 고정을 푼다 — 위에 붙는 줄이 키보드 위 입력칸을 가리지 않게. 업체 이름 줄은 남는다.
 
 ### Overlay 토큰 (전역 로딩 팝업 — loading-overlay) ⭐

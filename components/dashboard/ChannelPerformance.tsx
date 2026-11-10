@@ -177,7 +177,7 @@ export default function ChannelPerformance({ costBreakdown, matrix, weeks = STAT
             <DonutSvg
               play={play}
               slices={costSlices}
-              centerLabel="총비용"
+              centerLabel="누적 비용"
               centerValue={`−${fmtMan(costTotal)}`}
               centerValueColor="#dc2626"
             />

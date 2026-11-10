@@ -2,6 +2,7 @@
 "use client";
 import AppToast from "@/components/ui/AppToast";
 import DeletedMeetings from "@/components/meeting-safety/DeletedMeetings";
+import { useDraftRemoveConfirm } from "@/components/meeting-safety/use-draft-remove-confirm";
 import { useMeetingDeleteConfirm } from "@/components/meeting-safety/use-meeting-delete-confirm";
 import PageContainer from "@/components/PageContainer";
 import WeeklyGoalSummary from "@/components/weekly-goals/WeeklyGoalSummary";
@@ -22,7 +23,7 @@ import WeekHeader from "./_components/WeekHeader";
 import ChannelTabsAndPanel from "./_components/ChannelTabsAndPanel";
 import TopHeader from "@/components/TopHeader";
 import DbManagementTabs from "@/components/DbManagementTabs";
-import { newSlotHasInput, type NewSlot } from "./_components/MeetingSlotItem";
+import type { NewSlot } from "./_components/MeetingSlotItem";
 import MeetingSlotList from "./_components/MeetingSlotList";
 import ContactDbLeads from "../db-sheet/_components/ContactDbLeads";
 import { useGuardedNav, useDirtyEntry, useDirtyRegister } from "@/components/DirtyGuard";
@@ -49,6 +50,7 @@ import { discardUnsaved } from "@/components/weekly-goals/weeklyGoalAutosave";
 const TODAY_ISO = fmtISO(new Date());
 export default function ContactPage() {
   const deleteConfirm=useMeetingDeleteConfirm();
+  const draftConfirm = useDraftRemoveConfirm();
   const router = useRouter();
   const [date, setDate] = useState<string>(TODAY_ISO);
   const [showProductionHold, setShowProductionHold] = useState(false); // ADR-0024 보류 모달
@@ -241,11 +243,9 @@ export default function ContactPage() {
   const updateNewSlot = (tempId: string, next: NewSlot) =>
     setNewSlots((s) => s.map((x) => (x.tempId === tempId ? next : x)));
 
-  const removeNewSlot = (tempId: string) => {
+  const removeNewSlot = async (tempId: string) => {
     const target = newSlots.find((s) => s.tempId === tempId);
-    if (!target) return;
-    // 「예약 등록」 바로 옆이라 잘못 누르기 쉽다 — 적어 둔 내용이 있으면 한 번 묻는다(되돌리기 없음).
-    if (newSlotHasInput(target) && !window.confirm("적어 둔 미팅 내용을 지울까요? 지우면 되돌릴 수 없어요.")) return;
+    if (!target || !await draftConfirm.request(target)) return;
     setNewSlots((s) => s.filter((x) => x.tempId !== tempId));
     adjustMetric(target.channel, "meetingReservation", -1);
     showToast("✕ 삭제 · 미팅예약 -1");
@@ -377,6 +377,7 @@ export default function ContactPage() {
   return (
     <>
       {deleteConfirm.element}
+      {draftConfirm.element}
       <div className="mx-auto flex w-full justify-end px-4 py-2"><DeletedMeetings /></div>
       <TopHeader pageEmoji="📞" pageTitle="일별 기록" pageNavigation={<DbManagementTabs current="/contact" />} />
       {/* 백그라운드 refetch 로 본문을 dim 하지 않는다 — 자동저장 invalidate 마다

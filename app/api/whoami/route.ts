@@ -18,15 +18,13 @@
  * ★개인정보 최소화: 이메일은 마스킹해서 내보내고, 비교용으로는 **해시**만 쓴다.
  *   탭이 필요한 건 "바뀌었나?"뿐이라 원문이 필요 없다.
  */
-import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { getActiveUserEmail, getSessionEmail } from "@/auth/identity";
 import { withApiTiming } from "@/lib/analytics/api-timing";
+import { identityFingerprint } from "@/auth/identity-fingerprint";
 
-/** 비교 전용 지문 — 원문 이메일을 클라이언트로 내보내지 않기 위해. */
-function fingerprint(email: string): string {
-  return createHash("sha256").update(email.toLowerCase()).digest("hex").slice(0, 16);
-}
+/** 비교 전용 지문 — 원문 이메일을 클라이언트로 내보내지 않기 위해. 쓰기 검사(getWritableUserEmail)와 같은 계산. */
+const fingerprint = identityFingerprint;
 
 /** 사람에게 보여줄 최소 표기 — "be***@gmail.com". */
 function mask(email: string): string {
