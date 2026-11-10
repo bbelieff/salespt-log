@@ -12,6 +12,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import AppDialog from "@/components/ui/AppDialog";
 import type { Todo } from "@/types";
 import { useRemoveTodo } from "@/query/todos-hooks";
 import GcalItemToggle from "./GcalItemToggle";
@@ -125,15 +126,15 @@ export default function TodoDayCard({
         />
       )}
 
+      {/* 2026-11-10 AppDialog 로 통일 — Esc·바깥 누르기 = 취소(지우는 중에는 안 닫힘), 열리면 [취소]에 초점. */}
       {confirming && (
-        <div
-          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4"
-          onClick={() => !remove.isPending && setConfirming(false)}
+        <AppDialog
+          role="alertdialog"
+          title="이 일정을 지울까요?"
+          onClose={() => { if (!remove.isPending) setConfirming(false); }}
+          dismissOnBackdrop
+          className="rounded-xl bg-white p-5 shadow-xl"
         >
-          <div
-            className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
             <h3 className="mb-1 text-base font-semibold text-gray-900">
               이 일정을 지울까요?
             </h3>
@@ -152,6 +153,7 @@ export default function TodoDayCard({
             <div className="flex gap-2">
               <button
                 type="button"
+                data-autofocus
                 onClick={() => setConfirming(false)}
                 disabled={remove.isPending}
                 className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
@@ -167,8 +169,7 @@ export default function TodoDayCard({
                 {remove.isPending ? "지우는 중…" : "삭제"}
               </button>
             </div>
-          </div>
-        </div>
+        </AppDialog>
       )}
     </li>
   );

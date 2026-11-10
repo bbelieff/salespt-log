@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useState } from "react";
+import AppDialog, { AppDialogClose } from "@/components/ui/AppDialog";
 import { newTodoOperationId, useCreateTodo, usePatchTodo } from "@/query/todos-hooks";
 import { useDirtyEntry, useGuardedNav } from "@/components/DirtyGuard";
 import type { Todo, TodoRecordKind, TodoType } from "@/types";
@@ -40,7 +40,6 @@ export function seedFromTodo(t: Todo): TodoDraftSeed {
 export default function TodoFormModal({ contractRef, institutionRef, slot, companyName, initial, editing, onClose }: Props) {
   const create = useCreateTodo();
   const patch = usePatchTodo();
-  const dialogRef = useRef<HTMLDivElement>(null);
   const [kind, setKind] = useState<TodoRecordKind>(initial.기록종류);
   const [type, setType] = useState<TodoType>(editing?.type ?? "기타");
   const [title, setTitle] = useState(initial.제목);
@@ -66,29 +65,9 @@ export default function TodoFormModal({ contractRef, institutionRef, slot, compa
     || showOnCalendar !== (editing?.showOnCalendar ?? true);
   useDirtyEntry(`todo-${contractRef}-${institutionRef}${editing ? `-${editing.id}` : ""}`, changed, doCreate, onClose, `${kind === "todo" ? "Todo" : "History"} · ${companyName}`);
   const guardedNav = useGuardedNav();
+  // Esc·×는 미저장 가드(「저장하지 않고 나갈까요?」 — 저장하고 이동/무시)를 탄다. 2026-11-10 AppDialog 로 통일:
+  // 입력 창이라 바깥 누르기로는 안 닫히고, 열면 제목 칸에 초점·닫으면 연 버튼으로 복귀·뒤 화면 스크롤 잠금은 AppDialog 가 한다.
   const close = useCallback(() => guardedNav(onClose), [guardedNav, onClose]);
-
-  useEffect(() => {
-    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const previousBodyOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    dialogRef.current?.focus({ preventScroll: true });
-
-    return () => {
-      document.body.style.overflow = previousBodyOverflow;
-      opener?.focus({ preventScroll: true });
-    };
-  }, []);
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      close();
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [close]);
 
   // 날짜·시·분은 같은 높이·폭 규칙(2026-10-27 belie): iOS 날짜 칸은 기본 모양이 높이·폭을 무시하므로 appearance-none + min-w-0.
   // iPhone 사파리는 모양을 지운 날짜 칸의 글자를 위에 붙인다(2026-10-29 belie 「캘린더 정렬이 위로」) — 줄 높이를 칸 높이(h-10)와 같게.
@@ -96,20 +75,16 @@ export default function TodoFormModal({ contractRef, institutionRef, slot, compa
   const hours = HOURS.includes(hour) ? HOURS : [...HOURS, hour].sort();
   const minutes = MINUTES.includes(minute) || hour === "20" ? MINUTES : [...MINUTES, minute].sort();
   const pending = create.isPending || patch.isPending;
-  // 겹침 순서는 다른 확인창들과 같은 z-[300] — 「저장하지 않고 나갈까요?」(z-[350])가 이 창 위에 떠야 누를 수 있다.
-  // (z-[400] 이던 때 확인창이 뒤에 깔려 저장 말고는 빠져나갈 수 없었다 — 2026-10-28 오류신고.)
-  const modal = (
-    <div className="fx-sheet-wrap fixed inset-0 z-[300] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]" onClick={close}>
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={`${kind === "todo" ? "Todo" : "History"} ${editing ? "고치기" : "상세"}`}
-        tabIndex={-1}
-        className="fx-sheet max-h-[90vh] w-full max-w-md overflow-auto rounded-2xl border border-white/70 bg-white/95 p-4 shadow-2xl focus:outline-none"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-3 flex items-center justify-between"><div><p className="text-px-11 font-semibold text-blue-600">{institutionRef}</p><h3 className="text-lg font-black text-slate-950">{kind === "todo" ? "할 일" : "한 일"}</h3></div><button type="button" onClick={close} className="p-2 text-slate-400" aria-label="닫기">×</button></div>
+  // 겹침: AppDialog(브라우저 최상단 층). 「저장하지 않고 나갈까요?」도 AppDialog 라 나중에 열린 그 창이 이 창 위에 뜬다
+  // (z-[400] 이던 때 확인창이 뒤에 깔려 저장 말고는 빠져나갈 수 없었다 — 2026-10-28 오류신고).
+  return (
+    <AppDialog
+      title={`${kind === "todo" ? "Todo" : "History"} ${editing ? "고치기" : "상세"}`}
+      onClose={close}
+      size="md"
+      className="rounded-2xl border border-white/70 bg-white/95 p-4 shadow-2xl"
+    >
+        <div className="mb-3 flex items-center justify-between"><div><p className="text-px-11 font-semibold text-blue-600">{institutionRef}</p><h3 className="text-lg font-black text-slate-950">{kind === "todo" ? "할 일" : "한 일"}</h3></div><AppDialogClose className="p-2 text-slate-400" aria-label="닫기">×</AppDialogClose></div>
         {!editing && <div className="mb-3 grid grid-cols-2 rounded-lg bg-slate-100 p-1">{(["todo", "history"] as TodoRecordKind[]).map((k) => <button key={k} type="button" onClick={() => setKind(k)} className={`h-8 rounded-md text-xs font-bold ${kind === k ? "bg-white text-blue-700 shadow-sm" : "text-slate-500"}`}>{k === "todo" ? "할 일" : "한 일"}</button>)}</div>}
         <div className="mb-3 flex flex-wrap gap-1.5">{TYPES.map((t) => <button key={t} type="button" onClick={() => setType(t)} className={`h-7 rounded-full border px-2.5 text-xs font-semibold ${type === t ? "border-slate-900 bg-slate-900 text-white" : "border-slate-200 text-slate-500"}`}>{t}</button>)}</div>
         <label className="mb-3 block text-xs font-semibold text-slate-600">제목<input value={title} onChange={(e) => setTitle(e.target.value)} className={`mt-1 ${selectClass}`}/></label>
@@ -118,8 +93,6 @@ export default function TodoFormModal({ contractRef, institutionRef, slot, compa
         <label className="mb-4 flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={showOnCalendar} onChange={(e) => setShowOnCalendar(e.target.checked)} className="h-4 w-4 accent-blue-600"/>캘린더에 표시</label>
         {error && <p className="mb-2 text-xs font-medium text-red-600">{error}</p>}
         <button type="button" disabled={pending} onClick={() => void doCreate().catch((e) => setError(e instanceof Error ? e.message : "저장 실패"))} className="h-11 w-full rounded-xl bg-blue-600 text-sm font-bold text-white hover:bg-blue-700 disabled:opacity-50">{pending ? "저장중.." : "저장"}</button>
-      </div>
-    </div>
+    </AppDialog>
   );
-  return typeof document === "undefined" ? null : createPortal(modal, document.body);
 }

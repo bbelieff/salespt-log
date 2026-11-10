@@ -4,10 +4,12 @@
  * 목록 소스 = `useLeadCandidates()`(`/api/leads` = listLeadCandidates, 파일럿=DB·비파일럿=시트 게이트).
  * 각 후보에 `matched`(전환 여부) 파생 포함 → **이미 미팅으로 전환된 발굴은 숨긴다**(`!matched`, KPI-④).
  * 미매칭은 접수일이 지나도 계속 후보(이월, lead-chain §4-1). 접수일 내림차순, 검색. 선택 시 부모가 mergeLeadDraft 프리필.
+ * 2026-11-10 AppDialog 로 통일 — 검색 칸이 있는 창이라 바깥 누르기로는 안 닫히고 Esc·✕ 로 닫는다.
  */
 "use client";
 
 import { useMemo, useState } from "react";
+import AppDialog, { AppDialogClose } from "@/components/ui/AppDialog";
 import type { DBLead } from "@/types";
 import { useLeadCandidates } from "@/query/db-hooks";
 
@@ -41,26 +43,22 @@ export default function LeadPickerModal({ onPick, onClose }: Props) {
   }, [candidates.data, q]);
 
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/30 p-0 sm:items-center sm:p-4"
-      onClick={onClose}
+    <AppDialog
+      title="발굴에서 가져오기"
+      onClose={onClose}
+      size="md"
+      className="flex flex-col rounded-2xl bg-white shadow-2xl"
     >
-      <div
-        className="flex max-h-[75vh] w-full max-w-md flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
         <div className="flex items-start justify-between gap-2 px-4 pt-4">
           <h3 className="text-sm font-black text-gray-900">
             발굴에서 가져오기
             <span className="ml-1 font-normal text-gray-400">(콜·지·기·소)</span>
           </h3>
-          <button
-            type="button"
-            onClick={onClose}
+          <AppDialogClose
             className="shrink-0 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-500 hover:bg-gray-50"
           >
             ✕ 닫기
-          </button>
+          </AppDialogClose>
         </div>
         <p className="px-4 pt-1 text-px-11 text-gray-500">
           선택하면 업체명·업체정보·비고가 자동으로 채워져요. 직접 입력한 값은 덮지 않아요.
@@ -117,7 +115,6 @@ export default function LeadPickerModal({ onPick, onClose }: Props) {
             ))
           )}
         </div>
-      </div>
-    </div>
+    </AppDialog>
   );
 }

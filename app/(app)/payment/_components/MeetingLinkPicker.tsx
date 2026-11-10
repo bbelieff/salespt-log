@@ -2,10 +2,12 @@
  * MeetingLinkPicker — 실무/수납 1뎁스 「영업기록 없음」 을 누르면 뜨는 미팅 고르기(2026-09-29).
  * 이름이 비슷한 미팅을 맨 위에, 나머지는 최근 미팅날짜 순. 고르면 MeetingLinkDialog(비교·선택)로.
  * 다른 계약에 이미 붙은 미팅·취소 미팅은 서버가 뺀다(/api/meetings/linkable).
+ * 2026-11-10 AppDialog 로 통일 — Esc·「닫기」로 닫고, 검색 칸이 있어 바깥 누르기로는 안 닫힌다.
  */
 "use client";
 
 import { useMemo, useState } from "react";
+import AppDialog, { AppDialogClose } from "@/components/ui/AppDialog";
 import MeetingLinkDialog from "@/components/payment/MeetingLinkDialog";
 import { useLinkableMeetings } from "@/query/contract-link-hooks";
 import { sameCompanyName } from "@/util/record-merge";
@@ -46,8 +48,7 @@ export default function MeetingLinkPicker({ row, 업체명, onClose, onLinked }:
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-label="연결할 영업기록 고르기">
-      <div className="flex max-h-full w-full max-w-md flex-col rounded-2xl bg-white p-4 shadow-2xl">
+    <AppDialog title="연결할 영업기록 고르기" onClose={onClose} size="md" className="flex flex-col rounded-2xl bg-white p-4 shadow-2xl">
         <h2 className="text-base font-bold text-slate-900">연결할 영업기록 고르기</h2>
         <p className="mt-1 text-xs text-slate-500"><b>{업체명}</b> 을(를) 붙일 미팅을 골라 주세요. 계약일은 미팅 날짜가 돼요.</p>
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="업체명 검색" aria-label="미팅 업체명 검색"
@@ -72,9 +73,8 @@ export default function MeetingLinkPicker({ row, 업체명, onClose, onLinked }:
           )}
         </div>
         <div className="mt-3 flex justify-end">
-          <button type="button" onClick={onClose} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700">닫기</button>
+          <AppDialogClose className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700">닫기</AppDialogClose>
         </div>
-      </div>
-    </div>
+    </AppDialog>
   );
 }

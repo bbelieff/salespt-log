@@ -1,0 +1,44 @@
+/* AppDialog 배치 (2026-11-10 결정 4). 색·글꼴·여백은 각 창의 className 이 정한다. 여기서는 자리·폭·서랍 모양만. */
+.app-dialog {
+  margin: auto auto 0;
+  width: 100%;
+  max-width: none;
+  max-height: 88vh;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  overflow: visible;
+  color: inherit;
+}
+.app-dialog::backdrop { background: rgb(0 0 0 / 0.5); }
+.app-dialog > .app-dialog-panel {
+  width: 100%;
+  max-width: none;
+  max-height: 88vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@keyframes app-dialog-up { from { transform: translateY(100%); } }
+/* 휴대폰·태블릿 = 아래에서 올라오는 서랍(위 모서리만 둥글게, 아래 안전 영역만큼 여백). */
+@media (max-width: 1023px) {
+  .app-dialog > .app-dialog-panel {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 1rem;
+    padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+    animation: app-dialog-up 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+}
+/* PC = 가운데 창. */
+@media (min-width: 1024px) {
+  .app-dialog { margin: auto; width: calc(100% - 2rem); }
+  .app-dialog[data-size="xs"] { max-width: 20rem; }
+  .app-dialog[data-size="sm"] { max-width: 24rem; }
+  .app-dialog[data-size="md"] { max-width: 28rem; }
+  .app-dialog[data-size="lg"] { max-width: 32rem; }
+  .app-dialog[data-size="xl"] { max-width: 42rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-dialog > .app-dialog-panel { animation: none; }
+}

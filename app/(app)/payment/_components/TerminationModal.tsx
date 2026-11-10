@@ -2,11 +2,12 @@
  * 계약해지 입력 모달 (contract-termination — components.md 등재).
  * 사유(필수) + 반환(없음/일부/전액) + 처리(보존/숨김 soft delete).
  * 매출 규칙: 수임비·수납은 유지, **반환액만 매출에서 차감**(숨겨도 유지).
+ * 2026-11-10 AppDialog 로 통일 — 입력 창이라 바깥 누르기로 안 닫힘, Esc·취소는 적은 게 있으면 묻는다.
  */
 "use client";
 
 import { useState } from "react";
-import { confirmDiscard } from "@/components/ui/confirm-discard";
+import AppDialog, { AppDialogClose } from "@/components/ui/AppDialog";
 import type { ContractPayment } from "@/types";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { formatMoney } from "@/lib/format/money";
@@ -38,8 +39,8 @@ export default function TerminationModal({ cp, pending, onClose, onConfirm }: Pr
   const fullAmount = (cp.수임비 || 0) + receivedSum;
   const 반환액 = mode === "none" ? 0 : mode === "full" ? fullAmount : partial;
 
-  // 사유·반환액을 적었으면 바깥 클릭·취소 전에 묻는다.
-  const close = () => { if (confirmDiscard(!!사유.trim() || mode !== "none" || 숨김)) onClose(); };
+  // 사유·반환액을 적었으면 Esc·취소 전에 묻는다(AppDialog dirty).
+  const dirty = !!사유.trim() || mode !== "none" || 숨김;
 
   const submit = () => {
     if (!사유.trim()) {
@@ -55,14 +56,12 @@ export default function TerminationModal({ cp, pending, onClose, onConfirm }: Pr
   };
 
   return (
-    <div
-      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/50 p-4"
-      onClick={close}
+    <AppDialog
+      title="이 계약을 해지할까요?"
+      onClose={onClose}
+      dirty={dirty}
+      className="rounded-xl bg-white p-5 shadow-xl"
     >
-      <div
-        className="w-full max-w-sm rounded-xl bg-white p-5 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
         <h3 className="mb-1 text-base font-semibold text-gray-900">
           이 계약을 해지할까요?
         </h3>
@@ -151,13 +150,11 @@ export default function TerminationModal({ cp, pending, onClose, onConfirm }: Pr
         {err && <p className="mb-3 text-xs text-red-500">{err}</p>}
 
         <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={close}
+          <AppDialogClose
             className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             취소
-          </button>
+          </AppDialogClose>
           <button
             type="button"
             disabled={pending}
@@ -167,7 +164,6 @@ export default function TerminationModal({ cp, pending, onClose, onConfirm }: Pr
             {pending ? "처리 중…" : "계약해지"}
           </button>
         </div>
-      </div>
-    </div>
+    </AppDialog>
   );
 }
