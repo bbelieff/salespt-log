@@ -161,7 +161,7 @@ export function TodayActivity() {
             onChange={e => setDraft(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))}
             onBlur={commitDraft}
             onKeyDown={e => { if (e.key === "Enter") { e.currentTarget.blur(); } else if (e.key === "Escape") { e.stopPropagation(); cancelDraft.current = true; e.currentTarget.blur(); } }} />
-          {[1, 5, 10].map(n => <button key={n} type="button" aria-label={`현수막 게시 ${n}장 더하기`} disabled={!banner || save.isPending} onClick={() => void bump(n)} className="flex h-10 min-w-10 items-center justify-center rounded-full bg-emerald-600 px-2 text-sm font-bold tabular-nums text-white disabled:opacity-40">＋{n}</button>)}
+          {[1, 5, 10].map(n => <button key={n} type="button" aria-label={`현수막 게시 ${n}장 더하기`} disabled={!banner || save.isPending} onClick={() => void bump(n)} className="flex h-10 min-w-10 items-center justify-center rounded-full bg-emerald-700 px-2 text-sm font-bold tabular-nums text-white disabled:opacity-40">＋{n}</button>)}
         </div>
       </div>
       </>}

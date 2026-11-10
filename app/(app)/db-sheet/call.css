@@ -1,119 +1,119 @@
 /* 통화 정리 앞단(plan call-summary PR-5a, 목업 v5). 색은 db-sheet 의 기존 값(파랑 #3b82f6·호박 #b45309·초록 #16a34a)을 그대로 쓴다.
    대화상자 부품은 recording.css 의 것을 쓴다(.dbs-choice-link·.dbs-check·.dbs-file·.dbs-muted·.dbs-text-button). 여기엔 통화에만 있는 것만. */
-.dbs-call-chip{display:inline-flex;align-items:center;border-radius:5px;padding:2px 6px;font-size:11px;font-weight:500;line-height:16px;white-space:nowrap}
-.dbs-call-chip.is-wait{background:#f1f5f9;color:#475569}
-.dbs-call-chip.is-work{background:#eff6ff;color:#1d4ed8}
-.dbs-call-chip.is-ready{background:#dbeafe;color:#1d4ed8;font-weight:700}
-.dbs-call-chip.is-fail{background:#fef2f2;color:#b91c1c}
-body.db-sheet-route .sheet-mobile-row{display:flex;align-items:stretch;border-bottom:1px solid #f1f5f9}
+.dbs-call-chip{display:inline-flex;align-items:center;border-radius:5px;padding:2px 6px;font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1));font-weight:500;line-height:16px;white-space:nowrap}
+.dbs-call-chip.is-wait{background:var(--ui-surface-muted);color:var(--ui-text-muted)}
+.dbs-call-chip.is-work{background:var(--ui-accent-soft);color:var(--ui-accent-strong)}
+.dbs-call-chip.is-ready{background:var(--ui-blue-100);color:var(--ui-accent-strong);font-weight:700}
+.dbs-call-chip.is-fail{background:var(--ui-red-50);color:var(--ui-red-700)}
+body.db-sheet-route .sheet-mobile-row{display:flex;align-items:stretch;border-bottom:1px solid var(--ui-surface-muted)}
 body.db-sheet-route .sheet-mobile-row:last-child{border-bottom:0}
 body.db-sheet-route .sheet-mobile-row>.sheet-mobile-card{flex:1;min-width:0;border-bottom:0}
-.dbs-call-btn{flex:none;width:52px;display:grid;place-items:center;border-left:1px solid #f1f5f9;color:#16a34a}
-.dbs-call-btn:hover{background:#f0fdf4}
+.dbs-call-btn{flex:none;width:52px;display:grid;place-items:center;border-left:1px solid var(--ui-surface-muted);color:var(--ui-green-600)}
+.dbs-call-btn:hover{background:var(--ui-green-50)}
 /* 전화 버튼 강조(belie 2026-11-05) — 목록은 초록 동그라미, DB정보는 진한 초록 바탕(흰 글자 대비 5:1). */
-.dbs-call-btn svg{box-sizing:content-box;padding:8px;border-radius:50%;background:#dcfce7;color:#15803d}
-.dbs-button.dbs-call-dial{display:inline-flex;align-items:center;gap:5px;background:#15803d;border-color:#15803d;color:#fff}
-.dbs-button.dbs-call-dial:hover{background:#166534;border-color:#166534}
-.dbs-call-btn:focus-visible{outline:2px solid #3b82f6;outline-offset:-2px}
-.dbs-call-text{display:inline-flex;align-items:center;gap:5px;color:#15803d}
-.dbs-call-bar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc;font-size:12px;color:#475569}
-.dbs-call-bar>strong{font-size:12px;color:#0f172a}
+.dbs-call-btn svg{box-sizing:content-box;padding:8px;border-radius:50%;background:var(--ui-green-100);color:var(--ui-green-700)}
+.dbs-button.dbs-call-dial{display:inline-flex;align-items:center;gap:5px;background:var(--ui-green-700);border-color:var(--ui-green-700);color:var(--ui-white)}
+.dbs-button.dbs-call-dial:hover{background:var(--ui-green-800);border-color:var(--ui-green-800)}
+.dbs-call-btn:focus-visible{outline:2px solid var(--ui-accent-bright);outline-offset:-2px}
+.dbs-call-text{display:inline-flex;align-items:center;gap:5px;color:var(--ui-green-700)}
+.dbs-call-bar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:10px 12px;border:1px solid var(--ui-border);border-radius:10px;background:var(--ui-surface-subtle);font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-text-muted)}
+.dbs-call-bar>strong{font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-text)}
 .dbs-call-bar>.dbs-call-actions{display:flex;gap:6px;margin-left:auto}
 .dbs-call-bar .dbs-button{min-height:34px}
-.dbs-call-meta{font-size:12px;color:#64748b;overflow-wrap:anywhere}
-.dbs-call-lead{font-size:14px;line-height:1.6;color:#334155;word-break:keep-all}
-.dbs-call-number{font-size:24px;font-weight:700;color:#0f172a;text-align:center}
+.dbs-call-meta{font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-text-subtle);overflow-wrap:anywhere}
+.dbs-call-lead{font-size:calc(14 * var(--app-px, 1px) * var(--font-scale, 1));line-height:1.6;color:var(--ui-text-body);word-break:keep-all}
+.dbs-call-number{font-size:calc(24 * var(--app-px, 1px) * var(--font-scale, 1));font-weight:700;color:var(--ui-text);text-align:center}
 .dbs-call-notice{margin:0;padding:0;list-style:none;display:grid;gap:8px}
-.dbs-call-notice li{position:relative;padding-left:14px;font-size:14px;line-height:1.6;color:#1e293b;word-break:keep-all}
-.dbs-call-notice li::before{content:"";position:absolute;left:2px;top:.7em;width:5px;height:5px;border-radius:50%;background:#94a3b8}
+.dbs-call-notice li{position:relative;padding-left:14px;font-size:calc(14 * var(--app-px, 1px) * var(--font-scale, 1));line-height:1.6;color:var(--ui-slate-800);word-break:keep-all}
+.dbs-call-notice li::before{content:"";position:absolute;left:2px;top:.7em;width:5px;height:5px;border-radius:50%;background:var(--ui-icon-faint)}
 .dbs-call-more summary{cursor:pointer;list-style:none}
 .dbs-call-more summary::-webkit-details-marker{display:none}
-.dbs-call-note{font-size:12px;line-height:1.6;border-radius:8px;padding:8px 10px}
-.dbs-call-note.is-info{background:#eff6ff;color:#1d4ed8}
-.dbs-call-note.is-ok{background:#f0fdf4;color:#15803d}
-.dbs-call-note.is-warn{background:#fffbeb;color:#b45309}
-.dbs-call-note.is-error{background:#fef2f2;color:#b91c1c}
+.dbs-call-note{font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1));line-height:1.6;border-radius:8px;padding:8px 10px}
+.dbs-call-note.is-info{background:var(--ui-accent-soft);color:var(--ui-accent-strong)}
+.dbs-call-note.is-ok{background:var(--ui-green-50);color:var(--ui-green-700)}
+.dbs-call-note.is-warn{background:var(--ui-amber-50);color:var(--ui-amber-700)}
+.dbs-call-note.is-error{background:var(--ui-red-50);color:var(--ui-red-700)}
 .dbs-call-apps{display:grid;gap:6px}
-.dbs-call-fixed{display:flex;align-items:center;gap:6px;font-size:12px;color:#64748b}
-.dbs-call-change{margin-left:auto;min-height:32px;padding:4px 6px;color:#2563eb;font-size:12px;font-weight:700}
-.dbs-call-change:focus-visible{outline:2px solid #3b82f6;outline-offset:2px;border-radius:6px}
-.dbs-call-paste{width:100%;min-height:120px;padding:8px 10px;font-size:13px;line-height:1.6;resize:vertical}
+.dbs-call-fixed{display:flex;align-items:center;gap:6px;font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-text-subtle)}
+.dbs-call-change{margin-left:auto;min-height:32px;padding:4px 6px;color:var(--ui-accent);font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1));font-weight:700}
+.dbs-call-change:focus-visible{outline:2px solid var(--ui-accent-bright);outline-offset:2px;border-radius:6px}
+.dbs-call-paste{width:100%;min-height:120px;padding:8px 10px;font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1));line-height:1.6;resize:vertical}
 .dbs-call-file>span{min-width:0}
-.dbs-call-file strong{display:block;font-size:14px;color:#0f172a;overflow-wrap:anywhere}
-.dbs-call-file small{font-size:12px;overflow-wrap:anywhere}
-.dbs-call-file.is-ok>svg{color:#16a34a}
-.dbs-call-file.is-warn{background:#fffbeb}.dbs-call-file.is-warn>svg{color:#b45309}
-.dbs-call-file.is-error{background:#fef2f2}.dbs-call-file.is-error>svg{color:#b91c1c}
+.dbs-call-file strong{display:block;font-size:calc(14 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-text);overflow-wrap:anywhere}
+.dbs-call-file small{font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1));overflow-wrap:anywhere}
+.dbs-call-file.is-ok>svg{color:var(--ui-green-600)}
+.dbs-call-file.is-warn{background:var(--ui-amber-50)}.dbs-call-file.is-warn>svg{color:var(--ui-amber-700)}
+.dbs-call-file.is-error{background:var(--ui-red-50)}.dbs-call-file.is-error>svg{color:var(--ui-red-700)}
 .dbs-call-toast{display:flex;align-items:center;gap:12px}
-.dbs-call-toast button{color:#bfdbfe;font-weight:700;white-space:nowrap}
+.dbs-call-toast button{color:var(--ui-blue-200);font-weight:700;white-space:nowrap}
 .dbs-call-meta .num,.dbs-call-note .num,.dbs-call-file .num,.dbs-call-bar .num{font-variant-numeric:tabular-nums}
-@media(max-width:430px){.dbs-call-paste{font-size:16px}.dbs-call-bar>.dbs-call-actions{margin-left:0;width:100%}.dbs-call-bar .dbs-button{flex:1}}
+@media(max-width:430px){.dbs-call-paste{font-size:calc(16 * var(--app-px, 1px) * var(--font-scale, 1))}.dbs-call-bar>.dbs-call-actions{margin-left:0;width:100%}.dbs-call-bar .dbs-button{flex:1}}
 
 /* 「통화 정리 확인」(PR-5b) — 목록 위를 덮는 화면. 폰 한 줄, PC(1024~) 두 열, 아래 고정 줄. */
-.dbs-cc{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;background:#f1f5f9;color:#0f172a;font-size:14px;line-height:1.5}
-.dbs-cc-top{flex:none;background:#fff;border-bottom:1px solid #e2e8f0;padding-top:env(safe-area-inset-top,0px)}
+.dbs-cc{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;background:var(--ui-surface-muted);color:var(--ui-text);font-size:calc(14 * var(--app-px, 1px) * var(--font-scale, 1));line-height:1.5}
+.dbs-cc-top{flex:none;background:var(--ui-surface);border-bottom:1px solid var(--ui-border);padding-top:env(safe-area-inset-top,0px)}
 .dbs-cc-top-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:8px;padding-block:10px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));outline:none}
-.dbs-cc-top h1{font-size:17px;font-weight:700;letter-spacing:-.3px}
-.dbs-cc-back{display:grid;place-items:center;width:40px;height:40px;border-radius:10px;color:#334155}
-.dbs-cc-back:hover{background:#f1f5f9}
+.dbs-cc-top h1{font-size:calc(16 * var(--app-px, 1px) * var(--font-scale, 1));font-weight:700;letter-spacing:-.3px}
+.dbs-cc-back{display:grid;place-items:center;width:40px;height:40px;border-radius:10px;color:var(--ui-text-body)}
+.dbs-cc-back:hover{background:var(--ui-surface-muted)}
 .dbs-cc-main{flex:1;overflow:auto;width:100%;max-width:1180px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-content:start;padding-block:12px 24px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
 .dbs-cc-col{display:grid;gap:12px;min-width:0;align-content:start}
 @media(min-width:1024px){.dbs-cc-main{grid-template-columns:minmax(0,440px) minmax(0,1fr);gap:16px;padding-top:16px}}
-.dbs-cc-panel{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;display:grid;gap:12px;min-width:0;align-content:start}
+.dbs-cc-panel{background:var(--ui-surface);border:1px solid var(--ui-border);border-radius:12px;padding:16px;display:grid;gap:12px;min-width:0;align-content:start}
 .dbs-cc-panel-h{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.dbs-cc-panel-h h2,.dbs-cc-h2{font-size:15px;font-weight:700}
-.dbs-cc-panel-h>span{font-size:12px;color:#64748b}
+.dbs-cc-panel-h h2,.dbs-cc-h2{font-size:calc(15 * var(--app-px, 1px) * var(--font-scale, 1));font-weight:700}
+.dbs-cc-panel-h>span{font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-text-subtle)}
 .dbs-cc-lead{display:flex;align-items:center;flex-wrap:wrap;gap:6px 8px}
-.dbs-cc-lead strong{font-size:17px;font-weight:700;letter-spacing:-.3px;overflow-wrap:anywhere;word-break:keep-all}
-.dbs-cc-lead>span:last-child{font-size:13px;color:#475569}
-.dbs-cc-facts{font-size:12px;color:#64748b;margin-top:-6px}
-.dbs-cc-miss{font-size:13px;color:#b45309;background:#fffbeb;border-radius:8px;padding:8px 10px}
+.dbs-cc-lead strong{font-size:calc(16 * var(--app-px, 1px) * var(--font-scale, 1));font-weight:700;letter-spacing:-.3px;overflow-wrap:anywhere;word-break:keep-all}
+.dbs-cc-lead>span:last-child{font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-text-muted)}
+.dbs-cc-facts{font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-text-subtle);margin-top:-6px}
+.dbs-cc-miss{font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-amber-700);background:var(--ui-amber-50);border-radius:8px;padding:8px 10px}
 .dbs-cc-miss b{margin-right:6px}
-.dbs-cc-summary{margin:0;padding-left:18px;display:grid;gap:4px;font-size:13px;color:#1e293b}
-.dbs-cc-field{display:grid;gap:6px;font-size:12px;font-weight:600;color:#334155}
-.dbs-cc-field .sheet-input,.dbs-cc-panel>select.sheet-input,.dbs-cc-row .sheet-input{width:100%;min-width:0;min-height:38px;padding:7px 10px;font-size:13px;font-weight:400;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#0f172a}
+.dbs-cc-summary{margin:0;padding-left:18px;display:grid;gap:4px;font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-slate-800)}
+.dbs-cc-field{display:grid;gap:6px;font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1));font-weight:600;color:var(--ui-text-body)}
+.dbs-cc-field .sheet-input,.dbs-cc-panel>select.sheet-input,.dbs-cc-row .sheet-input{width:100%;min-width:0;min-height:38px;padding:7px 10px;font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1));font-weight:400;border:1px solid var(--ui-border-strong);border-radius:8px;background:var(--ui-surface);color:var(--ui-text)}
 .dbs-cc-field textarea.sheet-input,.dbs-cc-row textarea.sheet-input{line-height:1.6;resize:vertical}
 /* 날짜·시간·글 칸 높이를 하나로(belie 2026-11-05: 날짜 칸만 살짝 높았음) — 폰 날짜 칸은 자체 높이를 가져 appearance 를 끈다. */
 .dbs-cc-field input.sheet-input,.dbs-cc-field select.sheet-input,.dbs-cc-row input.sheet-input,.dbs-cc-row select.sheet-input{height:38px;min-height:38px;line-height:20px}
 .dbs-cc input[type=date].sheet-input{-webkit-appearance:none;appearance:none;display:flex;align-items:center}
 .dbs-cc-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
 .dbs-cc-stack{display:grid;gap:12px}
-.dbs-cc-said{font-size:12px;color:#475569;background:#f8fafc;border-radius:8px;padding:8px 10px}
-.dbs-cc-said b{font-weight:600;color:#0f172a}
-.dbs-cc-switch{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#1d4ed8;cursor:pointer}
-.dbs-cc-switch input{width:16px;height:16px;accent-color:#2563eb}
-.dbs-cc-empty{font-size:13px;color:#64748b}
-.dbs-cc-raw summary{cursor:pointer;font-size:13px;color:#2563eb;font-weight:600}
-.dbs-cc-raw p{margin-top:8px;white-space:pre-wrap;font-size:13px;color:#334155;background:#f8fafc;border-radius:8px;padding:10px;max-height:240px;overflow:auto}
+.dbs-cc-said{font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-text-muted);background:var(--ui-surface-subtle);border-radius:8px;padding:8px 10px}
+.dbs-cc-said b{font-weight:600;color:var(--ui-text)}
+.dbs-cc-switch{display:inline-flex;align-items:center;gap:6px;font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1));font-weight:600;color:var(--ui-accent-strong);cursor:pointer}
+.dbs-cc-switch input{width:16px;height:16px;accent-color:var(--ui-accent)}
+.dbs-cc-empty{font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-text-subtle)}
+.dbs-cc-raw summary{cursor:pointer;font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-accent);font-weight:600}
+.dbs-cc-raw p{margin-top:8px;white-space:pre-wrap;font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-text-body);background:var(--ui-surface-subtle);border-radius:8px;padding:10px;max-height:240px;overflow:auto}
 .dbs-cc-group{display:grid;gap:8px}
-.dbs-cc-group h3{font-size:13px;font-weight:700;color:#334155;padding-top:4px}
-.dbs-cc-group h3 small{font-weight:400;color:#64748b}
-.dbs-cc-row{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;align-items:start;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px}
-.dbs-cc-row.is-on{border-color:#93c5fd;background:#f8fbff}
-.dbs-cc-row>input{width:16px;height:16px;margin-top:3px;accent-color:#2563eb}
+.dbs-cc-group h3{font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1));font-weight:700;color:var(--ui-text-body);padding-top:4px}
+.dbs-cc-group h3 small{font-weight:400;color:var(--ui-text-subtle)}
+.dbs-cc-row{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;align-items:start;border:1px solid var(--ui-border);border-radius:10px;padding:10px 12px}
+.dbs-cc-row.is-on{border-color:var(--ui-blue-300);background:var(--ui-blue-25)}
+.dbs-cc-row>input{width:16px;height:16px;margin-top:3px;accent-color:var(--ui-accent)}
 .dbs-cc-row>div{display:grid;gap:6px;min-width:0}
-.dbs-cc-label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:12px;font-weight:600;color:#334155}
-.dbs-cc-tag{flex:none;font-size:11px;font-weight:600;border-radius:5px;padding:1px 6px;white-space:nowrap}
-.dbs-cc-tag.is-priv{background:#ede9fe;color:#6d28d9}
-.dbs-cc-row .sheet-input:disabled{background:#f8fafc;color:#64748b}
-.dbs-cc-cur{font-size:12px;color:#b45309;overflow-wrap:anywhere}
-.dbs-cc-src{font-size:12px;color:#64748b;overflow-wrap:anywhere}
-.dbs-cc-foot{flex:none;background:#fff;border-top:1px solid #e2e8f0;box-shadow:0 -4px 16px #0f172a0d;padding-bottom:env(safe-area-inset-bottom,0px)}
+.dbs-cc-label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1));font-weight:600;color:var(--ui-text-body)}
+.dbs-cc-tag{flex:none;font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1));font-weight:600;border-radius:5px;padding:1px 6px;white-space:nowrap}
+.dbs-cc-tag.is-priv{background:var(--ui-violet-100);color:var(--ui-violet-700)}
+.dbs-cc-row .sheet-input:disabled{background:var(--ui-surface-subtle);color:var(--ui-text-subtle)}
+.dbs-cc-cur{font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-amber-700);overflow-wrap:anywhere}
+.dbs-cc-src{font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-text-subtle);overflow-wrap:anywhere}
+.dbs-cc-foot{flex:none;background:var(--ui-surface);border-top:1px solid var(--ui-border);box-shadow:0 -4px 16px color-mix(in srgb, var(--ui-text) 5.1%, transparent);padding-bottom:env(safe-area-inset-bottom,0px)}
 .dbs-cc-foot-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:8px;padding-block:10px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
-.dbs-cc-foot-in p{flex:1;min-width:0;font-size:12px;color:#475569;overflow-wrap:anywhere}
+.dbs-cc-foot-in p{flex:1;min-width:0;font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-text-muted);overflow-wrap:anywhere}
 .dbs-cc-foot-in .dbs-button{min-height:42px;flex:none}
-.dbs-cc-block{color:#b45309;font-weight:600}
-.dbs-cc-err{color:#b91c1c;font-weight:600}
-.dbs-cc button:focus-visible,.dbs-cc input:focus-visible,.dbs-cc select:focus-visible,.dbs-cc textarea:focus-visible,.dbs-cc summary:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
+.dbs-cc-block{color:var(--ui-amber-700);font-weight:600}
+.dbs-cc-err{color:var(--ui-red-700);font-weight:600}
+.dbs-cc button:focus-visible,.dbs-cc input:focus-visible,.dbs-cc select:focus-visible,.dbs-cc textarea:focus-visible,.dbs-cc summary:focus-visible{outline:2px solid var(--ui-accent-bright);outline-offset:2px}
 .dbs-cc .num{font-variant-numeric:tabular-nums}
-@media(max-width:640px){.dbs-cc-foot-in{flex-wrap:wrap}.dbs-cc-foot-in p{flex-basis:100%}.dbs-cc-foot-in .dbs-button{flex:1}.dbs-cc-field .sheet-input,.dbs-cc-row .sheet-input,.dbs-cc-panel>select.sheet-input{font-size:16px}}
+@media(max-width:640px){.dbs-cc-foot-in{flex-wrap:wrap}.dbs-cc-foot-in p{flex-basis:100%}.dbs-cc-foot-in .dbs-button{flex:1}.dbs-cc-field .sheet-input,.dbs-cc-row .sheet-input,.dbs-cc-panel>select.sheet-input{font-size:calc(16 * var(--app-px, 1px) * var(--font-scale, 1))}}
 /* 📜 대본 보기(2026-11-07) — 통화 줄 끝. 폰에서는 한 줄을 다 쓴다. 대본 글은 읽기 쉽게 조금 크게. */
 .dbs-call-bar>.dbs-call-script{min-height:34px}
-.dbs-call-script-body{font-size:14px}
+.dbs-call-script-body{font-size:calc(14 * var(--app-px, 1px) * var(--font-scale, 1))}
 @media(max-width:430px){.dbs-call-bar>.dbs-call-script{width:100%;justify-content:center}}
 /* 정리 기다리는 통화 N건(2026-11-07) — 목록 맨 위 한 줄. 누르면 그 업체만, 켜진 동안 진한 테두리. */
-.dbs-pending-strip{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;margin:0 0 10px;padding:8px 14px;border:1px solid #bfdbfe;border-radius:10px;background:#eff6ff;color:#1e40af;font-size:14px;font-weight:600;text-align:left}
+.dbs-pending-strip{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;margin:0 0 10px;padding:8px 14px;border:1px solid var(--ui-blue-200);border-radius:10px;background:var(--ui-accent-soft);color:var(--ui-blue-800);font-size:calc(14 * var(--app-px, 1px) * var(--font-scale, 1));font-weight:600;text-align:left}
 .dbs-pending-strip>span{flex:1;min-width:0}
-.dbs-pending-strip em{font-style:normal;font-size:13px;color:#2563eb;white-space:nowrap}
-.dbs-pending-strip.is-on{border-color:#2563eb;box-shadow:inset 0 0 0 1px #2563eb}
-.dbs-pending-strip:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
+.dbs-pending-strip em{font-style:normal;font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-accent);white-space:nowrap}
+.dbs-pending-strip.is-on{border-color:var(--ui-accent);box-shadow:inset 0 0 0 1px var(--ui-accent)}
+.dbs-pending-strip:focus-visible{outline:2px solid var(--ui-accent-bright);outline-offset:2px}

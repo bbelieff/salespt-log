@@ -23,8 +23,8 @@ it('uses the same neutral group as status, scopes teal to date, and preserves pu
  const page=readFileSync('app/(app)/db-sheet/page.tsx','utf8'),css=readFileSync('app/(app)/db-sheet/compact.css','utf8');
  expect(page).toContain('sheet-date-group rounded-xl border border-slate-200/80 bg-slate-200/65');
  expect(page).toContain('sheet-status-group rounded-xl border border-slate-200/80 bg-slate-200/65');
- expect(css).toContain('.sheet-date-group .sheet-inflow-period button[aria-pressed=true]{background:#0f766e;border-color:#0f766e;color:#fff}');
- expect(css).toContain('.sheet-status-chip[aria-pressed=true]{background:#7c3aed');
+ expect(css).toContain('.sheet-date-group .sheet-inflow-period button[aria-pressed=true]{background:var(--ui-teal-700);border-color:var(--ui-teal-700);color:var(--ui-white)}');
+ expect(css).toContain('.sheet-status-chip[aria-pressed=true]{background:var(--ui-violet-600)');
  expect(css).toContain('.sheet-supplier-filter[aria-expanded=true]>.sheet-supplier-chevron{transform:rotate(180deg)}');
  expect(css).toContain('.db-sheet-frame>.sheet-page{display:flex;flex-direction:column;');
  expect(css).toContain('.db-sheet-frame>.sheet-page>[role=alert]{flex:0 0 auto}');
@@ -37,7 +37,7 @@ it('uses a low-opacity horizontal freeze-edge fade without occupying the drag-in
  expect(freeze).not.toContain('box-shadow');expect(freeze).toContain('border-right-color:rgba(148,163,184,.35)');
  const fade=css.match(/\.sheet-company-column::before \{([^}]+)\}/)![1]!;
  expect(fade).toContain('bottom:-1px;right:-7px;width:6px');expect(fade).toContain('linear-gradient(to right,rgba(100,116,139,.08),rgba(100,116,139,0))');expect(fade).toContain('pointer-events:none');
- expect(css).toContain('th.drop-before:after');expect(css).toContain('th.drop-after:after');expect(css).toContain('box-shadow:inset 0 0 0 1px #cbd5e1');
+ expect(css).toContain('th.drop-before:after');expect(css).toContain('th.drop-after:after');expect(css).toContain('box-shadow:inset 0 0 0 1px var(--ui-border-strong)');
 });
 it('keeps compact parallel filters and save signals without shipping synthetic labels',()=>{
  const page=readFileSync('app/(app)/db-sheet/page.tsx','utf8'),css=readFileSync('app/(app)/db-sheet/compact.css','utf8'),options=readFileSync('app/(app)/db-sheet/_components/MobileViewOptions.tsx','utf8');
@@ -56,7 +56,7 @@ it('keeps three neutral circular actions above one 34px filter row without chang
  expect(css).toContain('.sheet-panel-head :is(.sheet-btn,.sheet-btn.is-on){display:inline-flex');
  expect(css).toContain('.sheet-add-actions .sheet-btn{width:44px;min-width:44px;padding:0;border-radius:50%');
  expect(css).toContain('@import "../../../components/ui/liquid-glass-tools.css"');expect(css).toContain('background:var(--liquid-glass-surface)');expect(css).toContain('backdrop-filter:var(--liquid-glass-filter)');
- expect(css).not.toContain('.sheet-add-actions .sheet-btn.primary{background:#eff6ff');
+ expect(css).not.toContain('.sheet-add-actions .sheet-btn.primary{background:var(--ui-accent-soft)');
  expect(css).toContain('.sheet-filters :is(.search,.sheet-mobile-date-trigger,.sheet-mobile-status-trigger){height:34px;min-height:34px');
  expect(css).toContain('.sheet-panel-head>div.sheet-list-title:first-child{flex-wrap:nowrap;gap:4px}');
  const filters=page.slice(page.indexOf('<div className="sheet-filters">'),page.indexOf('{!mobile&&tableTools}'));
@@ -72,6 +72,6 @@ it('keeps three neutral circular actions above one 34px filter row without chang
  expect(page).toContain("onDirect={()=>{setImporting(false);setImportUrl('');setDraft({...blank(),date:todayKST()});}}");
  expect(page).not.toContain('onPointerEnter');expect(page).not.toContain('navigator.clipboard');
  expect(css).toContain('background:rgba(226,232,240,.65);border-color:rgba(226,232,240,.8);box-shadow:none');
- expect(css).toContain('.sheet-btn:focus-visible{outline:2px solid #1d4ed8;outline-offset:2px}');expect(css).toContain('button:disabled{opacity:.45;cursor:not-allowed}');
+ expect(css).toContain('.sheet-btn:focus-visible{outline:2px solid var(--ui-accent-strong);outline-offset:2px}');expect(css).toContain('button:disabled{opacity:.45;cursor:not-allowed}');
  expect(css).toContain('height:48px;min-height:48px');expect(css).toContain('height:44px;min-height:44px;min-width:44px');
 });
