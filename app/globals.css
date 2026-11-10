@@ -129,6 +129,7 @@
   --ui-surface-subtle: #f8fafc;  /* slate-50 옅은 바탕 */
   --ui-surface-muted: #f1f5f9;   /* slate-100 회색 바탕 */
   --ui-white: #fff;              /* 진한 바탕 위 흰 글자 */
+  --ui-scrim: rgba(15, 23, 42, 0.45); /* 스포트라이트 음영(slate-900 45%) — 지금 볼 곳 밖을 어둡게 */
   --ui-black: #000;
   --ui-accent: #2563eb;          /* blue-600 강조·흰 글자 파란 버튼 */
   --ui-accent-strong: #1d4ed8;   /* blue-700 강조 글자·버튼 누름 */
