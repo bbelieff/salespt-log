@@ -1,0 +1,63 @@
+/*
+ * 화면 마감 v2 (2026-11-10 belie 승인 — 대시보드 시안 v2, 「밝은 그라데이션 + 상자 줄이기」).
+ * 정본: docs/design/tokens.md 「화면 마감 v2」. 적용: 대시보드 · STEP 1 DB생산 · STEP 3 일정·계약.
+ *
+ * 규칙
+ *  - 밝은 그라데이션은 화면 맨 위 요약 한 칸(.surface-hero)에만. 나머지 구역은 상자 대신 제목 + 구분선.
+ *  - 둥근 상자는 화면 틀·팝업/서랍·떠 있는 버튼까지만. 칩은 둥근 모양 유지.
+ *  - 주 버튼은 반 단계 세로 그라데이션 + 제 색 그림자(.btn-depth-*). 반짝이 광택·굵은 테두리·유리 재질 금지.
+ */
+/* Tailwind v3: @tailwind 지시문이 없는 파일이라 @layer 없이 평범한 CSS. globals.css 다음에 불러와 같은 요소의 bg-* 보다 뒤에 적용된다. */
+/* 맨 위 요약 칸: 흰 바탕에 왼쪽 위 아주 옅은 브랜드 빨강, 오른쪽 위 아주 옅은 하늘색이 번지는 빛 */
+.surface-hero {
+  background:
+    radial-gradient(90% 120% at 0% 0%, #fff1f1 0%, rgb(255 241 241 / 0) 55%),
+    radial-gradient(90% 140% at 100% 0%, #e8f0ff 0%, rgb(232 240 255 / 0) 60%),
+    linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
+  border: 1px solid #edf0f4;
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04), 0 10px 24px -18px rgb(15 23 42 / 0.25);
+}
+/* 상자 대신 구역: 작은 굵은 제목 + 아래 구분선 */
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #edf0f4;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  color: #334155;
+  letter-spacing: 0.01em;
+}
+/* 상자 안 숫자 칸을 상자 대신 세로 선으로 나눌 때 */
+.stat-split > * + * { border-left: 1px solid #e6eaf0; padding-left: 0.75rem; }
+/* 폰은 세로로 쌓고 PC(1024px~)에서만 세로 선으로 나눌 때 */
+@media (min-width: 1024px) {
+  .stat-split-pc > * + * { border-left: 1px solid #e6eaf0; padding-left: 1rem; }
+}
+/* 목록 줄: 상자 대신 아래 구분선 */
+.list-row { border-bottom: 1px solid #f1f5f9; }
+.list-row:last-child { border-bottom: 0; }
+/* 진행 막대 채움 */
+.bar-brand { background: linear-gradient(90deg, #ff5a5b, #d71617); }
+
+/* 주 버튼 입체 마감 — 위가 한 단계 밝은 세로 그라데이션 + 제 색 그림자, 누르면 그림자 줄어듦(2026-11-10 belie 「버튼 그라데이션 어디갔누」 → 반 단계에서 한 단계로). 가장 밝은 위쪽도 흰 글자 대비 4.6 이상. */
+.btn-depth-blue, .btn-depth-red {
+  color: #fff;
+  transition: box-shadow 120ms ease, transform 120ms ease, filter 120ms ease;
+}
+.btn-depth-blue {
+  background: linear-gradient(180deg, #356af0 0%, #1d4ed8 100%);
+  box-shadow: 0 1px 2px rgb(29 78 216 / 0.35), 0 6px 14px -6px rgb(29 78 216 / 0.6);
+}
+.btn-depth-red {
+  background: linear-gradient(180deg, #e02a2b 0%, #b81011 100%);
+  box-shadow: 0 1px 2px rgb(199 19 20 / 0.35), 0 6px 14px -6px rgb(199 19 20 / 0.55);
+}
+.btn-depth-blue:hover, .btn-depth-red:hover { filter: brightness(1.04); }
+.btn-depth-blue:active, .btn-depth-red:active { transform: translateY(1px); box-shadow: 0 1px 2px rgb(15 23 42 / 0.2); }
+.btn-depth-blue:disabled, .btn-depth-red:disabled { background: #e2e8f0; color: #64748b; filter: none; box-shadow: none; transform: none; cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) {
+  .btn-depth-blue, .btn-depth-red { transition: none; }
+}

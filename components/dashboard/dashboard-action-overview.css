@@ -46,3 +46,12 @@
   .dashboard-goals-bottom { display: none; }
   .dashboard-action-goals--graduated:has(> section > button[aria-expanded="false"]) { align-self: start; }
 }
+
+/* 화면 마감 v2 (belie 2026-11-10): 대시보드 안의 주간 목표 카드도 상자 대신 「제목 + 아래 선」 구역으로.
+   WeeklyGoalSummary 는 주간 목표 화면과 같이 쓰므로 대시보드 자리(.dashboard-action-goals · .dashboard-goals-bottom)에서만 푼다.
+   제목 모양은 app/surfaces.css .section-head 와 같다. */
+:is(.dashboard-action-goals, .dashboard-goals-bottom) .weekly-goals-flow-card { border: 0; border-radius: 0; background: transparent; box-shadow: none; padding: 0; }
+:is(.dashboard-action-goals, .dashboard-goals-bottom) .weekly-goals-flow-card > .weekly-goals-heading { padding-bottom: 0.5rem; border-bottom: 1px solid var(--ui-border); margin-bottom: 0.75rem; }
+:is(.dashboard-action-goals, .dashboard-goals-bottom) .weekly-goals-flow-card > .weekly-goals-heading h2 { font-size: calc(13 * var(--app-px, 1px) * var(--font-scale, 1)); color: var(--ui-text-body); }
+:is(.dashboard-action-goals, .dashboard-goals-bottom) .weekly-goals-flow-card > .weekly-goals-heading h2 > span[aria-hidden] { display: none; }
+:is(.dashboard-action-goals, .dashboard-goals-bottom) .weekly-goals-flow-card > .weekly-goals-heading h2 .text-sm { font-size: calc(12 * var(--app-px, 1px) * var(--font-scale, 1)); }

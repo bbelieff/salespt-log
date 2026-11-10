@@ -85,13 +85,14 @@ export default function DbPage() {
       <OverallCard items={overall.items} totalCost={overall.totalCost} totalCount={overall.totalCount}
         activeCh={activeCh} goalSummary={<WeeklyGoalSummary compact metrics={["production", "inflow"]} />} />
       </div>
-      <section aria-label="입력할 채널" className="mb-3 rounded-xl border border-slate-200 bg-white p-4">
-        <h2 className="text-sm font-bold text-slate-900">어떤 DB를 기록할까요?</h2>
-        <p className="mb-3 mt-1 text-xs text-slate-500">채널을 누르면 바로 입력할 수 있어요.</p>
+      {/* 화면 마감 v2: 구역은 상자 대신 제목 + 구분선. */}
+      <section aria-label="입력할 채널" className="mb-4 pt-1">
+        <h2 className="section-head">어떤 DB를 기록할까요?</h2>
+        <p className="mb-3 mt-2 text-xs text-slate-500">채널을 누르면 바로 입력할 수 있어요.</p>
         <ChannelTabs activeCh={activeCh} onSwitch={switchChannel} />
         {activeCh && <p className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-slate-500" aria-live="polite"><span aria-hidden="true">💡</span>{CHANNELS[activeCh].hint}</p>}
       </section>
-      {activeCh === null && <p className="mb-3 rounded-xl border border-dashed border-slate-200 p-5 text-center text-sm text-slate-500">위에서 입력할 채널을 선택해 주세요.</p>}
+      {activeCh === null && <p className="mb-3 py-6 text-center text-sm text-slate-500">위에서 입력할 채널을 선택해 주세요.</p>}
       {/* 선택 채널 작업대가 전체 너비를 사용한다. 방문 폼은 채널 전환 중에도 유지한다. */}
       {visited.map((channel) => <div key={channel} hidden={channel !== activeCh}>
         <DbChannelWorkspace activeCh={channel} />

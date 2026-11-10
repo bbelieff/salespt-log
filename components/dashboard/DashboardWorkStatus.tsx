@@ -23,7 +23,7 @@ export default function DashboardWorkStatus({ todayISO }: Props) {
   ), [contracts.data?.rows, todos.data?.todos, todayISO]);
 
   return (
-    <section data-dashboard-work-status aria-label="전체 진행건" className="relative z-20 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+    <section data-dashboard-work-status aria-label="전체 진행건" className="relative z-20 border-b border-slate-200/80 pb-3">
       {contracts.isError || todos.isError ? (
         <div className="flex items-center justify-between gap-3 text-xs text-slate-600">
           <span>진행 현황을 불러오지 못했어요.</span>

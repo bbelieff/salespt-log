@@ -289,5 +289,5 @@ body.db-sheet-route .db-meeting-booked-actions{display:flex;flex-wrap:wrap;gap:6
 
 /* 빈 목록 「＋ DB 추가」(2026-11-10) */
 body.db-sheet-route .sheet-empty-state .sheet-empty-add{margin-top:14px}
-/* 열 너비 손잡이 — 터치 화면은 마우스 올림(hover)이 없어 늘 보이게 가는 세로줄로(2026-11-10 design A). */
-@media(hover:none){body.db-sheet-route .sheet-resize{opacity:1}body.db-sheet-route .sheet-resize-x{background:linear-gradient(to right,transparent 2px,color-mix(in srgb, var(--ui-accent-bright) 45%, transparent) 2px 4px,transparent 4px)}}
+/* 열 너비 손잡이 — 터치 화면은 마우스 올림(hover)이 없어 늘 보이게(2026-11-10 design A). 줄 전체 파란 선은 지저분해(belie) 머리 칸 가운데 짧은 회색 손잡이만. */
+@media(hover:none){body.db-sheet-route .sheet-resize{opacity:1}body.db-sheet-route .sheet-resize-x{background:linear-gradient(var(--ui-border-strong),var(--ui-border-strong)) center/2px 12px no-repeat;border-radius:1px}}

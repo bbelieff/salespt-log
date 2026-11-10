@@ -32,11 +32,11 @@ export function CostSummary({
   const badgeCls = `badge-${channel.cls}`;
   return (
     <>
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 flex items-center gap-2 border-b border-slate-200 pb-2">
         <span className={`badge ${badgeCls}`}>{channel.name}</span>
         <span className="text-sm font-semibold text-slate-700">합계</span>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="stat-split grid grid-cols-2 gap-3">
         <div>
           <div className="mb-0.5 text-xs text-slate-500">총비용</div>
           <div className="text-xl font-bold text-red-600" style={numStyle}>
@@ -66,7 +66,7 @@ export function CostSummary({
 export function LeadSummary({ count }: { count: number }) {
   return (
     <>
-      <div className="mb-3 flex items-center gap-2">
+      <div className="mb-3 flex items-center gap-2 border-b border-slate-200 pb-2">
         <span className="badge badge-referral">콜·지·기·소</span>
         <span className="text-sm font-semibold text-slate-700">영업기회</span>
       </div>

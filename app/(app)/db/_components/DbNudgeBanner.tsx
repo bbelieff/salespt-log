@@ -58,7 +58,7 @@ export default function DbNudgeBanner({ onGoDirect }: Props) {
       : `직접생산 ${noCost}건에 비용(기간예산)이 비어 있어요. 비용을 입력해 주세요.`;
 
   return (
-    <div className="mb-3 flex items-start gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5">
+    <div className="mb-3 flex items-start gap-2 rounded-r-lg border-l-4 border-amber-400 bg-amber-50 px-3 py-2.5">
       <span className="shrink-0 text-base">⏰</span>
       <div className="min-w-0 flex-1">
         <p className="text-xs leading-relaxed text-amber-800">{msg}</p>

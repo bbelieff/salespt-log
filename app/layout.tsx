@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
+import "./surfaces.css";
 import Providers from "./providers";
 import Analytics from "@/components/Analytics";
 

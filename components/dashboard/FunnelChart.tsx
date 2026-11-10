@@ -82,11 +82,10 @@ export default function FunnelChart({ matrix, weeks = STATS_WEEKS }: Props) {
   const play = usePlayOnOpen("funnel");
 
   return (
-    <section className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+    <section className="flex h-full flex-col">
       {/* 섹션 제목 */}
-      <div className="mb-2 flex items-center gap-2">
-        <span className="h-5 w-1 rounded-full bg-blue-500" />
-        <h2 className="text-base font-extrabold text-slate-900">영업 퍼널</h2>
+      <div className="section-head mb-3">
+        <h2>영업 퍼널</h2>
         <span className="ml-auto text-xs text-slate-400">{weeks}주 누적</span>
       </div>
 

@@ -42,7 +42,7 @@ export default function ConfirmModal({
         <button
           type="button"
           onClick={onConfirm}
-          className="flex-1 rounded-lg bg-red-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-600"
+          className="btn-depth-red flex-1 rounded-lg px-4 py-2.5 text-sm font-semibold"
         >
           {confirmLabel}
         </button>

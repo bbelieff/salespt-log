@@ -8,6 +8,8 @@ import { CHANNEL_BADGE } from "../_lib/badges";
 import { useFocusScroll } from "@/lib/hooks/useFocusScroll";
 import {
   CARD_CLS,
+  ROW_CLS,
+  TIME_TEXT_CLS,
   CARD_ICON,
   CARD_LABEL,
   meetingStateToCardState,
@@ -67,7 +69,7 @@ export default function MeetingResultCard({
 
   const isCanceled = state === "canceled";
   const titleCls = isCanceled ? "line-through text-slate-400" : "text-slate-900";
-  const timeCls = isCanceled ? "line-through text-slate-400" : "text-slate-700";
+  const timeCls = isCanceled ? "line-through text-slate-400" : TIME_TEXT_CLS[state];
   const placeCls = isCanceled ? "line-through text-slate-400" : "text-slate-500";
 
   const feeSummary = state === "contract" && meeting.수임비 > 0
@@ -133,16 +135,17 @@ export default function MeetingResultCard({
   return (
     <div
       ref={rootRef}
-      className={`relative ml-4 mb-2 overflow-hidden rounded-xl shadow-sm scroll-mt-[280px] ${CARD_CLS[state]} ${
-        ring ? "animate-pulse ring-2 ring-inset ring-blue-400" : ""
-      }`}
+      // 화면 마감 v2(2026-11-10): 닫힘 = 줄 + 아래 구분선, 펼침 = 카드 한 단(상태 색 왼쪽 띠).
+      className={`relative scroll-mt-[280px] ${
+        open
+          ? `my-2 overflow-hidden rounded-xl ${CARD_CLS[state]}`
+          : `border-b border-slate-100 last:border-b-0 ${ROW_CLS[state]}`
+      } ${ring ? "animate-pulse ring-2 ring-inset ring-blue-400" : ""}`}
     >
-      <span className="absolute -left-2 top-1/2 h-px w-2 -translate-y-1/2 border-t-2 border-slate-200" />
-
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 px-3 py-3 text-left transition-colors active:bg-black/5"
+        className={`flex w-full items-center gap-2 py-3 text-left transition-colors active:bg-black/5 ${open ? "px-3" : "px-1"}`}
         aria-expanded={open}
       >
         <CarryoverBadge 구분={meeting.구분} />
@@ -177,7 +180,7 @@ export default function MeetingResultCard({
           <CompanyInfoEditor key={meeting.id} value={meeting.업체정보} busy={pending} txtCompanyName={meeting.업체명} identityKey={meeting.id} vaultTarget={{ meetingId: meeting.id }} hideSave onChange={(ci) => { setCiDraft(ci); setCiTouched(true); }} onSave={(ci) => onPatch({ 업체정보: ci })} />
 
           {state !== "reserved" && (state === "contract" || meeting.미팅사유) && !editMode && (
-            <div className="rounded-lg border border-slate-200 bg-white/60 px-2.5 py-1.5 text-xs">
+            <div className="border-t border-slate-200/60 pt-2 text-xs">
               {state === "contract" && (
                 <>
                   <div className="flex items-center justify-between gap-2">
@@ -222,7 +225,7 @@ export default function MeetingResultCard({
                 pending={pending}
                 bindSubmit={bindSubmit}
               />
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <div className="border-t border-slate-200/60 pt-3">
                 <div className="mb-2 text-xs font-medium text-slate-600">
                   상태 변경 (취소·환수·보류 등은 취소로 사유와 함께 기록)
                 </div>
@@ -409,7 +412,7 @@ export default function MeetingResultCard({
           )}
 
           {!showActions && hasFollowUp && (state === "done" || state === "canceled" || state === "contract") && (
-            <div className="flex items-center justify-between gap-2 rounded-md bg-slate-100 px-2 py-1.5 text-xs text-slate-600">
+            <div className="flex items-center justify-between gap-2 border-t border-slate-200/60 pt-2 text-xs text-slate-600">
               <span>🔚 케이스 종료 — 추가 미팅 카드에서 진행</span>
               {onReviveCase && (
                 <button type="button" onClick={onReviveCase} disabled={pending} className="shrink-0 rounded border border-slate-300 bg-white px-2 py-0.5 text-px-11 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">↩️ 되살리기</button>
@@ -449,7 +452,7 @@ export default function MeetingResultCard({
             )}
 
           {!showActions && state === "rescheduled" && (
-            <div className="rounded-md bg-purple-50 px-2 py-1.5 text-xs text-purple-700">
+            <div className="border-t border-purple-200 pt-2 text-xs text-purple-700">
               📅 일정이 변경되었습니다. 새 일정의 카드를 확인하세요.
               {meeting.미팅사유 && (
                 <div className="mt-0.5 whitespace-pre-wrap text-slate-600">

@@ -75,10 +75,11 @@ export default function SummaryBar({ meetings, goalSummary }: Props) {
   const revenueSum = feeSum + commissionSum;
 
   return (
-    <div className="border-y border-slate-200 bg-white shadow-sm">
-      {/* 2026-05-17 [5] 재정돈: row 1 = 5 카운터 균등, row 2 = 매출 (정신없는 wrap 회피). */}
-      <div className="px-3 py-2">
-        <div className="grid grid-cols-5 gap-1">
+    <div className="px-3 pb-2.5">
+      {/* 2026-05-17 [5] 재정돈: row 1 = 5 카운터 균등, row 2 = 매출 (정신없는 wrap 회피).
+          화면 마감 v2(2026-11-10): 요약 한 칸 = .surface-hero, 숫자 칸은 상자 대신 세로 선(.stat-split). */}
+      <div className="surface-hero px-3 py-2.5">
+        <div className="stat-split grid grid-cols-5">
           <Counter label="총건" value={total} cls="text-slate-900" />
           <Counter label="예정" value={reserved} cls="text-amber-600" />
           <Counter label="완료" value={done} cls="text-orange-600" />
@@ -86,23 +87,23 @@ export default function SummaryBar({ meetings, goalSummary }: Props) {
           <Counter label="계약" value={contract} cls="text-green-700" highlight />
         </div>
         {revenueSum > 0 && (
-          <div className="mt-1.5 flex items-baseline justify-end gap-2 border-t border-slate-100 pt-1.5 text-xs">
-            <span className="font-medium text-green-700">💰 이번 주 계약</span>
+          <div className="mt-2 flex flex-wrap items-baseline justify-end gap-x-2 gap-y-0.5 border-t border-slate-200/70 pt-2 text-xs">
+            <span className="whitespace-nowrap font-medium text-green-700">💰 이번 주 계약</span>
             <span
-              className="text-sm font-extrabold text-green-700"
+              className="whitespace-nowrap text-sm font-extrabold text-green-700"
               style={{ fontVariantNumeric: "tabular-nums" }}
             >
               {formatWon(revenueSum)}
             </span>
             <span
-              className="text-px-10 text-slate-500"
+              className="whitespace-nowrap text-px-10 text-slate-500"
               style={{ fontVariantNumeric: "tabular-nums" }}
             >
               수임 {formatWon(feeSum)} · 수수료 {formatWon(commissionSum)}
             </span>
           </div>
         )}
-        {goalSummary && <div className="mt-1 border-t border-slate-100">{goalSummary}</div>}
+        {goalSummary && <div className="mt-1.5 border-t border-slate-200/70">{goalSummary}</div>}
       </div>
     </div>
   );
@@ -119,12 +120,10 @@ function Counter({
   cls: string;
   highlight?: boolean;
 }) {
-  const wrapCls = highlight
-    ? "rounded-md bg-green-100 ring-1 ring-green-300"
-    : "rounded-md";
+  // 화면 마감 v2: 칸마다 상자 없음 — 계약 강조는 색 글자로만.
   return (
     <div
-      className={`flex flex-col items-center py-1 ${wrapCls}`}
+      className="flex flex-col items-center py-1"
       style={{ fontVariantNumeric: "tabular-nums" }}
     >
       <span className={`text-lg font-extrabold leading-none ${cls}`}>

@@ -18,9 +18,9 @@ import PushPrompt from "@/components/push/PushPrompt";
 export default function DashboardActionOverview({ matrix, weeks, todayISO, graduated = false }: {
   matrix: DashboardChannelMatrix[]; weeks: number; todayISO: string; courseStartISO?: string; graduated?: boolean;
 }) {
-  return <div className="dashboard-action-overview grid gap-3">
+  return <div className="dashboard-action-overview grid gap-6 pc:gap-x-8">
     <ProductivityIndicators weeks={weeks} matrix={matrix} className="dashboard-action-productivity min-w-0" />
-    <div className="dashboard-action-work min-w-0 flex flex-col gap-3">
+    <div className="dashboard-action-work min-w-0 flex flex-col gap-6">
       <div className="dashboard-work-status-slot min-w-0"><DashboardWorkStatus todayISO={todayISO} /></div>
       <DashboardFollowUps todayISO={todayISO} />
       <PushPrompt />

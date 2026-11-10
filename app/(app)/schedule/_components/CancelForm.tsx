@@ -38,7 +38,7 @@ export default function CancelForm({
   });
 
   return (
-    <div className="space-y-2.5 rounded-lg border-2 border-red-300 bg-red-50 p-3">
+    <div className="space-y-2.5 border-t border-red-200 pt-3">
       <div className="flex items-center gap-1 text-xs font-bold text-red-800">
         🔴 취소 / 노쇼
       </div>
@@ -73,7 +73,7 @@ export default function CancelForm({
         type="button"
         onClick={submit}
         disabled={pending}
-        className="w-full rounded-lg bg-red-500 py-2.5 text-sm font-bold text-white transition-all hover:bg-red-600 disabled:cursor-not-allowed disabled:bg-slate-300"
+        className="btn-depth-red w-full rounded-lg py-2.5 text-sm font-bold disabled:cursor-not-allowed"
       >
         {pending ? "저장중.." : "🔴 취소 확정"}
       </button>

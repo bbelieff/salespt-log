@@ -58,10 +58,9 @@ export default function ProductivityIndicators({ matrix, weeks = STATS_WEEKS, cl
   const play = usePlayOnOpen("productivity");
 
   return (
-    <section className={`rounded-2xl border border-slate-200 bg-white p-3 shadow-sm ${className}`}>
-      <div className="mb-2 flex items-center gap-2">
-        <span className="h-5 w-1 rounded-full bg-indigo-500" />
-        <h2 className="text-base font-extrabold text-slate-900">생산성 지표</h2>
+    <section className={className}>
+      <div className="section-head mb-3">
+        <h2>생산성 지표</h2>
         <HintTooltip label="생산성 지표 계산 안내" text="각 항목의 도착 단계 건수 ÷ 시작 단계 건수입니다. 아래에 실제 건수를 표시하며, 분모가 0이면 계산할 기록이 없어 —로 표시합니다." />
         <span className="ml-auto text-px-11 text-slate-600">{weeks}주 누적</span>
       </div>

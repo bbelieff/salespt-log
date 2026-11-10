@@ -268,7 +268,7 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
           {/* 추가 폼 — 채널 고르면 바로 밑(2026-11-10 belie 「채널선택>구매목록추가>구매목록>합계」). */}
         {addOpen && (
           <div
-            className="mb-3 rounded-xl border-2 border-blue-200 bg-white p-4 shadow-md"
+            className="mb-3 rounded-xl border border-blue-200 bg-white p-4"
             onBlur={(e) => {
               if (ch.manualSave) return; // 수동 저장 채널 — 「저장」 버튼으로만 추가한다.
               if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
@@ -322,7 +322,7 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
                   type="button"
                   onClick={() => void flushAdd().catch(() => {})}
                   disabled={!addDirty || addStatus === "pending"}
-                  className="shrink-0 rounded-lg bg-blue-700 px-4 py-2 text-sm font-bold text-white hover:bg-blue-800 disabled:bg-slate-200 disabled:text-slate-400"
+                  className="btn-depth-blue shrink-0 rounded-lg px-4 py-2 text-sm font-bold"
                 >
                   {addStatus === "pending" ? "추가 중…" : "저장"}
                 </button>
@@ -341,7 +341,7 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
                 setExpandedRow(null);
               })
             }
-            className="mb-3 w-full rounded-xl border-2 border-dashed border-slate-300 bg-white py-3 text-sm font-medium text-slate-500 transition-colors hover:border-blue-400 hover:text-blue-600"
+            className="mb-3 w-full rounded-lg border border-dashed border-slate-300 py-3 text-sm font-semibold text-blue-700 transition-colors hover:border-blue-400 hover:bg-blue-50"
           >
             + {ch.recordsLabel} 추가
           </button>
@@ -349,13 +349,13 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
         </div>
         <div className="min-w-0">
           {/* 목록을 접어도 채널별 건수를 확인할 수 있다. */}
-          <h3 className="mb-2 text-sm font-semibold text-slate-700">
+          <h3 className="section-head">
             <button
               type="button"
               aria-expanded={listOpen}
               aria-controls={`db-${activeCh}-records`}
               onClick={() => guardedNav(() => setListOpen((open) => !open))}
-              className="flex w-full items-center justify-between rounded-lg px-1 py-1.5 text-left hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+              className="flex w-full items-center justify-between rounded-lg px-1 py-2 text-left hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
             >
               <span>{ch.recordsLabel}</span>
               <span className="text-xs font-medium text-slate-500">{rows.length}건 <span aria-hidden="true"><DisclosureChevron open={listOpen} /></span></span>
@@ -384,10 +384,7 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
             />
           </div>
           {/* 합계 카드 (선택 채널) — 구매목록 아래. 1440px 이상은 오른쪽 칸(목록 밑). */}
-          <div
-            className="mb-3 mt-3 rounded-xl border-l-4 bg-white p-4 shadow-sm"
-            style={{ borderLeftColor: ch.color }}
-          >
+          <div className="mb-3 mt-5">{/* 화면 마감 v2: 색 띠 상자 대신 제목 줄 + 숫자 칸 세로 선. 채널 색은 배지로만. */}
             {ch.isCost && summary ? (
               <CostSummary
                 channel={ch}
