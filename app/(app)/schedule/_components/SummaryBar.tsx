@@ -87,16 +87,16 @@ export default function SummaryBar({ meetings, goalSummary }: Props) {
           <Counter label="계약" value={contract} cls="text-green-700" highlight />
         </div>
         {revenueSum > 0 && (
-          <div className="mt-2 flex items-baseline justify-end gap-2 border-t border-slate-200/70 pt-2 text-xs">
-            <span className="font-medium text-green-700">💰 이번 주 계약</span>
+          <div className="mt-2 flex flex-wrap items-baseline justify-end gap-x-2 gap-y-0.5 border-t border-slate-200/70 pt-2 text-xs">
+            <span className="whitespace-nowrap font-medium text-green-700">💰 이번 주 계약</span>
             <span
-              className="text-sm font-extrabold text-green-700"
+              className="whitespace-nowrap text-sm font-extrabold text-green-700"
               style={{ fontVariantNumeric: "tabular-nums" }}
             >
               {formatWon(revenueSum)}
             </span>
             <span
-              className="text-px-10 text-slate-500"
+              className="whitespace-nowrap text-px-10 text-slate-500"
               style={{ fontVariantNumeric: "tabular-nums" }}
             >
               수임 {formatWon(feeSum)} · 수수료 {formatWon(commissionSum)}

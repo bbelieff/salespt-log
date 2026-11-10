@@ -42,17 +42,17 @@
 /* 진행 막대 채움 */
 .bar-brand { background: linear-gradient(90deg, #ff5a5b, #d71617); }
 
-/* 주 버튼 입체 마감 — 반 단계 그라데이션 + 제 색 그림자, 누르면 그림자 줄어듦 */
+/* 주 버튼 입체 마감 — 위가 한 단계 밝은 세로 그라데이션 + 제 색 그림자, 누르면 그림자 줄어듦(2026-11-10 belie 「버튼 그라데이션 어디갔누」 → 반 단계에서 한 단계로). 가장 밝은 위쪽도 흰 글자 대비 4.6 이상. */
 .btn-depth-blue, .btn-depth-red {
   color: #fff;
   transition: box-shadow 120ms ease, transform 120ms ease, filter 120ms ease;
 }
 .btn-depth-blue {
-  background: linear-gradient(180deg, #2259e8, #1d4ed8);
+  background: linear-gradient(180deg, #356af0 0%, #1d4ed8 100%);
   box-shadow: 0 1px 2px rgb(29 78 216 / 0.35), 0 6px 14px -6px rgb(29 78 216 / 0.6);
 }
 .btn-depth-red {
-  background: linear-gradient(180deg, #dc1c1d, #c71314);
+  background: linear-gradient(180deg, #e02a2b 0%, #b81011 100%);
   box-shadow: 0 1px 2px rgb(199 19 20 / 0.35), 0 6px 14px -6px rgb(199 19 20 / 0.55);
 }
 .btn-depth-blue:hover, .btn-depth-red:hover { filter: brightness(1.04); }
