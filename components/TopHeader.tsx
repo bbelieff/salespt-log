@@ -129,11 +129,19 @@ export default function TopHeader({
   };
   useEffect(() => {
     if (!popupOpen) return;
+    // 계정 메뉴는 로고 아래 붙는 메뉴라 AppDialog 대신 같은 닫기 규칙만: Esc 로 닫고 로고 버튼으로 초점 복귀(2026-11-10 결정 4).
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setPopupOpen(false);
+      logoRef.current?.focus();
+    };
     window.addEventListener("resize", positionPopup);
     window.addEventListener("scroll", positionPopup, true);
+    document.addEventListener("keydown", onKey);
     return () => {
       window.removeEventListener("resize", positionPopup);
       window.removeEventListener("scroll", positionPopup, true);
+      document.removeEventListener("keydown", onKey);
     };
   }, [popupOpen]);
 

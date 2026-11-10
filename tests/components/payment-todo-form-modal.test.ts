@@ -2,6 +2,7 @@
 import * as React from "react";
 import { act, createElement as h, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
@@ -52,8 +53,10 @@ function mountModal(onClose = vi.fn()) {
       onClose,
     }));
   });
-  const dialog = document.body.querySelector<HTMLElement>('[role="dialog"]');
-  return { dialog, onClose, overlay: dialog?.parentElement as HTMLElement | null };
+  // 2026-11-10 AppDialog: 네이티브 <dialog>(최상단 층) 안에 판(.app-dialog-panel)이 있다.
+  const overlay = document.body.querySelector<HTMLDialogElement>("dialog");
+  const dialog = overlay?.querySelector<HTMLElement>(".app-dialog-panel") ?? null;
+  return { dialog, onClose, overlay };
 }
 
 function click(target: Element) {
@@ -76,22 +79,20 @@ afterEach(() => {
   document.body.removeAttribute("style");
 });
 
-describe("payment Todo/History 상세 모달", () => {
-  it("document.body portal의 full-viewport backdrop과 선명한 dialog를 분리한다", () => {
+describe("payment Todo/History 상세 모달 (2026-11-10 AppDialog)", () => {
+  it("네이티브 dialog 로 뜨고 이름이 붙으며, 판은 흐리지 않고, 첫 입력(제목)에 초점", () => {
     const opener = document.createElement("button");
     document.body.append(opener);
     opener.focus();
 
     const { dialog, overlay } = mountModal();
 
-    expect(dialog?.getAttribute("aria-modal")).toBe("true");
-    expect(dialog?.getAttribute("aria-label")).toBe("Todo 상세");
-    expect(overlay?.parentElement).toBe(document.body);
-    expect(host?.childElementCount).toBe(0);
-    expect(overlay?.className).toContain("fixed inset-0");
-    expect(overlay?.className).toContain("backdrop-blur-[2px]");
+    expect(overlay?.tagName).toBe("DIALOG");
+    expect(overlay?.open).toBe(true);
+    expect(overlay?.getAttribute("aria-modal")).toBe("true");
+    expect(overlay?.getAttribute("aria-label")).toBe("Todo 상세");
     expect(dialog?.className).not.toContain("backdrop-blur");
-    expect(document.activeElement).toBe(dialog);
+    expect((document.activeElement as HTMLInputElement | null)?.value).toBe("후속 연락");
   });
 
   it("열릴 때 body scroll을 잠그고 unmount에서 기존 inline overflow와 opener focus를 복원한다", () => {
@@ -119,38 +120,36 @@ describe("payment Todo/History 상세 모달", () => {
     opener.focus();
     click(opener);
     expect(document.body.style.overflow).toBe("hidden");
-    expect(document.activeElement?.getAttribute("role")).toBe("dialog");
+    expect(document.querySelector("dialog")?.contains(document.activeElement)).toBe(true);
 
     click(document.querySelector('[aria-label="닫기"]')!);
-    expect(document.body.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.body.querySelector("dialog")).toBeNull();
     expect(document.body.style.overflow).toBe("clip");
     expect(document.activeElement).toBe(opener);
   });
 
-  it("panel과 Todo/History 탭은 닫거나 배경을 누르지 않고 backdrop만 guarded close를 탄다", () => {
-    const background = document.createElement("button");
-    const backgroundClick = vi.fn();
-    background.addEventListener("click", backgroundClick);
-    document.body.append(background);
+  it("★입력 창이라 바깥(어두운 배경)을 눌러도 안 닫히고, ×만 guarded close를 탄다", () => {
     const { dialog, onClose, overlay } = mountModal();
     const historyTab = [...dialog!.querySelectorAll("button")].find((button) => button.textContent === "한 일")!;
 
     click(historyTab);
     expect(historyTab.className).toContain("bg-white");
     click(dialog!);
+    act(() => {
+      overlay!.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+      overlay!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
     expect(mocks.guardedNav).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
-    expect(backgroundClick).not.toHaveBeenCalled();
 
-    click(overlay!);
+    click(dialog!.querySelector('[aria-label="닫기"]')!);
     expect(mocks.guardedNav).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
-    expect(backgroundClick).not.toHaveBeenCalled();
   });
 
-  it("Escape가 guarded close를 호출한다", () => {
-    const { onClose } = mountModal();
-    act(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+  it("Escape(dialog cancel)가 guarded close를 호출한다", () => {
+    const { onClose, overlay } = mountModal();
+    act(() => { overlay!.dispatchEvent(new Event("cancel", { cancelable: true })); });
     expect(mocks.guardedNav).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
@@ -163,7 +162,7 @@ describe("payment Todo 고치기(수정 모드, 2026-10-27)", () => {
     host = document.createElement("div"); document.body.append(host); root = createRoot(host);
     const onClose = vi.fn();
     act(() => { root?.render(h(TodoFormModal, { contractRef: "c-1", institutionRef: "소진공", companyName: "가상", initial: seedFromTodo(todo), editing: todo, onClose })); });
-    const dialog = document.body.querySelector<HTMLElement>('[role="dialog"]')!;
+    const dialog = document.body.querySelector<HTMLElement>("dialog")!;
     expect(dialog.querySelector("h3")?.textContent).toBe("할 일"); // 고치기도 만들기와 같은 모양(티 나지 않게)
     expect([...dialog.querySelectorAll("button")].some((b) => b.textContent === "한 일")).toBe(false); // 종류는 못 바꿈
     const title = dialog.querySelector<HTMLInputElement>("label input:not([type])")!;
@@ -175,7 +174,7 @@ describe("payment Todo 고치기(수정 모드, 2026-10-27)", () => {
     expect(mocks.patchAsync).toHaveBeenCalledWith({ contractRef: "c-1", id: "t-1", partial: { type: "전화", 제목: "재단 방문 (오후)", 예정일자: "2026-10-27", 예정시각: "14:20", 상세: "담당자 확인", showOnCalendar: false } });
     expect(onClose).toHaveBeenCalled();
   });
-  it("오류신고 2026-10-28 — 바꾼 게 없으면 나갈 때 묻지 않고, 바꾸면 묻는다 · 확인창(z-[350])이 이 창 위에 뜬다", () => {
+  it("오류신고 2026-10-28 — 바꾼 게 없으면 나갈 때 묻지 않고, 바꾸면 묻는다 · 확인창도 최상단 층이라 이 창 위에 뜬다", () => {
     const { dialog, overlay } = mountModal();
     const dirtyNow = () => mocks.registerDirty.mock.calls.at(-1)?.[1];
     expect(dirtyNow()).toBe(false);
@@ -185,8 +184,9 @@ describe("payment Todo 고치기(수정 모드, 2026-10-27)", () => {
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
     expect(dirtyNow()).toBe(true);
-    const z = Number(/z-\[(\d+)\]/.exec(overlay!.className)?.[1]);
-    expect(z).toBeLessThan(350);
+    // 이 창과 「저장하지 않고 나갈까요?」 모두 AppDialog(showModal) — 나중에 열린 확인창이 위에 쌓인다.
+    expect(overlay!.tagName).toBe("DIALOG");
+    expect(readFileSync("components/DirtyGuard.tsx", "utf8")).toContain("<AppDialog");
   });
   it("날짜 칸은 직접 그리는 달력(요일 표시) — 옆 시·분 칸과 같은 높이(2026-11-10, 옛 iPhone 가운데 맞춤 대체)", () => {
     const { dialog } = mountModal();

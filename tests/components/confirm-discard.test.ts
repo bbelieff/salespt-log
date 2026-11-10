@@ -37,21 +37,34 @@ describe("계약 해지 창", () => {
     document.body.appendChild(host);
     root = createRoot(host);
     act(() => root!.render(h(TerminationModal, { cp, pending: false, onClose, onConfirm: vi.fn() })));
-    const backdrop = host.firstElementChild as HTMLElement;
-    return { onClose, backdrop };
+    // 2026-11-10 AppDialog: 네이티브 <dialog> — 바깥(어두운 배경) 누르기 = dialog 자신을 누르기.
+    const dialog = host.querySelector("dialog")!;
+    const esc = () => act(() => { dialog.dispatchEvent(new Event("cancel", { cancelable: true })); });
+    const backdrop = () => act(() => {
+      dialog.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+      dialog.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    return { onClose, esc, backdrop };
   }
-  it("빈 채로 바깥을 누르면 바로 닫힌다", () => {
-    const { onClose, backdrop } = mount();
-    act(() => backdrop.click());
+  it("빈 채로 Esc 를 누르면 바로 닫힌다", () => {
+    const { onClose, esc } = mount();
+    esc();
     expect(onClose).toHaveBeenCalledTimes(1);
   });
-  it("★사유를 적은 뒤 바깥을 누르면 묻고, 「취소」면 남는다", () => {
+  it("★입력 창이라 바깥을 눌러도 안 닫힌다", () => {
     const { onClose, backdrop } = mount();
+    backdrop();
+    expect(onClose).not.toHaveBeenCalled();
+  });
+  it("★사유를 적은 뒤 Esc·취소를 누르면 묻고, 「취소」면 남는다", () => {
+    const { onClose, esc } = mount();
     const ta = host!.querySelector("textarea")!;
     const set = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!;
     act(() => { set.call(ta, "가상 사유"); ta.dispatchEvent(new Event("input", { bubbles: true })); });
     vi.spyOn(window, "confirm").mockReturnValue(false);
-    act(() => backdrop.click());
+    esc();
+    act(() => [...host!.querySelectorAll("button")].find((b) => b.textContent?.trim() === "취소")!.click());
+    expect(window.confirm).toHaveBeenCalledTimes(2);
     expect(window.confirm).toHaveBeenCalledWith(DISCARD_MESSAGE);
     expect(onClose).not.toHaveBeenCalled();
   });

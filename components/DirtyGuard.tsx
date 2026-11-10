@@ -20,6 +20,7 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
+import AppDialog from "@/components/ui/AppDialog";
 import { saveAllParallel } from "@/util/save-coalesce";
 
 /** dirty 입력 1개가 등록하는 항목. save=영속화(await), discard=편집 버림, label=사람이 읽는 이름. */
@@ -108,15 +109,17 @@ function ConfirmLeaveModal({
   onDiscard: () => void;
   onCancel: () => void;
 }) {
+  // AppDialog(브라우저 최상단 층) — 열린 AppDialog 안에서 이탈해도 이 확인 창이 그 위에 뜬다.
+  // Esc·바깥 누르기 = 취소(기존과 같음). 열리면 「저장하고 이동」에 초점.
   return (
-    <div
-      className="fixed inset-0 z-[350] flex items-center justify-center bg-black/40 p-4"
-      onClick={onCancel}
+    <AppDialog
+      role="alertdialog"
+      title="저장하지 않고 나갈까요?"
+      onClose={onCancel}
+      dismissOnBackdrop
+      size="xs"
+      className="rounded-2xl bg-white p-5 shadow-xl"
     >
-      <div
-        className="w-full max-w-xs rounded-2xl bg-white p-5 shadow-xl"
-        onClick={(e) => e.stopPropagation()}
-      >
         <h3 className="text-base font-black text-gray-900">저장하지 않고 나갈까요?</h3>
         <p className="mt-1.5 text-sm leading-relaxed text-gray-600">
           저장하지 않으면 입력한 내용이 사라져요.
@@ -134,6 +137,7 @@ function ConfirmLeaveModal({
         <div className="mt-4 flex flex-col gap-2">
           <button
             type="button"
+            data-autofocus
             onClick={onSave}
             disabled={saving}
             className="rounded-lg bg-blue-500 py-2.5 text-sm font-bold text-white transition-colors hover:bg-blue-600 disabled:opacity-50"
@@ -159,8 +163,7 @@ function ConfirmLeaveModal({
             </button>
           </div>
         </div>
-      </div>
-    </div>
+    </AppDialog>
   );
 }
 

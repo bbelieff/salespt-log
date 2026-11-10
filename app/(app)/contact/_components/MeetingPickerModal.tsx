@@ -3,9 +3,11 @@
  *
  * cascade-edge-cases Q2 정책: 한 채널/날짜에 미팅카드 여러 개일 때 -1 버튼이
  * 마지막을 자동 삭제하던 것을 사용자 선택으로 전환. 선택 시 cascade 삭제.
+ * 2026-11-10 AppDialog 로 통일 — 입력 칸 없는 고르기 창이라 Esc·✕·바깥 누르기로 닫힌다.
  */
 "use client";
 
+import AppDialog, { AppDialogClose } from "@/components/ui/AppDialog";
 import type { Meeting } from "@/types";
 
 interface Props {
@@ -16,14 +18,13 @@ interface Props {
 
 export default function MeetingPickerModal({ meetings, onPick, onClose }: Props) {
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/30 p-0 sm:items-center sm:p-4"
-      onClick={onClose}
+    <AppDialog
+      title="삭제할 미팅 선택"
+      onClose={onClose}
+      dismissOnBackdrop
+      size="md"
+      className="rounded-2xl bg-white p-4 shadow-2xl"
     >
-      <div
-        className="max-h-[70vh] w-full max-w-md overflow-y-auto rounded-t-2xl bg-white p-4 shadow-2xl sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
         <div className="mb-3 flex items-start justify-between gap-2">
           <h3 className="text-sm font-black text-gray-900">
             삭제할 미팅 선택
@@ -31,13 +32,11 @@ export default function MeetingPickerModal({ meetings, onPick, onClose }: Props)
               ({meetings.length}건)
             </span>
           </h3>
-          <button
-            type="button"
-            onClick={onClose}
+          <AppDialogClose
             className="shrink-0 rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-500 hover:bg-gray-50"
           >
             ✕ 닫기
-          </button>
+          </AppDialogClose>
         </div>
         <p className="mb-2 text-px-11 text-gray-500">
           선택한 미팅이 삭제됩니다 (계약카드 있으면 함께). 미팅예약 -1.
@@ -62,7 +61,6 @@ export default function MeetingPickerModal({ meetings, onPick, onClose }: Props)
             </button>
           ))}
         </div>
-      </div>
-    </div>
+    </AppDialog>
   );
 }

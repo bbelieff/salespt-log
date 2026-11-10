@@ -4,10 +4,12 @@
  * 입력: 카테고리(기존/기타)·이벤트명·업체명('기타'는 선택)·상세·날짜·시간 →
  * POST /api/todos (type="일반", contractRef 빈값, showOnCalendar=true) → onCreated.
  * 첫 추가 시 경고 모달(+"다시 보지 않기" localStorage hideGeneralEventHint).
+ * 2026-11-10 AppDialog 로 통일 — Esc·✕ = 미저장 가드 닫기, 바깥 누르기로는 안 닫힘, 열면 첫 칸(이벤트명)에 초점.
  */
 "use client";
 
 import { useState } from "react";
+import AppDialog, { AppDialogClose } from "@/components/ui/AppDialog";
 import { useDirtyEntry, useGuardedNav } from "@/components/DirtyGuard";
 import { newTodoOperationId } from "@/query/todos-hooks";
 import { apiErrorMessage } from "@/lib/util/api-error-message";
@@ -109,13 +111,12 @@ export default function GeneralEventModal({ defaultDate, onClose, onCreated }: P
   const guardedNav = useGuardedNav();
   const guardedClose = () => guardedNav(onClose); // 닫기도 미저장 가드
   return (
-    <div className="fixed inset-0 z-[300] flex items-start justify-center overflow-y-auto bg-black/40 p-4">
-      <div className="mt-10 w-full max-w-sm rounded-2xl bg-white p-4 shadow-xl">
+    <AppDialog title="일반이벤트 추가" onClose={guardedClose} className="rounded-2xl bg-white p-4 shadow-xl">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-sm font-black text-gray-900">일반이벤트 추가</h3>
-          <button type="button" onClick={guardedClose} className="rounded-full px-2 text-gray-400 hover:bg-gray-100">
+          <AppDialogClose aria-label="닫기" className="rounded-full px-2 text-gray-400 hover:bg-gray-100">
             ✕
-          </button>
+          </AppDialogClose>
         </div>
 
         <div className="space-y-2.5">
@@ -156,11 +157,9 @@ export default function GeneralEventModal({ defaultDate, onClose, onCreated }: P
             {busy ? "저장중.." : "캘린더에 추가"}
           </button>
         </div>
-      </div>
 
       {hint && (
-        <div className="fixed inset-0 z-[310] flex items-center justify-center bg-black/50 p-6">
-          <div className="w-full max-w-xs rounded-2xl bg-white p-4 shadow-xl">
+        <AppDialog title="일반이벤트 안내" onClose={() => setHint(false)} dismissOnBackdrop size="xs" className="rounded-2xl bg-white p-4 shadow-xl">
             <p className="text-sm leading-relaxed text-gray-700">
               일반이벤트로 추가하는 일정은 다른 탭에 연동되지 않습니다. 기존업체
               관련 실적은 아레나에 포함되지 않지만 캘린더에서 관리할 수 있습니다.
@@ -177,6 +176,7 @@ export default function GeneralEventModal({ defaultDate, onClose, onCreated }: P
             <div className="mt-3 flex gap-2">
               <button
                 type="button"
+                data-autofocus
                 onClick={() => setHint(false)}
                 className="min-h-11 flex-1 rounded-lg border border-gray-300 py-2 text-sm text-gray-700 hover:bg-gray-50"
               >
@@ -190,9 +190,8 @@ export default function GeneralEventModal({ defaultDate, onClose, onCreated }: P
                 확인하고 추가
               </button>
             </div>
-          </div>
-        </div>
+        </AppDialog>
       )}
-    </div>
+    </AppDialog>
   );
 }
