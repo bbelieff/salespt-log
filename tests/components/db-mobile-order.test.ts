@@ -18,3 +18,8 @@ it("orders add form → list → channel total", () => {
   expect(list).toBeGreaterThan(add);
   expect(total).toBeGreaterThan(list);
 });
+it("puts the list and total in the right column on wide screens (2026-11-10)", () => {
+  const src = readFileSync("app/(app)/db/_components/DbChannelWorkspace.tsx", "utf8");
+  const add = src.indexOf("<RowForm channel={ch} initial={addInitial}"), list = src.indexOf("<RowList");
+  expect(src.slice(add, list)).toContain('<div className="min-w-0">');
+});

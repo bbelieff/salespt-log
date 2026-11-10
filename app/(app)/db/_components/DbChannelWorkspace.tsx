@@ -346,6 +346,8 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
             + {ch.recordsLabel} 추가
           </button>
         )}
+        </div>
+        <div className="min-w-0">
           {/* 목록을 접어도 채널별 건수를 확인할 수 있다. */}
           <h3 className="mb-2 text-sm font-semibold text-slate-700">
             <button
@@ -381,11 +383,9 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
               onDeleteRequest={requestDelete}
             />
           </div>
-        </div>
-        <div className="min-w-0">
-          {/* 합계 카드 (선택 채널) — 구매목록 아래. 1440px 이상은 오른쪽 칸. */}
+          {/* 합계 카드 (선택 채널) — 구매목록 아래. 1440px 이상은 오른쪽 칸(목록 밑). */}
           <div
-            className="mb-3 mt-3 rounded-xl border-l-4 bg-white p-4 shadow-sm min-[1440px]:mt-0"
+            className="mb-3 mt-3 rounded-xl border-l-4 bg-white p-4 shadow-sm"
             style={{ borderLeftColor: ch.color }}
           >
             {ch.isCost && summary ? (
