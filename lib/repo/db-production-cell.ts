@@ -12,6 +12,7 @@ import { sheetsClient } from "./sheets-client";
 import { mirrorSheetRow, mirrorSheetRowAwaitable } from "./db/mirror";
 import { resolveWriteKey } from "./db/row-key";
 import { queueDbTabRowSync } from "./db-tab-sheet-sync";
+import { isSheetlessTenantKey } from "@/util/tenant-key";
 
 const T = /[s()]/.test(SHEET_RANGES.dbManagement.tab)
   ? `'${SHEET_RANGES.dbManagement.tab}'`
@@ -38,6 +39,12 @@ export async function writeProductionCountCell(
   const col = String.fromCharCode(
     sec.startCol.charCodeAt(0) + sec.cols.indexOf("생산개수"),
   );
+  if (isSheetlessTenantKey(spreadsheetId)) {
+    // ADR-0038: 시트 없는 수강생 — M 은 DB 에만(실패해도 throw 금지: BBE-61 과 같은 이유, 다음 유입 저장이 재계산).
+    const key = await resolveWriteKey(spreadsheetId, "직접생산", row);
+    await mirrorSheetRowAwaitable({ spreadsheetId, tab: "db", rowKey: key, payload: { 생산개수: count } });
+    return;
+  }
   if (opts?.syncDb && opts.sheetViaQueue) {
     const key = await resolveWriteKey(spreadsheetId, "직접생산", row);
     const ok = await mirrorSheetRowAwaitable({ spreadsheetId, tab: "db", rowKey: key, payload: { 생산개수: count } });

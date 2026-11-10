@@ -28,6 +28,9 @@
  * 복원 사고"(unstable_cache 직렬화 특성) 클래스 자체가 사라진다 — ms 우회 불필요.
  */
 import { readProfileBundle } from "@/repo/sales";
+import { readSheetlessProfileFromDb } from "@/repo/db/course-dates";
+import { isSheetlessTenantKey } from "@/util/tenant-key";
+import { profileStatsFromDb } from "./profile-stats-db";
 
 const FRESH_MS = 600_000; // 10분 — 기존 TTL 과 동일(신선 판정)
 const GRACE_MS = 30 * 60_000; // 30분 — 이 안이면 무조건 즉시 응답(약간 낡아도)
@@ -56,6 +59,7 @@ async function fetchBundle(spreadsheetId: string): Promise<Bundle> {
   const inFlight = bundleInFlight.get(spreadsheetId);
   if (inFlight) return inFlight;
   const p = (async () => {
+    if (isSheetlessTenantKey(spreadsheetId)) return readSheetlessBundle(spreadsheetId);
     _sheetBundleFetchCount++;
     return readProfileBundle(spreadsheetId);
   })();
@@ -65,6 +69,23 @@ async function fetchBundle(spreadsheetId: string): Promise<Bundle> {
   } finally {
     bundleInFlight.delete(spreadsheetId);
   }
+}
+
+/** ADR-0038 — 시트 없는 수강생의 bundle 은 DB 만으로(users 행 + 8주 퍼널 통계). 시트 read 0. */
+async function readSheetlessBundle(spreadsheetId: string): Promise<Bundle> {
+  const profile = await readSheetlessProfileFromDb(spreadsheetId);
+  if (!profile?.courseStartISO || !profile.graduationISO) {
+    throw new Error("[course-dates] 시트 없는 수강생의 수강 기간이 DB 에 없습니다");
+  }
+  const courseStart = new Date(`${profile.courseStartISO}T00:00:00`);
+  const [stats] = await profileStatsFromDb([{ spreadsheetId, courseStart }]);
+  return {
+    cohort: profile.cohort,
+    name: profile.name,
+    courseStart,
+    graduation: new Date(`${profile.graduationISO}T00:00:00`),
+    stats: { 미팅예정: stats?.미팅예정 ?? 0, 미팅완료: stats?.미팅완료 ?? 0, 계약: stats?.계약 ?? 0 },
+  };
 }
 
 /**

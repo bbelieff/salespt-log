@@ -17,6 +17,7 @@
  */
 import { dbEnabled, ensureSchema, getDbPool } from "./client";
 import type { MirrorTab } from "./mirror";
+import { isSheetlessTenantKey } from "@/util/tenant-key";
 
 export interface MirrorPendingRef {
   spreadsheetId: string;
@@ -29,6 +30,8 @@ export interface MirrorPendingRef {
  * 실패행을 큐 뒤로 회전시켜야 뒤에 쌓인 정상 pending 행이 굶지 않는다(starvation 방지). */
 export async function markMirrorPending(p: MirrorPendingRef): Promise<void> {
   if (!dbEnabled()) return;
+  // ADR-0038: 시트 없는 수강생은 수렴할 시트가 없다 — pending 으로 남기면 self-heal 큐가 영원히 돈다.
+  if (isSheetlessTenantKey(p.spreadsheetId)) return;
   await ensureSchema();
   await getDbPool().query(
     `update sheet_rows set mirror_pending = true, updated_at = now()

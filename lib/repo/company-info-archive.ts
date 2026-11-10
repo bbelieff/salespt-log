@@ -29,6 +29,7 @@ import {
 } from "./meetings";
 import { headerBackfillPlan } from "./meetings-rows";
 import { colName } from "@/util/sheet-column";
+import { isSheetlessTenantKey } from "@/util/tenant-key";
 import { normalizeRrn } from "@/util/rrn-front";
 import { CompanyInfo } from "@/types";
 import { dbEnabled } from "./db/client";
@@ -43,6 +44,7 @@ import {
   readCompanyArchiveRowPayload,
   type CompanyArchiveWriteOpts,
 } from "./db/company-archive-sync";
+import { renameSheetlessCompanyInfo } from "./company-info-sheetless";
 
 const TAB = SHEET_RANGES.companyInfoArchive.tab;
 const HEADER_RANGE = `'${TAB}'!${SHEET_RANGES.companyInfoArchive.headerRow}`;
@@ -103,6 +105,7 @@ export function companyInfoToArchiveRow(
 const ensuring = new Map<string, Promise<void>>();
 
 export function ensureCompanyInfoTab(spreadsheetId: string): Promise<void> {
+  if (isSheetlessTenantKey(spreadsheetId)) return Promise.resolve(); // ADR-0038: 만들 시트가 없다
   let p = ensuring.get(spreadsheetId);
   if (!p) {
     p = doEnsure(spreadsheetId).catch((e) => {
@@ -222,6 +225,7 @@ const sheetSyncTails = new Map<string, Promise<void>>();
 
 /** DB upsert 성공 후 호출 — 해당 계약ref 행을 최신 DB 상태로 시트에 수렴(find-or-append). */
 function queueCompanyArchiveSheetSync(spreadsheetId: string, rowKey: string): void {
+  if (isSheetlessTenantKey(spreadsheetId)) return; // ADR-0038: 시트 없는 수강생 — 수렴할 시트가 없다
   const tail = (sheetSyncTails.get(spreadsheetId) ?? Promise.resolve())
     .then(() => runSheetSync(spreadsheetId, rowKey))
     .then(() => drainPendingCompanyArchiveSheet(spreadsheetId, rowKey))
@@ -341,6 +345,7 @@ export async function readCompanyInfoArchiveRow(
   계약일: string,
   업체명: string,
 ): Promise<CompanyInfo | null> {
+  if (isSheetlessTenantKey(spreadsheetId)) return null; // ADR-0038: 시트 행 없음 — DB 정본은 호출부가 먼저 본다
   await ensureCompanyInfoTab(spreadsheetId);
   const row = await findRowByRef(spreadsheetId, companyContractRef(계약일, 업체명));
   if (row === null) return null;
@@ -413,6 +418,7 @@ export async function hasCompanyInfoArchiveRow(
       /* DB 실패 — 아래 시트 확인으로 폴백 */
     }
   }
+  if (isSheetlessTenantKey(spreadsheetId)) return false; // ADR-0038: 확인할 시트가 없다
   try {
     await ensureCompanyInfoTab(spreadsheetId);
     return (await findRowByRef(spreadsheetId, ref)) !== null;
@@ -431,6 +437,7 @@ export async function renameCompanyInfoKey(
   next: { 계약일: string; 업체명: string },
   opts?: CompanyArchiveWriteOpts,
 ): Promise<{ moved: boolean }> {
+  if (isSheetlessTenantKey(spreadsheetId)) return renameSheetlessCompanyInfo(spreadsheetId, oldKey, next);
   await ensureCompanyInfoTab(spreadsheetId);
   const row = await findRowByRef(
     spreadsheetId,

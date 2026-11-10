@@ -19,6 +19,7 @@
  *     다음 어떤 쓰기든 같은 행을 다시 최신 상태로 동기화한다(자기치유).
  */
 import { sameContractRef } from "@/util/contract-ref";
+import { isSheetlessTenantKey } from "@/util/tenant-key";
 import { randomUUID } from "node:crypto";
 import * as Sentry from "@sentry/nextjs";
 import { findUserByEmail } from "@/repo/users";
@@ -81,6 +82,7 @@ const sheetSyncTails = new Map<string, Promise<void>>();
 /** DB 쓰기 성공 후 호출 — 해당 ToDo 행을 최신 DB 상태로 시트에 수렴시키는 잡을 적재.
  * 잡 끝에 같은 시트의 다른 pending 행도 재드라이브(§7-3 self-heal) — "다음 어떤 쓰기든"이 트리거. */
 function queueSheetSync(ctx: SheetCtx, id: string): void {
+  if (isSheetlessTenantKey(ctx.spreadsheetId)) return; // ADR-0038: 시트 없는 수강생 — 수렴할 시트가 없다
   const key = ctx.spreadsheetId;
   const tail = (sheetSyncTails.get(key) ?? Promise.resolve())
     .then(() => runSheetSync(ctx, id))

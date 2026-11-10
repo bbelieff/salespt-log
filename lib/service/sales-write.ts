@@ -34,6 +34,7 @@ import { captureServerEvent } from "@/lib/analytics/api-timing";
 import type { Channel, ChannelDailyRow } from "@/types";
 import { MAX_SHEET_WEEK } from "@/config/cohort-dates";
 import { parseISO, weekIndexOf } from "@/util/week";
+import { isSheetlessTenantKey } from "@/util/tenant-key";
 import { chooseWriteSource, usesDbStorage } from "./daily-source";
 
 export interface SalesCtx {
@@ -53,6 +54,7 @@ const sheetSyncTails = new Map<string, Promise<void>>();
 /** 한 행 수렴 미러를 큐에 태운다(비차단). 같은 시트 잡은 **직렬** — 인터리빙으로 옛 값이 이기지 않게.
  * 잡 끝에 같은 시트의 다른 pending 행도 재드라이브(§7-3 self-heal). */
 export function queueSalesRowSync(ctx: SalesCtx, date: string, channel: Channel): void {
+  if (isSheetlessTenantKey(ctx.spreadsheetId)) return; // ADR-0038: 시트 없는 수강생 — 시트로 보낼 미러가 없다
   const key = ctx.spreadsheetId;
   const tail = (sheetSyncTails.get(key) ?? Promise.resolve())
     .then(() => runSalesRowSync(ctx, date, channel))

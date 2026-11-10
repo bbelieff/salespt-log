@@ -2,8 +2,10 @@
 import * as Sentry from "@sentry/nextjs";
 import type { DbSheetContext } from "@/types/db-sheet";
 import { syncDirectProductionForDate } from "./db";
+import { isSheetlessTenantKey } from "@/util/tenant-key";
 const tails = new Map<string, Promise<void>>();
 export function queueDbSheetProductionSync(ctx: DbSheetContext, date: string): void {
+  if (isSheetlessTenantKey(ctx.spreadsheetId)) return; // ADR-0038: 시트 없는 수강생 — 시트로 보낼 미러가 없다
   const key = ctx.spreadsheetId;
   const task = (tails.get(key) ?? Promise.resolve()).then(async () => {
     for (let attempt = 0; attempt < 3; attempt++) {

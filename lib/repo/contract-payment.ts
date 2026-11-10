@@ -16,11 +16,13 @@
 import { SHEET_RANGES } from "@/config";
 import { ContractPayment } from "@/types";
 import { isManualContractLink } from "@/util/contract-link";
+import { isSheetlessTenantKey } from "@/util/tenant-key";
 import { ensureGridColumns, sheetsClient } from "./sheets-client";
 import { mirrorClearRow } from "./db/mirror";
 import { clearContractRowInDbSync, type ContractWriteOpts, persistContractRow, userFieldsMirrorPayload } from "./db/contracts-clear";
 import { queueContractRowSync } from "./contract-sheet-sync";
 import { mirrorContractRowDurable } from "./contract-append-mirror";
+import { appendSheetlessContract } from "./contract-sheetless";
 import { cpToRow, rowToCP, serialToISODate, toStr } from "./contract-payment-row";
 
 const CFG = SHEET_RANGES.contractPayment;
@@ -74,6 +76,7 @@ export function tabRef(tab: string): string {
 
 /** 02 계약수납관리 모든 행 read (firstDataRow~). 7기·6기 양식 동시 지원. */
 export async function readAll(spreadsheetId: string): Promise<ContractPayment[]> {
+  if (isSheetlessTenantKey(spreadsheetId)) return []; // ADR-0038: 시트 없음 — 계약은 DB 정본에만
   const { tab, firstDataRow } = await resolveLayout(spreadsheetId);
   const range = `${tabRef(tab)}!A${firstDataRow}:AO`; // A~AH 실사용 + AI~AJ 이월 + AK 연결 미팅 id + AL~AO 해지
   const res = await sheetsClient().spreadsheets.values.get({
@@ -124,6 +127,7 @@ async function findFirstEmptyRow(spreadsheetId: string): Promise<number> {
  * (probabilistic 아님 — 시트에 있는 모든 채워진 row 를 빠짐없이 확인).
  */
 export async function readFilledRowNumbers(spreadsheetId: string): Promise<Set<number>> {
+  if (isSheetlessTenantKey(spreadsheetId)) return new Set(); // ADR-0038: 시트 없음 = 채워진 행 없음
   const { firstDataRow, values } = await readColumnC(spreadsheetId);
   const rows = new Set<number>();
   for (let i = 0; i < values.length; i++) {
@@ -235,6 +239,7 @@ export async function appendFromContract(
   opts?: ContractWriteOpts, // 생략=R2 미러(no-throw). append 는 멱등키가 없어 기본 throw 금지(§6 R3-3)
   dateCompanyFallback = false,
 ): Promise<{ row: number }> {
+  if (isSheetlessTenantKey(spreadsheetId)) return appendSheetlessContract(spreadsheetId, data, carryover, dateCompanyFallback);
   if (data.meetingId || dateCompanyFallback) {
     const existing = await findRowByLink(spreadsheetId, {
       meetingId: data.meetingId,

@@ -46,6 +46,18 @@ async function attemptDurableAppendUpsert(
   return false;
 }
 
+/** ADR-0038 — 시트 없는 수강생의 append 는 이 DB 행이 정본이다. 기다리고, 끝내 실패하면 throw.
+ *  (시트 수강생의 fire-and-forget 미러와 달리 재시도해도 시트 중복행이 생길 일이 없다.) */
+export async function upsertDbTabRowNow(
+  spreadsheetId: string,
+  rowKey: string,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  if (!(await attemptDurableAppendUpsert(spreadsheetId, rowKey, payload))) {
+    throw new Error("[db] 시트 없는 수강생 DB관리 행 저장 실패");
+  }
+}
+
 /** fire-and-forget — await 하지 말 것. 4섹션 appendX 함수(db.ts) 전용. */
 export function mirrorDbTabRowDurable(
   spreadsheetId: string,

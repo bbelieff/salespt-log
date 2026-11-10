@@ -102,3 +102,30 @@ export async function writeCourseDatesToDb(
   );
   return { skipped: false, updated: (res.rowCount ?? 0) > 0 };
 }
+
+/**
+ * ADR-0038 — 시트 없는 수강생(`local:` 번호)의 헤더 프로필(기수·이름·수강시작·종강)을 DB users 행에서.
+ * 시트 수강생의 B3:C3·O1·O2 batchGet(readProfileBundle) 자리를 대신한다. 없으면 null.
+ */
+export async function readSheetlessProfileFromDb(
+  spreadsheetId: string,
+): Promise<{ cohort: string; name: string; courseStartISO: string; graduationISO: string } | null> {
+  if (!dbEnabled() || !spreadsheetId) return null;
+  const res = await getDbPool().query<{
+    cohort: string; cohort_label: string; name: string; name_label: string;
+    course_start_iso: string; graduation_iso: string;
+  }>(
+    `select cohort, cohort_label, name, name_label, course_start_iso, graduation_iso from users
+     where spreadsheet_id = $1 and role = 'trainee' and email <> ''
+     order by (course_start_iso <> '') desc, updated_at desc limit 1`,
+    [spreadsheetId],
+  );
+  const row = res.rows[0];
+  if (!row) return null;
+  return {
+    cohort: (row.cohort_label || row.cohort).trim(),
+    name: (row.name_label || row.name).trim(),
+    courseStartISO: row.course_start_iso,
+    graduationISO: row.graduation_iso,
+  };
+}

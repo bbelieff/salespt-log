@@ -13,6 +13,7 @@
  * SSOT: docs/domains/sheet-structure.md §5-2
  */
 import { sameContractRef } from "@/util/contract-ref";
+import { isSheetlessTenantKey } from "@/util/tenant-key";
 import { SHEET_RANGES } from "@/config";
 import { Todo, type TodoType } from "@/types";
 import { ensureGridColumns, sheetsClient } from "./sheets-client";
@@ -190,6 +191,7 @@ const ensuring = new Map<string, Promise<void>>();
  * 동시 호출은 같은 promise 를 공유 → addSheet 는 1회만 (중복 탭 방지).
  */
 export function ensureTodoTab(spreadsheetId: string): Promise<void> {
+  if (isSheetlessTenantKey(spreadsheetId)) return Promise.resolve(); // ADR-0038: 만들 시트가 없다
   let p = ensuring.get(spreadsheetId);
   if (!p) {
     p = doEnsureTodoTab(spreadsheetId).catch((e) => {
