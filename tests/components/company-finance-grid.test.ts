@@ -126,7 +126,7 @@ describe("A 금액 칸 — 백만원", () => {
     expect(byKey(g, "영업이익")!.value).toBe("-3,200만");
     expect(stage).not.toHaveBeenCalled();
     const note = fieldBox(byKey(g, "영업이익")!).querySelector<HTMLElement>('[role="note"]')!;
-    expect(note.textContent).toContain("글로 적힌 값이에요 — 계산에는 -32백만원으로 써요");
+    expect(note.textContent).toContain("글로 적힌 값이에요 — 계산에는 −32백만원으로 써요");
     act(() => buttonIn(note, "백만원으로 바꾸기")!.click());
     expect(staged().영업이익).toBe("-32");
     const bad = fieldBox(byKey(g, "자산총계")!).querySelector<HTMLElement>('[role="note"]')!;

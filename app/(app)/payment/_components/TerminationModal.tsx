@@ -10,7 +10,7 @@ import { useState } from "react";
 import AppDialog, { AppDialogClose } from "@/components/ui/AppDialog";
 import type { ContractPayment } from "@/types";
 import MoneyInput from "@/components/ui/MoneyInput";
-import { formatMoney } from "@/lib/format/money";
+import { formatWon } from "@/lib/format/money";
 import { slotTotals } from "@/lib/analytics/contract-slots";
 
 type RefundMode = "none" | "partial" | "full";
@@ -23,7 +23,6 @@ interface Props {
 }
 
 /** 공용 부품 별칭 — 중복 구현 제거(PR-1 단일 원천). */
-const fmtMoney = formatMoney;
 
 export default function TerminationModal({ cp, pending, onClose, onConfirm }: Props) {
   const [사유, set사유] = useState("");
@@ -88,7 +87,7 @@ export default function TerminationModal({ cp, pending, onClose, onConfirm }: Pr
             [
               ["none", "없음"],
               ["partial", "일부 반환"],
-              ["full", `전액 반환 (₩${fmtMoney(fullAmount)})`],
+              ["full", `전액 반환 (${formatWon(fullAmount)})`],
             ] as [RefundMode, string][]
           ).map(([m, label]) => (
             <label key={m} className="flex cursor-pointer items-center gap-2">

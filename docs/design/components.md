@@ -10,6 +10,21 @@
 
 # 컴포넌트 카탈로그 (Components Catalog)
 
+## 금액 표기 규칙 (2026-11-10)
+
+화면 금액은 공용 `lib/format/money.ts` 하나로 찍는다(직접 `₩`·`toLocaleString`·`/10_000 + "만"` 금지). 저장값·계산·입력 파싱은 바꾸지 않는다.
+
+| 규칙 | 쓰는 곳 | 함수 | 보기 |
+|---|---|---|---|
+| ① 정확한 금액 | 계약·수납·원장·카드·확인창 | `formatWon(n)` | `1,234,567원` (₩ 없음, 띄어쓰기 없음) · 0 → `0원` |
+| ② 좁은 자리 요약 | 대시보드 도넛 가운데·채널 표·남은 돈 표 | `formatMoneyCompact(n, { underMan? })` | `1,234만` · 1억부터 `1.9억` · 0 → `0` · 9,999.5만 → `1억` · 채널 비용/단가 표만 `underMan` 으로 0 아닌 1만 미만 `1만 미만` |
+| ③ 음수 | 반환·적자·남은 돈 | (위 두 함수가 처리) | 숫자 앞 진짜 마이너스 `−`(U+2212): `−56만` · `−500,000원`. 빨간 비용 칸은 기존대로 부호 없이 |
+| ④ 업체정보 재무 | 매출·재무제표 백만원, 보증금·월세 천원, `약 2.5억`, 문서 자동입력 비교표 | `@/util/company-money` | 그대로. 화면 음수만 `formatTenthsDisplay`·`moneyHint` 로 `−3.2`(저장 글은 하이픈 정본 `formatTenths`) |
+| 건수 | 건·장·회·점 | `formatCount(n)` | `1,234` — 금액 함수로 건수를 찍지 않는다 |
+
+- 입력칸은 단위를 라벨(「(원)」)이나 옆 글자로 두고, 금액 입력은 `MoneyInput`(천단위 쉼표, number 방출).
+- 공급처가 준 원문 값(DB관리시트 매출·기준, 필요자금 「3억」·「250백만」)은 원문 그대로 둔다.
+
 ## 수납 모바일 도구·업체정보 표현 (2026-10-17)
 - `MobileTools` (`app/(app)/payment/_components/MobileTools.tsx`): 기존 DriveLinkBar/CompanySearchBar를 조합한다. 모바일 앞3각44px·검색잔여폭·gap0, touch2tap/mousehover/keyboard/Escape, query·clear·guardedNav 기존 경계. Drive 연결 요청은 기존 명시 버튼만 수행한다.
 - `CompanyInfoContractSection`→`CompanyInfoEditor`의 optional `defaultOpen`은 초기 열림만 지정(생략 시 hideSave 기존값). payment mobile inline은 false, optional `compactMobile`만 mobile compact 도구3/native2와 portal scope에 적용한다. 기본 공용 호출·저장·신원·초안 계약은 불변이다.
@@ -1193,7 +1208,7 @@ app/(app)/dashboard/page.tsx
   (응답에 아직 없는 계약 — 링크 없음). 「추가 비용 ›」(0이 아니거나 못 읽었을 때) = 같은 페이지 비용 원장 버튼, 못 읽었으면
   비용 칸 「확인 못 했어요」(amber-700)·합계 비용에서 빠짐.
 - 합계 줄 「영업이익」(`border-t-2`, bold) = 위 세 칸(매출·비용·영업이익)과 원 단위까지 같다. 칸 숫자는 만원으로 먼저 반올림한 뒤
-  0이 아닐 때만 「−」(「−0만」 없음), 1억 이상은 0.1억 단위(「1.9억」) — 320px에서 가로 스크롤 없음. 전체 금액은 `title` +
+  0이 아닐 때만 「−」(「−0만」 없음, 0 은 「0」), 1억 이상은 0.1억 단위(「1.9억」) — `formatMoneyCompact`, 320px에서 가로 스크롤 없음. 전체 금액(`formatWon`, 「−500,000원」)은 `title` +
   sr-only 글자. 각주 「추가 비용은 채널에 나누지 않았어요 · 만원 단위로 반올림했어요」.
 - 패널 글에 「이월」·「시즌」 없음. 계약 한 건마다의 이익은 만들지 않는다(DB 비용 행에 계약 연결 키가 없다).
 
@@ -1209,7 +1224,7 @@ app/(app)/dashboard/page.tsx
   중첩 버튼이 생기지 않는다.
 - 상세 내용: 매출 = 수임비·수수료(·반환) / 비용 = DB 비용 합계 + 추가 비용 행(기존 경비장부 진입점,
   hover/focus 스타일·접근성 라벨 유지) / 영업이익 = 이익률(소수 1자리)·기간·계약건수 + `profitDetail`(채널별 남은 돈).
-- 금액은 `formatMoney` 전체 금액(축약·절단 없음). ₩99,999,999·₩-99,999,999까지
+- 금액은 `formatWon` 전체 금액(축약·절단 없음, 금액 표기 규칙 ①③). 99,999,999원·−99,999,999원까지
   320px에서도 한 줄(`white-space:nowrap`, `overflow-wrap:normal`)에 전부 보인다.
   `overflow-wrap:anywhere`·줄바꿈·`overflow:hidden`·ellipsis·truncate·축약은 금지.
   좁은 폭 대응은 cqi 유동 글꼴·최소 패딩 + 실측 맞춤(ResizeObserver·font-load ready·
@@ -1276,9 +1291,9 @@ app/(app)/dashboard/page.tsx
 **용도**: 채널별 성과 — 좌·우 대칭 도넛 2개 (`grid-cols-2`) + 채널 표 1개. 높이를 줄이려고(2026-09-28 belie) 도넛 제목을 도넛 **왼쪽**에 붙이고, 도넛별 범례 2개와 계약단가 카드 4개를 채널 표 하나로 합쳤다(채널 색이 같아 범례가 중복이었다).
 
 **구조**:
-- **좌**: `채널별 비용` 제목(도넛 왼쪽, 2줄, `break-keep`로 글자 단위 줄바꿈 금지) + 비용 도넛 (3채널 — 매입DB/직접생산/현수막, 콜·지·기·소 제외), 가운데 `−누적 비용` (만원 단위, brand red — 코스 전체 누적이라 위 기간 선택 비용과 구분, 2026-11-10)
+- **좌**: `채널별 비용` 제목(도넛 왼쪽, 2줄, `break-keep`로 글자 단위 줄바꿈 금지) + 비용 도넛 (3채널 — 매입DB/직접생산/현수막, 콜·지·기·소 제외), 가운데 `−누적 비용` (`formatMoneyCompact` — 「−1,376만」·0 이면 「0」·1억부터 「억」, brand red — 코스 전체 누적이라 위 기간 선택 비용과 구분, 2026-11-10)
 - **우**: `채널별 DB유입` 제목 + 유입 도넛 (4채널 — 콜·지·기·소 포함), 가운데 총유입 건수 (blue-700)
-- **아래 채널 표**: 채널(색 dot) · 비용(만원 + %) · DB유입(건 + %) · 계약단가 — 4행
+- **아래 채널 표**: 채널(색 dot) · 비용(만원 + %, 0 아닌 1만 미만은 「1만 미만」) · DB유입(건 + %) · 계약단가 — 4행
 
 **SVG (각 도넛)**: `viewBox="0 0 116 116"`(여백 없음), `cx=58 cy=58 r=48 stroke=20`, `rotate(-90)` 12시 시작, 표시 `h-24 w-24`(402px 미만 — 360px 폰에서 옆 제목이 쪼개지지 않게) / `md:h-28 md:w-28`. 값이 0이어도 옅은 바탕 고리(`#f1f5f9`)를 그린다.
 
@@ -1314,7 +1329,7 @@ app/(app)/dashboard/page.tsx
 | 컴포넌트 | 파일 | 역할 / Props |
 |---|---|---|
 | **TabBar** | `components/TabBar.tsx` | 모바일 BottomNav **4+1** (§5, ADR-0019). 좌2(DB생산·컨택)·중앙 캘린더 FAB·우2(일정·계약·실무수납). 단계 점(1~4)·중립 입체 FAB·480 캡(`max-w-bottom-nav`). 내부: TabItem/CenterFab/Dots. SVG `currentColor`. |
-| **MoneyInput** | `components/ui/MoneyInput.tsx` | 금액 입력 — 타이핑 중 자동 천단위 콤마 + 커서 보정. Props: `value: number` / `onChange: (n: number) => void` / `placeholder` / `className` / `disabled`. **표시=콤마 문자열, 방출=number** 를 타입으로 강제(콤마 문자열이 시트로 새면 수식 파괴 — 쓰기는 USER_ENTERED). `type="text"+inputMode="numeric"`(type=number 는 콤마를 invalid 로 보고 0 저장). 유틸: `@/lib/format/money`(formatMoney·formatMoneyInput·parseMoney). 🚫 카운트 스테퍼·만원축약·서술형 매출엔 쓰지 않음 |
+| **MoneyInput** | `components/ui/MoneyInput.tsx` | 금액 입력 — 타이핑 중 자동 천단위 콤마 + 커서 보정. Props: `value: number` / `onChange: (n: number) => void` / `placeholder` / `className` / `disabled`. **표시=콤마 문자열, 방출=number** 를 타입으로 강제(콤마 문자열이 시트로 새면 수식 파괴 — 쓰기는 USER_ENTERED). `type="text"+inputMode="numeric"`(type=number 는 콤마를 invalid 로 보고 0 저장). 유틸: `@/lib/format/money`(formatMoney·formatMoneyInput·parseMoney · 표시 formatWon·formatMoneyCompact·formatCount). `title` 선택 prop(2026-11-10, 비용 원장 항목 편집 금액 칸). 🚫 카운트 스테퍼·만원축약·서술형 매출엔 쓰지 않음 |
 | **PhoneInput** | `components/ui/PhoneInput.tsx` | 연락처 입력 — 타이핑 중 자동 하이픈(010-0000-0000 · 02 지역번호 변형). Props: `value: string` / `onChange: (s: string) => void` / `placeholder` / `className` / `disabled`. 하이픈 포함 문자열 저장(시트 USER_ENTERED 가 숫자만 문자열의 선행 0 을 날리므로 하이픈 저장이 안전). 유틸: `@/lib/format/phone`(formatPhone·maskPhoneInput·normalizePhoneDigits). 🚫 `연락처통신사`("010-…(SKT)") 같은 **합본 필드엔 쓰지 않음** — 표시 정규화는 `formatPhone`(선행 숫자만 포맷·접미 보존) |
 | **ChannelBadge** | `components/ui/ChannelBadge.tsx` | §4 채널 배지 4종 진입점. Props: `channel: Channel` (4종 enum) |
 | **DateInputCustom** | `components/ui/DateInputCustom.tsx` | §2 Date Input — 요일 보이는 버튼 칸 + 직접 그리는 달력(앱 전체 날짜 칸, 2026-11-10) |

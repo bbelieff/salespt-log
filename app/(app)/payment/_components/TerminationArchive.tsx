@@ -8,7 +8,8 @@
 import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useState } from "react";
 import type { ContractPayment } from "@/types";
-import { fmtMoney } from "./nameHighlight";
+
+import { formatWon } from "@/lib/format/money";
 
 interface Props {
   /** 숨김 처리된 해지 계약만 (page 가 필터해서 전달). */
@@ -56,7 +57,7 @@ export default function TerminationArchive({ contracts }: Props) {
                     className="shrink-0 text-red-500"
                     style={{ fontVariantNumeric: "tabular-nums" }}
                   >
-                    반환 ₩{fmtMoney(cp.반환액)}
+                    반환 {formatWon(cp.반환액)}
                   </span>
                 )}
               </div>

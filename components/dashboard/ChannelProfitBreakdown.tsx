@@ -14,11 +14,10 @@
  */
 import Link from "next/link";
 import { CH_COLOR } from "./ChannelPerformance";
+import { formatMoneyCompact, formatWon } from "@/lib/format/money";
 import {
   channelHeadlineText,
   channelProfitHeadline,
-  formatManShort,
-  formatWonFull,
   hasActivity,
   type ChannelProfit,
   type ChannelProfitTable,
@@ -48,10 +47,10 @@ const ACTION = "flex min-h-6 flex-col items-start break-keep rounded text-left f
 function Money({ won, tone = false, dashIfZero = false }: { won: number; tone?: boolean; dashIfZero?: boolean }) {
   if (dashIfZero && won === 0) return <Dash />;
   const color = tone ? (won < 0 ? "text-violet-600" : "text-blue-700") : "text-slate-700";
-  const full = formatWonFull(won);
+  const full = formatWon(won);
   return (
     <td className={`${NUM} ${color}`} title={full}>
-      <span aria-hidden="true">{formatManShort(won)}</span>
+      <span aria-hidden="true">{formatMoneyCompact(won)}</span>
       <span className="sr-only">{full}</span>
     </td>
   );

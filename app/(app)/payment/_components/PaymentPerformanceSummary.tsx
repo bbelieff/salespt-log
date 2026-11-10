@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { ContractPayment, Todo } from "@/types";
-import { formatMoney } from "@/lib/format/money";
+import { formatWon } from "@/lib/format/money";
 import { buildWorkStatusItems } from "@/lib/analytics/payment-work-status";
 import WorkStatusBar from "@/components/payment/WorkStatusBar";
 import PeriodPicker from "@/components/ui/PeriodPicker";
@@ -51,7 +51,7 @@ export default function PaymentPerformanceSummary({ rows, workRows, todos, onNav
         </div>
         {dataState !== "ready" ? unavailable(dataState, "계약·매출") : <div className="flex min-w-0 flex-col justify-center gap-1 rounded-xl bg-gradient-to-br from-blue-50/80 via-white to-indigo-50/60 px-2 py-1 min-[640px]:flex-row min-[640px]:items-center min-[640px]:gap-3 min-[1280px]:gap-4 min-[1280px]:px-3">
           <div className="flex min-w-0 flex-col min-[1280px]:flex-row min-[1280px]:items-baseline min-[1280px]:gap-1.5"><span className="whitespace-nowrap text-px-11 font-medium text-slate-500">{periodLabel} 계약</span><span className="text-lg font-black tabular-nums text-slate-950 min-[1280px]:text-2xl">{summary.contracts}<span className="ml-0.5 text-sm font-bold">건</span></span></div>
-          <div className="flex min-w-0 flex-col min-[1280px]:flex-row min-[1280px]:items-baseline min-[1280px]:gap-1.5"><span className="whitespace-nowrap text-px-11 font-medium text-slate-500">{range ? "기간 매출" : "총 매출"}</span><span className="break-all text-[clamp(12px,3.8vw,16px)] font-extrabold tabular-nums leading-tight text-slate-950 min-[1280px]:text-xl">₩{formatMoney(summary.revenue)}</span></div>
+          <div className="flex min-w-0 flex-col min-[1280px]:flex-row min-[1280px]:items-baseline min-[1280px]:gap-1.5"><span className="whitespace-nowrap text-px-11 font-medium text-slate-500">{range ? "기간 매출" : "총 매출"}</span><span className="break-all text-[clamp(12px,3.8vw,16px)] font-extrabold tabular-nums leading-tight text-slate-950 min-[1280px]:text-xl">{formatWon(summary.revenue)}</span></div>
         </div>}
         {progressState !== "ready" ? unavailable(progressState, "진행 현황") : <WorkStatusBar items={items} onNavigate={onNavigate} />}
       </div>

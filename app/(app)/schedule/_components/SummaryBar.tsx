@@ -2,7 +2,7 @@
  * SummaryBar — 주간 요약 (5 카운터 + 매출 합계 — 한 row 통합, 2026-05-17 [A2]).
  *
  * v5 (2026-05-17): 5 counters + 매출 합계를 1 row 로 통합.
- *   [미팅총건][예정][완료][취소][계약]  💰 ₩X (수임+수수료)
+ *   [미팅총건][예정][완료][취소][계약]  💰 X원 (수임+수수료)
  *
  * sticky 제거 (부모 schedule/page.tsx가 WeekHeader와 묶어 sticky 처리).
  * "변경" 상태 미팅도 미팅예정에 포함 (재예약된 미팅도 진행 예정).
@@ -15,7 +15,7 @@ import { useMemo, type ReactNode } from "react";
 import { isTerminatedContract } from "@/types";
 import type { Meeting } from "@/types";
 import { useContractPayments } from "@/query/contract-payment-hooks";
-import { formatMoney } from "@/lib/format/money";
+import { formatWon } from "@/lib/format/money";
 import { slotTotals } from "@/lib/analytics/contract-slots";
 
 interface Props {
@@ -24,7 +24,6 @@ interface Props {
 }
 
 /** 공용 부품 별칭 — 중복 구현 제거(PR-1 lib/format/money 가 단일 원천). */
-const fmtMoney = formatMoney;
 
 export default function SummaryBar({ meetings, goalSummary }: Props) {
   const total = meetings.length;
@@ -93,13 +92,13 @@ export default function SummaryBar({ meetings, goalSummary }: Props) {
               className="text-sm font-extrabold text-green-700"
               style={{ fontVariantNumeric: "tabular-nums" }}
             >
-              ₩{fmtMoney(revenueSum)}
+              {formatWon(revenueSum)}
             </span>
             <span
               className="text-px-10 text-slate-500"
               style={{ fontVariantNumeric: "tabular-nums" }}
             >
-              수임 ₩{fmtMoney(feeSum)} · 수수료 ₩{fmtMoney(commissionSum)}
+              수임 {formatWon(feeSum)} · 수수료 {formatWon(commissionSum)}
             </span>
           </div>
         )}

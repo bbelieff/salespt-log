@@ -7,7 +7,8 @@
  */
 "use client";
 
-import { fmtWon, type ChannelMeta } from "../_lib/channels";
+import { type ChannelMeta } from "../_lib/channels";
+import { formatCount, formatWon } from "@/lib/format/money";
 
 const numStyle = { fontVariantNumeric: "tabular-nums" } as const;
 
@@ -39,13 +40,13 @@ export function CostSummary({
         <div>
           <div className="mb-0.5 text-xs text-slate-500">총비용</div>
           <div className="text-xl font-bold text-red-600" style={numStyle}>
-            ₩{fmtWon(totalCost)}
+            {formatWon(totalCost)}
           </div>
         </div>
         <div>
           <div className="mb-0.5 text-xs text-slate-500">평균단가</div>
           <div className="text-xl font-bold text-slate-900" style={numStyle}>
-            ₩{fmtWon(avgUnit)}
+            {formatWon(avgUnit)}
           </div>
         </div>
       </div>
@@ -54,7 +55,7 @@ export function CostSummary({
           {rowCount}개 {channel.recordsLabel}
         </span>
         <span>
-          총 {fmtWon(totalQty)}
+          총 {formatCount(totalQty)}
           {unitLabel}
         </span>
       </div>

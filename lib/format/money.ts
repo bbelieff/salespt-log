@@ -11,7 +11,13 @@
  *
  * 스코프 밖(이 유틸로 치환 금지):
  *  - 건수·점수 등 **카운트**(type=number 스테퍼) — 콤마 넣으면 브라우저가 값을 거부해 0 이 된다.
- *  - **만원 축약**(`원/10_000 + "만"`) — 별개 개념.
+ *  - 업체정보 재무(백만원·천원·「약 2.5억」)는 `@/util/company-money` 가 맡는다(규칙 ④).
+ *
+ * 화면 금액 표기 규칙(2026-11-10 승인, docs/design/components.md 「금액 표기 규칙」):
+ *  ① 정확한 금액 `formatWon` — 「1,234,567원」(₩ 대신 뒤에 「원」, 띄어쓰기 없음)
+ *  ② 좁은 요약·차트 `formatMoneyCompact` — 「1,234만」·「1.9억」(1억부터), 0 은 「0」
+ *  ③ 음수는 숫자 앞 「−」(U+2212) — 「−56만」·「−500,000원」
+ *  건수·횟수는 금액 함수 대신 `formatCount`.
  *  - 서술형 자유텍스트 매출·신용점수(z.string) — 원문이 깨진다.
  */
 
@@ -41,4 +47,51 @@ export function parseMoney(s: string | number | null | undefined): number {
   if (digits === "") return 0;
   const n = Number(digits);
   return Number.isFinite(n) ? n : 0;
+}
+
+/** 화면 음수 부호 — 하이픈(-)이 아닌 진짜 마이너스(U+2212). */
+export const MINUS = "−";
+
+function roundedOrZero(n: number | null | undefined): number {
+  const v = Math.round(Number(n));
+  return Number.isFinite(v) ? v : 0;
+}
+
+/**
+ * 규칙 ①③ 정확한 금액 — 「1,234,567원」, 음수 「−500,000원」. null/NaN → 「0원」.
+ * 단위만 붙이고 숫자는 formatMoney 와 같다(정수 반올림).
+ */
+export function formatWon(n: number | null | undefined): string {
+  const v = roundedOrZero(n);
+  return `${v < 0 ? MINUS : ""}${Math.abs(v).toLocaleString("ko-KR")}원`;
+}
+
+/**
+ * 규칙 ②③ 좁은 자리 금액 — 만원으로 먼저 반올림하고 1억(=10,000만)부터 0.1억 단위.
+ *  - 0(반올림 결과 포함) → 「0」 (「0만」·「−0만」 없음)
+ *  - 9,999만 → 「9,999만」, 반올림해 10,000만이 되면 「1억」(「10,000만」 없음)
+ *  - 음수 → 「−56만」·「−1.2억」
+ *  - `underMan: true` 면 0 이 아닌 1만 미만(|n| < 10,000)은 「1만 미만」(채널 비용·단가 표).
+ */
+export function formatMoneyCompact(
+  n: number | null | undefined,
+  opts: { underMan?: boolean } = {},
+): string {
+  const v = Number(n);
+  if (!Number.isFinite(v) || v === 0) return "0";
+  const abs = Math.abs(v);
+  const sign = v < 0 ? MINUS : "";
+  if (opts.underMan && abs < 10_000) return `${sign}1만 미만`;
+  const man = Math.round(abs / 10_000);
+  if (man === 0) return "0";
+  if (man >= 10_000) {
+    const eok = Math.round(man / 1_000) / 10;
+    return `${sign}${eok.toLocaleString("ko-KR", { maximumFractionDigits: 1 })}억`;
+  }
+  return `${sign}${man.toLocaleString("ko-KR")}만`;
+}
+
+/** 건수·횟수·점수 — 천단위 콤마만(금액 함수로 건수를 찍지 않는다). null/NaN → 「0」. */
+export function formatCount(n: number | null | undefined): string {
+  return roundedOrZero(n).toLocaleString("ko-KR");
 }

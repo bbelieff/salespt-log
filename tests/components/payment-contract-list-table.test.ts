@@ -38,8 +38,8 @@ describe("ContractListTable 1뎁스 카드", () => {
     const node = renderList({ items: itemsFor([cp()]), selectedKey: "row:3", onSelect: vi.fn() });
     expect(node.querySelector('[role="listbox"]')).not.toBeNull();
     expect(node.textContent).toContain("한빛상사");
-    expect(node.textContent).toContain("9/4 · 수임비 ₩5,000,000");
-    expect(node.textContent).toContain("수수료 ₩1,200,000");
+    expect(node.textContent).toContain("9/4 · 수임비 5,000,000원");
+    expect(node.textContent).toContain("수수료 1,200,000원");
     expect(node.textContent).toContain("진행 80%");
     expect(node.textContent).toContain("진행 1 · 미소재단");
     expect(node.querySelector("table")).toBeNull();
@@ -56,7 +56,7 @@ describe("ContractListTable 1뎁스 카드", () => {
   it("진행 없는 업체는 한 행으로 남기고 D-??와 구별한다", () => {
     const bare = cp({ 수납1: slot(), 수납2: slot(), 수납3: slot() });
     const node = renderList({ items: itemsFor([bare]), selectedKey: "row:3", onSelect: vi.fn() });
-    expect(node.textContent).toContain("수수료 ₩0"); expect(node.textContent).toContain("진행 0%");
+    expect(node.textContent).toContain("수수료 0원"); expect(node.textContent).toContain("진행 0%");
     expect(node.textContent).toContain("진행 없음"); expect(node.textContent).not.toContain("D-??");
   });
   it("같은 업체는 한 카드 — 진행건을 줄마다 보여 주고 대표 진행의 Todo 날짜를 표시한다 (belie 2026-09-29)", () => {

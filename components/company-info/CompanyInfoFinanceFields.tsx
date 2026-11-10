@@ -19,7 +19,7 @@ import { useState } from "react";
 import type { CompanyInfo } from "@/types";
 import {
   formatMoneyOnBlur,
-  formatTenths,
+  formatTenthsDisplay,
   moneyHint,
   readMoney,
   sanitizeMoneyTyping,
@@ -111,8 +111,8 @@ export function MoneyLegacyNote({
     r.tenths === null
       ? "읽을 수 없어 계산에서 빠져요"
       : r.wonScale
-        ? `원 단위로 적은 숫자 같아요 — 계산에는 ${formatTenths(r.tenths)}백만원으로 써요`
-        : `글로 적힌 값이에요 — 계산에는 ${formatTenths(r.tenths)}백만원으로 써요`;
+        ? `원 단위로 적은 숫자 같아요 — 계산에는 ${formatTenthsDisplay(r.tenths)}백만원으로 써요`
+        : `글로 적힌 값이에요 — 계산에는 ${formatTenthsDisplay(r.tenths)}백만원으로 써요`;
   return (
     <div className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-amber-700" role="note">
       <span className="min-w-0 break-words">

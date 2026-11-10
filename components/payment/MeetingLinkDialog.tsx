@@ -9,7 +9,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { companyInfoFieldList } from "@/components/company-info-defs";
-import { formatMoney } from "@/lib/format/money";
+import { formatWon } from "@/lib/format/money";
 import { findConflicts, mergeRecords, newerSide, type MergeSide } from "@/util/record-merge";
 import { fetchMeetingLinkPreview, useLinkMeeting, type MeetingLinkPreview } from "@/query/contract-link-hooks";
 
@@ -112,7 +112,7 @@ export default function MeetingLinkDialog({ row, meetingId, onClose, onLinked, o
                 <legend className="mb-1 text-xs font-bold text-slate-700">수임비</legend>
                 <div className="flex gap-2">
                   {(["contract", "meeting"] as const).map((s) => (
-                    <Choice key={s} name="link-fee" side={s} value={`₩${formatMoney(s === "contract" ? view.c.수임비 : view.m.수임비)}`}
+                    <Choice key={s} name="link-fee" side={s} value={`${formatWon(s === "contract" ? view.c.수임비 : view.m.수임비)}`}
                       pick={pickOf("수임비", view.rowSide)} recent={s === view.rowSide} onPick={setPick("수임비")} />
                   ))}
                 </div>

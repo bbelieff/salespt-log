@@ -262,7 +262,7 @@ describe("expense one-off inline edit", () => {
     expect(patchCount()).toBe(1);
     expect(document.body.textContent).toContain("저장 실패");
     // Draft retained for retry.
-    expect((field(row, "금액(원)") as HTMLInputElement).value).toBe("150000");
+    expect((field(row, "금액(원)") as HTMLInputElement).value).toBe("150,000"); // MoneyInput 천단위 쉼표(초안은 숫자 글 그대로)
     const retry = [...document.querySelectorAll("button")].find((b) => b.textContent === "다시 시도");
     if (!retry) throw new Error("retry button is missing");
     await act(async () => { retry.click(); });
@@ -311,7 +311,7 @@ describe("expense one-off inline edit", () => {
     // Editor initial amount is the stored original total (1000), not the
     // view-range recognized portion (500), and stays editable.
     expect(amount.disabled).toBe(false);
-    expect(amount.value).toBe("1000");
+    expect(amount.value).toBe("1,000"); // MoneyInput 천단위 쉼표
     expect(row.textContent).toContain("전액");
     expect(row.textContent).toContain("인식액");
     changeInput(amount, "1200");
@@ -338,7 +338,7 @@ describe("expense one-off inline edit", () => {
     await advance(3000);
     await settle();
     expect(patchCount()).toBe(0);
-    expect((field(editorOf("외주비 원본"), "금액(원)") as HTMLInputElement).value).toBe("1000");
+    expect((field(editorOf("외주비 원본"), "금액(원)") as HTMLInputElement).value).toBe("1,000");
   });
 
   it("each entry PATCHes its own stable id with its own payload", async () => {

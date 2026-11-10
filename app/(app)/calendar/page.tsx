@@ -27,13 +27,12 @@ import {
   meetingStateToCardState,
 } from "./_lib/state-map";
 import { fmtYM, fmtYMD, parseISO, shiftMonth } from "./_lib/month";
-import { formatMoney } from "@/lib/format/money";
+import { formatWon } from "@/lib/format/money";
 import { DAY_KO as KO_DAY } from "@/util/week";
 
 const TODAY = new Date();
 const TODAY_ISO = fmtYMD(TODAY);
 const TODAY_YYYYMM = fmtYM(TODAY);
-
 
 // 일자상세 좌측바 — 채널 4색 진한값(tokens.md), 실무는 진회색. inline style.
 const CHANNEL_HEX: Record<Channel, string> = {
@@ -58,7 +57,6 @@ const NO_MEETINGS: Meeting[] = [];
 const NO_TODOS: Todo[] = [];
 
 /** 공용 부품 별칭 — 중복 구현 제거(PR-1 lib/format/money 가 단일 원천). */
-const fmtMoney = formatMoney;
 
 export default function CalendarPage() {
   const router = useRouter();
@@ -208,7 +206,7 @@ export default function CalendarPage() {
                   className="font-semibold text-green-700"
                   style={{ fontVariantNumeric: "tabular-nums" }}
                 >
-                  ₩{fmtMoney(monthSummary.fee)}
+                  {formatWon(monthSummary.fee)}
                 </span>
               </div>
             )}
@@ -330,7 +328,7 @@ export default function CalendarPage() {
                               className="shrink-0 text-xs font-bold text-green-700"
                               style={{ fontVariantNumeric: "tabular-nums" }}
                             >
-                              ₩{fmtMoney(m.수임비)}
+                              {formatWon(m.수임비)}
                             </span>
                           ) : (
                             m.장소 && (

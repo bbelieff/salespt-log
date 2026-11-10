@@ -2,7 +2,7 @@
 
 import DisclosureChevron from '@/components/ui/DisclosureChevron';
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
-import { formatMoney } from "@/lib/format/money";
+import { formatWon } from "@/lib/format/money";
 import { usePlayOnOpen } from "@/components/motion/useMotion";
 import { useCountUp } from "@/components/motion/CountUp";
 
@@ -17,11 +17,11 @@ import { useCountUp } from "@/components/motion/CountUp";
  *     나란히 선다. 각 컬럼을 누르면 행 아래 공용 상세 패널이 열리고
  *     (한 번에 하나, 두 번째 클릭에 닫힘), 비용 상세 안의 추가 비용 행이
  *     기존 경비장부(ExpenseLedgerDialog) 진입점을 그대로 유지한다.
- *   - 모든 금액 계산·표시 계약은 기존 그대로: formatMoney 전체 금액
+ *   - 모든 금액 계산·표시 계약은 기존 그대로: formatWon 전체 금액(2026-11-10 「원」 표기)
  *     (축약·절단 없음), 영업이익 = 매출 − 비용, 이익률 소수 1자리,
  *     시즌/이월/전체 분리, null 추가 비용은 0원으로 대신하지 않음.
  * 변경 (2026-09-16, finance-nowrap-fit):
- *   - ₩99,999,999·₩-99,999,999까지 320px에서도 한 줄(single line)에 전부
+ *   - 99,999,999원·−99,999,999원까지 320px에서도 한 줄(single line)에 전부
  *     보인다. `overflowWrap:anywhere`·줄바꿈·overflow:hidden·ellipsis·
  *     truncate·축약 금지. 금액은 `white-space:nowrap` + 실측 맞춤으로만
  *     축소한다(아래 useUniformSingleLineFit).
@@ -210,14 +210,13 @@ function useUniformSingleLineFit(
   }, [valueKey]);
 }
 
-const fmtMoney = formatMoney;
 
 /** 한 번에 열리는 상세 패널 — null이면 전부 닫힘. */
 type Panel = "revenue" | "cost" | "profit";
 
 /**
  * 좁은 폭 대응: 금액은 항상 한 줄(white-space:nowrap, overflow-wrap:normal).
- * ₩99,999,999·₩-99,999,999까지 320px에서 줄바꿈·클리핑·ellipsis·축약 없이
+ * 99,999,999원·−99,999,999원까지 320px에서 줄바꿈·클리핑·ellipsis·축약 없이
  * 전부 보인다. 기본 글꼴·컬럼 패딩은 기존 cqi clamp를 유지하고, 넘칠 때만
  * 실측 맞춤 훅이 3열 동일 폰트로 축소한다. overflow:hidden은 쓰지 않는다.
  */
@@ -355,16 +354,16 @@ export default function FinanceSummaryBoxes({
       >
         {open === "revenue" && (
           <div className="space-y-1 text-xs leading-relaxed text-slate-500" style={{ fontVariantNumeric: "tabular-nums" }}>
-            <div className="flex items-baseline justify-between gap-2"><span>수임비</span><span className="break-all">₩{fmtMoney(feeIncome)}</span></div>
-            <div className="flex items-baseline justify-between gap-2"><span>수수료</span><span className="break-all">₩{fmtMoney(commissionIncome)}</span></div>
+            <div className="flex items-baseline justify-between gap-2"><span>수임비</span><span className="break-all">{formatWon(feeIncome)}</span></div>
+            <div className="flex items-baseline justify-between gap-2"><span>수수료</span><span className="break-all">{formatWon(commissionIncome)}</span></div>
             {refunded > 0 && (
-              <div className="flex items-baseline justify-between gap-2"><span>반환(계약해지)</span><span className="break-all">−₩{fmtMoney(refunded)}</span></div>
+              <div className="flex items-baseline justify-between gap-2"><span>반환(계약해지)</span><span className="break-all">{formatWon(-refunded)}</span></div>
             )}
           </div>
         )}
         {open === "cost" && (
           <div className="text-xs leading-relaxed text-slate-500">
-            <div>DB 비용 합계 ₩{fmtMoney(dbCostTotal)}</div>
+            <div>DB 비용 합계 {formatWon(dbCostTotal)}</div>
             <button
               type="button"
               onClick={onOpenExpenseLedger}
@@ -375,7 +374,7 @@ export default function FinanceSummaryBoxes({
                 {additionalCost === null ? (
                   <span className="text-amber-700">추가 비용을 확인하지 못했습니다. 다시 시도해 주세요.</span>
                 ) : (
-                  <span className="flex flex-wrap items-baseline gap-x-1"><span>추가 비용</span><span className="break-all tabular-nums">₩{fmtMoney(additionalCost)}</span></span>
+                  <span className="flex flex-wrap items-baseline gap-x-1"><span>추가 비용</span><span className="break-all tabular-nums">{formatWon(additionalCost)}</span></span>
                 )}
               </span>
               <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} className="h-4 w-4 shrink-0"><path strokeLinecap="round" strokeLinejoin="round" d="m9 5 7 7-7 7" /></svg>
@@ -399,11 +398,11 @@ export default function FinanceSummaryBoxes({
 /** 움직이는 금액 — 칸 너비는 최종 금액(안 보이게 겹쳐 둠)으로 잡아 글자 크기 맞춤이 흔들리지 않는다. */
 function Amount({ value, play }: { value: number; play: boolean }) {
   const shown = Math.round(useCountUp(value, play));
-  if (shown === value) return <>₩{fmtMoney(value)}</>;
+  if (shown === value) return <>{formatWon(value)}</>;
   return (
     <span className="inline-grid">
-      <span className="invisible col-start-1 row-start-1">₩{fmtMoney(value)}</span>
-      <span aria-hidden="true" className="col-start-1 row-start-1">₩{fmtMoney(shown)}</span>
+      <span className="invisible col-start-1 row-start-1">{formatWon(value)}</span>
+      <span aria-hidden="true" className="col-start-1 row-start-1">{formatWon(shown)}</span>
     </span>
   );
 }

@@ -7,8 +7,6 @@ import {
   channelBucketOf,
   channelHeadlineText,
   channelProfitHeadline,
-  formatManShort,
-  formatWonFull,
   missingChannelKeys,
   periodChannelProfit,
   type ChannelProfitRow,
@@ -148,23 +146,4 @@ describe("channelProfitHeadline — 표 위 한 줄", () => {
   });
 });
 
-describe("formatManShort / formatWonFull — 짧은 금액", () => {
-  it("만원 반올림 후 부호 — −0만 없음", () => {
-    expect(formatManShort(-3_000)).toBe("0만");
-    expect(formatManShort(-5_000)).toBe("−1만");
-    expect(formatManShort(0)).toBe("0만");
-    expect(formatManShort(5_300_000)).toBe("530만");
-    expect(formatManShort(-95_000_000)).toBe("−9,500만");
-  });
-  it("1억 이상은 0.1억 단위", () => {
-    expect(formatManShort(99_990_000)).toBe("9,999만");
-    expect(formatManShort(100_000_000)).toBe("1억");
-    expect(formatManShort(186_000_000)).toBe("1.9억");
-    expect(formatManShort(-120_000_000)).toBe("−1.2억");
-    expect(formatManShort(1_234_567_890)).toBe("12.3억");
-  });
-  it("전체 금액(제목·화면 읽기)", () => {
-    expect(formatWonFull(9_300_000)).toBe("₩9,300,000");
-    expect(formatWonFull(-500_000)).toBe("−₩500,000");
-  });
-});
+// 표의 짧은 금액·전체 금액(옛 formatManShort·formatWonFull)은 공용 formatMoneyCompact·formatWon 으로 옮겼다 → tests/format/money.test.ts

@@ -69,8 +69,8 @@ describe("ChannelProfitBreakdown", () => {
   it("전체 금액은 title 과 화면 읽기 글자로 함께", () => {
     const view = render();
     const left = cells(view.querySelector('[data-channel="매입DB"]'))[2];
-    expect(left?.getAttribute("title")).toBe("−₩500,000");
-    expect(left?.querySelector(".sr-only")?.textContent).toBe("−₩500,000");
+    expect(left?.getAttribute("title")).toBe("−500,000원");
+    expect(left?.querySelector(".sr-only")?.textContent).toBe("−500,000원");
   });
 
   it("영업기록 없음 › = /payment 링크, 채널 모름은 링크 없이 설명", () => {

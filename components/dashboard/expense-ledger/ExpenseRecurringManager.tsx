@@ -6,7 +6,7 @@
 "use client";
 
 import { useState } from "react";
-import { formatMoney } from "@/lib/format/money";
+import { formatWon } from "@/lib/format/money";
 import type { ManagedRecurringRule } from "@/query/expense-ledger-hooks";
 
 export function safeRecurringDeleteMessage(error: unknown) {
@@ -91,7 +91,7 @@ function RecurringRuleRow({ rule, month, amountWon, onPause, onResume, onSkip, o
   return (
     <details className="group border-b border-slate-100 last:border-b-0">
       <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5 marker:hidden">
-        <span className="min-w-0"><strong className="block truncate text-sm text-slate-900">{rule.itemName}</strong><span className="text-xs text-slate-500">{rule.categoryName} · ₩{formatMoney(rule.amountWon)}</span></span>
+        <span className="min-w-0"><strong className="block truncate text-sm text-slate-900">{rule.itemName}</strong><span className="text-xs text-slate-500">{rule.categoryName} · {formatWon(rule.amountWon)}</span></span>
         <span className="shrink-0 text-xs font-bold text-blue-600">{rule.status === "archived" ? "종료됨" : "상세·관리"}</span>
       </summary>
       <div className="bg-slate-50 p-3 text-xs text-slate-600">

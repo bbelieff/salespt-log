@@ -12,6 +12,7 @@
 "use client";
 import { STATS_WEEKS } from "@/config/cohort-dates";
 import { usePlayOnOpen } from "@/components/motion/useMotion";
+import { formatCount, formatMoneyCompact } from "@/lib/format/money";
 
 import type {
   DashboardChannelMatrix,
@@ -32,12 +33,11 @@ export const CH_COLOR: Record<string, string> = {
   "콜·지·기·소": "#8b5cf6",
 };
 
+/** 채널 표 비용·단가 — 1만 미만은 「1만 미만」(0 은 「0」). 규칙 = @/lib/format/money formatMoneyCompact. */
 function fmtMan(원: number): string {
-  return `${Math.round(원 / 10_000).toLocaleString("ko-KR")}만`;
+  return formatMoneyCompact(원, { underMan: true });
 }
-function fmtCount(n: number): string {
-  return n.toLocaleString("ko-KR");
-}
+const fmtCount = formatCount;
 
 interface Slice {
   label: string;
@@ -178,7 +178,7 @@ export default function ChannelPerformance({ costBreakdown, matrix, weeks = STAT
               play={play}
               slices={costSlices}
               centerLabel="누적 비용"
-              centerValue={`−${fmtMan(costTotal)}`}
+              centerValue={formatMoneyCompact(-costTotal)}
               centerValueColor="#dc2626"
             />
           </div>

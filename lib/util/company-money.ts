@@ -147,6 +147,14 @@ export function formatTenths(tenths: number): string {
   return `${n < 0 ? "-" : ""}${groupDigits(Math.floor(abs / 10))}${dec ? `.${dec}` : ""}`;
 }
 
+/**
+ * 화면 표시용 — formatTenths 와 같은데 음수 부호만 진짜 마이너스 「−」(U+2212, 2026-11-10 금액 표기 규칙 ③).
+ * 저장·비교하는 정본 글은 formatTenths(하이픈) 그대로 쓴다 — 이 함수 결과를 저장하지 않는다.
+ */
+export function formatTenthsDisplay(tenths: number): string {
+  return formatTenths(tenths).replace(/^-/, "−");
+}
+
 /** 문서 금액(원) → 백만원 정본 글. 250,123,456 → "250.1". */
 export function wonToMillion(won: number): string {
   return formatTenths(wonToTenths(won));
@@ -251,7 +259,7 @@ export function formatMoneyOnBlur(raw: string, signed: boolean): string {
 /** 읽기 쉬운 금액 — 1억 이상 "약 2.5억", 그 아래 "약 3,200만". 0·없음은 "". */
 export function moneyHint(tenths: number | null): string {
   if (tenths === null || tenths === 0) return "";
-  const sign = tenths < 0 ? "-" : "";
+  const sign = tenths < 0 ? "−" : "";
   const abs = Math.abs(tenths);
   if (abs >= 1000) {
     const e10 = Math.round(abs / 100); // 억 × 10
@@ -265,7 +273,7 @@ export function moneyHint(tenths: number | null): string {
 export function moneyWithUnit(raw: unknown, signed = false): string {
   const s = String(raw ?? "").trim();
   const r = readMoney(s, signed);
-  return r.kind === "number" ? `${formatTenths(r.tenths)}백만원` : s;
+  return r.kind === "number" ? `${formatTenthsDisplay(r.tenths)}백만원` : s;
 }
 
 /** TXT 한 칸 — 숫자면 "250.1백만원 (약 2.5억)", 옛 자유 글은 그대로. */
@@ -274,5 +282,5 @@ export function formatMoneyTxt(raw: unknown, signed = false): string {
   const r = readMoney(s, signed);
   if (r.kind !== "number") return s;
   const hint = moneyHint(r.tenths);
-  return `${formatTenths(r.tenths)}백만원${hint ? ` (${hint})` : ""}`;
+  return `${formatTenthsDisplay(r.tenths)}백만원${hint ? ` (${hint})` : ""}`;
 }

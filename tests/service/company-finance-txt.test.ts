@@ -18,7 +18,7 @@ describe("① 금액 = 백만원 + 약", () => {
   it("숫자 금액은 '백만원 (약 …)', 옛 글은 그대로", () => {
     const txt = txtOf({ 영업이익: "250.1", 자본총계: "-3.2", 자산총계: "1234", 이자비용: "0", 부채총계: "3,200만" });
     expect(lineOf(txt, "영업이익")).toMatch(/250\.1백만원 \(약 2\.5억\)$/);
-    expect(lineOf(txt, "자본총계")).toMatch(/-3\.2백만원 \(약 -320만\)$/);
+    expect(lineOf(txt, "자본총계")).toMatch(/−3\.2백만원 \(약 −320만\)$/); // 화면·글 음수 U+2212
     expect(lineOf(txt, "자산총계")).toMatch(/1,234백만원 \(약 12\.3억\)$/);
     expect(lineOf(txt, "이자비용")).toMatch(/ 0백만원$/);
     expect(lineOf(txt, "부채총계")).toMatch(/ 3,200만$/);

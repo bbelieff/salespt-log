@@ -3,7 +3,7 @@
 import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import MoneyInput from "@/components/ui/MoneyInput";
-import { formatMoney } from "@/lib/format/money";
+import { formatWon } from "@/lib/format/money";
 import { isValidISODate } from "@/lib/service/cohort-dates";
 import {
   type ExpenseViewMode,
@@ -145,12 +145,12 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
       if (entry.source === "recurring" && !entry.isOverride && unclassifiedRuleIds.has(entry.recurringRuleId)) continue;
       const kind = entry.source === "one_time" ? "entry" : entry.source === "recurring" ? "recurringOccurrence" : null;
       if (!kind) continue;
-      const ref = { kind, id: entry.id, label: entry.itemName, detail: `${kind === "entry" ? "일회성" : "반복 발생"} · ₩${formatMoney(entry.amountWon)}` } as const;
+      const ref = { kind, id: entry.id, label: entry.itemName, detail: `${kind === "entry" ? "일회성" : "반복 발생"} · ${formatWon(entry.amountWon)}` } as const;
       refs.set(`${ref.kind}:${ref.id}`, ref);
     }
     for (const rule of recurringRules.data?.rules ?? []) {
       if (rule.categoryId !== unclassifiedId || rule.status === "archived") continue;
-      const ref = { kind: "recurringRule", id: rule.id, label: rule.itemName, detail: `반복 규칙 · ₩${formatMoney(rule.amountWon)}` } as const;
+      const ref = { kind: "recurringRule", id: rule.id, label: rule.itemName, detail: `반복 규칙 · ${formatWon(rule.amountWon)}` } as const;
       refs.set(`${ref.kind}:${ref.id}`, ref);
     }
     return [...refs.values()];
@@ -201,7 +201,6 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
   });
 
   // Reopening preserves the same draft operation key, including a lost-ACK retry.
-
 
   // 반복 등록 시도 ID — 연타 레이스는 같은 키로 서버 병합, 성공 후에는 회전.
   const recurringKeyRef = useRef<string | null>(null);
@@ -262,9 +261,9 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
 
         <div className="shrink-0 bg-white px-3 pb-3 pc:px-6">
           <div className="grid grid-cols-3 gap-1.5" aria-label="비용 요약">
-            <SummaryCard label="DB 비용" value={`₩${formatMoney(dbCostTotal)}`} tone="red" />
-            <SummaryCard label="추가 비용" value={additionalCost === null ? "확인 필요" : `₩${formatMoney(additionalCost)}`} />
-            <SummaryCard label="총비용" value={totalCost === null ? "확인 필요" : `₩${formatMoney(totalCost)}`} tone="dark" />
+            <SummaryCard label="DB 비용" value={formatWon(dbCostTotal)} tone="red" />
+            <SummaryCard label="추가 비용" value={additionalCost === null ? "확인 필요" : formatWon(additionalCost)} />
+            <SummaryCard label="총비용" value={totalCost === null ? "확인 필요" : formatWon(totalCost)} tone="dark" />
           </div>
           <nav role="tablist" aria-label="비용 원장 작업" className="mt-3 grid grid-cols-2 rounded-xl bg-slate-100 p-1">
             {(["record", "view"] as const).map((value) => (
@@ -349,7 +348,7 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
                     <label className="text-xs font-bold text-slate-700">발생일<input type="date" required value={oneTimeStart} aria-invalid={!isValidISODate(oneTimeStart)} aria-describedby="one-time-date-preview" onChange={(event) => { oneTimeAuto.markTouched(); setOneTimeStart(event.target.value); }} className={fieldClass} /></label>
                     {oneTimeRange && <label className="text-xs font-bold text-slate-700">종료일<input type="date" required value={oneTimeEnd} min={isValidISODate(oneTimeStart) ? oneTimeStart : undefined} aria-invalid={!isValidISODate(oneTimeEnd) || (isValidISODate(oneTimeStart) && oneTimeEnd < oneTimeStart)} aria-describedby="one-time-date-preview" onChange={(event) => { oneTimeAuto.markTouched(); setOneTimeEnd(event.target.value); }} className={fieldClass} /></label>}
                   </div>
-                  <div id="one-time-date-preview" role="status" className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600"><p className="font-bold text-slate-800">일할 인식 미리보기</p>{allocation ? <><p className="mt-1">{allocation.days}일 × ₩{formatMoney(allocation.daily)}{allocation.remainder > 0 ? ` + 잔여 ₩${formatMoney(allocation.remainder)} (시작일 우선)` : ""}</p><p className="mt-1 text-xs text-slate-400">시작일과 종료일을 모두 포함해 일별로 배분합니다.</p></> : <p className="mt-1 font-semibold text-amber-700">{oneTimeDateError}</p>}</div>
+                  <div id="one-time-date-preview" role="status" className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600"><p className="font-bold text-slate-800">일할 인식 미리보기</p>{allocation ? <><p className="mt-1">{allocation.days}일 × {formatWon(allocation.daily)}{allocation.remainder > 0 ? ` + 잔여 ${formatWon(allocation.remainder)} (시작일 우선)` : ""}</p><p className="mt-1 text-xs text-slate-400">시작일과 종료일을 모두 포함해 일별로 배분합니다.</p></> : <p className="mt-1 font-semibold text-amber-700">{oneTimeDateError}</p>}</div>
                 </section>
               ) : (
                 <section className="rounded-xl border border-slate-200 bg-white p-3" aria-label="반복 비용 일정">
