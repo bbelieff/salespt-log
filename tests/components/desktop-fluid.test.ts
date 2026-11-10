@@ -249,9 +249,9 @@ describe("⑤ desktop arrangements keep order, workflow, and natural scroll", ()
     const summary = workspaceSrc.indexOf("<CostSummary");
     const list = workspaceSrc.indexOf("<RowList");
     const add = workspaceSrc.indexOf("<RowForm channel={ch} initial={addInitial}");
-    // 채널 합계는 구매목록 추가 아래(2026-11-07 belie).
-    expect(list).toBeLessThan(add);
-    expect(add).toBeLessThan(summary);
+    // 구매목록 추가 → 구매목록 → 채널 합계(2026-11-10 belie).
+    expect(add).toBeLessThan(list);
+    expect(list).toBeLessThan(summary);
     expect(workspaceSrc).toContain("min-[1440px]:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]");
     // 채널 전환 시 초안과 목록 스크롤 정책은 유지한다.
     expect(src).toContain("hidden={channel !== activeCh}");

@@ -265,47 +265,10 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
     <>
       <div className="min-[1440px]:grid min-[1440px]:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] min-[1440px]:items-start min-[1440px]:gap-4">
         <div className="min-w-0">
-          {/* 목록을 접어도 채널별 건수를 확인할 수 있다. */}
-          <h3 className="mb-2 text-sm font-semibold text-slate-700">
-            <button
-              type="button"
-              aria-expanded={listOpen}
-              aria-controls={`db-${activeCh}-records`}
-              onClick={() => guardedNav(() => setListOpen((open) => !open))}
-              className="flex w-full items-center justify-between rounded-lg px-1 py-1.5 text-left hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
-            >
-              <span>{ch.recordsLabel}</span>
-              <span className="text-xs font-medium text-slate-500">{rows.length}건 <span aria-hidden="true"><DisclosureChevron open={listOpen} /></span></span>
-            </button>
-          </h3>
-          <div id={`db-${activeCh}-records`} hidden={!listOpen}>
-            <RowList
-              loading={overview.isLoading}
-              error={overview.isError ? overview.error : null}
-              rows={rows}
-              ch={ch}
-              chKey={activeCh}
-              expandedRow={expandedRow}
-              pendingRow={pendingRow}
-              badgeCls={BADGE_CLS[activeCh]}
-              onExpand={(rowNum) =>
-                // 다른 행으로 전환도 미저장 가드 — 펼친 행이 dirty 면 접히며 유실되므로 선확인.
-                guardedNav(() => {
-                  dismissAdd();
-                  setExpandedRow(rowNum);
-                })
-              }
-              onCollapse={() => guardedNav(() => setExpandedRow(null))}
-              onSave={handleSave}
-              onDeleteRequest={requestDelete}
-            />
-          </div>
-        </div>
-        <div className="min-w-0">
-          {/* 추가 폼 — 좁은 화면에서는 목록 뒤, 풀사이즈에서는 오른쪽. */}
+          {/* 추가 폼 — 채널 고르면 바로 밑(2026-11-10 belie 「채널선택>구매목록추가>구매목록>합계」). */}
         {addOpen && (
           <div
-            className="mt-3 rounded-xl border-2 border-blue-200 bg-white p-4 shadow-md min-[1440px]:mt-0"
+            className="mb-3 rounded-xl border-2 border-blue-200 bg-white p-4 shadow-md"
             onBlur={(e) => {
               if (ch.manualSave) return; // 수동 저장 채널 — 「저장」 버튼으로만 추가한다.
               if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
@@ -378,14 +341,51 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
                 setExpandedRow(null);
               })
             }
-            className="mt-3 w-full rounded-xl border-2 border-dashed border-slate-300 bg-white py-3 text-sm font-medium text-slate-500 transition-colors hover:border-blue-400 hover:text-blue-600 min-[1440px]:mt-0"
+            className="mb-3 w-full rounded-xl border-2 border-dashed border-slate-300 bg-white py-3 text-sm font-medium text-slate-500 transition-colors hover:border-blue-400 hover:text-blue-600"
           >
             + {ch.recordsLabel} 추가
           </button>
         )}
-          {/* 합계 카드 (선택 채널) — 구매목록 추가 아래(2026-11-07 belie 「채널합계가 구매목록추가 밑으로」). 1440px 이상은 오른쪽 칸 추가 폼 밑. */}
+          {/* 목록을 접어도 채널별 건수를 확인할 수 있다. */}
+          <h3 className="mb-2 text-sm font-semibold text-slate-700">
+            <button
+              type="button"
+              aria-expanded={listOpen}
+              aria-controls={`db-${activeCh}-records`}
+              onClick={() => guardedNav(() => setListOpen((open) => !open))}
+              className="flex w-full items-center justify-between rounded-lg px-1 py-1.5 text-left hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+            >
+              <span>{ch.recordsLabel}</span>
+              <span className="text-xs font-medium text-slate-500">{rows.length}건 <span aria-hidden="true"><DisclosureChevron open={listOpen} /></span></span>
+            </button>
+          </h3>
+          <div id={`db-${activeCh}-records`} hidden={!listOpen}>
+            <RowList
+              loading={overview.isLoading}
+              error={overview.isError ? overview.error : null}
+              rows={rows}
+              ch={ch}
+              chKey={activeCh}
+              expandedRow={expandedRow}
+              pendingRow={pendingRow}
+              badgeCls={BADGE_CLS[activeCh]}
+              onExpand={(rowNum) =>
+                // 다른 행으로 전환도 미저장 가드 — 펼친 행이 dirty 면 접히며 유실되므로 선확인.
+                guardedNav(() => {
+                  dismissAdd();
+                  setExpandedRow(rowNum);
+                })
+              }
+              onCollapse={() => guardedNav(() => setExpandedRow(null))}
+              onSave={handleSave}
+              onDeleteRequest={requestDelete}
+            />
+          </div>
+        </div>
+        <div className="min-w-0">
+          {/* 합계 카드 (선택 채널) — 구매목록 아래. 1440px 이상은 오른쪽 칸. */}
           <div
-            className="mb-3 mt-3 rounded-xl border-l-4 bg-white p-4 shadow-sm"
+            className="mb-3 mt-3 rounded-xl border-l-4 bg-white p-4 shadow-sm min-[1440px]:mt-0"
             style={{ borderLeftColor: ch.color }}
           >
             {ch.isCost && summary ? (
