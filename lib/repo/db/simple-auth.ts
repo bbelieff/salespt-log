@@ -98,3 +98,14 @@ export async function readSimpleAuthOriginal(spreadsheetId: string, requestId: s
   );
   return r.rows[0] ? openVault(r.rows[0].sealed) : null;
 }
+
+/** 요청들에 저장된 원문 목록(사업자번호·서류 키만, 내용 없음) — 끊긴 요청도 받은 원문은 보여 주기 위해. */
+export async function listSimpleAuthOriginalKeys(spreadsheetId: string, requestIds: string[]): Promise<{ requestId: string; bizNo: string; docKey: string }[]> {
+  if (!requestIds.length) return [];
+  const r = await pool().query<{ request_id: string; biz_no: string; doc_key: string }>(
+    `select o.request_id, o.biz_no, o.doc_key from public.simple_auth_originals o join public.simple_auth_requests q on q.id=o.request_id
+     where q.spreadsheet_id=$1 and o.request_id = any($2::uuid[])`,
+    [spreadsheetId, requestIds],
+  );
+  return r.rows.map((x) => ({ requestId: x.request_id, bizNo: x.biz_no, docKey: x.doc_key }));
+}
