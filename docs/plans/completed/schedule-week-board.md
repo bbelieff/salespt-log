@@ -1,6 +1,6 @@
 ---
 slug: schedule-week-board
-status: active
+status: completed
 created: 2026-11-11
 worktree: .claude/worktrees/step3-meeting-booking-tab-b26456
 ---
@@ -18,8 +18,8 @@ belie 2026-11-10 「스텝3 미팅예약 탭 고도화 — 주간 이슈·목표
 - [x] 일별 메모·주간 이슈 저장(DB schedule_notes, 수강생별)
 - [x] 금~목 / 월~일 전환(월~일은 수강 주차 경계 표시), 이 브라우저에 기억
 - [x] 1280px 미만: 기존 날짜 목록 + 주간 이슈 판 + 날짜별 메모·투두·일정·시트
-- [ ] 운영 DB 에 0022 적용(db-migrate) 후 메모·이슈 저장 확인
-- [ ] `bash scripts/check.sh` · production build · CI 통과, 병합·배포·health 확인
+- [x] 운영 DB 에 0022 적용(db-migrate run 42977749701 「적용 완료」) — 실제 로그인 화면 저장 확인은 belie 확인 대기(세션 로그인 불가)
+- [x] `bash scripts/check.sh`(커밋 훅) · CI build·check 통과 · PR #1411 squash 0bd6ecce · Deploy to VPS 42976953179 success · health 200 · `/api/schedule-notes` 401(새 경로 존재)
 
 ## 범위 밖(다음)
 - 기간 일정(시작일~종료일): 투두에 끝나는 날 칸이 없음 → 시트 열·구글 캘린더 연동까지 바꾸는 별도 작업.
@@ -32,3 +32,4 @@ belie 2026-11-10 「스텝3 미팅예약 탭 고도화 — 주간 이슈·목표
 
 ## Log
 - 2026-11-11 구현 — 표·API·훅·보드·폰 추가, 합성 데이터 화면 확인(1440×900, 375).
+- 2026-11-11 병합 0bd6ecce(#1411) → 배포 성공 → 0022 운영 적용. 남은 일: 기간 일정·일반 일정 끝 시각·폰 요일순서/필터(범위 밖).
