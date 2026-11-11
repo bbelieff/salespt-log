@@ -14,6 +14,8 @@ const h = vi.hoisted(() => ({
   db: null as unknown,
   calls: [] as Call[],
   approved: false,
+  draining: false,
+  active: [] as number[],
   release: null as null | (() => void),
   leads: [] as { id: string; company: string; owner: string; phone: string; biz: string; revision: number; meetingId: string | null; contact: { ci: Record<string, string> } }[],
   saved: [] as { action: string; lead: { id: string; company: string; recording?: { inflow: boolean }; contact?: { ci: Record<string, string> } }; revision: number | null }[],
@@ -26,6 +28,7 @@ const BIZ = [
 const VAT = [{ resCompanyIdentityNo: "2148877123", commStartDate: "20250101", resIncomeTotalAmt: "500000000", resIssueDate: "20261109" }];
 
 vi.mock("@/repo/db/client", () => ({ dbEnabled: () => true, getDbPool: () => h.db }));
+vi.mock("@/repo/deploy-drain", () => ({ simpleAuthDraining: () => h.draining, reportSimpleAuthActive: (n: number) => { h.active.push(n); } }));
 vi.mock("@/repo/users", () => ({ findUserByEmail: async () => ({ spreadsheetId: "sheet-a" }) }));
 vi.mock("@/repo/codef-client", () => ({
   CodefNotConfigured: class extends Error {},
@@ -81,7 +84,7 @@ afterAll(async () => { await db?.close(); });
 beforeEach(async () => {
   await db.exec("delete from public.simple_auth_requests");
   resetSimpleAuthJobs();
-  h.calls = []; h.approved = false; h.release = null; h.saved = [];
+  h.calls = []; h.approved = false; h.draining = false; h.active = []; h.release = null; h.saved = [];
   h.leads = [{
     id: "11111111-1111-4111-8111-111111111111", supplier: "가상공급처", date: "2026-11-01", channel: "매입DB", company: "가상정밀", owner: "김가상",
     phone: "010-0000-1234", biz: "214-88-77123", address: "", industry: "", credit: "", sales: "", arrears: "", funds: "", next: "", memo: "",
@@ -178,6 +181,22 @@ describe("간편인증 보내기 → 승인 확인 → 결과", () => {
     expect(saved.lead.contact!.ci).toMatchObject({ 업태: "제조업" });
     expect(saved.lead.contact!.ci.신용점수).toBe("");
     expect(request!.businesses[0]!.applied).toBe(true);
+  });
+
+  it("진행 중 작업 수를 배포 쪽에 알린다 — 보내면 1, 끝나면 0", async () => {
+    const req = await startSimpleAuth(who, { ...input, docs: ["biz", "vat"] });
+    expect(h.active.at(-1)).toBe(1);
+    await wait(async () => h.calls.length >= 2);
+    h.approved = true;
+    await actSimpleAuth(who, req.id, { action: "confirm" });
+    await wait(async () => (await listSimpleAuth(who))[0]!.status === "done");
+    expect(h.active.at(-1)).toBe(0);
+  });
+
+  it("배포 직전(재시작 예고)에는 새 보내기를 막는다 — CODEF 를 부르지 않는다", async () => {
+    h.draining = true;
+    await expect(startSimpleAuth(who, input)).rejects.toThrow("곧 업데이트가 있어요");
+    expect(h.calls).toHaveLength(0);
   });
 
   it("다른 수강생은 요청을 보거나 바꿀 수 없다", async () => {
