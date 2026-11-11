@@ -72,7 +72,8 @@ function StatusActions({ r, now, a, busy }: { r: AuthRequest; now: number; a: Ac
 
 /** 요청 한 건 — 상태·할 일, 사업자들. inline 이면 상태·할 일은 이름 줄에 이미 있으므로 사업자만 그린다. */
 function RequestCard({ r, now, o, a, inline, busy }: { r: AuthRequest; now: number; o: Opens; a: Actions; inline: boolean; busy: boolean }) {
-  const why = r.status === "failed" && r.error ? <p className="text-sm text-red-700">{r.error}</p> : null;
+  const why = r.status === "failed" && r.error ? <p className="text-sm text-red-700">{r.error}</p>
+    : r.status === "done" && r.error ? <p className="text-sm text-amber-800">{r.error}</p> : null;
   if (inline && r.status !== "done") return why;
   return (
     <div className="flex flex-col gap-2">

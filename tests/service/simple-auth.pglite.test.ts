@@ -126,18 +126,29 @@ describe("간편인증 보내기 → 승인 확인 → 결과", () => {
     expect(pdf.pdf.subarray(0, 4).toString()).toBe("%PDF");
   });
 
-  it("재무제표가 「사업자 번호를 입력하지 않았습니다」로 거절되면 다른 서류의 사업자번호마다 같은 세션으로 다시 받는다", async () => {
+  it("재무제표가 「사업자 번호를 입력하지 않았습니다」로 거절되면 다시 보내지 않고(재승인 필요) 이유만 알린다 · 받은 서류는 도착 즉시 저장", async () => {
     const req = await startSimpleAuth(who, { ...input, docs: ["biz", "vat", "fs"] });
     await wait(async () => h.calls.length >= 2);
     h.approved = true;
     await actSimpleAuth(who, req.id, { action: "confirm" });
     await wait(async () => (await listSimpleAuth(who))[0]!.status === "done");
-    const fsCalls = h.calls.filter((c) => c.path.endsWith("standard-financial-statements"));
-    const retried = fsCalls.filter((c) => c.params.identity);
-    expect(new Set(retried.map((c) => c.params.identity))).toEqual(new Set(["2148877123", "2141290311"]));
-    expect(retried.every((c) => c.params.applicationType === "01" && c.params.id === fsCalls[0]!.params.id)).toBe(true);
+    expect(h.calls.filter((c) => c.path.endsWith("standard-financial-statements") && c.params.identity)).toHaveLength(0);
     const [done] = await listSimpleAuth(who);
-    for (const b of done!.businesses) expect(b.results.find((r) => r.key === "fs")!.reason ?? "").not.toMatch(/사업자 번호를 입력/);
+    expect(done!.businesses[0]!.results.find((r) => r.key === "fs")!.reason).toMatch(/사업장이 여러 곳/);
+  });
+
+  it("서버가 재시작돼 작업이 사라져도 이미 받은 서류는 「받음」으로 남는다", async () => {
+    const req = await startSimpleAuth(who, { ...input, docs: ["biz", "vat"] });
+    await wait(async () => h.calls.length >= 2);
+    h.approved = true;
+    await actSimpleAuth(who, req.id, { action: "confirm" });
+    await wait(async () => (await listSimpleAuth(who))[0]!.businesses.length > 0);
+    resetSimpleAuthJobs(); // 재시작 흉내 — 메모리 작업만 사라진다
+    await db.exec(`update public.simple_auth_requests set status='waiting'`);
+    const [r] = await listSimpleAuth(who);
+    expect(r!.status).toBe("done");
+    expect(r!.error).toMatch(/일부 서류만/);
+    expect(r!.businesses.length).toBeGreaterThan(0);
   });
 
   it("폐업사실증명은 홈택스 폐업사실증명 상품으로 같은 세션에 보낸다", async () => {
