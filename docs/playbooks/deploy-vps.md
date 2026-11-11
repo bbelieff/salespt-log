@@ -6,7 +6,8 @@
 ## 현행 운영
 - 공개 https://salesptlog.online, VPS /opt/salespt-log, PM2 salespt-log, Caddy.
 - master push → Deploy to VPS. 수동은 gh workflow run "Deploy to VPS".
-- 구현 정본은 deploy.yml: 원격 Git 동기화 → lock hash 기준 npm ci → .next-build 빌드 → BUILD_ID 검증 → 원자 swap → PM2 reload → 내부/공개 health.
+- 구현 정본은 deploy.yml: 원격 Git 동기화 → lock hash 기준 npm ci → .next-build 빌드 → BUILD_ID 검증 → **간편인증 드레인** → 원자 swap → PM2 reload → 내부/공개 health.
+- 간편인증 드레인(2026-11-11): `.deploy/simple-auth-draining` 표시를 만들면 앱이 새 간편인증 보내기를 막고, `scripts/ops/simple-auth-drain.mjs` 가 앱이 쓰는 `.deploy/simple-auth-active.json`(진행 중 수·늦어도 끝날 시각, DB 안 거침)을 10초마다 보며 0이 될 때까지 최대 8분 기다린 뒤 swap 한다. 표시는 reload 뒤·스크립트 종료(trap) 때 지운다. 표시가 남아 새 보내기가 계속 막히면 VPS 에서 그 파일을 지운다.
 - 원격은 setsid로 분리 실행하고 flock으로 직렬화한다. .deploy/<run>.status·로그로 완료를 판정한다. 러너 연결 끊김과 원격 실패는 다르다.
 - 빌드 힙 2048MB. 다른 서비스 종료나 힙 상향으로 우회하지 않는다.
 - 모아워크 /srv/moawork-direct·:3100 및 다른 운영 서비스 접근/수정/종료 금지. 배포 외 수동 운영 조작은 요청된 범위를 확인한다.

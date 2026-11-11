@@ -19,22 +19,21 @@ import {
   type SimpleAuthLink, type SimpleAuthRequest,
 } from "@/types/simple-auth";
 import {
-  CODEF_LOGIN_LEVEL, CODEF_PATH, CODEF_TELECOM, SIMPLE_AUTH_CONFIRM_TRIES, SIMPLE_AUTH_DAILY_LIMIT, SIMPLE_AUTH_KEEP_DAYS,
-  SIMPLE_AUTH_WAIT_MS, SIMPLE_AUTH_YEARS, simpleAuthDocLabel,
+  SIMPLE_AUTH_CONFIRM_TRIES, SIMPLE_AUTH_DAILY_LIMIT, SIMPLE_AUTH_KEEP_DAYS, SIMPLE_AUTH_WAIT_MS, simpleAuthDocLabel,
 } from "@/config/simple-auth";
-import { codefCall, codefConfigured, codefEncrypt, CodefNotConfigured, type CodefResult } from "@/repo/codef-client";
+import { codefCall, codefConfigured, CodefNotConfigured, type CodefResult } from "@/repo/codef-client";
 import * as store from "@/repo/db/simple-auth";
 import { findUserByEmail } from "@/repo/users";
 import { executeDbSheet, loadDbSheet, resolveDbSheetContext } from "./db-sheet";
+import { reportSimpleAuthActive, simpleAuthDraining } from "@/repo/deploy-drain";
 import { PARSERS, asList, originalPdf, type DocParts } from "./simple-auth-parse";
+import { baseYear, buildCalls, kstMidnight, kstToday, type Call, type Obj } from "./simple-auth-calls";
 import { digitsOnly, formatBizNo } from "@/lib/document-ocr/bizno";
 
 export class SimpleAuthError extends Error {
   constructor(message: string, public status = 400) { super(message); }
 }
 
-type Obj = Record<string, unknown>;
-type Call = { doc: SimpleAuthDocKey; path: string; params: Obj; group: "nt" | "mw" | "pp" };
 type Lead = { call: Call; twoWay: Obj; tries: number; extra?: unknown };
 type Job = {
   reqId: string;
@@ -48,76 +47,18 @@ type Job = {
   pending: number;
   finished: boolean;
   doneAt?: number;
+  /** 이때까지는 「진행 중」으로 본다(승인 마감 + 서류 받기 여유). 승인 확인을 안 눌러 끝나지 않은 작업이 배포를 붙잡지 않게. */
+  until: number;
 };
 const jobs = new Map<string, Job>();
+/** 진행 중(끝나지 않은) 작업 수를 배포 쪽에 알린다 — 배포는 0이 될 때까지 재시작을 미룬다. */
+const JOB_GRACE_MS = 3 * 60_000;
+function reportActive() {
+  const live = [...jobs.values()].filter((j) => !j.finished && j.until > Date.now());
+  reportSimpleAuthActive(live.length, Math.max(0, ...live.map((j) => j.until)));
+}
 const KEEP_JOB_MS = 30 * 60_000;
 
-const KST = 9 * 3_600_000;
-const kstNow = (now = Date.now()) => new Date(now + KST);
-const kstMidnight = (now = Date.now()) => { const k = kstNow(now); return new Date(Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate()) - KST); };
-const kstToday = () => kstNow().toISOString().slice(0, 10);
-const baseYear = () => kstNow().getUTCFullYear();
-
-// ───────────────────────── CODEF 요청 만들기 ─────────────────────────
-
-function loginParams(input: SimpleAuthStart, id: string, group: Call["group"]): Obj {
-  if (input.mode === "simple") {
-    return {
-      organization: "0001", loginType: "5", loginTypeLevel: CODEF_LOGIN_LEVEL[input.method], userName: input.owner,
-      loginIdentity: input.birth, phoneNo: digitsOnly(input.phone), telecom: input.method === "PASS" ? CODEF_TELECOM[input.telecom] ?? "" : "", id,
-    };
-  }
-  const cert = input.certPfx ? { certType: "pfx", certFile: input.certPfx } : { certType: "1", certFile: input.certDer ?? "", keyFile: input.certKey ?? "" };
-  return { organization: group === "pp" ? "0003" : "0001", ...(group === "pp" ? {} : { loginType: "0" }), ...cert, certPassword: codefEncrypt(input.certPassword) };
-}
-
-/** vat 조회 범위 — 1~3월은 작년 2기까지, 그 뒤는 올해 1기까지(홈택스 조회 가능 범위 안에서 3년). */
-function vatRange(): { startDate: string; endDate: string } {
-  const k = kstNow(), y = k.getUTCFullYear(), m = k.getUTCMonth() + 1;
-  return { startDate: `${y - SIMPLE_AUTH_YEARS}01`, endDate: m >= 8 ? `${y}01` : `${y - 1}07` };
-}
-
-function buildCalls(input: SimpleAuthStart, ids: Record<Call["group"], string>, corp: boolean, docs: readonly SimpleAuthDocKey[] = input.docs): Call[] {
-  const y = baseYear();
-  const nt = (doc: SimpleAuthDocKey, path: string, extra: Obj): Call => ({ doc, path, group: "nt", params: { ...loginParams(input, ids.nt, "nt"), ...extra } });
-  const proof = { usePurposes: "99", submitTargets: "99", isIdentityViewYN: "0", originDataYN1: "1" };
-  const calls: Call[] = [];
-  for (const doc of docs) {
-    if (doc === "biz") calls.push(nt("biz", CODEF_PATH.biz, proof));
-    if (doc === "vat") calls.push(nt("vat", CODEF_PATH.vat, { ...proof, ...vatRange() }));
-    if (doc === "fs") {
-      for (let i = 1; i <= SIMPLE_AUTH_YEARS; i++) {
-        const fs = { ...proof, startDate: corp ? `${y - i}12` : String(y - i), ...(corp ? {} : { proofType: "40" }) };
-        // 재무제표 상품만 간편인증 전화번호 칸 이름이 다르다(loginPhoneNo).
-        const c = nt("fs", CODEF_PATH.fs, fs);
-        if (input.mode === "simple") { c.params.loginPhoneNo = c.params.phoneNo; delete c.params.phoneNo; }
-        calls.push(c);
-      }
-    }
-    // isAddrViewYn 를 빼면 CODEF 가 {userError:ADDR_VIEWYN:undefined} 로 거절한다(2026-11-10 운영 실측).
-    if (doc === "tax") calls.push(nt("tax", CODEF_PATH.tax, { proofType: "B0007", submitTargets: "99", isIdentityViewYN: "0", isAddrViewYn: "0", originDataYN1: "1" }));
-    if (doc === "closed") calls.push(nt("closed", CODEF_PATH.closed, { usePurposes: "99", submitTargets: "99", isIdentityViewYn: "0", originDataYN1: "1" }));
-    if (doc === "income") calls.push(nt("income", CODEF_PATH.income, { startYear: String(y - SIMPLE_AUTH_YEARS), endYear: String(y - 1), usePurposes: "99", submitTargets: "99", isIdentityViewYn: "0", isAddrViewYn: "0", originDataYN1: "1" }));
-    if (doc === "localTax") {
-      const addr = input.address!;
-      const phoneNo = digitsOnly(input.phone);
-      const base = { address: addr.road, addrDetail: addr.detail, proofType: "99", isIdentityViewYn: "1", originDataYN1: "1" };
-      if (input.mode === "simple") {
-        const login = loginParams(input, ids.mw, "mw");
-        delete login.loginIdentity;
-        calls.push({ doc, group: "mw", path: CODEF_PATH.localTax, params: {
-          ...login, ...base, phoneNo1: phoneNo, identityEncYn: "Y", birthDate: input.birth.slice(2), identity: codefEncrypt(input.rrnBack ?? ""),
-        } });
-      } else {
-        calls.push({ doc, group: "mw", path: corp ? CODEF_PATH.localTaxCorp : CODEF_PATH.localTax, params: {
-          ...loginParams(input, ids.mw, "mw"), ...base, ...(corp ? { phoneNo } : { phoneNo1: phoneNo }),
-        } });
-      }
-    }
-    if (doc === "ins" && input.mode === "cert") calls.push({ doc, group: "pp", path: CODEF_PATH.ins, params: { ...loginParams(input, ids.pp, "pp"), inquiryType: "0", originDataYN: "1" } });
-  }
-  return calls;
-}
 
 const SUCCESS = "CF-00000", NEED_2WAY = "CF-03002";
 const failText = (r: CodefResult) => (r.extraMessage || r.message || `오류 ${r.code}`).slice(0, 200);
@@ -198,6 +139,7 @@ async function confirmLead(job: Job, lead: Lead): Promise<"ok" | "waiting" | "fa
 function startJob(job: Job, calls: Call[]) {
   job.pending = calls.length;
   jobs.set(job.reqId, job);
+  reportActive();
   void (async () => {
     // 같은 id 요청을 0.3초 간격으로 겹쳐 보낸다(실측: 첫 요청만 승인을 받고 나머지는 승인 뒤 도착).
     for (const c of calls) { void fire(job, c); await new Promise((r) => setTimeout(r, 300)); }
@@ -207,6 +149,7 @@ function startJob(job: Job, calls: Call[]) {
 /** 공동인증서: 승인이 없으니 차례로. 사업자등록증명으로 법인 여부를 먼저 본다. */
 function startCertJob(job: Job) {
   jobs.set(job.reqId, job);
+  reportActive();
   void (async () => {
     const ids = { nt: randomUUID(), mw: randomUUID(), pp: randomUUID() };
     // 요청 수는 법인 여부와 상관없이 같다 — 끝 판정(pending 0)은 처음부터 전체 수로.
@@ -273,6 +216,7 @@ async function finish(job: Job) {
   if (job.finished) return;
   job.finished = true;
   job.doneAt = Date.now();
+  reportActive();
   // 인증서·비밀번호는 요청에만 — 끝나면 메모리에서도 지운다(다시 보내기는 간편인증만).
   if (job.input.mode === "cert") job.input = { ...job.input, certPfx: undefined, certDer: undefined, certKey: undefined, certPassword: "" };
   const businesses = assemble(job);
@@ -312,8 +256,12 @@ export async function simpleAuthWho(email: string, sheetOverride?: string): Prom
   return { email, spreadsheetId: user.spreadsheetId };
 }
 
+/** 배포 직전(재시작 예고)에는 새 승인 대기를 시작하지 않는다 — 진행 중인 요청은 배포가 끝나기를 기다려 준다. */
+const DRAINING = "곧 업데이트가 있어요. 2~3분 뒤 다시 보내 주세요.";
+
 export async function startSimpleAuth(who: SimpleAuthWho, raw: unknown): Promise<SimpleAuthRequest> {
   if (!codefConfigured()) throw new SimpleAuthError(new CodefNotConfigured().message, 503);
+  if (simpleAuthDraining()) throw new SimpleAuthError(DRAINING, 503);
   const input = SimpleAuthStart.parse(raw);
   if (!input.docs.includes("biz")) input.docs.unshift("biz");
   if (input.docs.includes("localTax")) {
@@ -333,7 +281,7 @@ export async function startSimpleAuth(who: SimpleAuthWho, raw: unknown): Promise
     deadline: now + SIMPLE_AUTH_WAIT_MS, resends: 0, progress: 0, businesses: [],
   };
   await store.insertSimpleAuthRequest(who, req);
-  const job: Job = { reqId: req.id, owner: who, input, leads: [], datas: new Map(), errors: new Map(), saved: new Set(), pending: 0, finished: false };
+  const job: Job = { reqId: req.id, owner: who, input, leads: [], datas: new Map(), errors: new Map(), saved: new Set(), pending: 0, finished: false, until: Date.now() + SIMPLE_AUTH_WAIT_MS + JOB_GRACE_MS };
   if (input.mode === "cert") startCertJob(job);
   else startJob(job, buildCalls(input, { nt: randomUUID(), mw: randomUUID(), pp: randomUUID() }, false));
   return req;
@@ -357,6 +305,7 @@ export async function listSimpleAuth(who: SimpleAuthWho): Promise<SimpleAuthRequ
       out.push((await store.updateSimpleAuthRequest(who.spreadsheetId, r.id, patch)) ?? r);
     } else if (r.status === "waiting" && Date.now() > r.deadline + 15_000 && job && !job.datas.size) {
       job.finished = true;
+      reportActive();
       out.push((await store.updateSimpleAuthRequest(who.spreadsheetId, r.id, { status: "expired" })) ?? r);
     } else out.push(r);
   }
@@ -387,7 +336,7 @@ export async function actSimpleAuth(who: SimpleAuthWho, id: string, action: Simp
     }
     case "resend": return { request: await resendSimpleAuth(who, id) };
     case "cancel": {
-      if (job) job.finished = true;
+      if (job) { job.finished = true; reportActive(); }
       return { request: await store.updateSimpleAuthRequest(who.spreadsheetId, id, { status: "canceled" }) };
     }
     case "delete": {
@@ -405,13 +354,14 @@ export async function actSimpleAuth(who: SimpleAuthWho, id: string, action: Simp
 export async function resendSimpleAuth(who: SimpleAuthWho, id: string): Promise<SimpleAuthRequest> {
   const r = await own(who, id);
   const old = jobs.get(id);
+  if (simpleAuthDraining()) throw new SimpleAuthError(DRAINING, 503);
   if (!old || old.input.mode !== "simple") throw new SimpleAuthError("처음 보낸 정보가 없어요. 왼쪽에서 다시 입력해 보내 주세요.", 409);
   if (r.status === "waiting" || r.status === "scraping") old.finished = true;
   const now = Date.now();
   const updated = await store.updateSimpleAuthRequest(who.spreadsheetId, id, {
     status: "waiting", deadline: now + SIMPLE_AUTH_WAIT_MS, resends: r.resends + 1, progress: 0, businesses: [], error: undefined,
   });
-  const job: Job = { reqId: id, owner: who, input: old.input, leads: [], datas: new Map(), errors: new Map(), saved: new Set(), pending: 0, finished: false };
+  const job: Job = { reqId: id, owner: who, input: old.input, leads: [], datas: new Map(), errors: new Map(), saved: new Set(), pending: 0, finished: false, until: Date.now() + SIMPLE_AUTH_WAIT_MS + JOB_GRACE_MS };
   startJob(job, buildCalls(old.input, { nt: randomUUID(), mw: randomUUID(), pp: randomUUID() }, false));
   return updated ?? r;
 }

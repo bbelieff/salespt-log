@@ -233,6 +233,14 @@ jobs:
             # 새 빌드 검증 — 실패 시 swap 안 함 → 옛 .next 그대로 서빙(빌드 실패도 무중단).
             test -f .next-build/BUILD_ID || { echo "BUILD_ID 누락 — 빌드 실패, swap 안 함(무중단 유지)"; exit 1; }
             echo "::endgroup::"
+            echo "::group::간편인증 진행 중 요청 기다리기 (재시작으로 끊기지 않게)"
+            # 간편인증은 앱 메모리에서 대표 승인(최대 4분 30초)을 기다린다 — 재시작이 오면 끊긴다(2026-11-11 수강생 오류).
+            # 표시 파일이 있는 동안 앱은 새 보내기를 막고(옛 프로세스는 계속 서빙), 진행 중 요청이 끝나면(최대 8분) swap·reload 한다.
+            # swap 전에 기다려야 옛 프로세스가 옛 .next 를 계속 읽는다. 표시 파일은 이 스크립트가 끝날 때 반드시 지운다(trap).
+            mkdir -p .deploy && touch .deploy/simple-auth-draining
+            trap "rm -f /opt/salespt-log/.deploy/simple-auth-draining" EXIT
+            node scripts/ops/simple-auth-drain.mjs || echo "simple-auth-drain 실패(non-blocking) — 배포 계속"
+            echo "::endgroup::"
             echo "::group::Atomic swap + rolling reload"
             # 원자 swap: 옛 .next → .next-prev (running 프로세스는 inode 유지로 swap 후에도 계속 서빙).
             rm -rf .next-prev
@@ -241,6 +249,7 @@ jobs:
             # rolling reload(cluster) — 워커 하나씩 교체해 무중단 전환. reload 실패 시 restart 폴백.
             pm2 reload salespt-log --update-env || pm2 restart salespt-log --update-env
             pm2 save
+            rm -f .deploy/simple-auth-draining
             echo "::endgroup::"
             echo "::group::Health gate + 자동 롤백"
             sleep 3
