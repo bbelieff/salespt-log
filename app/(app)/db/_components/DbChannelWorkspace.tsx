@@ -268,6 +268,7 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
           {/* 추가 폼 — 채널 고르면 바로 밑(2026-11-10 belie 「채널선택>구매목록추가>구매목록>합계」). */}
         {addOpen && (
           <div
+            data-first-steps="db-add-form"
             className="mb-3 rounded-xl border border-blue-200 bg-white p-4"
             onBlur={(e) => {
               if (ch.manualSave) return; // 수동 저장 채널 — 「저장」 버튼으로만 추가한다.
@@ -341,6 +342,7 @@ export default function DbChannelWorkspace({ activeCh }: { activeCh: ChannelKey 
                 setExpandedRow(null);
               })
             }
+            data-first-steps="db-add-row"
             className="mb-3 w-full rounded-lg border border-dashed border-slate-300 py-3 text-sm font-semibold text-blue-700 transition-colors hover:border-blue-400 hover:bg-blue-50"
           >
             + {ch.recordsLabel} 추가

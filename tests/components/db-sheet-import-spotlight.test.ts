@@ -19,12 +19,13 @@ async function open(raw:string){
 }
 const spot=()=>host.querySelector('.ai-spot');
 
-it('lights the common box first, says how many rows are empty, and clears once it is filled',async()=>{
+it('lights the common box first, marks the empty required fields, and clears once they are filled',async()=>{
  await open('사업자명\t대표자\t전화번호\n합성달빛공방\t김가상\t01000002001\n합성온유상사\t이가상\t01000002002');
  expect(spot()?.matches('fieldset.ai-common')).toBe(true);
  expect(spot()!.textContent).toContain('1 / 3');
  expect(host.querySelector('fieldset.ai-common legend')!.textContent).toContain('먼저 정해 주세요');
- expect(host.querySelector('fieldset.ai-common')!.textContent).toContain('2건 비어 있어요');
+ expect(host.querySelector('fieldset.ai-common')!.textContent).not.toContain('비어 있어요');
+ expect(host.querySelectorAll('fieldset.ai-common label.need')).toHaveLength(2);
  expect(host.querySelector('footer')!.textContent).toContain('확인할 곳으로');
  fill('[aria-label="가져오기 공급처"]','합성 공급처');fill('[aria-label="빈 유입일 채우기"]','2026-10-21');
  expect(spot()).toBeNull();

@@ -1,35 +1,61 @@
 "use client";
 /**
- * 첫걸음 기억(이 브라우저, 계정별)과 「수강생 본인 화면인지」. 1차는 브라우저 저장만 쓴다 —
- * 계정별(폰·PC 공통) 저장은 DB 표가 필요해 따로 승인 뒤 2차(plan first-steps-spotlight).
+ * 첫걸음 기억과 「수강생 본인 화면인지」.
+ * 2차(2026-11-11): 계정별 저장(/api/first-steps, DB first_steps) — 폰·PC 공통. 표가 아직 없거나 서버가 실패하면
+ * 1차처럼 이 브라우저(localStorage, 계정별 키)만 쓴다. 서버에 줄이 없고 브라우저 기억이 있으면 한 번 올린다.
  * 끝났는지 판정은 실제 기록(@/util/first-steps)이라 저장이 비어도 이미 한 단계는 다시 안 뜬다.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMe } from "@/query/me-hook";
+import type { FirstStepsState } from "@/types";
 import {
   EMPTY_FIRST_STEPS_MEMORY,
   firstStepsStorageKey,
   parseFirstStepsMemory,
+  type FirstStepKey,
   type FirstStepsMemory,
 } from "@/util/first-steps";
 
 const CHANGE_EVENT = "salespt-first-steps-change";
+const QUERY_KEY = ["first-steps"] as const;
+type ServerView = { ok: true; state: FirstStepsState | null } | { ok: false };
+
+async function fetchServer(): Promise<ServerView> {
+  try {
+    const res = await fetch("/api/first-steps");
+    if (!res.ok) return { ok: false };
+    const body = (await res.json()) as { state?: FirstStepsState | null };
+    return { ok: true, state: body.state ?? null };
+  } catch {
+    return { ok: false };
+  }
+}
+
+function putServer(state: FirstStepsState) {
+  void fetch("/api/first-steps", { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify(state) }).catch(() => {});
+}
+
+const isEmpty = (m: FirstStepsMemory) => !m.hidden && !m.reviewSeen && !m.never.length && !m.finished.length;
 
 export function useFirstSteps() {
   const me = useMe();
+  const qc = useQueryClient();
   const email = me.data?.sessionEmail || me.data?.email || "";
   // 관리자·트레이너가 수강생 화면을 대신 볼 때, 트레이너 본인 화면에서는 띄우지 않는다.
   const isTraineeSelf = !!me.data && me.data.sessionRole === "trainee" && !me.data.impersonating && !!email;
   const key = email ? firstStepsStorageKey(email) : "";
-  const [memory, setMemory] = useState<FirstStepsMemory>(EMPTY_FIRST_STEPS_MEMORY);
+  const [local, setLocal] = useState<FirstStepsMemory>(EMPTY_FIRST_STEPS_MEMORY);
+  const server = useQuery({ queryKey: QUERY_KEY, queryFn: fetchServer, enabled: isTraineeSelf, staleTime: 5 * 60_000, meta: { background: true } });
+  const uploaded = useRef(false);
 
   useEffect(() => {
     if (!key) return;
     const load = () => {
       try {
-        setMemory(parseFirstStepsMemory(localStorage.getItem(key)));
+        setLocal(parseFirstStepsMemory(localStorage.getItem(key)));
       } catch {
-        setMemory(EMPTY_FIRST_STEPS_MEMORY);
+        setLocal(EMPTY_FIRST_STEPS_MEMORY);
       }
     };
     load();
@@ -41,26 +67,57 @@ export function useFirstSteps() {
     };
   }, [key]);
 
-  const update = useCallback(
-    (fn: (m: FirstStepsMemory) => FirstStepsMemory) => {
-      if (!key) return;
-      let current = EMPTY_FIRST_STEPS_MEMORY;
+  const serverState = server.data?.ok ? server.data.state : null;
+  const memory: FirstStepsMemory = serverState ? (serverState.memory as FirstStepsMemory) : local;
+  const done = useMemo(() => (serverState?.done ?? []) as FirstStepKey[], [serverState]);
+
+  // 서버에 줄이 없는데 이 브라우저에 1차 기억이 있으면 한 번 올린다.
+  useEffect(() => {
+    if (uploaded.current || !server.data?.ok || server.data.state || isEmpty(local)) return;
+    uploaded.current = true;
+    const state: FirstStepsState = { memory: local, done: [] };
+    qc.setQueryData<ServerView>(QUERY_KEY, { ok: true, state });
+    putServer(state);
+  }, [server.data, local, qc]);
+
+  const save = useCallback(
+    (nextMemory: FirstStepsMemory, nextDone: FirstStepKey[]) => {
+      setLocal(nextMemory);
       try {
-        current = parseFirstStepsMemory(localStorage.getItem(key));
-      } catch {
-        /* 저장소를 못 쓰면 이번 화면에서만 기억 */
-      }
-      const next = fn(current);
-      setMemory(next);
-      try {
-        localStorage.setItem(key, JSON.stringify(next));
-        window.dispatchEvent(new Event(CHANGE_EVENT));
+        if (key) {
+          localStorage.setItem(key, JSON.stringify(nextMemory));
+          window.dispatchEvent(new Event(CHANGE_EVENT));
+        }
       } catch {
         /* 사생활 보호 창 등 — 화면 상태만 바뀐다 */
       }
+      const view = qc.getQueryData<ServerView>(QUERY_KEY);
+      if (view?.ok) {
+        const state: FirstStepsState = { memory: nextMemory, done: nextDone };
+        qc.setQueryData<ServerView>(QUERY_KEY, { ok: true, state });
+        putServer(state);
+      }
     },
-    [key],
+    [key, qc],
   );
 
-  return { ready: !!me.data, isTraineeSelf, memory, update };
+  const update = useCallback(
+    (fn: (m: FirstStepsMemory) => FirstStepsMemory) => save(fn(memory), done),
+    [save, memory, done],
+  );
+
+  /** 대시보드 카드가 계산한 끝낸 단계를 올린다(관리 화면 진행 표시용). 바뀌었을 때만. */
+  const reportDone = useCallback(
+    (keys: FirstStepKey[]) => {
+      const view = qc.getQueryData<ServerView>(QUERY_KEY);
+      if (!view?.ok) return;
+      const before = [...(view.state?.done ?? [])].sort().join();
+      if (before === [...keys].sort().join()) return;
+      save(memory, keys);
+    },
+    [qc, save, memory],
+  );
+
+  // 서버 기억을 받기 전에 제안 줄이 깜빡 떴다 사라지지 않게 기다린다.
+  return { ready: !!me.data && (!isTraineeSelf || !server.isLoading), isTraineeSelf, memory, update, reportDone };
 }

@@ -31,11 +31,16 @@ describe("firstStepDone", () => {
     expect(firstStepProgress(done)).toMatchObject({ done: 7, next: null });
   });
 
-  it("links the two guided steps to their screens with ?tour=", () => {
+  it("links every guided step to its screen with ?tour= (review has no tour)", () => {
     expect(FIRST_STEPS.filter((s) => s.tour).map((s) => [s.key, s.href])).toEqual([
+      ["purchase", "/db?tour=purchase"],
       ["lead", "/db-sheet?tour=db-add"],
+      ["contact", "/contact?tour=contact"],
       ["meeting", "/contact?tour=meeting"],
+      ["result", "/schedule?tour=result"],
+      ["payment", "/payment?tour=payment"],
     ]);
+    expect(FIRST_STEPS.find((s) => s.key === "review")!.tour).toBeUndefined();
   });
 });
 

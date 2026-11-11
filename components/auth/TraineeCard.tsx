@@ -23,6 +23,7 @@ import DisclosureChevron from "@/components/ui/DisclosureChevron";
 import { useContext, useEffect, useState, type CSSProperties, type HTMLAttributes } from "react";
 import { courseWeeksForCohort } from "@/config/cohort-dates";
 import { parseAssigned, TrainerOpenContext, type Trainee, type Trainer } from "./AdminUserPickerTypes";
+import FirstStepsBadge from "./FirstStepsBadge";
 
 /** dnd-kit useSortable() 의 listeners 타입을 단순화한 alias.
  *  unknown 으로 받아 TraineeCard 가 dnd-kit 에 직접 의존 안 하게 차단. */
@@ -209,6 +210,7 @@ export default function TraineeCard({
                   {u.captainOf ? <span title="회장"> 👑</span> : null}
                 </span>
                 <LinkedAccountsBadge siblings={siblingEmails(u, linkedBySheet)} />
+                <FirstStepsBadge email={u.email} />
               </span>
               {/* 누적 funnel(예정·완료·계약) — stats 없는 trainee(시트 미설정·조회 실패)는 안 그림.
                   SSOT: 시트 01 영업관리!E4/E5/E6 (= /schedule funnel 과 동일). */}

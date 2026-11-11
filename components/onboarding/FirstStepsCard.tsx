@@ -34,13 +34,19 @@ function countsOf(view: DashboardView, contract?: ContractLike[], reviewSeen = f
 }
 
 export default function FirstStepsCard({ view }: { view: DashboardView }) {
-  const { ready, isTraineeSelf, memory, update } = useFirstSteps();
+  const { ready, isTraineeSelf, memory, update, reportDone } = useFirstSteps();
   const contracts = useContractPayments({ background: true });
   const done = useMemo(
     () => firstStepDone(countsOf(view, contracts.data?.rows, memory.reviewSeen)),
     [view, contracts.data, memory.reviewSeen],
   );
   const progress = firstStepProgress(done);
+
+  // 끝낸 단계를 계정 기록에 올린다(관리 화면 「첫걸음 N/7」). 계약 행을 받은 뒤에만 — 수납 판정이 비지 않게.
+  useEffect(() => {
+    if (!isTraineeSelf || !contracts.data) return;
+    reportDone(FIRST_STEPS.filter((s) => done[s.key]).map((s) => s.key));
+  }, [done, isTraineeSelf, contracts.data, reportDone]);
 
   // 이미 한 단계의 안내 제안 줄은 다른 화면에서도 다시 띄우지 않는다.
   useEffect(() => {

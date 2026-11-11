@@ -51,6 +51,7 @@ import DetailSplitToggle from "./_components/DetailSplitToggle";
 import usePaymentFocus, { paymentCompanyDetailLabel, usePaymentFocusSelection } from "./_components/usePaymentFocus";
 import { buildCompanyWorkItems, companyKeyOfRow, sortCompanyWorkItems, type CompanyWorkItem, type PaymentSortKey } from "./_lib/company-work-view";
 import TopHeader from "@/components/TopHeader";
+import FirstStepTourOffer from "@/components/onboarding/FirstStepTourOffer";
 import DriveLinkBar from "./_components/DriveLinkBar";
 import MobileTools from "./_components/MobileTools";
 import "./payment-company-compact.css";
@@ -341,6 +342,8 @@ export default function PaymentPage() {
         {/* PC는 페이지 셸의 남은 높이를 작업판에만 준다. 모바일은 기존 문서 스크롤을 유지한다. */}
         <div data-payment-mobile-compact className="px-4 pb-[80px] pt-3 pc:px-0 pc:pb-6 min-[1280px]:flex min-[1280px]:min-h-0 min-[1280px]:flex-1 min-[1280px]:flex-col min-[1280px]:overflow-clip">
         <PageContainer width="fluid" className="min-[1280px]:flex min-[1280px]:h-full min-[1280px]:min-h-0 min-[1280px]:flex-col min-[1280px]:overflow-clip">
+        {list.data && <FirstStepTourOffer tour="payment" available={allRows.length > 0}
+          alreadyDone={allRows.some((r) => [r.수납1, r.수납2, r.수납3, ...(r.추가진행 ?? [])].some((s) => (s?.수납액 ?? 0) > 0))} />}
         <PaymentPerformanceSummary
           rows={allRows}
           workRows={activeWorkContracts(allRows)}
