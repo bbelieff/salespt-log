@@ -16,6 +16,8 @@ interface Props {
   layers: Layers; todayISO: string; now: Date; openKey: string | null;
   /** 월~일 보기에서 수강 주차가 바뀌는 칸·첫 칸에 붙이는 「수강 N주」(없으면 안 붙임). */
   courseTag: (date: string, index: number) => string | null; courseBoundary: number;
+  /** 금~목 보기에서 달력 주가 바뀌는 칸(일|월 사이 굵은 선), 없으면 -1. */
+  weekSep: number;
   onMemo: (date: string, text: string) => void;
   onMeeting: (m: Meeting, r: DOMRect) => void; onTodo: (t: Todo, r: DOMRect) => void;
   onCreate: (date: string, time: string | null, r: DOMRect) => void;
@@ -30,7 +32,7 @@ const rectOf = (e: MouseEvent<HTMLElement>) => e.currentTarget.getBoundingClient
 
 export default function WeekGrid(p: Props) {
   const [memoOpen, setMemoOpen] = useState(false);
-  const sepAt = (i: number) => (i === p.courseBoundary ? " border-l-2 border-l-violet-300" : " border-l border-l-slate-200/80");
+  const sepAt = (i: number) => (i === p.courseBoundary ? " border-l-2 border-l-violet-300" : i === p.weekSep ? " border-l-2 border-l-slate-900/[0.12]" : " border-l border-l-slate-900/[0.07]");
   const todayCls = (d: string) => (d === p.todayISO ? " bg-violet-500/[0.05]" : "");
   // 늘어난 메모 줄은 메모 칸·「메모」 버튼 밖을 누르면 3줄로 돌아간다.
   useEffect(() => {
@@ -53,7 +55,7 @@ export default function WeekGrid(p: Props) {
         ] as const;
         const tag = p.courseTag(d, i);
         return (
-          <div key={d} className={`relative flex flex-col items-center justify-center gap-0.5 border-b border-slate-200 pt-2${sepAt(i)}${todayCls(d)}`}>
+          <div key={d} className={`relative flex flex-col items-center justify-center gap-0.5 border-b border-slate-900/[0.07] pt-2${sepAt(i)}${todayCls(d)}`}>
             {tag && <span className="absolute left-1.5 top-1.5 rounded-full bg-violet-100 px-1.5 text-px-10 font-extrabold text-violet-700">{tag}</span>}
             <span className={`text-xs font-bold ${today ? "text-violet-700" : dow === 0 ? "text-red-600" : dow === 6 ? "text-blue-700" : "text-slate-500"}`}>{dayLabelKO(dd)}</span>
             <span className={`grid h-9 w-9 place-items-center rounded-full text-lg font-bold tabular-nums ${today ? "bg-violet-600 text-white shadow-md shadow-violet-300" : "text-slate-900"}`}>{dd.getDate()}</span>
@@ -67,7 +69,7 @@ export default function WeekGrid(p: Props) {
       })}
 
       {/* 메모 줄 — 누르면 10줄 안팎으로, 「메모」 버튼·바깥을 누르면 3줄로 */}
-      <div className="flex items-center justify-center border-b border-slate-200 bg-amber-500/[0.06] p-1">
+      <div className="flex items-center justify-center border-b border-slate-900/[0.12] bg-amber-500/[0.06] p-1">
         <button type="button" data-memo-toggle onClick={() => setMemoOpen((v) => !v)} aria-expanded={memoOpen} aria-label={memoOpen ? "메모 칸 줄이기" : "메모 칸 늘리기"}
           className="flex w-[42px] flex-col items-center gap-px rounded-xl border border-amber-300/70 bg-amber-50 px-0 pb-0.5 pt-1.5 text-px-11 font-extrabold text-amber-800 hover:bg-amber-100">
           <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z" /></svg>메모
@@ -75,18 +77,18 @@ export default function WeekGrid(p: Props) {
         </button>
       </div>
       {p.days.map((d, i) => (
-        <div key={d} className={`flex min-w-0 border-b border-slate-200 bg-amber-500/[0.06] p-1${sepAt(i)}${todayCls(d)}`}>
+        <div key={d} className={`flex min-w-0 border-b border-slate-900/[0.12] bg-amber-500/[0.06] p-1${sepAt(i)}${todayCls(d)}`}>
           <MemoCell date={d} value={p.memos[d] ?? ""} ready={p.memoReady} onSave={p.onMemo} onFocus={() => setMemoOpen(true)} />
         </div>
       ))}
 
       {/* 종일 줄 — 빈 곳을 누르면 종일 일정 만들기 */}
-      <div className="flex items-center justify-center border-b border-slate-300 px-1 text-px-11 text-slate-400">종일</div>
+      <div className="flex items-center justify-center border-b border-slate-900/[0.12] px-1 text-px-11 text-slate-400">종일</div>
       {p.days.map((d, i) => {
         const allDay = p.todos.filter((t) => t.예정일자 === d && !t.예정시각 && (t.type === "일반" ? p.layers.event : p.layers.todo));
         return (
           <div key={d} title="빈 곳을 눌러 종일 일정 만들기" onClick={(e) => { if (e.target === e.currentTarget) p.onCreate(d, null, rectOf(e)); }}
-            className={`flex min-w-0 cursor-cell flex-col gap-0.5 border-b border-slate-300 p-1 hover:bg-teal-500/[0.05]${sepAt(i)}${todayCls(d)}`}>
+            className={`flex min-w-0 cursor-cell flex-col gap-0.5 border-b border-slate-900/[0.12] p-1 hover:bg-teal-500/[0.05]${sepAt(i)}${todayCls(d)}`}>
             {allDay.map((t) => (
               <button key={t.id} type="button" onClick={(e) => t.type === "일반" ? undefined : p.onTodo(t, rectOf(e))} title={t.type === "일반" ? t.제목 : `${t.업체명} · ${t.제목}`}
                 className={`flex h-5 min-w-0 items-center gap-1 rounded-md px-1.5 text-left text-px-12 font-semibold text-white ${t.type === "일반" ? "cursor-default bg-teal-600" : "bg-slate-700"} ${t.완료여부 ? "opacity-50 line-through" : ""}`}>
@@ -134,7 +136,7 @@ function DayColumn({ date, p, sep, today }: { date: string; index: number; p: Pr
           const m = item.m, s = ST_BLOCK[m.상태], need = needsResult(m, p.now), active = p.openKey === `m:${m.id}`;
           return (
             <button key={m.id} type="button" data-meet={m.id} style={style} onClick={(e) => p.onMeeting(m, rectOf(e))} aria-label={`${m.업체명} ${m.미팅시간} ${m.상태}${need ? ", 결과 입력 필요" : ""}`}
-              className={`absolute z-[2] overflow-hidden rounded-lg border px-1.5 py-1 text-left shadow-sm transition-opacity ${s.box} ${active ? "ring-2 ring-violet-500" : ""} ${p.openKey && !active ? "opacity-40 saturate-50" : ""}`}>
+              className={`wb-block absolute z-[2] overflow-hidden rounded-[9px] border px-1.5 py-1 text-left ${s.box} ${active ? "ring-2 ring-violet-500" : ""} ${p.openKey && !active ? "opacity-40 saturate-50" : ""}`}>
               {need && <i aria-hidden="true" className="absolute right-1 top-1 h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />}
               <span className="flex min-w-0 items-center gap-1 text-px-12 font-bold text-slate-900"><i className={`h-1.5 w-1.5 shrink-0 rounded-full ${CH_DOT[m.channel]}`} /><span className={`truncate ${m.상태 === "취소" ? "line-through" : ""}`}>{m.업체명}</span></span>
               <span className={`block truncate text-px-11 font-semibold tabular-nums ${s.text}`}>{m.상태 === "계약" && m.수임비 ? `${m.수임비.toLocaleString("ko-KR")}원` : `${m.미팅시간} · ${m.상태}`}</span>
@@ -144,14 +146,14 @@ function DayColumn({ date, p, sep, today }: { date: string; index: number; p: Pr
         if (item.kind === "e") {
           const t = item.t;
           return (
-            <div key={t.id} style={style} title={t.제목} className={`absolute z-[2] overflow-hidden rounded-lg border border-teal-300 bg-teal-50 px-1.5 py-1 ${p.openKey ? "opacity-40" : ""}`}>
+            <div key={t.id} style={style} title={t.제목} className={`wb-block absolute z-[2] overflow-hidden rounded-[9px] border border-l-[3px] border-teal-300 border-l-teal-600 bg-teal-50/70 px-1.5 py-1 ${p.openKey ? "opacity-40" : ""}`}>
               <span className="block truncate text-px-12 font-bold text-slate-900">{t.제목}</span>
               <span className="block text-px-11 tabular-nums text-teal-800">{t.예정시각}</span>
             </div>
           );
         }
         return (
-          <div key={item.g[0]!.id} style={style} role="group" aria-label={`실무 투두 ${item.g.length}건`} className="absolute z-[2] flex flex-col gap-px overflow-hidden rounded-lg bg-slate-700/95 p-[3px] shadow-sm">
+          <div key={item.g[0]!.id} style={style} role="group" aria-label={`실무 투두 ${item.g.length}건`} className="absolute z-[2] flex flex-col gap-px overflow-hidden rounded-[7px] bg-slate-700/90 p-[3px] shadow-[0_4px_10px_-6px_rgb(30_27_75/0.3)]">
             {item.g.map((t) => {
               const active = p.openKey === `t:${t.id}`;
               return (
@@ -188,6 +190,6 @@ function MemoCell({ date, value, ready, onSave, onFocus }: { date: string; value
       title={ready ? undefined : "메모 저장소 준비 중 — 잠시 뒤 다시 열어 주세요"}
       onFocus={onFocus} onBlur={() => flush(text)}
       onChange={(e) => { const t = e.target.value; setText(t); clearTimeout(timer.current); timer.current = setTimeout(() => flush(t), 800); }}
-      className="min-w-0 flex-1 resize-none rounded-lg border border-transparent bg-white/50 px-2 py-1 text-xs leading-snug text-slate-700 outline-none hover:border-slate-200 focus:border-violet-400 focus:bg-white disabled:opacity-60" />
+      className="min-w-0 flex-1 resize-none rounded-[10px] border border-transparent bg-white/45 px-2 py-1 text-xs leading-snug text-slate-700 outline-none hover:border-slate-200 focus:border-violet-400 focus:bg-white disabled:opacity-60" />
   );
 }

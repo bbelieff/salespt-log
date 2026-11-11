@@ -16,6 +16,7 @@ import TodoPopover from "./TodoPopover";
 import EventPopover from "./EventPopover";
 import BoardPopover from "./BoardPopover";
 import type { LayerKey, Layers } from "./board-style";
+import "./week-board.css";
 
 type Opened = { kind: "m"; id: string; rect: DOMRect } | { kind: "t"; id: string; rect: DOMRect } | { kind: "new"; date: string; time: string | null; rect: DOMRect };
 
@@ -69,21 +70,22 @@ export default function WeekBoard({ courseWeekFri, viewStart, courseStart, order
   });
 
   return (
-    <div className="grid h-[calc(100dvh-var(--app-header-height)-3rem-24px)] min-h-[620px] grid-cols-[272px_minmax(0,1fr)] gap-3 px-4 py-3">
+    <div className="wb-root grid h-[calc(100dvh-var(--app-header-height)-3rem-24px)] min-h-[620px] grid-cols-[272px_minmax(0,1fr)] gap-3 px-4 py-3">
+      <div aria-hidden="true" className="wb-backdrop"><i /><i /><i /></div>
       <div className="flex min-h-0 flex-col gap-3">
         <BoardTitle className="shrink-0" style={{ height: BOARD_TOP_H + 1 }} title={monthWeekLabel(viewStart)} range={`${md(days[0]!)} – ${md(days[6]!)}`} course={course}
           order={order} layers={layers} onPrev={onPrev} onNext={onNext} onToday={onToday} onOrder={onOrder} onLayer={toggleLayer} />
-        <aside aria-label="이번 주 미팅 결과, 주간 이슈, 트레이닝 목표" className="surface-panel !p-0 min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
-          <ResultPanel meetings={meetings} now={now} onPending={(m) => setOpened({ kind: "m", id: m.id, rect: new DOMRect(300, 140, 0, 0) })} />
-          <IssuesPanel issues={notes.data?.issues ?? []} ready={notesReady} onChange={saveIssues} />
-          <GoalPanel courseWeekFri={courseWeekFri} />
+        <aside aria-label="이번 주 미팅 결과, 주간 이슈, 트레이닝 목표" className="wb-scroll -m-1 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-1">
+          <div className="wb-glass shrink-0 overflow-hidden"><ResultPanel meetings={meetings} now={now} onPending={(m) => setOpened({ kind: "m", id: m.id, rect: new DOMRect(300, 140, 0, 0) })} /></div>
+          <div className="wb-glass wb-issues shrink-0 overflow-hidden"><IssuesPanel issues={notes.data?.issues ?? []} ready={notesReady} onChange={saveIssues} /></div>
+          <div className="wb-glass shrink-0 overflow-hidden"><GoalPanel courseWeekFri={courseWeekFri} /></div>
         </aside>
         {extra}
       </div>
-      <div className="surface-panel !p-0 min-h-0 min-w-0 overflow-hidden">
+      <div className="wb-glass min-h-0 min-w-0 overflow-hidden">
         <WeekGrid days={days} meetings={meetings} todos={todos} memos={notes.data?.memos ?? {}} memoReady={notesReady} layers={layers}
           todayISO={todayISO} now={now} openKey={opened && opened.kind !== "new" ? `${opened.kind}:${opened.id}` : null}
-          courseTag={courseTag} courseBoundary={boundary} onMemo={saveMemo}
+          courseTag={courseTag} courseBoundary={boundary} weekSep={order === "fri" ? 3 : -1} onMemo={saveMemo}
           onMeeting={(m, rect) => setOpened({ kind: "m", id: m.id, rect })} onTodo={(t, rect) => setOpened({ kind: "t", id: t.id, rect })}
           onCreate={(date, time, rect) => setOpened({ kind: "new", date, time, rect })} />
       </div>
