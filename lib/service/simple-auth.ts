@@ -309,7 +309,37 @@ export async function listSimpleAuth(who: SimpleAuthWho): Promise<SimpleAuthRequ
       out.push((await store.updateSimpleAuthRequest(who.spreadsheetId, r.id, { status: "expired" })) ?? r);
     } else out.push(r);
   }
-  return out;
+  return withSavedOriginals(who, out);
+}
+
+/** 중간에 끊겨(재시작·실패) 요약이 비었어도, 이미 받아 저장한 원문 PDF 는 사업자별로 보여 준다(belie 2026-11-11). 한 번 채우면 저장. */
+async function withSavedOriginals(who: SimpleAuthWho, list: SimpleAuthRequest[]): Promise<SimpleAuthRequest[]> {
+  const empty = list.filter((r) => !r.businesses.length && r.status !== "waiting" && r.status !== "scraping");
+  const keys = await store.listSimpleAuthOriginalKeys(who.spreadsheetId, empty.map((r) => r.id)).catch(() => []);
+  if (!keys.length) return list;
+  const fixed = new Map<string, SimpleAuthRequest>();
+  for (const r of empty) {
+    const mine = keys.filter((k) => k.requestId === r.id);
+    if (!mine.length) continue;
+    const named = [...new Set(mine.map((k) => k.bizNo).filter(Boolean))];
+    const businesses: SimpleAuthBusiness[] = (named.length ? named : [""]).map((bizNo) => ({
+      bizNo, name: bizNo || "사업자", applied: false, link: { state: "none" },
+      results: r.docs.map((doc) => {
+        const got = mine.filter((k) => (k.bizNo === bizNo || !k.bizNo) && (k.docKey === doc || (doc === "fs" && k.docKey.startsWith("fs-"))));
+        if (!got.length) return { key: doc, ok: false, reason: "받지 못했어요.", facts: [], fields: [], hasOriginal: false };
+        // 재무제표 원문 링크는 화면이 「YYYY년」 문구에서 연도를 읽어 만든다.
+        const facts = doc === "fs"
+          ? [...new Set(got.map((k) => k.docKey.slice(3)))].sort().reverse().map((y) => `${y}년 — 원문만 남았어요(요약 없음)`)
+          : ["원문만 남았어요(요약 없음) — 「원문」으로 열어 보세요"];
+        return { key: doc, ok: true, facts, fields: [], hasOriginal: true };
+      }),
+    }));
+    const updated = await store.updateSimpleAuthRequest(who.spreadsheetId, r.id, {
+      status: "done", businesses, error: "중간에 끊겨 받은 서류의 원문만 남았어요. 빠진 서류는 다시 보내 주세요.",
+    });
+    if (updated) fixed.set(r.id, updated);
+  }
+  return list.map((r) => fixed.get(r.id) ?? r);
 }
 
 async function own(who: SimpleAuthWho, id: string): Promise<SimpleAuthRequest> {

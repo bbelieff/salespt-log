@@ -193,6 +193,24 @@ describe("간편인증 보내기 → 승인 확인 → 결과", () => {
     expect(h.active.at(-1)).toBe(0);
   });
 
+  it("끊겨서 요약이 비었어도 저장된 원문은 사업자별로 보여 준다(재무제표는 연도별) — 한 번 채우면 저장", async () => {
+    const id = "00000000-0000-4000-8000-0000000000aa";
+    await db.exec(`insert into public.simple_auth_requests (id, email, spreadsheet_id, owner_name, phone, method, docs, status, sent_at, deadline, resends, progress, error, businesses)
+      values ('${id}', 'a@example.test', 'sheet-a', '김가상', '010-0000-1234', '카카오톡', array['biz','vat','fs'], 'failed', now(), now(), 0, 3, '서버가 다시 시작돼 끊겼어요. 다시 보내 주세요.', '[]'::jsonb)`);
+    await db.exec(`insert into public.simple_auth_originals (request_id, biz_no, doc_key, sealed) values
+      ('${id}', '214-88-77123', 'biz', 'x'), ('${id}', '214-12-90311', 'biz', 'x'), ('${id}', '214-88-77123', 'fs-2025', 'x'), ('${id}', '214-88-77123', 'fs-2024', 'x')`);
+    const [r] = await listSimpleAuth(who);
+    expect(r!.status).toBe("done");
+    expect(r!.error).toMatch(/원문만 남았어요/);
+    const a = r!.businesses.find((b) => b.bizNo === "214-88-77123")!;
+    expect(a.results.map((x) => [x.key, x.ok, x.hasOriginal])).toEqual([["biz", true, true], ["vat", false, false], ["fs", true, true]]);
+    expect(a.results.find((x) => x.key === "fs")!.facts).toEqual(["2025년 — 원문만 남았어요(요약 없음)", "2024년 — 원문만 남았어요(요약 없음)"]);
+    expect(r!.businesses.find((b) => b.bizNo === "214-12-90311")!.results.find((x) => x.key === "biz")!.ok).toBe(true);
+    // 다시 읽어도 같은 결과(저장됨)
+    const [again] = await listSimpleAuth(who);
+    expect(again!.businesses).toHaveLength(2);
+  });
+
   it("배포 직전(재시작 예고)에는 새 보내기를 막는다 — CODEF 를 부르지 않는다", async () => {
     h.draining = true;
     await expect(startSimpleAuth(who, input)).rejects.toThrow("곧 업데이트가 있어요");
