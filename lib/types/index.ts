@@ -15,3 +15,4 @@ export * from "./dashboard"; // Dashboard* view 인터페이스
 export * from "./expense-ledger"; // 비용 원장: 카테고리·일회성·반복 비용
 export * from "./contact-script"; // ContactScript · ContactScriptView
 export * from "./first-steps"; // FirstStepsState · FirstStepsMemorySchema · FirstStepsProgressMap
+export * from "./schedule-notes"; // ScheduleIssue · ScheduleNotePut · ScheduleNotesView (일정 보드 메모·이슈)
