@@ -17,7 +17,7 @@ export function Panel({ title, icon, summary, defaultOpen = true, tone = "", chi
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <section className={`min-h-0 border-t border-slate-200/80 first:border-t-0 ${tone}`}>
+    <section className={`min-h-0 ${tone}`}>
       <h2>
         <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
           className="flex w-full items-center gap-2 px-3.5 py-3 text-left text-sm font-extrabold text-slate-900 hover:bg-slate-900/[0.03]">

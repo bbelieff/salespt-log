@@ -13,11 +13,11 @@ export const CH_DOT: Record<Channel, string> = {
 
 /** 시간 칸 블록 — 상태색 옅은 바탕 + 테두리, 글자는 같은 색 진한 단계. 변경은 점선·흐림, 취소는 흐림. */
 export const ST_BLOCK: Record<MeetingState, { box: string; text: string }> = {
-  예약: { box: "border-amber-300 bg-amber-50", text: "text-amber-800" },
-  계약: { box: "border-green-400 bg-green-50", text: "text-green-800" },
-  완료: { box: "border-orange-300 bg-orange-50", text: "text-orange-800" },
-  변경: { box: "border-dashed border-purple-300 bg-purple-50 opacity-85", text: "text-purple-800" },
-  취소: { box: "border-red-200 bg-red-50 opacity-70", text: "text-red-700" },
+  예약: { box: "border-amber-300 bg-amber-50/75", text: "text-amber-800" },
+  계약: { box: "border-green-400 bg-green-50/75", text: "text-green-800" },
+  완료: { box: "border-orange-300 bg-orange-50/75", text: "text-orange-800" },
+  변경: { box: "border-dashed border-purple-300 bg-purple-50/75 opacity-85", text: "text-purple-800" },
+  취소: { box: "border-red-200 bg-red-50/75 opacity-70", text: "text-red-700" },
 };
 
 export const ST_BAR: Record<MeetingState, string> = {

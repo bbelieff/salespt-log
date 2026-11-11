@@ -17,7 +17,7 @@ export default function BoardTitle({ title, range, course, order, layers, onPrev
   onPrev: () => void; onNext: () => void; onToday: () => void; onOrder: (o: DayOrder) => void; onLayer: (k: LayerKey) => void; className?: string; style?: CSSProperties;
 }) {
   return (
-    <nav aria-label="주차 이동" style={style} className={`flex flex-col justify-between gap-1 rounded-2xl border border-violet-200/70 bg-gradient-to-br from-violet-100/80 via-white/90 to-violet-50/60 px-3.5 py-3 shadow-[0_18px_36px_-18px_rgb(124_58_237/0.45)] ${className}`}>
+    <nav aria-label="주차 이동" style={style} className={`wb-title flex flex-col justify-between gap-1 px-3.5 py-3 ${className}`}>
       <div className="min-w-0">
         <h1 className="text-4xl font-black leading-none tracking-[-0.04em] text-slate-900 tabular-nums">{title}</h1>
         <p className="mt-1.5 flex items-center gap-1.5 whitespace-nowrap">
