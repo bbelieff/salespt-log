@@ -44,12 +44,13 @@
 }
 .wb-block:hover { transform: translateY(-1px); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.75), 0 10px 22px -10px rgb(30 27 75 / 0.16); z-index: 3; }
 
-/* 왼쪽 판 스크롤바: 화살표 없이 둥근 판 안쪽에서만 */
-.wb-scroll { scrollbar-gutter: stable; }
-.wb-scroll::-webkit-scrollbar { width: 10px; }
+/* 왼쪽 판 스크롤바: 화살표 없이, 열과 격자 사이 틈(12px)에만 — 판 너비를 줄이지 않아 제목 칸·아래 버튼과 폭이 같다.
+ * 그림자 여백 4px(p-1) + 스크롤바 8px 만큼 오른쪽으로 내민다. */
+.wb-scroll { scrollbar-gutter: stable; margin: -4px -12px -4px -4px; }
+.wb-scroll::-webkit-scrollbar { width: 8px; }
 .wb-scroll::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
 .wb-scroll::-webkit-scrollbar-track { background: transparent; margin: 18px 0; }
-.wb-scroll::-webkit-scrollbar-thumb { background: rgb(15 23 42 / 0.2); border-radius: 99px; border: 3px solid transparent; background-clip: padding-box; }
+.wb-scroll::-webkit-scrollbar-thumb { background: rgb(15 23 42 / 0.2); border-radius: 99px; border: 2px solid transparent; background-clip: padding-box; }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .wb-glass, .wb-glass.wb-issues, .wb-title { background: rgb(255 255 255); }

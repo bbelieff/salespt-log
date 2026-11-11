@@ -75,7 +75,7 @@ export default function WeekBoard({ courseWeekFri, viewStart, courseStart, order
       <div className="flex min-h-0 flex-col gap-3">
         <BoardTitle className="shrink-0" style={{ height: BOARD_TOP_H + 1 }} title={monthWeekLabel(viewStart)} range={`${md(days[0]!)} – ${md(days[6]!)}`} course={course}
           order={order} layers={layers} onPrev={onPrev} onNext={onNext} onToday={onToday} onOrder={onOrder} onLayer={toggleLayer} />
-        <aside aria-label="이번 주 미팅 결과, 주간 이슈, 트레이닝 목표" className="wb-scroll -m-1 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-1">
+        <aside aria-label="이번 주 미팅 결과, 주간 이슈, 트레이닝 목표" className="wb-scroll flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-1">
           <div className="wb-glass shrink-0 overflow-hidden"><ResultPanel meetings={meetings} now={now} onPending={(m) => setOpened({ kind: "m", id: m.id, rect: new DOMRect(300, 140, 0, 0) })} /></div>
           <div className="wb-glass wb-issues shrink-0 overflow-hidden"><IssuesPanel issues={notes.data?.issues ?? []} ready={notesReady} onChange={saveIssues} /></div>
           <div className="wb-glass shrink-0 overflow-hidden"><GoalPanel courseWeekFri={courseWeekFri} /></div>
