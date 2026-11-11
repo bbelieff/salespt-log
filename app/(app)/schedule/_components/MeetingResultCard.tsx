@@ -39,9 +39,8 @@ interface Props {
   onDelete?: () => void;
   hasFollowUp?: boolean;
   onReviveCase?: () => void;
+  initialOpen?: boolean; // 주간 보드 창 안에서 띄울 때 — 처음부터 펼친 상태
 }
-
-/** 공용 부품 별칭 — 중복 구현 제거(PR-1 lib/format/money 가 단일 원천). */
 
 export default function MeetingResultCard({
   meeting,
@@ -53,10 +52,10 @@ export default function MeetingResultCard({
   onAddMeeting,
   onDelete,
   hasFollowUp,
-  onReviveCase,
+  onReviveCase, initialOpen = false,
 }: Props) {
   const state = meetingStateToCardState(meeting.상태);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen);
   const [action, setAction] = useState<Action>(null);
   const [editMode, setEditMode] = useState(false);
   useEffect(()=>{if(focus&&new URLSearchParams(window.location.search).get("edit")==="schedule"){setOpen(true);setAction("reschedule");}},[focus]);

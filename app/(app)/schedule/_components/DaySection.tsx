@@ -4,6 +4,7 @@
  */
 "use client";
 
+import type { ReactNode } from "react";
 import type { Meeting } from "@/types";
 import { dayLabelKO, fmtMD, parseISO } from "../_lib/week";
 import MeetingResultCard from "./MeetingResultCard";
@@ -32,6 +33,8 @@ interface Props {
   followUpParentIds?: Set<string>;
   /** 케이스 종료 되살리기 (2026-05-19). */
   onReviveCase?: (meeting: Meeting) => void;
+  /** 폰·태블릿: 미팅 줄 아래 메모·실무 투두·일반 일정(주간 보드 2026-11-11). */
+  extra?: ReactNode;
 }
 
 export default function DaySection({
@@ -47,6 +50,7 @@ export default function DaySection({
   onDelete,
   followUpParentIds,
   onReviveCase,
+  extra,
 }: Props) {
   const d = parseISO(date);
   const dow = d.getDay();
@@ -117,6 +121,7 @@ export default function DaySection({
         ))}
         </div>
       )}
+      {extra}
     </section>
   );
 }

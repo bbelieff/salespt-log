@@ -85,6 +85,12 @@ last_review: 2026-04-27
 - 테이블 `first_steps`(email 소문자 PK, memory jsonb, done text[], updated_at) — 마이그레이션 `0021_first_steps.sql`(운영 적용은 별도 승인). 표가 없으면 화면은 브라우저 localStorage 로 동작.
 - API `/api/first-steps` GET·PUT(세션 이메일) · `/api/admin/first-steps` GET(관리 화면, 수강생별 진행 수). 판정 규칙은 `lib/util/first-steps.ts`(실제 기록 기준).
 
+### 일정 보드 메모·주간 이슈 — `lib/types/schedule-notes.ts` (2026-11-11)
+- `ScheduleIssue` = { id, text(1~300자), urgent, done } · `ScheduleIssues` 최대 50개 · `ScheduleMemoText` 최대 2000자.
+- `ScheduleNotesView` = { memos: 날짜→메모, issues } · `ScheduleNotePut` = `{kind:"memo", date, text}` | `{kind:"issues", weekStart, issues}`(통째 저장).
+- 테이블 `schedule_notes`(email 소문자 + note_key PK, body jsonb, updated_at) — note_key `memo:YYYY-MM-DD` · `issues:<수강 주 금요일>`. 마이그레이션 `0022_schedule_notes.sql`(운영 적용은 db-migrate 워크플로). 표가 없으면 API 503 → 화면은 메모·이슈 칸만 잠그고 나머지는 그대로.
+- API `/api/schedule-notes` GET(?from=7일 첫날&issuesWeek=금요일) · PUT — 대상은 보고 있는 수강생(트레이너 대리 보기 포함), 쓰기는 쓰기 권한 계정만(실무투두와 같은 검사).
+
 ## 비용 원장 (2026-07-23, DB 전용)
 
 ### Expense ledger exports
