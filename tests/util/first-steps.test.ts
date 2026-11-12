@@ -91,7 +91,7 @@ describe("이미 DB 입력이 있는 수강생은 첫걸음 없음(belie 2026-11
     expect(startFirstSteps(fresh, true)).toBe(fresh);
   });
 
-  it("이미 안내를 쓰기 시작한 흔적이 있으면 DB 가 있어도 숨기지 않는다", () => {
-    expect(startFirstSteps({ ...EMPTY_FIRST_STEPS_MEMORY, finished: ["db-add"] }, true)).toMatchObject({ started: true, hidden: false });
+  it("카드가 자동으로 채운 「끝낸 안내」가 있어도 DB 가 있으면 숨긴다(베테랑)", () => {
+    expect(startFirstSteps({ ...EMPTY_FIRST_STEPS_MEMORY, finished: ["db-add", "contact"] }, true)).toMatchObject({ started: true, hidden: true });
   });
 });

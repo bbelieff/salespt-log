@@ -123,5 +123,5 @@ export function useFirstSteps() {
   );
 
   // 서버 기억을 받기 전에 제안 줄이 깜빡 떴다 사라지지 않게 기다린다.
-  return { ready: !!me.data && (!isTraineeSelf || !server.isLoading), isTraineeSelf, memory, update, reportDone };
+  return { ready: !!me.data && (!isTraineeSelf || !server.isLoading), isTraineeSelf, memory, update, reportDone, serverReady: !!server.data?.ok };
 }
