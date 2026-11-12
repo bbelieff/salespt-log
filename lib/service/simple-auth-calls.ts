@@ -35,7 +35,7 @@ function vatRange(): { startDate: string; endDate: string } {
   return { startDate: `${y - SIMPLE_AUTH_YEARS}01`, endDate: m >= 8 ? `${y}01` : `${y - 1}07` };
 }
 
-export function buildCalls(input: SimpleAuthStart, ids: Record<Call["group"], string>, corp: boolean, docs: readonly SimpleAuthDocKey[] = input.docs): Call[] {
+export function buildCalls(input: SimpleAuthStart, ids: Record<Call["group"], string>, corp: boolean, docs: readonly SimpleAuthDocKey[] = input.docs, fsBizNos: readonly string[] = input.bizNos): Call[] {
   const y = baseYear();
   const nt = (doc: SimpleAuthDocKey, path: string, extra: Obj): Call => ({ doc, path, group: "nt", params: { ...loginParams(input, ids.nt, "nt"), ...extra } });
   const proof = { usePurposes: "99", submitTargets: "99", isIdentityViewYN: "0", originDataYN1: "1" };
@@ -44,8 +44,9 @@ export function buildCalls(input: SimpleAuthStart, ids: Record<Call["group"], st
     if (doc === "biz") calls.push(nt("biz", CODEF_PATH.biz, proof));
     if (doc === "vat") calls.push(nt("vat", CODEF_PATH.vat, { ...proof, ...vatRange() }));
     if (doc === "fs") {
-      for (let i = 1; i <= SIMPLE_AUTH_YEARS; i++) {
-        const fs = { ...proof, startDate: corp ? `${y - i}12` : String(y - i), ...(corp ? {} : { proofType: "40" }) };
+      // 사업자번호를 받았으면 사업장마다 따로(applicationType 01 + identity) — 처음부터 같은 묶음으로 보내야 승인 한 번에 받는다.
+      for (const biz of fsBizNos.length ? fsBizNos : [""]) for (let i = 1; i <= SIMPLE_AUTH_YEARS; i++) {
+        const fs = { ...proof, startDate: corp ? `${y - i}12` : String(y - i), ...(corp ? {} : { proofType: "40" }), ...(biz ? { applicationType: "01", identity: digitsOnly(biz) } : {}) };
         // 재무제표 상품만 간편인증 전화번호 칸 이름이 다르다(loginPhoneNo).
         const c = nt("fs", CODEF_PATH.fs, fs);
         if (input.mode === "simple") { c.params.loginPhoneNo = c.params.phoneNo; delete c.params.phoneNo; }

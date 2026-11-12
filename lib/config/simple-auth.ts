@@ -28,11 +28,11 @@ export type SimpleAuthDocDef = {
 export const SIMPLE_AUTH_DOCS: readonly SimpleAuthDocDef[] = [
   { key: "biz", label: "사업자등록증명", short: "사업자등록", note: "필수", site: "홈택스", locked: true },
   { key: "vat", label: "부가세 과세표준증명", short: "부가세", note: "3년", site: "홈택스" },
-  // 요청에 사업자번호가 없어 대표 명의 사업장이 2곳 이상이면 홈택스가 거절한다(2026-11-11 수강생 실패, FS_MULTI_BIZ).
+  // 대표 명의 사업장이 2곳 이상이면 홈택스가 사업자번호 없는 요청을 거절한다(2026-11-11 수강생 실패, FS_MULTI_BIZ) — 보낼 때 번호를 받아 사업장별로 요청.
   {
     key: "fs", label: "표준재무제표증명", short: "재무제표", note: "3년", site: "홈택스",
-    hint: "사업장이 여러 곳이면 안 들어와요\n· 사업장 1곳 — 최근 3년치를 받아요.\n· 2곳 이상 — 홈택스가 내주지 않아요. 대표님께 사업자별로 직접 발급해 보내 달라고 하세요.",
-    caution: "재무제표는 사업장이 1곳일 때만 3년치가 들어와요. 여러 곳이면 대표님께 사업자별로 직접 발급받아 달라고 하세요.",
+    hint: "사업장이 여러 곳이면 사업자번호가 필요해요\n· 사업장 1곳 — 그대로 보내면 최근 3년치를 받아요.\n· 2곳 이상 — 아래 칸에 사업자번호를 넣으면 사업장마다 3년치를 받아요.",
+    caution: "사업장이 여러 곳이면 아래 칸에 사업자번호를 넣어 주세요. 넣은 사업장마다 재무제표 3년치를 받아요.",
   },
   { key: "tax", label: "국세 완납증명", short: "국세", site: "홈택스" },
   { key: "income", label: "소득금액증명", short: "소득금액", note: "개인사업자", site: "홈택스", simpleOnly: true },

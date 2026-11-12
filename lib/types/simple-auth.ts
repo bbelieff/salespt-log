@@ -71,6 +71,8 @@ export const SimpleAuthAddress = z.object({ road: z.string().min(2).max(100), de
 export type SimpleAuthAddress = z.infer<typeof SimpleAuthAddress>;
 
 const phone = z.string().regex(/^010-\d{4}-\d{4}$/);
+/** 재무제표를 사업장별로 받을 사업자번호(선택) — 사업장이 여러 곳이면 홈택스가 번호 없이는 내주지 않는다. */
+const bizNos = z.array(z.string().regex(/^\d{3}-?\d{2}-?\d{5}$/)).max(5).default([]);
 /** 간편인증 보내기. 주민번호 뒷자리는 지방세를 고를 때만 받고 저장하지 않는다. */
 export const SimpleAuthStartSimple = z.object({
   mode: z.literal("simple"),
@@ -82,6 +84,7 @@ export const SimpleAuthStartSimple = z.object({
   docs: z.array(SimpleAuthDocKey.exclude(["ins"])).min(1),
   rrnBack: z.string().regex(/^\d{7}$/).optional(),
   address: SimpleAuthAddress.optional(),
+  bizNos,
 });
 /** 공동인증서로 가져오기. 인증서·비밀번호는 요청에만 쓰고 저장하지 않는다. */
 export const SimpleAuthStartCert = z.object({
@@ -94,6 +97,7 @@ export const SimpleAuthStartCert = z.object({
   certPassword: z.string().min(1).max(100),
   docs: z.array(SimpleAuthDocKey.exclude(["income"])).min(1),
   address: SimpleAuthAddress.optional(),
+  bizNos,
 });
 export const SimpleAuthStart = z.discriminatedUnion("mode", [SimpleAuthStartSimple, SimpleAuthStartCert]);
 export type SimpleAuthStart = z.infer<typeof SimpleAuthStart>;
