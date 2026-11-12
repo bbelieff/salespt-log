@@ -78,4 +78,33 @@ describe("MeetingLinkDialog", () => {
     expect(onSkip).toHaveBeenCalled();
     expect(hooks.mutation.mutateAsync).not.toHaveBeenCalled();
   });
+
+  // 2026-11-12 결정 4 2차: AppDialog — 실무/수납 진입은 Esc·취소 = 저장 없이 닫기.
+  it("실무/수납 진입: Esc·「취소」는 아무것도 저장하지 않고 닫는다", async () => {
+    const onClose = vi.fn();
+    const { node } = await render({ onClose });
+    const dialog = node.querySelector("dialog")!;
+    expect(dialog.getAttribute("aria-label")).toBe("영업기록과 연결");
+    await act(async () => { dialog.dispatchEvent(new Event("cancel", { cancelable: true })); });
+    expect(onClose).toHaveBeenCalledOnce();
+    await clickText(node, "취소");
+    expect(onClose).toHaveBeenCalledTimes(2);
+    expect(hooks.mutation.mutateAsync).not.toHaveBeenCalled();
+  });
+
+  // 일정·계약 진입: 미팅이 이미 계약으로 저장된 뒤라 「따로 등록」·「연결하기」 중 하나를 꼭 고른다(안 고르면 장부 행이 빠진다).
+  it("일정·계약 진입: Esc·바깥 누르기로 닫히지 않고, 저장 없는 닫기 버튼도 없다", async () => {
+    const onClose = vi.fn(), onSkip = vi.fn();
+    const { node } = await render({ onClose, onSkip });
+    const dialog = node.querySelector("dialog")!;
+    await act(async () => {
+      dialog.dispatchEvent(new Event("cancel", { cancelable: true }));
+      dialog.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+      dialog.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(onSkip).not.toHaveBeenCalled();
+    expect(dialog.open).toBe(true);
+    expect([...node.querySelectorAll("button")].map((b) => b.textContent)).toEqual(["따로 등록", "연결하기"]);
+  });
 });

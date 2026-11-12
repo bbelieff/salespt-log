@@ -16,9 +16,13 @@ import { useCalls } from "./use-calls";
 import { isCallTextFile, phoneDigits, readCallTextFile, startCall, uploadCallAudio, uploadCallText } from "./call-client";
 import { useCallFocus } from "@/components/announcements/call-focus";
 import "../call.css";
+import "@/components/ui/top-layer.css";
 
 /** 이어서 올릴 수 있는 통화 — 전화만 건(녹음 필요) 또는 정리 실패. */
 const resumable = (c?: CallRecord) => c && (c.status === "dialed" || c.status === "failed") ? c : null;
+
+/** popover 를 최상단 층에 띄운다(지원 안 하는 브라우저·jsdom 은 그냥 fixed 로 보인다). */
+const showOnTop = (el: HTMLElement | null) => { try { if (el && typeof el.showPopover === "function" && !el.matches(":popover-open")) el.showPopover(); } catch { /* 지원 안 함 */ } };
 
 /** rows = DB관리시트 원본(revision·contact.ci 포함). onSaved = 확정 뒤 목록 다시 읽기. */
 export function useCallUi(rows: DbSheetLead[], onSaved: () => void | Promise<void>) {
@@ -74,7 +78,8 @@ export function useCallUi(rows: DbSheetLead[], onSaved: () => void | Promise<voi
       const company = confirming.lead!.company || "이 업체";
       setConfirm(null); await onSaved(); await calls.refresh(); calls.say(`${company} 저장했어요.`);
     }} />}
-    {calls.toast && <div className="sheet-toast dbs-call-toast" role="status"><span>{calls.toast.text}</span>
+    {/* 알림은 popover(최상단 층) — DB정보·통화 창(최상단 층)이 열려 있어도 그 위에 보이고 눌린다. 글이 바뀌면 다시 띄워 맨 위로. */}
+    {calls.toast && <div key={calls.toast.text} ref={showOnTop} popover="manual" className="sheet-toast dbs-call-toast top-layer-plain" role="status"><span>{calls.toast.text}</span>
       {calls.toast.open && <button type="button" onClick={() => { setConfirm(calls.toast!.open!); calls.clearToast(); }}>확인하기</button>}
       <button type="button" aria-label="알림 닫기" onClick={calls.clearToast}><X size={16} aria-hidden="true" /></button></div>}
   </>;

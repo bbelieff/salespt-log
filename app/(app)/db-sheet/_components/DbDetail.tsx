@@ -13,6 +13,7 @@ import {MeetingLinkPanel} from './MeetingLinkPanel';
 import {ContactPanel,ContactDraft} from './ContactPanel';
 import {memoSuggestion} from '@/lib/analytics/db-sheet-memo';
 import {todayKST} from '@/util/week';
+import {PortalTargetContext,useTopLayerDialog} from '@/components/ui/top-layer';
 function PanelGrip({label,value,min,max,scale=1,readValue,onChange}:{label:string;value:number;min:number;max:number;scale?:number|(()=>number);readValue?:()=>number;onChange:(n:number)=>void}){
  const start=useRef<{x:number;value:number}|null>(null);
  const apply=(n:number)=>onChange(Math.max(min,Math.min(max,n)));
@@ -30,7 +31,6 @@ export function DbDetail({onStage,onAbsence,onLink,row,draft,onChange,onEdit,onR
  const contactPane=useRef<HTMLElement>(null);
  // 폰(699px 이하)은 업체정보가 DB정보 아래에 붙는다 — 「컨택내용」을 누르면 그 시작(제목 줄)까지만 내려 준다, 맨 바닥까지는 아님(2026-11-06 belie).
  useEffect(()=>{if(!contact||window.innerWidth>=700)return;const id=requestAnimationFrame(()=>contactPane.current?.scrollIntoView({block:"start",behavior:window.matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"}));return()=>cancelAnimationFrame(id);},[contact]);
- const shell=useRef<HTMLElement>(null);
  const readWidth=(key:string,fallback:number,min:number,max:number)=>{try{const n=Number(localStorage.getItem(key));return n>=min&&n<=max?n:fallback;}catch{return fallback;}};
  const [preferredLeft,setPreferredLeft]=useState(()=>readWidth('db-sheet-panel-left-width',readWidth('db-sheet-panel-closed-width',640,360,1200),360,1200));
  // 업체정보(우열) 기본 680px — 560px 에서는 업체정보 확장보기가 좁아 잘렸다(2026-10-23). 예전 기본값 560 이 그대로 저장된 경우도 새 기본으로 본다.
@@ -45,13 +45,17 @@ export function DbDetail({onStage,onAbsence,onLink,row,draft,onChange,onEdit,onR
  const changeLeft=(value:number)=>{setPreferredRight(right);setPreferredLeft(Math.round(Math.max(360,Math.min(value,maxLeft))));};
  const changeRight=(value:number)=>{const next=Math.round(Math.max(400,Math.min(value,maxRight)));const restored=left-(next-right);setPreferredLeft(Math.max(360,Math.min(1200,restored,desktop?available-next-1:1200)));setPreferredRight(next);};
  const finishClose=()=>{if(!writing)onClose();};
+ // 네이티브 <dialog>.showModal()(2026-11-12 결정 4 2차): Esc·✕·바깥 누르기 = 닫기(저장 중이면 안 닫힘), 뒤 화면 inert, 닫히면 연 줄로 초점 복귀.
+ // 안의 포털 팝업(공급처 목록·문서 자동입력·업체정보 편집 등)은 PortalTargetContext 로 이 dialog 안에 그려 최상단 층 위로 보인다.
+ const {ref:dialogRef,panelRef:shell,host,onCancel,onClose:onDialogClose}=useTopLayerDialog<HTMLElement>({requestClose:finishClose,initialFocus:el=>el.querySelector<HTMLElement>('.db-detail-shell')});
+ const downOnBackdrop=useRef(false);
  // 부재·재통화는 다음 연락일을 컨택한 다음날로 자동으로 잡는다 — 그 칸을 노랗게 보여 주고 바꿀 수 있다고 알린다(2026-10-25 belie).
  const autoNext=DB_SHEET_AUTO_NEXT_RESULTS.includes(row.result);
 
  const infoField=(c:(typeof columns)[number])=><label key={c.key} className={`${c.key==='supplier'?'db-fill-row':''} ${c.key==='next'&&autoNext?'db-next-auto':''}`}>{c.key==='first'||c.key==='next'?<span className="db-date-head">{c.label}<DatePicks picks={DATE_PICKS[c.key]} value={row[c.key]} label={c.label} onPick={v=>onEdit(c.key,v)} onClear={c.key==='first'?()=>onEdit('first',''):undefined}/></span>:c.key==='date'?<span className="db-date-head">{c.label}</span>:c.label}{c.key==='channel'?<select aria-label="DB정보 공급처 유형" className="sheet-input" value={row.channel} disabled={!!row.meetingId} title={row.meetingId?"미팅예약된 업체의 유형은 일별 기록에서 바꿔 주세요.":undefined} onChange={e=>onEdit("channel",e.target.value)}>{CHANNEL_ORDER.map(channel=><option key={channel}>{channel}</option>)}</select>:c.key==='supplier'?<SupplierInput aria-label="DB정보 공급처" className="sheet-input" value={row.supplier} onValueChange={v=>onEdit("supplier",v)}/>:<input aria-label={`DB정보 ${c.label}`} type={c.key==='date'||c.key==='next'||c.key==='first'?'date':'text'} className="sheet-input" value={row[c.key]} onInput={e=>{if(c.key==="date"||c.key==="next"||c.key==="first")onEdit(c.key,e.currentTarget.value);}} onChange={e=>onEdit(c.key,e.target.value)}/>}{c.key==='next'&&autoNext&&<small className="db-next-hint" role="status">{row.next?'다음날 자동 입력':'날짜를 정해 주세요'}</small>}</label>;
  // 메모에 적힌 부재·컨택결과 제안(2026-10-26 belie) — 기록은 누를 때만.
  const memo=memoSuggestion(row,todayKST());
- return <div className="sheet-overlay sheet-detail-overlay" onClick={finishClose}><section className={`db-detail-shell ${contact?'with-contact':''}`} ref={shell} style={{"--db-panel-width":`${contact?left+right+1:left}px`,"--db-left-width":`${left}px`,"--db-right-width":`${right}px`} as React.CSSProperties} role="dialog" aria-modal="true" aria-label="DB정보" onClick={e=>e.stopPropagation()}>
+ return <dialog ref={dialogRef} className="sheet-overlay sheet-detail-overlay top-layer-plain" aria-modal="true" aria-label="DB정보" onCancel={onCancel} onClose={onDialogClose} onPointerDown={e=>{downOnBackdrop.current=e.target===e.currentTarget;}} onClick={e=>{const onBackdrop=e.target===e.currentTarget&&downOnBackdrop.current;downOnBackdrop.current=false;if(onBackdrop)finishClose();}}><PortalTargetContext.Provider value={host}><section className={`db-detail-shell focus:outline-none ${contact?'with-contact':''}`} ref={shell} tabIndex={-1} style={{"--db-panel-width":`${contact?left+right+1:left}px`,"--db-left-width":`${left}px`,"--db-right-width":`${right}px`} as React.CSSProperties}>
   <div className="db-outer-grip"><PanelGrip label="좌열 왼쪽 바깥 테두리 너비 조절" value={left} readValue={()=>left} min={360} max={maxLeft} scale={-1} onChange={changeLeft}/></div>
   <header className="db-detail-header"><div><span className="sheet-eyebrow">DB정보</span><div className="db-detail-title"><h2>{row.company}</h2></div></div><button className="sheet-text-btn db-width-toggle" disabled={maxLeft<=440} onClick={()=>changeLeft(left<=440?640:440)}>{left<=440?"기본 너비":"좁게 보기"}</button>{/* 유입 반영은 닫기 바로 왼쪽, 세로선으로 구분(2026-11-01 belie). */}<div className="db-title-inflow"><span>유입 반영</span><InflowStatusCell row={row} onToggle={onInflowChange} onPendingChange={setWriting}/></div><button className="sheet-btn" disabled={writing} aria-label="DB정보 닫기" onClick={finishClose}>✕</button></header>
   <div className="db-detail-columns"><section className="db-info-pane">
@@ -63,5 +67,5 @@ export function DbDetail({onStage,onAbsence,onLink,row,draft,onChange,onEdit,onR
    <div className="db-contact-bottom">{callBar}<label className="db-note-label db-contact-memo">상담메모<textarea aria-label="상담메모" className="sheet-input" rows={2} placeholder="통화 내용·요청사항" value={draft.note} onChange={e=>onChange({...draft,note:e.target.value})}/></label>{onAbsence&&row.result==='부재'&&<AbsenceLog row={row} onAbsence={onAbsence} suggested={memo.absenceDates}/>}<DbContactActions suggestion={memo.result} onNext={v=>onEdit('next',v)} row={row} contact={contact} onResult={pickResult} onAsInfo={onAsInfo} onToggleContact={()=>setContact(!contact)} onStage={onStage}/>{onLink&&<MeetingLinkPanel row={row} onLink={onLink}/>}</div>
    <div className="db-detail-bottom-actions"><button className="sheet-text-btn dbs-delete" onClick={onDelete}>삭제</button></div>
   </section>{contact&&<div className="db-split-grip"><PanelGrip label="우열 중앙 경계 너비 조절" value={right} readValue={()=>right} min={400} max={maxRight} scale={-1} onChange={changeRight}/></div>}{contact&&<section ref={contactPane} id="db-contact-pane" className="db-contact-pane"><div className="db-contact-header"><div><h3>업체정보 · 미팅예약</h3></div><button className="sheet-text-btn" onClick={()=>setContact(false)}>접기 <DisclosureChevron open /></button></div><ContactPanel onRestored={onRestored} onMeetingSaved={()=>{void onRestored?.();}} showContact={false} onCompany={v=>onEdit("company",v)} row={row} draft={draft} onChange={onChange} onResult={pickResult} onRegister={onRegister} onOpen={onOpen} book={book}/></section>}</div>
- </section></div>;
+ </section></PortalTargetContext.Provider></dialog>;
 }

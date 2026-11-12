@@ -14,6 +14,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import AppDialog from "@/components/ui/AppDialog";
 import { CHANNEL_ORDER, type Channel } from "@/types";
 import type { ChannelDailyRowMetrics } from "@/service";
 import { useDay, useMeetingScheduleWeeks } from "@/query/contact-hooks";
@@ -162,17 +163,9 @@ export default function RecordMoveModal({
   const to = formatKoreanDate(targetDate);
 
   return (
-    <div
-      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/45 p-4"
-      onClick={dismiss}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[92vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-xl"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-      >
+    // 2026-11-12 AppDialog(결정 4 2차): Esc·×·바깥 누르기 = dismiss(고른 게 있으면 묻고, 저장 중·오류 땐 안 닫힘 — 지금과 같게).
+    <AppDialog title={title} size="sm" dismissOnBackdrop onClose={dismiss}
+      className="flex max-h-[92vh] flex-col overflow-hidden rounded-2xl bg-white shadow-xl">
         <div className="flex items-center gap-2 bg-slate-900 px-3 py-3 text-white">
           <button
             type="button"
@@ -460,7 +453,6 @@ export default function RecordMoveModal({
             </button>
           )}
         </div>
-      </div>
-    </div>
+    </AppDialog>
   );
 }

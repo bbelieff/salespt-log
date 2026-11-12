@@ -16,6 +16,7 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { usePortalTarget } from "@/components/ui/top-layer";
 import { FileDown, Maximize2 } from "lucide-react";
 import { CompanyInfo } from "@/types";
 import { useAutosave } from "@/components/autosave/useAutosave";
@@ -80,6 +81,7 @@ interface Props {
 export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName, identityKey, onChange,
   hideSave, defaultOpen, compactMobile = false, desktopHeading, splitInline = false, vaultTarget, defaultLayout = "basic", grantMatchCount,
 }: Props) {
+  const portalTarget = usePortalTarget(); // 열린 최상단 층 창 안이면 그 창 안에 그린다
   const [open, setOpen] = useState(defaultOpen ?? (hideSave === true));
   const [modal, setModal] = useState(false);
   const [script, setScript] = useState(false); // 팝업 「대본」 — 팝업 안에서만.
@@ -471,7 +473,7 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
       )}
 
       {modal &&
-        typeof document !== "undefined" &&
+        portalTarget &&
         createPortal(
           <div data-payment-company-compact-modal={compactMobile ? "" : undefined} className="fixed inset-0 z-[300] flex items-start justify-center overflow-y-auto bg-black/40 p-4" style={{ ["--font-scale" as string]: String(fontScaleOf(fontStep)) }}>
           <div className="mt-8 mb-8 w-full max-w-md rounded-2xl bg-white p-4 shadow-xl 2xl:max-w-3xl">
@@ -484,7 +486,7 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
             <div className="mt-3 flex gap-2"><button type="button" onClick={closeModal} className="flex-1 rounded-lg bg-slate-900 py-2 text-sm font-bold text-white hover:bg-black">닫기</button></div>
           </div>
           </div>,
-          document.body,
+          portalTarget,
         )}
     </div>
   );

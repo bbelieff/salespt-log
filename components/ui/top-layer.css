@@ -1,0 +1,16 @@
+/* 최상단 층 창·알림이 자기 클래스 모양을 그대로 쓰도록 브라우저 기본 dialog·popover 모양만 지운다(2026-11-12).
+   :where 로 점수 0 — 각 창의 클래스가 항상 이긴다(작성자 CSS 라 브라우저 기본값보다는 앞선다). */
+:where(dialog.top-layer-plain, [popover].top-layer-plain) {
+  inset: auto;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+  background: transparent;
+  color: inherit;
+}
+:where(dialog.top-layer-plain)::backdrop { background: transparent; }

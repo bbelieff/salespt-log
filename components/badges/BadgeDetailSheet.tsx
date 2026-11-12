@@ -1,8 +1,8 @@
 "use client";
-/** 배지 하나 크게 보기 — 모바일은 아래에서 올라오는 시트, 태블릿 이상은 가운데 창. Esc·바깥 누르기로 닫힘. */
+/** 배지 하나 크게 보기 — AppDialog(2026-11-12 결정 4 2차): 휴대폰·태블릿은 아래 서랍, PC 는 가운데 창. Esc·바깥 누르기로 닫힘, 닫히면 연 배지로 초점. */
 import Link from "next/link";
 import type { Route } from "next";
-import { useEffect, useRef } from "react";
+import AppDialog, { AppDialogClose } from "@/components/ui/AppDialog";
 import type { BadgeDef } from "@/lib/analytics/badge-catalog";
 import type { BadgeState } from "@/lib/analytics/badges";
 import BadgeMedal from "./BadgeMedal";
@@ -13,15 +13,6 @@ export function badgeDateLabel(iso: string): string {
 }
 
 export default function BadgeDetailSheet({ def, state, onClose }: { def: BadgeDef; state: BadgeState; onClose: () => void }) {
-  const firstButton = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    const back = document.activeElement as HTMLElement | null;
-    firstButton.current?.focus();
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKey);
-    return () => { document.removeEventListener("keydown", onKey); back?.focus?.(); };
-  }, [onClose]);
-
   const hidden = def.group === "secret" && !state.earned;
   const p = state.progress;
   let body: React.ReactNode;
@@ -50,24 +41,22 @@ export default function BadgeDetailSheet({ def, state, onClose }: { def: BadgeDe
   const cta = !state.earned && def.ready && !hidden ? def.cta : undefined;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-slate-900/40 2xl:items-center" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-labelledby="badge-sheet-title" onClick={e => e.stopPropagation()}
-        className="badge-sheet flex w-full flex-col items-center gap-1.5 rounded-t-2xl bg-white px-5 pb-8 pt-6 text-center 2xl:w-96 2xl:rounded-2xl 2xl:pb-5">
+    <AppDialog labelledBy="badge-sheet-title" size="sm" dismissOnBackdrop onClose={onClose}
+      className="badge-sheet flex flex-col items-center gap-1.5 rounded-2xl bg-white px-5 pb-8 pt-6 text-center lg:pb-5">
         <BadgeMedal img={def.img} tier={def.tier} locked={!state.earned} hidden={hidden} size="lg" />
         <h2 id="badge-sheet-title" className="text-lg font-black text-slate-900">{hidden ? "???" : def.name}</h2>
         {body}
         <div className="mt-3 flex w-full gap-2">
-          <button ref={firstButton} type="button" onClick={onClose}
+          <AppDialogClose data-autofocus
             className={`min-h-11 flex-1 rounded-xl text-sm font-bold ${cta ? "border border-slate-200 bg-white text-slate-700" : "bg-slate-900 text-white"}`}>
             {state.earned ? "확인" : "닫기"}
-          </button>
+          </AppDialogClose>
           {cta && (
             <Link href={cta.href as Route} className="flex min-h-11 flex-1 items-center justify-center rounded-xl bg-slate-900 text-sm font-bold text-white">
               {cta.label}
             </Link>
           )}
         </div>
-      </div>
-    </div>
+    </AppDialog>
   );
 }

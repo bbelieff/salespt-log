@@ -8,6 +8,7 @@
 "use client";
 
 import { useState } from "react";
+import AppDialog, { AppDialogClose } from "@/components/ui/AppDialog";
 import { apiErrorMessage } from "@/lib/util/api-error-message";
 
 interface TraineeBasic {
@@ -80,14 +81,9 @@ export default function BulkReserveButton({ trainees, onDone }: Props) {
         ✋ 유보 처리
       </button>
       {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={() => !busy && setOpen(false)}
-        >
-          <div
-            className="flex max-h-[80vh] w-full max-w-md flex-col rounded-2xl bg-white p-5 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+        // 2026-11-12 AppDialog(결정 4 2차): Esc·✕·취소·바깥 누르기 = 닫기(처리 중에는 안 닫힘 — 지금과 같게).
+        <AppDialog title="유보 처리할 수강생 선택" size="md" dismissOnBackdrop onClose={() => !busy && setOpen(false)}
+          className="flex max-h-[80vh] flex-col rounded-2xl bg-white p-5 shadow-2xl">
             <div className="mb-3 flex items-start justify-between gap-2">
               <div>
                 <h3 className="text-base font-black text-slate-900">
@@ -97,14 +93,13 @@ export default function BulkReserveButton({ trainees, onDone }: Props) {
                   활성 명단 {trainees.length}명 중 선택 ({selected.size}명 선택됨)
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => !busy && setOpen(false)}
+              <AppDialogClose
+                aria-label="닫기"
                 disabled={busy}
                 className="shrink-0 rounded-md border border-slate-200 px-2 py-1 text-xs text-slate-500 hover:bg-slate-50 disabled:opacity-50"
               >
                 ✕
-              </button>
+              </AppDialogClose>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto rounded-lg border border-slate-200">
               {trainees.length === 0 ? (
@@ -153,14 +148,12 @@ export default function BulkReserveButton({ trainees, onDone }: Props) {
               </div>
             )}
             <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={() => !busy && setOpen(false)}
+              <AppDialogClose
                 disabled={busy}
                 className="flex-1 rounded-lg border border-slate-300 bg-white py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
               >
                 취소
-              </button>
+              </AppDialogClose>
               <button
                 type="button"
                 onClick={confirm}
@@ -174,8 +167,7 @@ export default function BulkReserveButton({ trainees, onDone }: Props) {
                     : `✋ ${selected.size}명 유보`}
               </button>
             </div>
-          </div>
-        </div>
+        </AppDialog>
       )}
     </>
   );
