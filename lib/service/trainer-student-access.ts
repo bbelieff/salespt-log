@@ -71,6 +71,20 @@ export async function canAccessManagedStudent(actor: string, target: string | Tr
  * 트레이너관리 「활성 수강생」 권한(2026-11-06 belie) — 등급 기본값 ∧ 저장된 설정. 트레이너 페이지가
  * 담당 아닌 활성 수강생에게도 [웹앱]·[주간목표]를 보일지 정한다(실제 열기는 canImpersonate 가 매번 다시 확인).
  */
+/** 트레이너 화면 [웹앱]·[주간목표] 버튼용 — 활성·아레나·보관 각각 열람 가능한지(등급 기본값 ∩ 권한부여 설정).
+ *  수석(senior)은 세 가지 모두(2026-11-12 belie 「수석트레이너는 모든 웹앱에 접속 가능」). 실제 허용은 서버 canAccessManagedStudent 가 다시 판단한다. */
+export async function trainerReadGrants(actor: string): Promise<{ active: boolean; arena: boolean; archived: boolean }> {
+  try {
+    const row = (await listTrainerAccessRows()).find(r => r.qualification.email === actor.toLowerCase());
+    if (!row?.setting || row.qualification.status !== "active") return { active: false, arena: false, archived: false };
+    const base = defaultTrainerGrants(row.setting.grade), set = row.setting.grants;
+    return {
+      active: base.active.read && set.active.read,
+      arena: base.arena.read && set.arena.read,
+      archived: base.archived.read && set.archived.read,
+    };
+  } catch { return { active: false, arena: false, archived: false }; }
+}
 export async function trainerActiveGrant(actor: string): Promise<{ read: boolean; write: boolean }> {
   try {
     const row = (await listTrainerAccessRows()).find(r => r.qualification.email === actor.toLowerCase());

@@ -28,6 +28,7 @@ import {
   type Trainer,
 } from "./AdminUserPickerSections";
 import { TrainerOpenContext } from "./AdminUserPickerTypes";
+import { trainerCanOpen } from "./trainer-open";
 
 export default function TrainerCohortView({
   sessionEmail,
@@ -35,6 +36,8 @@ export default function TrainerCohortView({
   activeTrainers,
   archivedCohorts = [],
   openActive = false,
+  openArena = false,
+  openArchived = false,
 }: {
   sessionEmail: string;
   trainerName: string;
@@ -47,6 +50,10 @@ export default function TrainerCohortView({
   archivedCohorts?: string[];
   /** 트레이너관리 「활성 수강생 조회」 권한 — 담당 아닌 활성 수강생에게도 [웹앱]·[주간목표](2026-11-06). */
   openActive?: boolean;
+  /** 아레나 수강생 열람 권한(수석 등). 서버 분류 순서: 보관 → 아레나 → 활성. */
+  openArena?: boolean;
+  /** 보관 기수 수강생 열람 권한(수석 등). */
+  openArchived?: boolean;
 }) {
   const me = useMe();
   const queryClient = useQueryClient();
@@ -59,13 +66,13 @@ export default function TrainerCohortView({
   const searching = q.trim() !== "";
 
   const trainerEmailLc = sessionEmail.toLowerCase();
-  /** 활성 기수(아레나·테스트·보관 기수 제외) 수강생 중 관리자·트레이너 본인 페이지(0기 GM·0기 코스텝)가 아닌 사람. */
+  /** 버튼을 붙일 수강생 — 관리자·트레이너 본인 페이지(0기 GM·0기 코스텝) 제외, 보관 → 아레나 → 활성(테스트 제외) 순으로 각 권한을 본다(서버 classifyTrainerStudent 와 같은 순서). */
   const canOpen = useMemo(() => {
     const staff = new Set(activeTrainers.map((t) => t.email.toLowerCase()));
     const archived = new Set(archivedCohorts.map((c) => c.trim()));
-    return (u: Trainee) => openActive && !staff.has(u.email.toLowerCase()) &&
-      !archived.has(cohortGroupKey(u.cohort, u.captainOf)) && cohortCategory(cohortGroupKey(u.cohort, u.captainOf)) === "수강생";
-  }, [openActive, activeTrainers, archivedCohorts]);
+    const grants = { active: openActive, arena: openArena, archived: openArchived };
+    return (u: Trainee) => trainerCanOpen(u, grants, staff, archived);
+  }, [openActive, openArena, openArchived, activeTrainers, archivedCohorts]);
 
   /** 본인 담당 수강생 수 — 토글 라벨에 표시. */
   const myCount = useMemo(
