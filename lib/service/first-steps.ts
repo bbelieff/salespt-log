@@ -20,7 +20,8 @@ export async function saveFirstSteps(email: string, value: FirstStepsState): Pro
 }
 
 export async function listFirstStepsProgress(): Promise<FirstStepsProgressMap> {
-  const rows = await listFirstStepsDone();
+  // 첫걸음을 숨긴 수강생(이미 DB 를 넣어 쓰던 수강생·직접 숨김)은 관리 화면 배지에서도 뺀다.
+  const rows = (await listFirstStepsDone()).filter((r) => !r.hidden);
   return {
     byEmail: Object.fromEntries(rows.map((r) => [r.email, new Set((r.done ?? []).filter(isStepKey)).size])),
     total: FIRST_STEP_KEYS.length,

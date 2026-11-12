@@ -21,7 +21,9 @@ export async function writeFirstSteps(email: string, value: FirstStepsState): Pr
   );
 }
 
-export async function listFirstStepsDone(): Promise<{ email: string; done: string[] }[]> {
-  const r = await pool().query<{ email: string; done: string[] }>("select email, done from public.first_steps");
+export async function listFirstStepsDone(): Promise<{ email: string; done: string[]; hidden: boolean }[]> {
+  const r = await pool().query<{ email: string; done: string[]; hidden: boolean }>(
+    "select email, done, coalesce((memory->>'hidden')::boolean, false) as hidden from public.first_steps",
+  );
   return r.rows;
 }

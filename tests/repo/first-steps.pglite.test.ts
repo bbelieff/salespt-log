@@ -39,6 +39,11 @@ describe("첫걸음 계정별 기억", () => {
     expect(await listFirstStepsProgress()).toEqual({ byEmail: { "a@example.test": 2, "b@example.test": 3 }, total: 7 });
   });
 
+  it("숨긴 수강생은 관리 화면 진행에서 빠진다", async () => {
+    await saveFirstSteps("d@example.test", { memory: { ...memory, hidden: true, started: true }, done: ["purchase"] });
+    expect((await listFirstStepsProgress()).byEmail["d@example.test"]).toBeUndefined();
+  });
+
   it("손상된 저장값은 빈 기억으로 읽고 모르는 단계는 버린다", async () => {
     await db.query("insert into public.first_steps (email, memory, done) values ('c@example.test', '{\"hidden\":\"yes\"}', '{lead,unknown}')");
     expect(await getFirstSteps("c@example.test")).toEqual({ memory, done: ["lead"] });

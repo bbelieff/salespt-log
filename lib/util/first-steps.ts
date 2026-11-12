@@ -82,11 +82,13 @@ export function hasDbInput(c: Pick<FirstStepCounts, "생산" | "유입">): boole
   return c.생산 > 0 || c.유입 > 0;
 }
 
-/** 첫 판정 뒤의 기억. 이미 안내를 쓰기 시작한 흔적(끝냄·그만 보기·돌아보기)이 있으면 숨기지 않는다. */
+/**
+ * 첫 판정 뒤의 기억 — 그때 DB 입력이 있으면 숨긴다. 「끝낸 안내」는 카드가 기록으로 자동 채우므로
+ * 쓰기 시작한 흔적으로 보지 않는다(2026-11-12 운영 확인: 베테랑이 그 예외에 걸려 숨겨지지 않았다).
+ */
 export function startFirstSteps(m: FirstStepsMemory, dbInput: boolean): FirstStepsMemory {
   if (m.started) return m;
-  const engaged = m.finished.length > 0 || m.never.length > 0 || m.reviewSeen;
-  return { ...m, started: true, hidden: m.hidden || (dbInput && !engaged) };
+  return { ...m, started: true, hidden: m.hidden || dbInput };
 }
 
 export function firstStepsStorageKey(email: string): string {
