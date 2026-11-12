@@ -29,6 +29,8 @@ export interface ArenaSeasonHandlers {
   activeTrainers?: Trainer[];
   linkedBySheet?: Map<string, string[]>;
   viewOnly?: boolean;
+  /** 트레이너 화면 — 본인 email(소문자). TraineeCard 까지 그대로 전달. */
+  trainerEmailLc?: string;
   /** 검색 중 — 시즌·기수 박스를 펼쳐 결과를 바로 보여 준다. */
   searching?: boolean;
 }
@@ -58,6 +60,7 @@ function CohortList({
           activeTrainers={h.activeTrainers}
           linkedBySheet={h.linkedBySheet}
           viewOnly={h.viewOnly}
+          trainerEmailLc={h.trainerEmailLc}
           collapsed
           forceOpen={h.searching}
         />

@@ -1,14 +1,13 @@
 /**
  * TrainerCohortView — 트레이너 페이지 (수강생 관리의 read-only 권한축소판).
  *
- * /admin/users 의 기수박스 > 팀박스 > TraineeCard 계층을 그대로 재사용하되
- * 트레이너 권한으로 제한:
- *   - 기본 내 담당만 표시(전체 보기 토글 가능). **본인 담당에만** [주간목표]/[웹앱]
- *     버튼 노출 (TraineeCard 의 `trainerEmailLc` prop 으로 분기).
- *   - 핸들/유보/팀 입력/담당 토글 등 admin 액션은 전부 비활성 (`viewOnly` + dnd 미연결).
- *   - 검색/등록/동기화 UI 미포함 (admin 전용).
- *
- * 이전 TrainerLanding (단순 grid 목록) 를 대체 (2026-05-15).
+ * /admin/users 와 **같은 배치·같은 컴포넌트**를 쓴다(2026-11-12): 카테고리 상자
+ * (CohortCategoryBoxes — 수강생/아레나/테스트) > 접힌 기수 칩(PC 3열) > 팀 > TraineeCard,
+ * 보관한 기수는 접힌 상자. 트레이너 권한으로 제한:
+ *   - 기본 내 담당만 표시(전체 보기 토글 가능). **본인 담당(또는 「활성 수강생 조회」 권한)** 카드에만
+ *     [주간목표]/[웹앱] 버튼 (TraineeCard 의 `trainerEmailLc` + TrainerOpenContext).
+ *   - 끌어 정렬·팀 변경·담당 변경 등 관리자 조작은 전부 없음 — 늘 `viewOnly` 이고
+ *     onReorder·onAssignTrainers 를 넘기지 않는다. 등록·승인·유보·일괄 도구도 이 화면엔 없다.
  */
 "use client";
 
@@ -20,7 +19,9 @@ import { useMe } from "@/query/me-hook";
 import { useQueryClient } from "@tanstack/react-query";
 import { cohortGroupKey, cohortGroupCompare, cohortCategory } from "@/types";
 import { apiErrorMessage } from "@/lib/util/api-error-message";
+import CohortCategoryBoxes from "./CohortCategoryBoxes";
 import {
+  COHORT_GRID,
   CohortSection,
   parseAssigned,
   type Trainee,
@@ -139,8 +140,8 @@ export default function TrainerCohortView({
     [archivedCohorts],
   );
 
-  /** active vs archived 기수 분리 + 기수번호 desc 정렬 (visibleTrainees 기준). */
-  const { activeGroups, generalActive, arenaSeasons, archivedGroups } = useMemo(() => {
+  /** active vs archived 기수 분리 + 기수 정렬 (visibleTrainees 기준) — AdminUserPicker 와 같은 규칙. */
+  const { activeGroups, archivedGroups } = useMemo(() => {
     const activeMap = new Map<string, Trainee[]>();
     const archivedMap = new Map<string, Trainee[]>();
     for (const u of visibleTrainees) {
@@ -152,20 +153,8 @@ export default function TrainerCohortView({
     }
     const sortFn = (a: [string, Trainee[]], b: [string, Trainee[]]) =>
       cohortGroupCompare(a[0], b[0]);
-    const active = Array.from(activeMap.entries()).sort(sortFn);
-    // 아레나(A{n}-{m})는 시즌(A{n}) 컨테이너로 묶고, 일반 숫자기수는 박스 밖(§P11).
-    const isArena = (c: string) => /^A\d+-\d+/.test(c);
-    const seasonMap = new Map<string, [string, Trainee[]][]>();
-    for (const grp of active.filter(([c]) => isArena(c))) {
-      const sn = grp[0].split("-")[0]!;
-      const arr = seasonMap.get(sn) ?? [];
-      arr.push(grp);
-      seasonMap.set(sn, arr);
-    }
     return {
-      activeGroups: active,
-      generalActive: active.filter(([c]) => !isArena(c)),
-      arenaSeasons: Array.from(seasonMap.entries()),
+      activeGroups: Array.from(activeMap.entries()).sort(sortFn),
       archivedGroups: Array.from(archivedMap.entries()).sort(sortFn),
     };
   }, [visibleTrainees, archivedSet]);
@@ -173,7 +162,7 @@ export default function TrainerCohortView({
   return (
     <TrainerOpenContext.Provider value={canOpen}>
     <main className="min-h-dvh bg-slate-50">
-      <PageContainer width="wide" className="space-y-4 px-4 py-4">
+      <PageContainer width="xwide" className="space-y-4 px-4 py-4">
         <section>
           {/* 수강생출신 트레이너 — 본인 아레나 일지 전환 토글(P14). */}
           <h1 className="text-lg font-black tracking-tight text-slate-900">
@@ -223,53 +212,20 @@ export default function TrainerCohortView({
           )
         )}
 
-        {/* 활성 기수 — 일반 숫자기수(박스 밖) + 아레나 시즌 컨테이너 박스 */}
-        {generalActive.map(([cohort, list]) => (
-          <CohortSection
-            key={cohort}
-            cohort={cohort}
-            list={list}
-            busy={busy}
-            nameByEmail={nameByEmail}
-            onPick={pick}
-            onReserve={noop}
-            onSetTeam={noop}
-            activeTrainers={activeTrainers}
-            linkedBySheet={linkedBySheet}
-            viewOnly
-            trainerEmailLc={trainerEmailLc}
-            forceOpen={searching}
-          />
-        ))}
-        {arenaSeasons.map(([season, groups]) => (
-          <div
-            key={season}
-            className="rounded-2xl border-2 border-purple-200 bg-purple-50 p-3"
-          >
-            <div className="mb-2 px-1 text-sm font-black text-purple-800">
-              아레나 시즌{season.replace(/^A/, "")}
-            </div>
-            <div className="space-y-4">
-              {groups.map(([cohort, list]) => (
-                <CohortSection
-                  key={cohort}
-                  cohort={cohort}
-                  list={list}
-                  busy={busy}
-                  nameByEmail={nameByEmail}
-                  onPick={pick}
-                  onReserve={noop}
-                  onSetTeam={noop}
-                  activeTrainers={activeTrainers}
-                  linkedBySheet={linkedBySheet}
-                  viewOnly
-                  trainerEmailLc={trainerEmailLc}
-                  forceOpen={searching}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
+        {/* 활성 기수 — /admin/users 와 같은 카테고리 상자·접힌 기수 칩. 관리자 조작(정렬·담당 변경)은 넘기지 않는다. */}
+        <CohortCategoryBoxes
+          activeGroups={activeGroups}
+          busy={busy}
+          nameByEmail={nameByEmail}
+          onPick={pick}
+          onReserve={noop}
+          onSetTeam={noop}
+          activeTrainers={activeTrainers}
+          linkedBySheet={linkedBySheet}
+          viewOnly
+          trainerEmailLc={trainerEmailLc}
+          searching={searching}
+        />
 
         {/* 보관된 기수 — collapsed (details) */}
         {archivedGroups.length > 0 && (
@@ -280,7 +236,7 @@ export default function TrainerCohortView({
               </span>
               <DisclosureChevron className="text-slate-400" />
             </summary>
-            <div className="space-y-6 border-t border-slate-200 px-4 py-4">
+            <div className={`${COHORT_GRID} border-t border-slate-200 px-4 py-4`}>
               {archivedGroups.map(([cohort, list]) => (
                 <CohortSection
                   key={cohort}
@@ -296,6 +252,7 @@ export default function TrainerCohortView({
                   archived
                   viewOnly
                   trainerEmailLc={trainerEmailLc}
+                  collapsed
                   forceOpen={searching}
                 />
               ))}
