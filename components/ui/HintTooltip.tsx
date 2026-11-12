@@ -4,7 +4,7 @@
  * - 마우스: 올리면 열리고 벗어나면 닫힘. 키보드: 포커스 시 열림, blur·Esc 로 닫힘.
  * - 터치/클릭: 누르면 고정 열림 ↔ 다시 누르거나 바깥을 누르면 닫힘.
  * - 한 번에 하나만 열린다(모듈 단일 활성 슬롯).
- * - 말풍선은 document.body 로 portal + fixed 좌표 → overflow hidden/auto 부모(실무수납
+ * - 말풍선은 usePortalTarget()(보통 document.body, 열린 최상단 층 창 안이면 그 dialog) 로 portal + fixed 좌표 → overflow hidden/auto 부모(실무수납
  *   상세패널·모바일 아코디언)에 잘리지 않는다. 가로는 화면 안(8px 여백)으로 clamp,
  *   아래 공간이 없으면 버튼 위로 뒤집는다. 리사이즈 시 좌표를 다시 잡고, 스크롤(바깥·안쪽
  *   스크롤 컨테이너 모두)되면 닫는다 — 버튼이 가려진 뒤 말풍선만 떠 있지 않게.
@@ -13,6 +13,7 @@
 
 import { type ReactNode, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { usePortalTarget } from "./top-layer";
 
 const EDGE = 8;
 const GAP = 6;
@@ -31,6 +32,7 @@ interface Props {
 }
 
 export default function HintTooltip({ label, text, trigger }: Props) {
+  const portalTarget = usePortalTarget(); // 열린 최상단 층 창 안이면 그 창 안에 그린다
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
   const pinned = useRef(false);
@@ -125,7 +127,7 @@ export default function HintTooltip({ label, text, trigger }: Props) {
         {trigger ?? <span aria-hidden="true" className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-slate-300 group-hover:border-slate-400">?</span>}
       </button>
       {open &&
-        typeof document !== "undefined" &&
+        portalTarget &&
         createPortal(
           <div
             ref={tipRef}
@@ -136,7 +138,7 @@ export default function HintTooltip({ label, text, trigger }: Props) {
           >
             {text}
           </div>,
-          document.body,
+          portalTarget,
         )}
     </>
   );

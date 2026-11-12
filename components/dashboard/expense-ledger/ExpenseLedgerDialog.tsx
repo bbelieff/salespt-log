@@ -1,7 +1,8 @@
 "use client";
 
-import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, type ReactNode, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { PortalTargetContext, usePortalTarget, useTopLayerDialog } from "@/components/ui/top-layer";
 import MoneyInput from "@/components/ui/MoneyInput";
 import { formatWon } from "@/lib/format/money";
 import { isValidISODate } from "@/lib/service/cohort-dates";
@@ -78,7 +79,6 @@ function safeQueryMessage(resource: "카테고리" | "반복 비용", error: unk
 }
 
 export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additionalCost, periodLabel }: Props) {
-  const closeRef = useRef<HTMLButtonElement>(null);
   const [workspace, setWorkspace] = useState<Workspace>("record");
   const [view, setView] = useState<ExpenseViewMode>("month");
   const [month, setMonth] = useState(currentMonth);
@@ -110,14 +110,6 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
   const pauseRule = useRecurringRuleAction("pause");
   const resumeRule = useRecurringRuleAction("resume");
   const skipRule = useRecurringRuleAction("skip");
-
-  useEffect(() => {
-    if (!open) return;
-    closeRef.current?.focus();
-    const onKey = (event: KeyboardEvent) => event.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, open]);
 
   const oneTimeDateError = !isValidISODate(oneTimeStart) ? "발생일을 올바르게 입력해 주세요." : oneTimeRange && !isValidISODate(oneTimeEnd) ? "기간 종료일을 올바르게 입력해 주세요." : oneTimeRange && oneTimeEnd < oneTimeStart ? "종료일은 시작일보다 빠를 수 없습니다." : null;
   const recurringDateError = !isValidISODate(recurringStart) ? "반복 시작일을 올바르게 입력해 주세요." : recurringEnd && !isValidISODate(recurringEnd) ? "반복 종료일을 올바르게 입력해 주세요." : recurringEnd && recurringEnd < recurringStart ? "반복 종료일은 시작일보다 빠를 수 없습니다." : null;
@@ -251,12 +243,11 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
   if (!open || typeof document === "undefined") return null;
   const totalCost = additionalCost === null ? null : dbCostTotal + additionalCost;
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/40 pc:items-start pc:overflow-y-auto pc:p-6" onMouseDown={(event) => { if (event.currentTarget === event.target) onClose(); }}>
-      <section role="dialog" aria-modal="true" aria-labelledby="expense-ledger-title" className="flex h-screen w-full max-w-3xl flex-col overflow-hidden bg-slate-50 shadow-xl pc:my-4 pc:h-auto pc:max-h-screen pc:rounded-2xl">
+  return (
+    <LedgerFrame onClose={onClose}>
         <header className="flex shrink-0 items-center justify-between gap-4 border-b border-slate-100 bg-white px-4 py-3 pc:px-6">
           <div className="min-w-0"><h2 id="expense-ledger-title" className="text-base font-black text-slate-900">비용 원장</h2><p className="truncate text-xs text-slate-500">부가세 제외 금액 · {periodLabel ? `요약 기간: ${periodLabel}` : "기록부터 관리까지 한곳에서"}</p></div>
-          <button ref={closeRef} type="button" onClick={onClose} aria-label="비용 원장 닫기" className="min-h-11 min-w-11 rounded-full text-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700">×</button>
+          <button type="button" onClick={onClose} aria-label="비용 원장 닫기" className="min-h-11 min-w-11 rounded-full text-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700">×</button>
         </header>
 
         <div className="shrink-0 bg-white px-3 pb-3 pc:px-6">
@@ -406,9 +397,29 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
 
           {message && <p role="status" className="mt-4 rounded-lg bg-blue-50 p-3 text-xs font-semibold text-blue-800">{message}</p>}
         </div>
-      </section>
-    </div>,
-    document.body,
+    </LedgerFrame>
+  );
+}
+
+/**
+ * 최상단 층 창 틀(2026-11-12 AppDialog 결정 4 2차) — 모양(휴대폰 꽉 찬 화면·PC 가운데 넓은 창)은 그대로.
+ * Esc·× = 닫기(입력은 자동 저장), 바깥 누르기로는 안 닫힘(입력 창), 뒤 화면 inert, 열 때 × 에 초점·닫으면 연 버튼으로.
+ */
+function LedgerFrame({ onClose, children }: { onClose: () => void; children: ReactNode }) {
+  const target = usePortalTarget();
+  const { ref, panelRef, host, onCancel, onClose: onDialogClose } = useTopLayerDialog<HTMLElement>({
+    requestClose: onClose,
+    initialFocus: (el) => el.querySelector<HTMLElement>('[aria-label="비용 원장 닫기"]'),
+  });
+  if (!target) return null;
+  return createPortal(
+    <dialog ref={ref} aria-modal="true" aria-labelledby="expense-ledger-title" onCancel={onCancel} onClose={onDialogClose}
+      className="top-layer-plain fixed inset-0 z-50 flex items-stretch justify-center bg-black/40 pc:items-start pc:overflow-y-auto pc:p-6">
+      <PortalTargetContext.Provider value={host}>
+        <section ref={panelRef} className="flex h-screen w-full max-w-3xl flex-col overflow-hidden bg-slate-50 shadow-xl pc:my-4 pc:h-auto pc:max-h-screen pc:rounded-2xl">{children}</section>
+      </PortalTargetContext.Provider>
+    </dialog>,
+    target,
   );
 }
 

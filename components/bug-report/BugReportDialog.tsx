@@ -5,8 +5,10 @@
  * 미리보기를 누르면 그림판 · 어떤 문제(필수 1개) · 설명(선택) · 보내기 → 「접수했어요」.
  * 함께 보내는 것: 그림 출처(실제 탭/직접 올림)·보던 화면 주소·제목·화면 크기·브라우저·최근 오류·화면 재생 링크.
  */
-import { useEffect, useRef, useState, type ClipboardEvent } from "react";
+import { useRef, useState, type ClipboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { confirmDiscard } from "@/components/ui/confirm-discard";
+import { PortalTargetContext, usePortalTarget, useTopLayerDialog } from "@/components/ui/top-layer";
 import posthog from "posthog-js";
 import { X } from "lucide-react";
 import { BUG_REPORT_CATEGORIES, type BugReportInput } from "@/types/bug-report";
@@ -48,16 +50,11 @@ export default function BugReportDialog({ capture, onClose }: { capture: string;
   const [category, setCategory] = useState<Category | null>(null);
   const [text, setText] = useState("");
   const [error, setError] = useState("");
-  const dialog = useRef<HTMLDivElement>(null);
   const file = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (phase === "away") return;
-    dialog.current?.focus({ preventScroll: true });
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape" && phase !== "annotate") onClose(); };
-    document.addEventListener("keydown", esc);
-    return () => document.removeEventListener("keydown", esc);
-  }, [phase, onClose]);
+  // 적던 내용(설명·직접 올린 사진·표시)이 있으면 닫기 전에 한 번 묻는다. 그림판에서는 Esc 로 닫지 않는다(지금과 같게).
+  const dirty = phase !== "done" && (!!text.trim() || marks > 0 || source === "upload");
+  const discard = () => { if (confirmDiscard(dirty)) onClose(); };
+  const close = () => { if (phase !== "annotate") discard(); };
 
   const attach = async (blob: Blob | null | undefined) => {
     if (!blob) return;
@@ -89,11 +86,10 @@ export default function BugReportDialog({ capture, onClose }: { capture: string;
   // 휴대폰에서 직접 캡처하러 간 동안: 창을 숨기고 돌아오기 버튼만 남긴다(적은 내용은 그대로).
   if (phase === "away") return createPortal(<button type="button" className="br-return" onClick={() => setPhase("form")}>📷 캡처했어요 · 신고로 돌아가기</button>, document.body);
 
-  return createPortal(<div className="br-backdrop" onPointerDown={e => { if (e.target === e.currentTarget && phase !== "annotate") onClose(); }}>
-    <div ref={dialog} className="br-dialog" data-wide={phase === "annotate"} role="dialog" aria-modal="true" aria-labelledby="br-title" tabIndex={-1}>
+  return <BugFrame wide={phase === "annotate"} onClose={close}>
       <div className="br-head">
         <h2 id="br-title">🐞 오류신고</h2>
-        <button type="button" className="br-close" onClick={onClose} aria-label="오류신고 닫기"><X size={17} aria-hidden /></button>
+        <button type="button" className="br-close" onClick={discard} aria-label="오류신고 닫기"><X size={17} aria-hidden /></button>
       </div>
       {phase === "done" ? <div className="br-done" role="status">
         <span aria-hidden>✓</span><strong>접수했어요</strong><p>고치면 새소식으로 알려 드릴게요.</p>
@@ -124,6 +120,24 @@ export default function BugReportDialog({ capture, onClose }: { capture: string;
         {error && <p className="br-error" role="alert">{error}</p>}
         <button type="button" className="br-primary br-send" onClick={send} disabled={phase === "sending"}>{phase === "sending" ? "보내는 중…" : "보내기"}</button>
       </div>}
-    </div>
-  </div>, document.body);
+  </BugFrame>;
+}
+
+/**
+ * 최상단 층 창 틀(2026-11-12 AppDialog 결정 4 2차) — 모양(br-backdrop·br-dialog)은 그대로.
+ * Esc·✕ = 닫기(적던 내용이 있으면 묻는다), 바깥 누르기로는 안 닫힘(입력 창), 뒤 화면 inert, 닫히면 연 버튼으로 초점.
+ * 「캡처하러 가기」 동안은 틀이 빠졌다가 돌아오면 다시 모달로 열린다.
+ */
+function BugFrame({ wide, onClose, children }: { wide: boolean; onClose: () => void; children: ReactNode }) {
+  const target = usePortalTarget();
+  const { ref, panelRef, host, onCancel, onClose: onDialogClose } = useTopLayerDialog<HTMLDivElement>({
+    requestClose: onClose,
+    initialFocus: (el) => el.querySelector<HTMLElement>(".br-dialog"),
+  });
+  if (!target) return null;
+  return createPortal(<dialog ref={ref} className="br-backdrop top-layer-plain" aria-modal="true" aria-labelledby="br-title" onCancel={onCancel} onClose={onDialogClose}>
+    <PortalTargetContext.Provider value={host}>
+      <div ref={panelRef} className="br-dialog" data-wide={wide} tabIndex={-1}>{children}</div>
+    </PortalTargetContext.Provider>
+  </dialog>, target);
 }

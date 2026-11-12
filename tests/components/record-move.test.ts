@@ -200,7 +200,9 @@ describe("★ 서버로 나가는 것 (소스 가드)", () => {
     // 옮기기는 신규 카드 맥락의 compact 진입점으로 유지.
     expect(slotList).toContain("잘못 적었어요");
     expect(page).toContain("onMove={newSlots.length > 0");
-    // 안쪽을 눌렀을 때 닫히면 안 된다.
-    expect(moveModal).toContain("onClick={(e) => e.stopPropagation()}");
+    // 2026-11-12 AppDialog: 빈 곳(바깥) 누르기 = dismiss. 안쪽을 눌렀을 때 안 닫히는 것은 AppDialog 가 보장한다
+    // (바깥=dialog 자신을 누른 경우만 — tests/components/app-dialog.test.ts).
+    expect(moveModal).toContain("<AppDialog");
+    expect(moveModal).toContain("dismissOnBackdrop onClose={dismiss}");
   });
 });

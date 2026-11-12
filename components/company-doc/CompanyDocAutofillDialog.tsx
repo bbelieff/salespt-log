@@ -14,6 +14,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
+import { usePortalTarget } from "@/components/ui/top-layer";
 import type { CompanyInfo } from "@/types";
 import { OCR_ACCEPT_ATTR, OCR_UNAVAILABLE_MESSAGE, validateOcrFile } from "@/lib/document-ocr/limits";
 import { redactOcrText } from "@/lib/document-ocr/text-utils";
@@ -77,6 +78,7 @@ interface Props {
 }
 
 export default function CompanyDocAutofillDialog({ current, onApply, onVault, onClose }: Props) {
+  const portalTarget = usePortalTarget(); // 열린 최상단 층 창 안이면 그 창 안에 그린다
   const [files, setFiles] = useState<Row[]>([]);
   const [userChecked, setUserChecked] = useState<Record<string, boolean>>({});
   const [choice, setChoice] = useState<Record<string, number>>({});
@@ -488,5 +490,5 @@ export default function CompanyDocAutofillDialog({ current, onApply, onVault, on
       </div>
     </div>
   );
-  return typeof document === "undefined" ? null : createPortal(body, document.body);
+  return portalTarget ? createPortal(body, portalTarget) : null;
 }

@@ -11,16 +11,9 @@
  */
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  type ButtonHTMLAttributes,
-  type ReactNode,
-} from "react";
+import { createContext, useCallback, useContext, useRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import { confirmDiscard } from "./confirm-discard";
+import { PortalTargetContext, useTopLayerDialog } from "./top-layer";
 import "./app-dialog.css";
 
 const FIELD =
@@ -59,16 +52,6 @@ export function AppDialogClose(props: Omit<ButtonHTMLAttributes<HTMLButtonElemen
   return <button type="button" {...props} onClick={close} />;
 }
 
-/** 네이티브 dialog 가 없는 환경(구형 브라우저·jsdom)에서는 open 속성만 바꾼다. */
-function openModal(el: HTMLDialogElement) {
-  if (typeof el.showModal === "function") el.showModal();
-  else el.setAttribute("open", "");
-}
-function closeModal(el: HTMLDialogElement) {
-  if (typeof el.close === "function") el.close();
-  else el.removeAttribute("open");
-}
-
 export default function AppDialog({
   onClose,
   title,
@@ -80,36 +63,20 @@ export default function AppDialog({
   className = "",
   children,
 }: AppDialogProps) {
-  const ref = useRef<HTMLDialogElement>(null);
   const dirtyRef = useRef(dirty);
   dirtyRef.current = dirty;
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
-  const unmounting = useRef(false);
   const downOnBackdrop = useRef(false);
 
   const requestClose = useCallback(() => {
     if (confirmDiscard(dirtyRef.current)) onCloseRef.current();
   }, []);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    unmounting.current = false;
-    const previous = document.activeElement as HTMLElement | null;
-    // 뒤 화면 스크롤 잠금(서랍을 밀 때 뒤 목록이 같이 밀리지 않게) — 닫으면 원래 값으로.
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    if (!el.open) openModal(el);
-    const first = el.querySelector<HTMLElement>("[data-autofocus]") ?? el.querySelector<HTMLElement>(FIELD);
-    first?.focus();
-    return () => {
-      unmounting.current = true;
-      if (el.open) closeModal(el);
-      document.body.style.overflow = previousOverflow;
-      if (previous?.isConnected) previous.focus();
-    };
-  }, []);
+  // 열리면 data-autofocus → 첫 입력 칸 → 브라우저 기본 순으로 초점, 닫히면 연 버튼으로(useTopLayerDialog).
+  const { ref, panelRef, host, onCancel, onClose: onDialogClose } = useTopLayerDialog<HTMLDivElement>({
+    requestClose,
+    initialFocus: (el) => el.querySelector<HTMLElement>("[data-autofocus]") ?? el.querySelector<HTMLElement>(FIELD),
+  });
 
   return (
     <CloseContext.Provider value={requestClose}>
@@ -121,21 +88,8 @@ export default function AppDialog({
         aria-modal="true"
         data-size={size}
         className="app-dialog"
-        // React 는 cancel·close 를 React 트리 위로 올려 보낸다 — 안에 겹친 창의 이벤트는 무시(그 창이 스스로 처리).
-        onCancel={(e) => {
-          if (e.target !== e.currentTarget) return;
-          e.preventDefault();
-          requestClose();
-        }}
-        onClose={(e) => {
-          if (e.target !== e.currentTarget) return;
-          // 브라우저가 Esc 를 막지 못하고 닫아 버린 경우: 다시 열어 두고 평소 닫기를 탄다
-          // (안 닫기로 하거나 가드 확인창이 뜨면 창이 그대로 보여야 한다).
-          const el = ref.current;
-          if (unmounting.current || !el) return;
-          if (!el.open) openModal(el);
-          requestClose();
-        }}
+        onCancel={onCancel}
+        onClose={onDialogClose}
         onPointerDown={(e) => {
           downOnBackdrop.current = e.target === e.currentTarget;
         }}
@@ -145,7 +99,10 @@ export default function AppDialog({
           if (onBackdrop && dismissOnBackdrop) requestClose();
         }}
       >
-        <div className={`app-dialog-panel ${className}`}>{children}</div>
+        {/* 창 안의 포털 팝업(말풍선·자동입력 창 등)은 body 대신 이 dialog 안에 그린다 — 최상단 층 위로 보이게. */}
+        <PortalTargetContext.Provider value={host}>
+          <div ref={panelRef} className={`app-dialog-panel ${className}`}>{children}</div>
+        </PortalTargetContext.Provider>
       </dialog>
     </CloseContext.Provider>
   );

@@ -7,7 +7,8 @@
  * 글자는 50대 기준 최소(belie 2026-11-04): 같은 말 반복·내부 용어(STEP)·「빈칸 채움」 꼬리표·같은 값 줄을 뺀다. 부품·용어는 DB정보와 같게.
  */
 import { confirmDiscard } from "@/components/ui/confirm-discard";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useTopLayerDialog } from "@/components/ui/top-layer";
 import { ChevronLeft } from "lucide-react";
 import type { CallRecord } from "@/types/call";
 import { DB_SHEET_RESULTS, dbSheetResultLabel, type DbSheetLead } from "@/types/db-sheet";
@@ -36,7 +37,8 @@ export function CallConfirmScreen({ lead, call, onSaved, onClose }: { lead: DbSh
   const initial = useRef(s);
   const close = () => { if (confirmDiscard(s !== initial.current)) onClose(); };
   const top = useRef<HTMLDivElement>(null);
-  useEffect(() => { top.current?.focus(); document.body.style.overflow = "hidden"; return () => { document.body.style.overflow = ""; }; }, []);
+  // 최상단 층 창(2026-11-12 결정 4 2차) — DB정보(최상단 층) 위에서 「확인하기」로 열려도 위에 보인다. Esc = 「나중에」와 같은 닫기, 뒤 화면 inert·스크롤 잠금, 닫히면 연 버튼으로 초점.
+  const { ref: dialogRef, onCancel, onClose: onDialogClose } = useTopLayerDialog({ requestClose: () => { if (!busy) close(); }, initialFocus: () => top.current });
 
   const setRow = (key: string, patch: Partial<CiRow>) => setS(v => ({ ...v, rows: v.rows.map(r => r.key === key ? { ...r, ...patch } : r) }));
   const setMeeting = (patch: Partial<ConfirmState["meeting"]>) => setS(v => ({ ...v, meeting: { ...v.meeting, ...patch } }));
@@ -55,7 +57,7 @@ export function CallConfirmScreen({ lead, call, onSaved, onClose }: { lead: DbSh
   // 지금 값과 같은 칸은 넣을 게 없어 보여 주지 않는다.
   const groups = (["대표자", "기업정보", "재무", "추가 칸"] as const).map(g => [g, s.rows.filter(r => r.group === g && r.status !== "same")] as const).filter(([, rs]) => rs.length);
 
-  return <div className="dbs-cc" role="dialog" aria-modal="true" aria-labelledby="dbs-cc-title">
+  return <dialog ref={dialogRef} className="dbs-cc top-layer-plain" aria-modal="true" aria-labelledby="dbs-cc-title" onCancel={onCancel} onClose={onDialogClose}>
     <header className="dbs-cc-top"><div className="dbs-cc-top-in" ref={top} tabIndex={-1}>
       <button type="button" className="dbs-cc-back" aria-label="닫기" disabled={busy} onClick={close}><ChevronLeft size={20} aria-hidden="true" /></button>
       <h1 id="dbs-cc-title">통화 정리 확인</h1>
@@ -132,5 +134,5 @@ export function CallConfirmScreen({ lead, call, onSaved, onClose }: { lead: DbSh
       <button type="button" className="dbs-button" disabled={busy} onClick={close}>나중에</button>
       <button type="button" className="dbs-button primary" disabled={busy || !!blocker} onClick={() => void save()}>{busy ? "저장중.." : "저장하기"}</button>
     </div></footer>
-  </div>;
+  </dialog>;
 }

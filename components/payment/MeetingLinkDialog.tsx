@@ -4,10 +4,17 @@
  * 계약일은 미팅 날짜로 바뀐다(앱의 계약일 규칙 — 안내만). 업체명·수임비·업체정보가 양쪽에서 다르면
  * **최근에 저장된 쪽**을 기본으로 고르고 칸마다 바꿀 수 있다(belie). 빈 칸은 서로 채운다.
  * 일정·계약에서 열 때는 [따로 등록](=새 계약 행)도 고를 수 있다 — onSkip.
+ *
+ * 2026-11-12 AppDialog 로 통일(결정 4 2차).
+ * - 실무/수납 진입(onSkip 없음): Esc·「취소」 = 아무것도 저장하지 않고 닫기.
+ * - 일정·계약 진입(onSkip 있음): 「따로 등록」·「연결하기」 둘 중 하나를 꼭 고른다 — Esc·바깥 누르기로 안 닫힌다.
+ *   이 창이 뜰 때는 미팅이 이미 「계약」으로 저장된 뒤라, 둘 다 안 하고 닫으면 그 계약이 장부(계약수납)에
+ *   한 줄도 없어 매출이 빠진다(use-manual-link-prompt·contract-fanout). 그래서 「그냥 닫기」를 두지 않는다.
  */
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import AppDialog, { AppDialogClose } from "@/components/ui/AppDialog";
 import { companyInfoFieldList } from "@/components/company-info-defs";
 import { formatWon } from "@/lib/format/money";
 import { findConflicts, mergeRecords, newerSide, type MergeSide } from "@/util/record-merge";
@@ -85,8 +92,8 @@ export default function MeetingLinkDialog({ row, meetingId, onClose, onLinked, o
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-label="영업기록과 연결">
-      <div className="max-h-full w-full max-w-lg overflow-auto rounded-2xl bg-white p-4 shadow-2xl">
+    // onSkip 이 있으면(일정·계약) 닫기 요청을 받지 않는다 — 위 머리말의 이유.
+    <AppDialog title="영업기록과 연결" size="lg" onClose={onSkip ? () => {} : onClose} className="rounded-2xl bg-white p-4 shadow-2xl">
         <h2 className="text-base font-bold text-slate-900">영업기록과 연결</h2>
         {!view && !loadError && <p className="mt-3 text-sm text-slate-500">비교할 내용을 불러오는 중…</p>}
         {loadError && <p className="mt-3 text-sm text-red-600">{loadError}</p>}
@@ -151,14 +158,13 @@ export default function MeetingLinkDialog({ row, meetingId, onClose, onLinked, o
           {onSkip ? (
             <button type="button" onClick={onSkip} disabled={link.isPending} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700">따로 등록</button>
           ) : (
-            <button type="button" onClick={onClose} disabled={link.isPending} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700">취소</button>
+            <AppDialogClose disabled={link.isPending} className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700">취소</AppDialogClose>
           )}
           <button type="button" onClick={() => void submit()} disabled={!view || link.isPending}
             className="rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
             {link.isPending ? "연결하는 중…" : "연결하기"}
           </button>
         </div>
-      </div>
-    </div>
+    </AppDialog>
   );
 }

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { INVITATION_STORAGE_KEY } from "@/util/invitation-token";
 import { useState } from "react";
+import AppDialog, { AppDialogClose } from "@/components/ui/AppDialog";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTrainerState } from "./RoleViewSwitch";
 export async function sendRecruitment(input:Record<string,unknown>) {
@@ -55,13 +56,12 @@ export default function TrainerApplication({token}:{token?:string}) {
       {data.canStudent && <Link href="/dashboard" className="mt-4 flex h-11 items-center justify-center text-sm font-bold text-slate-600">내 일지로 돌아가기</Link>}
       {token && !accepted && <button type="button" onClick={()=>void signOut({callbackUrl:"/trainer/invite"})} className="mt-3 h-11 w-full text-sm text-slate-600">다른 계정으로 로그인</button>}
     </section>
-    {confirm && <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <section role="dialog" aria-modal="true" aria-labelledby="cancel-title" className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+    {/* 2026-11-12 AppDialog(결정 4 2차): 확인 창 — Esc·「계속 대기」·바깥 누르기 = 닫기(처리 중에는 안 닫힘). */}
+    {confirm && <AppDialog role="alertdialog" labelledBy="cancel-title" size="sm" dismissOnBackdrop onClose={()=>{if(!busy)setConfirm(false);}} className="rounded-2xl bg-white p-6 shadow-xl">
         <h2 id="cancel-title" className="text-lg font-bold">트레이너 신청을 취소할까요?</h2>
         <p className="my-4 text-sm text-slate-600">기존 수강 기록은 유지되며, 나중에 다시 신청할 수 있습니다.</p>
         {error && <p role="alert" className="mb-3 text-sm text-red-700">{error}</p>}
-        <div className="flex gap-2"><button autoFocus disabled={busy} onClick={()=>setConfirm(false)} className="h-11 flex-1 rounded-lg border border-slate-300">계속 대기</button><button disabled={busy} onClick={()=>void run("cancel")} className="h-11 flex-1 rounded-lg bg-brand-red font-bold text-white">{busy ? "처리 중…" : "신청 취소"}</button></div>
-      </section>
-    </div>}
+        <div className="flex gap-2"><AppDialogClose data-autofocus disabled={busy} className="h-11 flex-1 rounded-lg border border-slate-300">계속 대기</AppDialogClose><button disabled={busy} onClick={()=>void run("cancel")} className="h-11 flex-1 rounded-lg bg-brand-red font-bold text-white">{busy ? "처리 중…" : "신청 취소"}</button></div>
+    </AppDialog>}
   </main>;
 }

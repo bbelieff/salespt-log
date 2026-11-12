@@ -14,6 +14,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import AppDialog, { AppDialogClose } from "@/components/ui/AppDialog";
 import { parseCohortToken } from "@/service/cohort-token";
 import {
   resolveCourseStartInput,
@@ -169,6 +170,12 @@ export default function CohortCreateModal() {
     }
   }
 
+  const closeModal = () => {
+    setOpen(false);
+    reset();
+  };
+  const dirty = !report && !!(token || membersText.trim() || rootFolderId || rosterSheetId || courseStartISO);
+
   if (!open) {
     return (
       <button
@@ -182,20 +189,16 @@ export default function CohortCreateModal() {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
-      <div className="mt-10 w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl">
+    // 2026-11-12 AppDialog(결정 4 2차): Esc·✕·닫기 = 닫기(적던 내용이 있으면 한 번 묻는다), 바깥 누르기로는 안 닫힘.
+    <AppDialog title="기수/참가자 추가" size="lg" dirty={dirty} onClose={closeModal} className="rounded-2xl bg-white p-6 shadow-xl">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-base font-black text-slate-900">기수/참가자 추가</h3>
-          <button
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              reset();
-            }}
+          <AppDialogClose
+            aria-label="닫기"
             className="rounded-full px-2 py-1 text-sm font-bold text-slate-400 hover:bg-slate-100"
           >
             ✕
-          </button>
+          </AppDialogClose>
         </div>
 
         <div className="space-y-4">
@@ -434,19 +437,13 @@ export default function CohortCreateModal() {
             >
               {busy ? "처리 중…" : "실행"}
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                reset();
-              }}
+            <AppDialogClose
               className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-50"
             >
               닫기
-            </button>
+            </AppDialogClose>
           </div>
         </div>
-      </div>
-    </div>
+    </AppDialog>
   );
 }
