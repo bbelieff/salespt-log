@@ -274,7 +274,7 @@ export default function SchedulePage() {
           onPrev={() => moveWeek(-1)} onNext={() => moveWeek(1)} onOrder={setOrder}
           onToday={() => guardedNav(() => setWeekStart(fmtISO(friOf(parseISO(TODAY_ISO)))))}
           renderMeeting={(m) => (
-            <MeetingResultCard key={m.id} initialOpen meeting={m} pending={pendingId === m.id}
+            <MeetingResultCard key={m.id} initialOpen boardTools meeting={m} pending={pendingId === m.id}
               onPatch={(partial, opts) => handlePatch(m.id, partial, opts)} onReschedule={(d, t, r) => handleReschedule(m, d, t, r)}
               onRevert={() => handleRevert(m.id)} onAddMeeting={(d, t) => handleAddMeeting(m, d, t)} onDelete={() => handleDelete(m)}
               hasFollowUp={followUpParentIds.has(m.id)} onReviveCase={() => handleReviveCase(m)} />
