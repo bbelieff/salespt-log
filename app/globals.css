@@ -523,6 +523,7 @@ body {
   margin-top: 8px;
 }
 .date-pop-today,
+.date-pop-clear,
 .date-pop-close {
   flex: 1;
   height: 34px;
@@ -534,11 +535,13 @@ body {
   color: #1d4ed8;
   background: #eff6ff;
 }
+.date-pop-clear,
 .date-pop-close {
   color: #374151;
   background: #f3f4f6;
 }
-.date-pop-today:disabled {
+.date-pop-today:disabled,
+.date-pop-clear:disabled {
   color: #9ca3af;
   background: #f9fafb;
 }

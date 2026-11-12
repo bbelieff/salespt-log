@@ -8,6 +8,7 @@ import FinanceSummaryBoxes from "@/components/dashboard/FinanceSummaryBoxes";
 import ExpenseCategoryPicker from "@/components/dashboard/expense-ledger/ExpenseCategoryPicker";
 import ExpenseLedgerDialog from "@/components/dashboard/expense-ledger/ExpenseLedgerDialog";
 import type { RecognizedExpense } from "@/types/expense-ledger";
+import { pickDate } from "./pick-date";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 const categories = [
@@ -140,7 +141,12 @@ function prepareRequiredExpenseFields() {
   changeInput(document.querySelector<HTMLInputElement>('input[placeholder="예: 사무실 임차료"]')!, "검증 비용");
   changeInput(document.querySelector<HTMLInputElement>('[aria-label="부가세 제외 비용 금액"]')!, "100");
 }
-function clearDateWithKeyboard(input: HTMLInputElement) { act(() => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Backspace", bubbles: true }))); changeInput(input, ""); }
+/** 날짜 칸 = 요일 달력(DateInputCustom). 고르기는 달력에서, 비우기는 달력의 [지우기]로. */
+const dateFields = () => document.querySelectorAll<HTMLButtonElement>(".custom-date-wrapper");
+const setDate = (field: HTMLButtonElement, iso: string) => pickDate(field, iso);
+function clearDate(field: HTMLButtonElement) { act(() => field.click()); act(() => document.querySelector<HTMLButtonElement>(".date-pop-clear")!.click()); }
+/** 필수 여부는 함께 그려지는 숨은 입력이 브라우저 검사로 받는다. */
+const isRequired = (field: HTMLButtonElement | undefined) => (field?.nextElementSibling as HTMLInputElement | null)?.required ?? false;
 async function submitRecordForm() { await act(async () => { document.querySelector("form")?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })); }); }
 
 function ruleDetails(itemName: string) {
@@ -214,10 +220,10 @@ describe("expense ledger dashboard UI", () => {
   it("keeps one-time inclusive allocation but separates recurring start, optional end, and day 1-31 clamp", () => {
     render(createElement(ExpenseLedgerDialog, { open: true, onClose: vi.fn(), dbCostTotal: 3_000, additionalCost: 300 }));
     clickButton("기간");
-    const oneTimeDates = document.querySelectorAll<HTMLInputElement>('input[type="date"]');
+    const oneTimeDates = dateFields();
     expect(oneTimeDates.length).toBe(2);
-    changeInput(oneTimeDates[0]!, "2026-07-31");
-    changeInput(oneTimeDates[1]!, "2026-08-02");
+    setDate(oneTimeDates[0]!, "2026-07-31");
+    setDate(oneTimeDates[1]!, "2026-08-02");
     const amountInput = document.querySelector<HTMLInputElement>('[aria-label="부가세 제외 비용 금액"]');
     if (!amountInput) throw new Error("amount input is missing");
     changeInput(amountInput, "100");
@@ -230,8 +236,8 @@ describe("expense ledger dashboard UI", () => {
     const select = document.querySelector<HTMLSelectElement>("select");
     if (!select) throw new Error("anchor-day select is missing");
     act(() => { select.value = "31"; select.dispatchEvent(new Event("change", { bubbles: true })); });
-    const recurringDates = document.querySelectorAll<HTMLInputElement>('input[type="date"]');
-    changeInput(recurringDates[0]!, "2026-02-01");
+    const recurringDates = dateFields();
+    setDate(recurringDates[0]!, "2026-02-01");
     expect(document.body.textContent).toContain("첫 반영 예정일 2026-02-28");
     expect(document.body.textContent).toContain("말일로 자동 보정");
   });
@@ -245,28 +251,33 @@ describe("expense ledger dashboard UI", () => {
       act(() => { form?.dispatchEvent(new FocusEvent("focusout", { bubbles: true, relatedTarget: outside })); });
       outside.remove();
     };
-    let dates = document.querySelectorAll<HTMLInputElement>('input[type="date"]'); clearDateWithKeyboard(dates[0]!);
-    expect(dates[0]?.required).toBe(true); expect(dates[0]?.getAttribute("aria-invalid")).toBe("true");
+    let dates = dateFields(); clearDate(dates[0]!);
+    expect(isRequired(dates[0])).toBe(true); expect(dates[0]?.getAttribute("aria-invalid")).toBe("true");
     expect(document.body.textContent).toContain("발생일을 올바르게 입력해 주세요."); expect(document.body.textContent).not.toMatch(/NaN|-24/);
     // Scope B autosave: invalid input blocks submit AND group-exit auto-record alike.
     await submitRecordForm(); expect(createExpenseMutation.mutateAsync).not.toHaveBeenCalled();
     blurRecordForm(); await act(async () => {}); expect(createExpenseMutation.mutateAsync).not.toHaveBeenCalled();
-    clickButton("기간"); dates = document.querySelectorAll<HTMLInputElement>('input[type="date"]'); changeInput(dates[0]!, "2026-07-31"); clearDateWithKeyboard(dates[1]!);
-    expect(dates[1]?.required).toBe(true); expect(document.body.textContent).toContain("기간 종료일을 올바르게 입력해 주세요.");
-    changeInput(dates[1]!, "2026-07-30"); expect(document.body.textContent).toContain("종료일은 시작일보다 빠를 수 없습니다."); await submitRecordForm(); expect(createExpenseMutation.mutateAsync).not.toHaveBeenCalled();
-    changeInput(dates[1]!, "2026-08-02"); expect(document.body.textContent).toContain("3일 × 33원 + 잔여 1원 (시작일 우선)");
+    clickButton("기간"); dates = dateFields(); setDate(dates[0]!, "2026-07-31"); clearDate(dates[1]!);
+    expect(isRequired(dates[1])).toBe(true); expect(document.body.textContent).toContain("기간 종료일을 올바르게 입력해 주세요.");
+    // 달력은 시작일(min) 이전 날을 아예 못 고르게 막는다.
+    setDate(dates[1]!, "2026-08-02"); act(() => dates[1]!.click());
+    expect(document.querySelector<HTMLButtonElement>('.date-pop-day[aria-label="2026-07-30"]')!.disabled).toBe(true);
+    act(() => document.querySelector<HTMLButtonElement>(".date-pop-close")!.click());
+    // 시작일을 종료일 뒤로 옮겨 생긴 역전은 여전히 막는다.
+    setDate(dates[0]!, "2026-08-03"); expect(document.body.textContent).toContain("종료일은 시작일보다 빠를 수 없습니다."); await submitRecordForm(); expect(createExpenseMutation.mutateAsync).not.toHaveBeenCalled();
+    setDate(dates[0]!, "2026-07-31"); expect(document.body.textContent).toContain("3일 × 33원 + 잔여 1원 (시작일 우선)");
     await submitRecordForm(); expect(createExpenseMutation.mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ periodStart: "2026-07-31", periodEnd: "2026-08-02" }));
   });
 
   it("blocks cleared or reversed recurring boundaries while preserving optional end and recovered clamp submission", async () => {
     render(createElement(ExpenseLedgerDialog, { open: true, onClose: vi.fn(), dbCostTotal: 3_000, additionalCost: 300 })); prepareRequiredExpenseFields(); clickButton("매월 반복");
-    const dates = document.querySelectorAll<HTMLInputElement>('input[type="date"]'); clearDateWithKeyboard(dates[0]!);
-    expect(dates[0]?.required).toBe(true); expect(dates[0]?.getAttribute("aria-invalid")).toBe("true"); expect(document.body.textContent).toContain("반복 시작일을 올바르게 입력해 주세요.");
+    const dates = dateFields(); clearDate(dates[0]!);
+    expect(isRequired(dates[0])).toBe(true); expect(dates[0]?.getAttribute("aria-invalid")).toBe("true"); expect(document.body.textContent).toContain("반복 시작일을 올바르게 입력해 주세요.");
     expect(document.body.textContent).not.toMatch(/NaN|-24/); await submitRecordForm(); expect(createRecurringRuleMutation.mutateAsync).not.toHaveBeenCalled();
-    changeInput(dates[0]!, "2026-02-01"); clearDateWithKeyboard(dates[1]!); expect(dates[1]?.required).toBe(false); expect(dates[1]?.getAttribute("aria-invalid")).toBe("false");
+    setDate(dates[0]!, "2026-02-01"); clearDate(dates[1]!); expect(isRequired(dates[1])).toBe(false); expect(dates[1]?.getAttribute("aria-invalid")).toBe("false");
     const select = document.querySelector<HTMLSelectElement>("select")!; act(() => { select.value = "31"; select.dispatchEvent(new Event("change", { bubbles: true })); }); expect(document.body.textContent).toContain("첫 반영 예정일 2026-02-28");
-    changeInput(dates[1]!, "2026-01-31"); expect(document.body.textContent).toContain("반복 종료일은 시작일보다 빠를 수 없습니다."); await submitRecordForm(); expect(createRecurringRuleMutation.mutateAsync).not.toHaveBeenCalled();
-    changeInput(dates[1]!, "2026-03-31"); await submitRecordForm();
+    setDate(dates[1]!, "2026-03-31"); setDate(dates[0]!, "2026-04-01"); expect(document.body.textContent).toContain("반복 종료일은 시작일보다 빠를 수 없습니다."); await submitRecordForm(); expect(createRecurringRuleMutation.mutateAsync).not.toHaveBeenCalled();
+    setDate(dates[0]!, "2026-02-01"); expect(document.body.textContent).toContain("첫 반영 예정일 2026-02-28"); await submitRecordForm();
     expect(createRecurringRuleMutation.mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ startsOn: "2026-02-01", endsOn: "2026-03-31", anchorDay: 31 }));
   });
 

@@ -4,6 +4,7 @@ import { type FormEvent, type ReactNode, useMemo, useRef, useState } from "react
 import { createPortal } from "react-dom";
 import { PortalTargetContext, usePortalTarget, useTopLayerDialog } from "@/components/ui/top-layer";
 import MoneyInput from "@/components/ui/MoneyInput";
+import DateInputCustom from "@/components/ui/DateInputCustom";
 import { formatWon } from "@/lib/format/money";
 import { isValidISODate } from "@/lib/service/cohort-dates";
 import {
@@ -43,6 +44,8 @@ type Workspace = "record" | "view";
 type CostKind = "one_time" | "recurring";
 
 const fieldClass = "mt-1 min-h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-blue-500 focus:outline-none";
+/** DateInputCustom 겉 칸 — 다른 칸과 같은 높이·테두리로 맞춘다. */
+const dateFieldClass = "mt-1 min-h-11 !rounded-lg !border-slate-300 !px-3 !py-0";
 const today = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 const currentMonth = () => today().slice(0, 7);
 const shiftMonth = (month: string, delta: number) => {
@@ -336,8 +339,8 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
                     <button type="button" aria-pressed={oneTimeRange} onClick={() => { oneTimeAuto.markTouched(); setOneTimeRange(true); }} className={`min-h-11 rounded-md text-xs font-bold ${oneTimeRange ? "bg-white text-blue-700 shadow-sm" : "text-slate-500"}`}>기간</button>
                   </div>
                   <div className={`mt-3 grid gap-3 ${oneTimeRange ? "grid-cols-2" : "grid-cols-1"}`}>
-                    <label className="text-xs font-bold text-slate-700">발생일<input type="date" required value={oneTimeStart} aria-invalid={!isValidISODate(oneTimeStart)} aria-describedby="one-time-date-preview" onChange={(event) => { oneTimeAuto.markTouched(); setOneTimeStart(event.target.value); }} className={fieldClass} /></label>
-                    {oneTimeRange && <label className="text-xs font-bold text-slate-700">종료일<input type="date" required value={oneTimeEnd} min={isValidISODate(oneTimeStart) ? oneTimeStart : undefined} aria-invalid={!isValidISODate(oneTimeEnd) || (isValidISODate(oneTimeStart) && oneTimeEnd < oneTimeStart)} aria-describedby="one-time-date-preview" onChange={(event) => { oneTimeAuto.markTouched(); setOneTimeEnd(event.target.value); }} className={fieldClass} /></label>}
+                    <label className="text-xs font-bold text-slate-700">발생일<DateInputCustom clearable required ariaLabel="발생일" value={oneTimeStart} ariaInvalid={!isValidISODate(oneTimeStart)} ariaDescribedBy="one-time-date-preview" onChange={(next) => { oneTimeAuto.markTouched(); setOneTimeStart(next); }} className={dateFieldClass} /></label>
+                    {oneTimeRange && <label className="text-xs font-bold text-slate-700">종료일<DateInputCustom clearable required ariaLabel="종료일" value={oneTimeEnd} min={isValidISODate(oneTimeStart) ? oneTimeStart : undefined} ariaInvalid={!isValidISODate(oneTimeEnd) || (isValidISODate(oneTimeStart) && oneTimeEnd < oneTimeStart)} ariaDescribedBy="one-time-date-preview" onChange={(next) => { oneTimeAuto.markTouched(); setOneTimeEnd(next); }} className={dateFieldClass} /></label>}
                   </div>
                   <div id="one-time-date-preview" role="status" className="mt-3 rounded-lg bg-slate-50 p-3 text-xs text-slate-600"><p className="font-bold text-slate-800">일할 인식 미리보기</p>{allocation ? <><p className="mt-1">{allocation.days}일 × {formatWon(allocation.daily)}{allocation.remainder > 0 ? ` + 잔여 ${formatWon(allocation.remainder)} (시작일 우선)` : ""}</p><p className="mt-1 text-xs text-slate-400">시작일과 종료일을 모두 포함해 일별로 배분합니다.</p></> : <p className="mt-1 font-semibold text-amber-700">{oneTimeDateError}</p>}</div>
                 </section>
@@ -346,8 +349,8 @@ export default function ExpenseLedgerDialog({ open, onClose, dbCostTotal, additi
                   <h3 className="text-sm font-black text-slate-900">반복 일정</h3>
                   <p className="mt-0.5 text-xs text-slate-500">당일/기간 토글 없이 시작·종료 경계와 매월 반영일을 각각 정합니다.</p>
                   <div className="mt-3 grid grid-cols-2 gap-3">
-                    <label className="text-xs font-bold text-slate-700">반복 시작일<input type="date" required value={recurringStart} aria-invalid={!isValidISODate(recurringStart)} aria-describedby="recurring-date-preview" onChange={(event) => setRecurringStart(event.target.value)} className={fieldClass} /></label>
-                    <label className="text-xs font-bold text-slate-700">반복 종료일 (선택)<input type="date" value={recurringEnd} min={isValidISODate(recurringStart) ? recurringStart : undefined} aria-invalid={Boolean(recurringEnd && (!isValidISODate(recurringEnd) || recurringEnd < recurringStart))} aria-describedby="recurring-date-preview" onChange={(event) => setRecurringEnd(event.target.value)} className={fieldClass} /></label>
+                    <label className="text-xs font-bold text-slate-700">반복 시작일<DateInputCustom clearable required ariaLabel="반복 시작일" value={recurringStart} ariaInvalid={!isValidISODate(recurringStart)} ariaDescribedBy="recurring-date-preview" onChange={setRecurringStart} className={dateFieldClass} /></label>
+                    <label className="text-xs font-bold text-slate-700">반복 종료일 (선택)<DateInputCustom clearable ariaLabel="반복 종료일" value={recurringEnd} min={isValidISODate(recurringStart) ? recurringStart : undefined} ariaInvalid={Boolean(recurringEnd && (!isValidISODate(recurringEnd) || recurringEnd < recurringStart))} ariaDescribedBy="recurring-date-preview" onChange={setRecurringEnd} className={dateFieldClass} /></label>
                   </div>
                   <label className="mt-3 block text-xs font-bold text-slate-700">매월 반영일<select value={anchorDay} onChange={(event) => setAnchorDay(event.target.value)} className={fieldClass}>{Array.from({ length: 31 }, (_, index) => index + 1).map((day) => <option key={day} value={day}>{day}일</option>)}</select></label>
                   <div id="recurring-date-preview" role="status" className="mt-3 rounded-lg bg-blue-50 p-3 text-xs text-blue-900">{firstOccurrence ? <><p className="font-bold">첫 반영 예정일 {firstOccurrence}</p><p className="mt-1 text-xs text-blue-700">29~31일이 없는 달은 그 달의 말일로 자동 보정합니다. 종료일이 있으면 해당 날짜 이후에는 발생하지 않습니다.</p></> : <p className="font-semibold text-amber-800">{recurringDateError}</p>}</div>

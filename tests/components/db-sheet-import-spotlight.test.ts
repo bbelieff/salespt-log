@@ -4,6 +4,7 @@ import React, {act, createElement as h} from 'react';
 import {createRoot, type Root} from 'react-dom/client';
 import {afterEach, beforeEach, expect, it, vi} from 'vitest';
 import {ImportDialog} from '@/app/(app)/db-sheet/_components/ImportDialog';
+import {pickDate} from './pick-date';
 Object.assign(globalThis,{React,IS_REACT_ACT_ENVIRONMENT:true});
 let host:HTMLDivElement,root:Root;
 beforeEach(()=>{localStorage.clear();host=document.createElement('div');document.body.append(host);root=createRoot(host);});
@@ -27,7 +28,7 @@ it('lights the common box first, marks the empty required fields, and clears onc
  expect(host.querySelector('fieldset.ai-common')!.textContent).not.toContain('비어 있어요');
  expect(host.querySelectorAll('fieldset.ai-common label.need')).toHaveLength(2);
  expect(host.querySelector('footer')!.textContent).toContain('확인할 곳으로');
- fill('[aria-label="가져오기 공급처"]','합성 공급처');fill('[aria-label="빈 유입일 채우기"]','2026-10-21');
+ fill('[aria-label="가져오기 공급처"]','합성 공급처');pickDate(host.querySelector('[aria-label="빈 유입일 채우기"]')!,'2026-10-21');
  expect(spot()).toBeNull();
  expect(button('선택한 2건 추가').disabled).toBe(false);
  expect(host.querySelector('footer')!.textContent).not.toContain('확인할 곳으로');

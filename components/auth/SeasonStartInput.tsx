@@ -14,6 +14,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiErrorMessage } from "@/lib/util/api-error-message";
+import DateInputCustom from "@/components/ui/DateInputCustom";
 
 export default function SeasonStartInput({
   label,
@@ -74,16 +75,16 @@ export default function SeasonStartInput({
       <label className="text-px-11 font-bold text-purple-700" htmlFor={`ss-${label}`}>
         시즌 개강일
       </label>
-      <input
+      <DateInputCustom
         id={`ss-${label}`}
-        type="date"
+        compact
         value={value}
         disabled={disabled || busy}
-        onChange={(e) => {
-          setValue(e.target.value);
+        onChange={(next) => {
+          setValue(next);
           setSaved(false);
         }}
-        className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs num-mono disabled:bg-slate-50"
+        className="!w-36 !rounded-lg !border-slate-300 !px-2 !py-1 num-mono disabled:bg-slate-50"
       />
       {!disabled && dirty && (
         <button

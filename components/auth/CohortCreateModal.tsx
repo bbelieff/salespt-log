@@ -15,6 +15,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AppDialog, { AppDialogClose } from "@/components/ui/AppDialog";
+import DateInputCustom from "@/components/ui/DateInputCustom";
 import { parseCohortToken } from "@/service/cohort-token";
 import {
   resolveCourseStartInput,
@@ -61,7 +62,7 @@ export default function CohortCreateModal() {
   // 날짜 없이 생성하려 할 때 1회 확인 — 첫 [실행]은 경고만 띄우고 멈춘다.
   const [noDateAck, setNoDateAck] = useState(false);
   // 자동화·자동완성이 DOM value 를 직접 세팅해 onChange 가 안 뜬 경우의 폴백 소스.
-  const startInputRef = useRef<HTMLInputElement>(null);
+  const startInputRef = useRef<HTMLDivElement>(null);
 
   const parsed = useMemo(() => parseCohortToken(token), [token]);
   const isArena = parsed?.type === "arena";
@@ -118,7 +119,7 @@ export default function CohortCreateModal() {
     // 발화하지 않은 경우에도 서버에 날짜가 전달된다(사고 2회의 원인).
     const resolvedStart =
       mode === "create"
-        ? resolveCourseStartInput(courseStartISO, startInputRef.current?.value ?? "")
+        ? resolveCourseStartInput(courseStartISO, startInputRef.current?.querySelector("input")?.value ?? "")
         : "";
     // 보이는 값 = 보낸 값. 폴백으로 찾은 날짜는 화면에도 반영한다.
     if (resolvedStart !== courseStartISO) setCourseStartISO(resolvedStart);
@@ -299,16 +300,20 @@ export default function CohortCreateModal() {
                 <label className="mb-1 block text-xs font-bold text-slate-700">
                   수강시작일 <span className="font-normal text-slate-400">{noSheet && !isArena ? "(필수)" : "(선택)"}</span>
                 </label>
-                <input
-                  ref={startInputRef}
-                  type="date"
-                  value={courseStartISO}
-                  onChange={(e) => {
-                    setCourseStartISO(e.target.value);
-                    setNoDateAck(false);
-                  }}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                />
+                {/* 숨은 입력(name)의 DOM 값도 제출 폴백으로 읽는다 — 자동화가 값만 넣은 사고(2회) 대비. */}
+                <div ref={startInputRef}>
+                  <DateInputCustom
+                    clearable
+                    name="courseStartISO"
+                    ariaLabel="수강시작일"
+                    value={courseStartISO}
+                    onChange={(next) => {
+                      setCourseStartISO(next);
+                      setNoDateAck(false);
+                    }}
+                    className="!rounded-lg !border-slate-300 !px-3 !py-2"
+                  />
+                </div>
                 <p className="mt-1 text-xs text-slate-500">
                   {isExtendedCourseCohort(parsed?.label) ? "12주 과정의 시작일과 종강총회일을 기록해요. 10기는 승인된 별도 총회일이 적용돼요." : "넣으면 새 시트 O1(수강시작)·O2(종강=+50일)을 자동 기록해요. 비우면 템플릿(이전 기수) 날짜가 그대로 남아요."}
                 </p>

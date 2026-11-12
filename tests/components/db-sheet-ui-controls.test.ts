@@ -49,9 +49,11 @@ it("renders one contact result and one header inflow editor, without the old exp
 it("can reserve custom date inputs for a separate popover while preserving the shared default", () => {
   const props = { period: "custom" as const, from: "", to: "", onFrom: vi.fn(), onTo: vi.fn(), onPeriod: vi.fn() };
   act(() => root.render(React.createElement(PeriodPicker, { ...props, showRangeInputs: false })));
-  expect(host.querySelectorAll("input")).toHaveLength(0);
+  expect(host.querySelectorAll(".custom-date-wrapper")).toHaveLength(0);
   act(() => root.render(React.createElement(PeriodPicker, props)));
-  expect(host.querySelectorAll("input")).toHaveLength(2);
+  // 기본은 요일 달력 칸 두 개(네이티브 날짜 입력 없음)
+  expect(host.querySelectorAll(".custom-date-wrapper")).toHaveLength(2);
+  expect(host.querySelectorAll('input[type="date"]')).toHaveLength(0);
 });
 
 it("shows accounting guidance on each option while keeping AS storage and date policy unchanged",()=>{

@@ -4,6 +4,7 @@ import {createRoot, type Root} from 'react-dom/client';
 import {afterEach, beforeEach, expect, it, vi} from 'vitest';
 import {ImportDialog} from '@/app/(app)/db-sheet/_components/ImportDialog';
 import type {Row} from '@/app/(app)/db-sheet/_components/model';
+import {pickDate} from './pick-date';
 Object.assign(globalThis,{React,IS_REACT_ACT_ENVIRONMENT:true});
 let host:HTMLDivElement,root:Root;
 beforeEach(()=>{localStorage.clear();host=document.createElement('div');document.body.append(host);root=createRoot(host);});
@@ -22,7 +23,7 @@ it('explains which required fields block adding and becomes usable after bulk da
  const apply=await open('사업자명\t대표자\t전화번호\n합성달빛공방\t김가상\t01000002001');
  expect(button('선택한 1건 추가').disabled).toBe(true);
  expect(host.querySelector('footer')!.textContent).toContain('추가 전 확인: 유입일 · 공급처');
- fill('[aria-label="가져오기 공급처"]','합성 공급처');fill('[aria-label="빈 유입일 채우기"]','2026-10-21');
+ fill('[aria-label="가져오기 공급처"]','합성 공급처');pickDate(host.querySelector('[aria-label="빈 유입일 채우기"]')!,'2026-10-21');
  expect(button('선택한 1건 추가').disabled).toBe(false);
  await act(async()=>button('선택한 1건 추가').click());
  expect(apply).toHaveBeenCalledTimes(1);

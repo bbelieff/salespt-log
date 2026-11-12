@@ -236,15 +236,18 @@
 
 ### Date Input (커스텀 박스 + **직접 그리는 달력**) ⭐
 
-**컴포넌트**: `components/ui/DateInputCustom.tsx` · props `{ value, onChange, ariaLabel?, min?, max?, placeholder?, id?, className?, compact?, disabled?, required?, name? }`
+**컴포넌트**: `components/ui/DateInputCustom.tsx` · props `{ value, onChange, ariaLabel?, min?, max?, placeholder?, id?, className?, compact?, disabled?, required?, name?, ariaInvalid?, ariaDescribedBy?, clearable?, autoFocus?, defaultOpen? }`
 
-**앱 전체 날짜 칸 = 이것 하나 (2026-11-10 결정 5)**: 일정 변경·추가 미팅·미팅 날짜, 수납 계약일·수납일·이전 계약·업체추가, 할 일(팝업·바로 추가·「+ 다음」), 캘린더 일반 일정이 모두 이 컴포넌트다. 값은 그대로 `YYYY-MM-DD` 문자열이라 저장 로직은 안 바뀐다.
+**앱 전체 날짜 칸 = 이것 하나 (2026-11-10 결정 5, 2026-11-12 남은 11곳까지)**: 일정 변경·추가 미팅·미팅 날짜, 수납 계약일·수납일·이전 계약·업체추가, 할 일(팝업·바로 추가·「+ 다음」), 캘린더 일반 일정, DB 목록(셀 편집기 「다음 연락일」·유입일 범위·부재 기록·가져오기 유입일·통화 확인 미팅 날짜), 관리자 공지 시작·종료일, 기수 만들기 수강시작일·시즌 개강일, 비용 원장(발생일·기간·반복 시작/종료·항목 편집), `PeriodPicker` 직접 설정까지 모두 이 컴포넌트다. `app/`·`components/` 에 네이티브 `type="date"` 는 하나도 없다(`tests/components/ui-touch-date.test.ts` 가 예외 없이 잡는다). 값은 그대로 `YYYY-MM-DD` 문자열이라 저장 로직은 안 바뀐다.
 - 겉 칸은 진짜 `<button type="button">` — `<label htmlFor={id}>` 나 감싼 `<label>` 을 눌러도 열린다. `disabled` 지원.
 - `required`·`name` 을 주면 같은 값을 든 숨은 입력(`.custom-date-proxy`)이 브라우저 필수 검사·FormData 를 받는다(비어 있으면 제출이 막히고 겉 칸으로 초점).
 - `compact` = 좁은 칸(일정 130px·할 일 줄 128px)용: 여백 6×8px·13px 글자·📅 숨김. 높이는 `className`(`h-9`·`h-10`)으로 옆 칸에 맞춘다(너비를 줄일 땐 `!w-32` — 기본 `width:100%`).
-- Enter/Space 로 열 때·열린 상태 Esc 는 감싼 줄의 Enter=저장/Esc=닫기 단축키로 새지 않는다.
-- 비우기(빈 값으로 되돌리기)는 없다. 비어 있으면 기본값을 쓰는 곳(할 일 바로 추가 = 내일)은 그 기본값이 처음부터 들어 있다.
-- 아직 네이티브 칸이 남은 곳(범위 밖·허용 목록): DB 목록(`db-sheet` — 셀 편집기·기간·부재 기록·가져오기·통화 확인), 관리자 공지, 기수 만들기·시즌 시작, 가계부, `PeriodPicker`. `tests/components/ui-touch-date.test.ts` 가 목록 밖에 새로 생기면 잡는다.
+- Enter/Space 로 열 때·열린 상태 Esc 는 감싼 줄의 Enter=저장/Esc=닫기 단축키로 새지 않는다. 열린 달력의 Esc 는 document 캡처 단계에서 받아 막으므로 감싼 `<dialog>`(cancel)·팝오버도 같이 닫히지 않는다 — 달력만 닫고 초점은 겉 칸으로.
+- 달력 안 mousedown 은 초점을 겉 칸에 남긴다 — 감싼 쪽이 blur 로 저장·닫기를 해도 날짜를 누르기 전에 돌지 않는다.
+- `ariaInvalid`·`ariaDescribedBy` = 겉 칸의 `aria-invalid`·`aria-describedby`(비용 원장 날짜 검사·미리보기 문구).
+- `autoFocus`·`defaultOpen` = 처음 그릴 때 초점·달력 열기. DB 목록 셀 편집기 「다음 연락일」이 둘 다 쓴다: 셀을 누르면 달력이 바로 열리고, 날짜를 누르면 곧 저장(onChange), Enter·Tab = 지금 값 저장 후 다음 칸, Esc = 열린 달력이면 달력만 닫고 한 번 더 누르면 편집 취소, 바깥으로 초점이 나가면 지금 값 저장(예전 blur 저장과 같다).
+- 비우기: 기본은 없다(비어 있으면 기본값을 쓰는 곳은 그 값이 처음부터 들어 있다). 빈 값이 뜻이 있는 칸은 `clearable` — 달력 아래 [지우기](값이 없으면 비활성)가 `onChange("")`. 쓰는 곳: 다음 연락일 셀, 유입일 범위·`PeriodPicker`, 가져오기 유입일, 공지 시작(빈값=즉시)·종료(빈값=무제한), 수강시작일(선택), 비용 원장 날짜 칸. 시즌 개강일은 옆의 「비우기」 버튼을 그대로 쓴다.
+- 너비: 칩 줄(`PeriodPicker`)·옆 칸이 있는 줄은 `!w-32`·`!w-36` 로 줄인다(기본 `width:100%`). 기존 칸 모양(`sheet-input`·`rounded-md` 등)은 `className` 으로 덮는다.
 
 **왜 커스텀 박스인가**:
 - 한국어 UX는 `2026-04-25 (목)` 처럼 **요일 표시**가 필수

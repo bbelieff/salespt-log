@@ -21,6 +21,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 
 import CohortCreateModal from "@/components/auth/CohortCreateModal";
+import { pickDate } from "./pick-date";
 
 // jsdom + React 18 act 환경 (tests/components/date-input-picker.test.ts 와 동일 패턴)
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
@@ -68,7 +69,9 @@ function openModal() {
 
   return {
     host,
-    dateInput: () => q<HTMLInputElement>('input[type="date"]'),
+    /** 달력 칸(DateInputCustom)이 함께 그리는 숨은 입력 — 제출 폴백이 읽는 DOM 값. */
+    dateInput: () => q<HTMLInputElement>('input[name="courseStartISO"]'),
+    pickStart: (iso: string) => pickDate(q('[aria-label="수강시작일"]'), iso),
     runBtn,
     text: () => host.textContent ?? "",
   };
@@ -102,7 +105,7 @@ describe("CohortCreateModal — 수강시작일 전달 보장", () => {
     const fetchMock = mockFetchOk({ created: [{ name: "김도연", sheetId: "s1" }] });
     const m = openModal();
 
-    typeInto(m.dateInput(), "2026-08-07");
+    m.pickStart("2026-08-07");
     await act(async () => {
       click(m.runBtn());
     });
@@ -165,7 +168,7 @@ describe("CohortCreateModal — 수강시작일 전달 보장", () => {
     await act(async () => {
       click(m.runBtn());
     });
-    typeInto(m.dateInput(), "2026-08-07");
+    m.pickStart("2026-08-07");
     expect(m.text()).not.toContain("수강시작일이 비어 있어요");
 
     await act(async () => {
@@ -221,7 +224,7 @@ describe("CohortCreateModal — 결과 리포트 가시화", () => {
     });
     const m = openModal();
 
-    typeInto(m.dateInput(), "2026-08-07");
+    m.pickStart("2026-08-07");
     await act(async () => {
       click(m.runBtn());
     });

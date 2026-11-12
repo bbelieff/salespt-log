@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { DB_SHEET_CALL_HOURS, dbSheetAbsenceHint, type DbSheetAbsence } from "@/types/db-sheet";
 import { todayKST } from "@/util/week";
+import DateInputCustom from "@/components/ui/DateInputCustom";
 import type { Row } from "./model";
 
 const SHOWN = 6;
@@ -33,7 +34,7 @@ export function AbsenceLog({ row, onAbsence, suggested = [] }: { row: Pick<Row, 
   return <section className="db-absence" aria-label="부재 기록">
     {/* 한 줄(2026-10-26 belie): 「부재 기록 [날짜] [시간] [+ 추가]」 */}
     <div className="db-absence-add db-absence-head"><strong>부재 기록</strong>{list.length > 0 && <span>{list.length}번</span>}
-      <input type="date" className="sheet-input" aria-label="통화한 날짜" value={date} max={todayKST()} onChange={e => setDate(e.target.value)} />
+      <DateInputCustom compact className="sheet-input" ariaLabel="통화한 날짜" value={date} max={todayKST()} onChange={setDate} />
       <select className="sheet-input" aria-label="통화한 시각" value={hour} onChange={e => setHour(Number(e.target.value))}>
         {DB_SHEET_CALL_HOURS.map(h => <option key={h} value={h}>{String(h).padStart(2, "0")}시</option>)}
       </select>
