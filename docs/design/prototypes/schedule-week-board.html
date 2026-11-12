@@ -1,4 +1,5 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>body{margin:0}</style></head><body><title>일정·계약 주간 보드</title>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>일정·계약 주간 보드</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
@@ -526,6 +527,31 @@ button,input,textarea{font:inherit;color:inherit}
 .top .weeknav .wn-ctrl .ord-h{flex:1}
 .top .weeknav .filtwrap{padding:0}
 .top .weeknav .wn-meta .course{padding:2px 8px}
+/* v44 — 미팅 창 업체정보·길찾기 (운영 미팅 카드와 같은 두 기능) */
+.qa{display:grid;grid-template-columns:1fr 1fr;gap:2px;margin-top:10px;padding:3px;border-radius:11px;background:color-mix(in srgb,var(--fg) 6%,transparent);box-shadow:inset 0 1px 2px color-mix(in srgb,var(--fg) 9%,transparent)}
+.qa button{display:flex;align-items:center;justify-content:center;gap:6px;height:32px;border:0;border-radius:8px;background:transparent;font:inherit;font-size:12.5px;font-weight:700;color:var(--fg2);cursor:pointer;transition:background .15s,color .15s,box-shadow .15s;white-space:nowrap;min-width:0}
+.qa button:hover{background:color-mix(in srgb,var(--fg) 6%,transparent);color:var(--fg)}
+.qa button[aria-expanded="true"]{background:var(--pop-hi);color:var(--fg);font-weight:800;box-shadow:inset 0 1px 0 var(--edge),0 2px 6px -2px var(--shadow)}
+.qa button:disabled{color:var(--fg4);cursor:default;background:transparent}
+.qa svg{width:14px;height:14px;flex:none}
+.qa .cv{width:12px;height:12px;opacity:.6;transition:transform .2s}
+.qa button[aria-expanded="true"] .cv{transform:rotate(180deg)}
+.qbox{margin-top:8px;padding:10px 12px;border-radius:12px;background:color-mix(in srgb,var(--fg) 4%,transparent);border:1px solid var(--line);animation:popin .18s cubic-bezier(.2,.9,.25,1)}
+.qbox .ds{margin-top:0;font-size:12.5px;gap:6px 12px}
+.qbox .qfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;font-size:11px;color:var(--fg3)}
+.qbox .qfoot button{border:0;background:transparent;padding:4px 2px;font:inherit;font-size:11.5px;font-weight:700;color:var(--fg3);text-decoration:underline;text-underline-offset:3px;cursor:pointer;white-space:nowrap}
+.qbox .qfoot button:hover{color:var(--accent-fg)}
+.qbox .addr{display:flex;align-items:flex-start;gap:6px;font-size:12.5px;font-weight:700;color:var(--fg);line-height:1.4}
+.qbox .addr svg{flex:none;width:14px;height:14px;margin-top:2px;color:var(--res-fg)}
+.qbox .addr small{display:block;font-size:11px;font-weight:600;color:var(--fg3)}
+.maps{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:9px}
+.maps button{height:36px;border-radius:10px;border:1px solid var(--line2);background:var(--input);font:inherit;font-size:12px;font-weight:800;color:var(--fg);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;min-width:0}
+.maps button i{width:8px;height:8px;border-radius:50%;flex:none}
+.maps button:hover{border-color:var(--accent)}
+.maps button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.keep{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:11.5px;font-weight:600;color:var(--fg2);cursor:pointer}
+.keep input{width:15px;height:15px;margin:0;accent-color:var(--accent)}
+@media (max-width:860px){.qa button{height:44px;font-size:14px}.maps button{height:46px;font-size:14px}}
 </style>
 
 <div class="backdrop" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -638,6 +664,11 @@ const issues=[
 const memos={'2026-11-09':'황우 대표: 다음 주 재방문 원함','2026-11-10':'구로센터 주차 B2 가능 · 3층 회의실'};
 
 let order='fri', base=weekStartOf(NOW,'fri'), openId=null, openAct=null, editId=null;
+/* v44 — 업체정보(합성 예시값)·길찾기 */
+let qOpen=null, mapApp=null, mapKeep=true;
+const CI={'한빛정밀':{rep:'김○○',biz:'정밀부품 제조',addr:'경기 안산시 단원구 성곡동',emp:'23명',sales:'41억'},'다온푸드':{rep:'이○○',biz:'식품 제조',addr:'경기 시흥시 정왕동',emp:'12명',sales:'18억'},'테화산주조':{rep:'박○○',biz:'주류 제조(탁주)',addr:'경기 김포시 양촌읍 양곡리',emp:'9명',sales:'7억'},'성원산업':{rep:'최○○',biz:'금속 가공',addr:'경기 부천시 오정구 삼정동',emp:'31명',sales:'52억'}};
+const MAPS=[['kakao','카카오맵','#eab308'],['naver','네이버지도','#16a34a'],['tmap','티맵','#2563eb']];
+const routeQ=m=>{if(/화상|온라인|전화/.test(m.place||''))return'';const c=CI[m.name];return c?.addr||m.place||''};
 const layers={meet:true,todo:true,event:true};
 
 const evOn=(e,k)=>e.t?e.d===k:(e.d<=k&&k<=(e.ed||e.d));
@@ -789,7 +820,7 @@ function openPop(still){
   const pop=document.createElement('div');pop.className='pop';pop.setAttribute('role','dialog');pop.setAttribute('aria-label',m.name+' 미팅 결과');
   const head=`<header><div style="min-width:0"><h3>${esc(m.name)}</h3><p class="meta">${m.d.slice(5).replace('-','/')} (${DOW[new Date(m.d).getDay()]}) ${m.t}–${m.e} · ${esc(m.place)}</p>
     <div class="pmeta"><span><i style="background:var(${CH[m.ch]})"></i>${m.ch}</span>${m.st==='예약'?`<span><i style="background:var(--res)"></i>예약</span>`:''}${needsResult(m)?'<span class="need">결과 입력 필요</span>':''}</div></div>
-    <button class="iconbtn x" data-close aria-label="닫기">${ICON.x}</button></header>`;
+    <button class="iconbtn x" data-close aria-label="닫기">${ICON.x}</button></header>${quick(m)}`;
   if(m.st!=='예약'&&editId!==m.id){
     const r=m.res||{},v=x=>x?esc(x):'<span class="none">기록 없음</span>';
     const rows=m.st==='계약'?[['수임비',m.fee?won(m.fee):''],['계약일',r.cd],['메모',r.cm]]
@@ -816,6 +847,28 @@ function openPop(still){
   placePop(pop,el);
 }
 
+function quick(m){
+  const q=routeQ(m),c=CI[m.name];
+  const ib=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M14 9h1M9 13h1M14 13h1M10 21v-4h4v4"/></svg>`;
+  const rb=`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-8-8 18-2-8-8-2z"/></svg>`;
+  const cv=`<svg class="cv" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>`;
+  const saved=mapApp?MAPS.find(x=>x[0]===mapApp)[1]:'';
+  let box='';
+  if(qOpen==='info'){
+    const v=x=>x?esc(x):'<span class="none">비어 있음</span>';
+    box=c?`<div class="qbox" id="qInfo"><dl class="ds"><dt>대표</dt><dd>${v(c.rep)}</dd><dt>업종</dt><dd>${v(c.biz)}</dd><dt>소재지</dt><dd>${v(c.addr)}</dd><dt>직원</dt><dd>${v(c.emp)}</dd><dt>연매출</dt><dd>${v(c.sales)}</dd></dl><div class="qfoot"><span>미팅 카드의 업체정보와 같은 값</span><button type="button" data-qedit>고치기</button></div></div>`
+      :`<div class="qbox" id="qInfo"><p class="mempty" style="margin:2px 0 6px">아직 적은 업체정보가 없어요</p><div class="qfoot"><span>대표·업종·소재지·매출</span><button type="button" data-qedit>업체정보 적기</button></div></div>`;
+  }
+  if(qOpen==='route'&&q){
+    box=`<div class="qbox" id="qRoute"><div class="addr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.1 7-12a7 7 0 10-14 0c0 5.9 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg><span>${esc(q)}<small>${c?'업체 소재지로 찾아요 (장소 「'+esc(m.place)+'」는 주소가 아님)':'미팅 장소로 찾아요'}</small></span></div>
+      <div class="maps" role="group" aria-label="지도 앱">${MAPS.map(([k,l,col])=>`<button type="button" data-map="${k}" aria-pressed="${mapApp===k}"><i style="background:${col}"></i>${l}</button>`).join('')}</div>
+      <label class="keep"><input type="checkbox" id="mapKeep" ${mapKeep?'checked':''}>다음에도 이 앱으로 바로 열기</label></div>`;
+  }
+  return `<div class="qa" role="group" aria-label="업체">
+    <button type="button" data-q="info" aria-expanded="${qOpen==='info'}" aria-controls="qInfo">${ib}업체정보${cv}</button>
+    <button type="button" data-q="route" ${q?'':'disabled title="화상·전화 미팅이라 길찾기가 없어요"'} aria-expanded="${qOpen==='route'}" aria-controls="qRoute">${rb}${q?(saved?'길찾기 · '+saved:'길찾기'):'길찾기 없음'}</button>
+  </div>${box}`;
+}
 const isMobile=()=>matchMedia('(max-width:860px)').matches;
 function placePop(pop,el){
   document.querySelectorAll('.scrim').forEach(x=>x.remove());
@@ -950,7 +1003,12 @@ document.addEventListener('click',e=>{
   const t=e.target.closest('[data-todo]');if(t){openId=openId===t.dataset.todo?null:t.dataset.todo;openAct=null;render();return}
   if(e.target.closest('[data-tsave]')){saveTodo();return}
   if(e.target.closest('[data-golink]')){e.preventDefault();const x=todos.find(y=>y.id===openId);toast(`실무수납 탭 — ${x.co} 진행건으로 이동 (목업)`);return}
-  const mt=e.target.closest('[data-meet]');if(mt){openId=openId===mt.dataset.meet?null:mt.dataset.meet;openAct=null;editId=null;render();return}
+  const qb=e.target.closest('[data-q]');if(qb){const k=qb.dataset.q;const m=meetings.find(x=>x.id===openId);
+    if(k==='route'&&mapApp&&qOpen!=='route'){toast(`${MAPS.find(x=>x[0]===mapApp)[1]}에서 「${routeQ(m)}」 길찾기를 바로 열어요 (목업)`);qOpen='route';openPop(true);return}
+    qOpen=qOpen===k?null:k;openPop(true);return}
+  const mp=e.target.closest('[data-map]');if(mp){const m=meetings.find(x=>x.id===openId);mapKeep=document.getElementById('mapKeep')?.checked??true;mapApp=mapKeep?mp.dataset.map:null;qOpen=null;openPop(true);toast(`${MAPS.find(x=>x[0]===mp.dataset.map)[1]}에서 「${routeQ(m)}」 길찾기를 열어요 (목업)`);return}
+  if(e.target.closest('[data-qedit]')){const m=meetings.find(x=>x.id===openId);toast(`${m.name} 업체정보 입력칸이 열려요 — 운영 미팅 카드와 같은 입력 (목업)`);return}
+  const mt=e.target.closest('[data-meet]');if(mt){openId=openId===mt.dataset.meet?null:mt.dataset.meet;openAct=null;editId=null;qOpen=null;render();return}
   const a=e.target.closest('[data-act]');if(a){openAct=openAct===a.dataset.act?null:a.dataset.act;openPop(true);return}
   const s=e.target.closest('[data-save]');if(s){const m=meetings.find(x=>x.id===openId);const g=id=>document.getElementById(id)?.value.trim()||'';
     m.st=s.dataset.save;
@@ -990,4 +1048,5 @@ document.getElementById('today').onclick=()=>{base=weekStartOf(NOW,order);render
 addEventListener('resize',()=>{const pop=document.querySelector('.pop');if(!pop||!openId)return;const el=openId==='new'?document.getElementById('ghost'):document.querySelector(`.board [data-meet="${openId}"],.board [data-todo="${openId}"]`);if(el)posPop(pop,el)});
 render();
 </script>
+
 </body></html>

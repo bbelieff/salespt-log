@@ -1,22 +1,26 @@
 "use client";
 /**
  * 일정·계약 탭 PC 주간 보드(1280px 이상) — 왼쪽(제목 칸·미팅 결과·주간 이슈·트레이닝 목표) + 오른쪽 주간 격자.
- * 미팅을 누르면 기존 결과 카드(MeetingResultCard)를 그대로 창에 띄워 저장·장부 연결·되돌리기를 같은 코드로 쓴다.
+ * 미팅을 누르면 시안 구성의 창(BoardMeetingPop)이 뜬다 — 저장·장부 연결·되돌리기는 페이지가 넘겨 준 같은 함수를 쓴다.
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { Meeting, ScheduleIssue, Todo } from "@/types";
 import { useAllTodos } from "@/query/todos-hooks";
 import { useSaveScheduleNote, useScheduleNotes } from "@/query/schedule-notes-hooks";
-import { isBoardTodo, monthWeekLabel, type DayOrder } from "../../_lib/board";
+import { isBoardTodo, monthWeekLabel, needsResult, type DayOrder } from "../../_lib/board";
 import { addDays, dayLabelKO, fmtISO, parseISO, weekIndexOf } from "../../_lib/week";
 import BoardTitle from "./BoardTitle";
 import WeekGrid, { BOARD_TOP_H } from "./WeekGrid";
-import { GoalPanel, IssuesPanel, ResultPanel } from "./SidePanels";
+import { IssuesPanel, ResultPanel } from "./SidePanels";
+import GoalPanel from "./BoardGoals";
 import TodoPopover from "./TodoPopover";
 import EventPopover from "./EventPopover";
 import BoardPopover from "./BoardPopover";
-import type { LayerKey, Layers } from "./board-style";
+import { CH_DOT, type LayerKey, type Layers } from "./board-style";
 import "./week-board.css";
+
+/** 미팅은 한 시간으로 그린다(격자·결과 대기 판정과 같은 가정). */
+const plusHour = (t: string) => `${String((Number(t.slice(0, 2)) + 1) % 24).padStart(2, "0")}${t.slice(2)}`;
 
 type Opened = { kind: "m"; id: string; rect: DOMRect } | { kind: "t"; id: string; rect: DOMRect } | { kind: "new"; date: string; time: string | null; rect: DOMRect };
 
@@ -25,7 +29,7 @@ export default function WeekBoard({ courseWeekFri, viewStart, courseStart, order
   /** 캘린더에서 ?focus=<미팅 id> 로 넘어오면 그 미팅 창을 한 번 연다. */
   focusId?: string | null;
   onPrev: () => void; onNext: () => void; onToday: () => void; onOrder: (o: DayOrder) => void;
-  /** 결과 창 안의 카드 — 페이지가 기존 MeetingResultCard 를 같은 저장 함수로 만들어 준다. */
+  /** 미팅 창 본문 — 페이지가 BoardMeetingPop 을 같은 저장 함수로 만들어 준다. */
   renderMeeting: (m: Meeting) => ReactNode; toast: (msg: string) => void; extra?: ReactNode;
 }) {
   const [layers, setLayers] = useState<Layers>({ meet: true, todo: true, event: true });
@@ -91,9 +95,15 @@ export default function WeekBoard({ courseWeekFri, viewStart, courseStart, order
       </div>
 
       {openMeeting && opened?.kind === "m" && (
-        <BoardPopover width={460} anchor={opened.rect} onClose={close} label={`${openMeeting.업체명} 미팅`} title={
-          <p className="pt-1 text-xs font-semibold tabular-nums text-slate-500">{openMeeting.미팅날짜.slice(5).replace("-", "/")} ({dayLabelKO(parseISO(openMeeting.미팅날짜))}) {openMeeting.미팅시간}</p>
-        }>{renderMeeting(openMeeting)}</BoardPopover>
+        <BoardPopover glass width={320} anchor={opened.rect} onClose={close} label={`${openMeeting.업체명} 미팅 결과`} title={<>
+          <h3 className="wb-pop-h">{openMeeting.업체명}</h3>
+          <p className="wb-pop-meta">{openMeeting.미팅날짜.slice(5).replace("-", "/")} ({dayLabelKO(parseISO(openMeeting.미팅날짜))}) {openMeeting.미팅시간}–{plusHour(openMeeting.미팅시간)}{openMeeting.장소 ? ` · ${openMeeting.장소}` : ""}</p>
+          <div className="wb-pmeta">
+            <span><i className={CH_DOT[openMeeting.channel]} />{openMeeting.channel}</span>
+            {openMeeting.상태 === "예약" && <span><i className="bg-amber-500" />예약</span>}
+            {needsResult(openMeeting, now) && <span className="wb-need">결과 입력 필요</span>}
+          </div>
+        </>}>{renderMeeting(openMeeting)}</BoardPopover>
       )}
       {openTodo && opened?.kind === "t" && <TodoPopover todo={openTodo} anchor={opened.rect} onClose={close} onSaved={toast} />}
       {opened?.kind === "new" && <EventPopover key={`${opened.date}${opened.time}`} date={opened.date} time={opened.time} anchor={opened.rect} onClose={close} onSaved={toast} />}
