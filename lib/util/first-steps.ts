@@ -68,9 +68,26 @@ export interface FirstStepsMemory {
   /** 안내를 끝까지 따라 했거나 그 기록이 생긴 것. 제안 줄을 다시 띄우지 않는다. */
   finished: FirstStepTour[];
   reviewSeen: boolean;
+  /** 첫걸음을 처음 판정했는지(대시보드 첫 방문). 그때 이미 DB 가 있던 수강생은 hidden 으로 끝(belie 2026-11-12). */
+  started: boolean;
 }
 
-export const EMPTY_FIRST_STEPS_MEMORY: FirstStepsMemory = { hidden: false, never: [], finished: [], reviewSeen: false };
+export const EMPTY_FIRST_STEPS_MEMORY: FirstStepsMemory = { hidden: false, never: [], finished: [], reviewSeen: false, started: false };
+
+/**
+ * 이미 DB 를 넣어 쓰던 수강생인지 — 「이미 디비입력이 있는 수강생은 첫걸음 필요 없음」(belie 2026-11-12).
+ * 처음 판정할 때 한 번만 쓴다: 0건에서 시작한 새 수강생은 첫 DB 를 넣은 뒤에도 남은 단계 안내를 계속 받는다.
+ */
+export function hasDbInput(c: Pick<FirstStepCounts, "생산" | "유입">): boolean {
+  return c.생산 > 0 || c.유입 > 0;
+}
+
+/** 첫 판정 뒤의 기억. 이미 안내를 쓰기 시작한 흔적(끝냄·그만 보기·돌아보기)이 있으면 숨기지 않는다. */
+export function startFirstSteps(m: FirstStepsMemory, dbInput: boolean): FirstStepsMemory {
+  if (m.started) return m;
+  const engaged = m.finished.length > 0 || m.never.length > 0 || m.reviewSeen;
+  return { ...m, started: true, hidden: m.hidden || (dbInput && !engaged) };
+}
 
 export function firstStepsStorageKey(email: string): string {
   return `salespt-first-steps:v1:${email.trim().toLowerCase()}`;
@@ -86,19 +103,19 @@ export function parseFirstStepsMemory(raw: string | null | undefined): FirstStep
   try {
     const v = JSON.parse(raw) as Record<string, unknown>;
     if (!v || typeof v !== "object") return EMPTY_FIRST_STEPS_MEMORY;
-    return { hidden: v.hidden === true, never: tourList(v.never), finished: tourList(v.finished), reviewSeen: v.reviewSeen === true };
+    return { hidden: v.hidden === true, never: tourList(v.never), finished: tourList(v.finished), reviewSeen: v.reviewSeen === true, started: v.started === true };
   } catch {
     return EMPTY_FIRST_STEPS_MEMORY;
   }
 }
 
-/** 제안 줄을 띄울지 — 수강생 본인 화면에서, 아직 안 했고, 그만 보기·끝낸 적이 없을 때만. */
+/** 제안 줄을 띄울지 — 수강생 본인 화면에서, 대시보드에서 첫걸음이 시작됐고(이미 DB 가 있던 수강생은 숨김), 아직 안 했고, 그만 보기·끝낸 적이 없을 때만. */
 export function shouldOfferTour(opts: {
   tour: FirstStepTour;
   memory: FirstStepsMemory;
   isTraineeSelf: boolean;
   alreadyDone: boolean;
 }): boolean {
-  if (!opts.isTraineeSelf || opts.alreadyDone) return false;
+  if (!opts.isTraineeSelf || opts.alreadyDone || !opts.memory.started || opts.memory.hidden) return false;
   return !opts.memory.never.includes(opts.tour) && !opts.memory.finished.includes(opts.tour);
 }

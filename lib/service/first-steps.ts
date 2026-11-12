@@ -4,7 +4,7 @@ import { FIRST_STEP_KEYS, FirstStepsMemorySchema, type FirstStepsProgressMap, ty
 
 type StepKey = (typeof FIRST_STEP_KEYS)[number];
 const isStepKey = (k: string): k is StepKey => (FIRST_STEP_KEYS as readonly string[]).includes(k);
-const EMPTY_MEMORY: FirstStepsState["memory"] = { hidden: false, never: [], finished: [], reviewSeen: false };
+const EMPTY_MEMORY: FirstStepsState["memory"] = { hidden: false, never: [], finished: [], reviewSeen: false, started: false };
 
 /** null = 아직 저장한 적 없음(화면이 브라우저 기억을 올려도 된다). */
 export async function getFirstSteps(email: string): Promise<FirstStepsState | null> {

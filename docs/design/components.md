@@ -775,6 +775,7 @@ function getTimeValue(hourId, minuteId) {
 - `FirstStepsCard`(대시보드 맨 위): 「첫걸음 N / 7」 진행 막대 + 일곱 단계(`@/util/first-steps` FIRST_STEPS), 다음 단계 굵게, 안내 있는 단계는 「해 보기 →」 그 밖은 「바로 가기 →」, 마지막 「차트 보기 →」. 다 하면·「숨기기」면 사라진다. 판정은 대시보드 숫자·계약 행(새 조회 없음). 관리자·트레이너·대리 보기에서는 안 보인다.
 - 2차(2026-11-11): 안내 6종 — 구매(/db: 채널 → `[data-first-steps=db-add-row]` → `db-add-form`) · DB 넣기 · 컨택(/contact `컨택진행 증가`) · 미팅 예약(컨택진행이 있을 때만 제안) · 결과(/schedule `meeting-card-toggle` → `meeting-actions`, 예약·변경 미팅이 있을 때만) · 수납(/payment `contract-open` → 진행 1 → `수납액 (원)`, 계약이 있을 때만). 문구는 할 일 한 줄(belie 「잡다한 설명 생략」), 빈 설명은 그리지 않는다. 카드 「해 보기」는 모든 안내 단계에 붙는다.
 - 기억: 계정별(`/api/first-steps`, DB `first_steps`) — 표가 없거나 실패하면 이 브라우저 localStorage `salespt-first-steps:v1:<이메일>`. 서버 줄이 없고 브라우저 기억이 있으면 한 번 올린다. 대시보드 카드는 끝낸 단계(done)를 올린다.
+- 이미 DB 를 넣어 쓰던 수강생 제외(belie 2026-11-12): 대시보드 첫 방문 때 한 번 판정(`startFirstSteps`) — 그때 생산·유입이 있으면 카드·안내 제안 모두 숨김(`hidden`). 0건에서 시작한 새 수강생은 첫 DB 를 넣은 뒤에도 남은 단계 안내를 받는다. 안내 제안 줄은 대시보드에서 시작된 뒤(`started`)에만 뜬다.
 - `FirstStepsBadge`(components/auth): 관리 화면 `TraineeCard` 이름 옆 「첫걸음 N/7」(아직 다 안 한 수강생만, 기록 있을 때만) — `/api/admin/first-steps` 를 화면당 한 번 부른다(모듈 캐시, react-query 없음).
 - 측정: `FIRST_STEP_TOUR_STARTED`(from offer|card) · `_FINISHED` · `_DISMISSED`(never) — tour 이름만.
 
