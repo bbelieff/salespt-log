@@ -215,3 +215,34 @@ describe("결정 2-A — 보이지 않는 44px 누름 영역", () => {
     expect(read("components/ui/TimePicker15.tsx")).not.toMatch(/overflow-hidden rounded-lg border/);
   });
 });
+
+describe("달력이 fixed 를 가두는 조상 밖으로 나온다(2026-11-12 주간 보드 미팅 창 「새 날짜」 안 눌림)", () => {
+  it("backdrop-filter·transform 조상이면 trapsFixed = true, 평범한 조상·dialog 안이면 false", async () => {
+    const { trapsFixed } = await import("@/components/ui/DateInputCustom");
+    const mk = (style: string) => {
+      const outer = document.createElement("div");
+      outer.setAttribute("style", style);
+      const inner = document.createElement("button");
+      outer.appendChild(inner);
+      document.body.appendChild(outer);
+      return { outer, inner };
+    };
+    const a = mk("transform: translateX(0)");
+    expect(trapsFixed(a.inner)).toBe(true);
+    const b = mk("filter: blur(1px)");
+    expect(trapsFixed(b.inner)).toBe(true);
+    const c = mk("color: red");
+    expect(trapsFixed(c.inner)).toBe(false);
+    const dlg = document.createElement("dialog");
+    dlg.setAttribute("style", "transform: translateX(0)");
+    const inDlg = document.createElement("button");
+    dlg.appendChild(inDlg);
+    document.body.appendChild(dlg);
+    expect(trapsFixed(inDlg)).toBe(false);
+    for (const n of [a.outer, b.outer, c.outer, dlg]) n.remove();
+  });
+  it("주간 보드 창은 달력(role=dialog) 안을 눌러도 닫히지 않는다", () => {
+    const src = readFileSync("app/(app)/schedule/_components/board/BoardPopover.tsx", "utf8");
+    expect(src).toContain('t.closest("[role=dialog],[role=alertdialog],[data-board-keep]")');
+  });
+});
