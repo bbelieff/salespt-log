@@ -86,7 +86,9 @@ describe("decideContractFanout", () => {
 describe("★계약 저장 화면이 조용한 성공을 내지 않는다 (소스 가드)", () => {
   it("patch 뒤 미팅을 다시 뒤지지 않는다 — 그 재조회가 매출 유실의 통로였다", async () => {
     const { readFileSync } = await import("node:fs");
-    const src = readFileSync("app/(app)/schedule/page.tsx", "utf8");
+    // 저장 함수는 2026-11-12 page.tsx 에서 _lib/useMeetingPatch.ts 로 옮겼다(캘린더 한 달 보드와 같이 씀).
+    const src = readFileSync("app/(app)/schedule/_lib/useMeetingPatch.ts", "utf8");
+    expect(readFileSync("app/(app)/schedule/page.tsx", "utf8")).toContain("useMeetingPatch");
     // 옛 코드의 흔적: fan-out 직전에 weekQuery 를 다시 flatMap 해서 미팅을 찾던 블록.
     expect(src).not.toContain("fan-out 생략");
     expect(src).toContain("decideContractFanout");

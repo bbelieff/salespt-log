@@ -17,13 +17,12 @@ import PageContainer from "@/components/PageContainer";
 import WeekBody from "./_components/WeekBody";
 import WeeklyGoalSummary from "@/components/weekly-goals/WeeklyGoalSummary";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { Meeting } from "@/types";
-import { usePatchMeeting, useWeekMeetings } from "@/query/contact-hooks";
-import { useAddContractPayment, useSyncContractFee } from "@/query/contract-payment-hooks";
+import { useWeekMeetings } from "@/query/contact-hooks";
 import { useManualLinkPrompt } from "./_lib/use-manual-link-prompt";
 import { useSwipe } from "@/lib/hooks/useSwipe";
 import { useGuardedNav } from "@/components/DirtyGuard";
-import { decideContractFanout } from "./_lib/contract-fanout";
 import WeekHeader from "./_components/WeekHeader";
 import SummaryBar from "./_components/SummaryBar";
 import DaySection from "./_components/DaySection";
@@ -33,6 +32,7 @@ import FirstStepTourOffer from "@/components/onboarding/FirstStepTourOffer";
 import { addDays, fmtISO, friOf, parseISO, weekIndexOf } from "./_lib/week";
 import { useWeekStartSync } from "./_lib/useWeekStartSync";
 import { useMeetingActions } from "./_lib/useMeetingActions";
+import { useMeetingPatch } from "./_lib/useMeetingPatch";
 import { useBoardView } from "./_lib/useBoardView";
 import MeetingResultCard from "./_components/MeetingResultCard";
 import WeekBoard from "./_components/board/WeekBoard";
@@ -43,6 +43,7 @@ const TODAY_ISO = fmtISO(new Date());
 
 export default function SchedulePage() {
   const deleteConfirm=useMeetingDeleteConfirm();
+  const router = useRouter();
   // weekStart 초기값=오늘. 동기화(?date= 우선 / 없으면 today 주차 정렬)는
   // useWeekStartSync 훅이 담당. 서버는 input weekStart 를 그대로 사용.
   const [weekStart, setWeekStart] = useState<string>(TODAY_ISO);
@@ -50,9 +51,6 @@ export default function SchedulePage() {
   // 보이는 7일: 금~목은 수강 주(weekStart) 그대로, 월~일은 그 안의 월요일부터. PC(1280px+)는 주간 보드.
   const { order, setOrder, viewStart, isBoard } = useBoardView(weekStart);
   const weekQuery = useWeekMeetings(viewStart);
-  const patchMeeting = usePatchMeeting();
-  const addContractPayment = useAddContractPayment();
-  const syncContractFee = useSyncContractFee();
   const manualLink = useManualLinkPrompt(); // 같은 이름 「영업기록 없이 추가」 업체 → 연결 제안
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [toast, setToast] = useState("");
@@ -78,93 +76,11 @@ export default function SchedulePage() {
     setTimeout(() => setToast(""), 2200);
   };
 
-  const handlePatch = async (
-    id: string,
-    partial: Partial<Omit<Meeting, "id">>,
-    opts?: { quiet?: boolean },
-  ) => {
-    // quiet(자동 저장): 루틴 성공 토스트 없음 + 실패는 throw 로 큐에 전달.
-    const say = (msg: string) => {
-      if (!opts?.quiet) showToast(msg);
-    };
-    setPendingId(id);
-    try {
-      // patch 전에 현재 미팅 상태를 lookup — fan-out 중복 방지에 필요.
-      // (예약→계약 전환에만 새 row 생성, 계약→계약 수정 시는 skip)
-      const prevMeeting = weekQuery.data?.daysByMeetingDate
-        .flatMap((d) => d.meetings)
-        .find((m) => m.id === id);
-      const wasAlreadyContract = prevMeeting?.상태 === "계약";
-
-      await patchMeeting.mutateAsync({
-        date: "", // 일정·계약 탭에선 day-key 무관
-        weekStart: viewStart,
-        id,
-        partial,
-      });
-
-      // Fan-out: 계약 저장 시 02 장부 행 보장. ⚠️ 매출이 사라졌던 자리다
-      // (2026-09-01 · 10기 문병규 ₩1,100,000). 규칙·근거 = ./_lib/contract-fanout.ts
-      const fanout = decideContractFanout(partial, prevMeeting);
-      if (fanout.kind === "blocked") {
-        say(
-          "⚠ 계약 상태는 저장됐지만 계약 정보를 읽지 못해 장부에 넣지 못했어요. 새로고침 후 이 카드를 다시 계약으로 저장해 주세요.",
-        );
-        return;
-      }
-      if (fanout.kind === "run") {
-        const payload = fanout.payload;
-        if (!wasAlreadyContract && (await manualLink.ask(id, payload.업체명)) === "linked") return say("✓ 계약 확정 + 기존 업체와 연결됨");
-        try {
-          await addContractPayment.mutateAsync(payload);
-          say("✓ 계약 확정 + 계약수납 row 생성됨");
-        } catch {
-          // 일시적 실패(네트워크·쿼터)로 매출이 사라지지 않게 한 번 더. 멱등이라 안전.
-          try {
-            await addContractPayment.mutateAsync(payload);
-            say("✓ 계약 확정 + 계약수납 row 생성됨 (재시도 성공)");
-          } catch (e) {
-            say(
-              `⚠ 계약 상태는 저장됐지만 장부에 넣지 못했어요: ${(e as Error).message} — 이 카드를 다시 계약으로 저장하면 채워져요.`,
-            );
-            return;
-          }
-        }
-      } else if (
-        wasAlreadyContract &&
-        partial.수임비 !== undefined &&
-        prevMeeting &&
-        partial.수임비 !== prevMeeting.수임비
-      ) {
-        // 이미 계약 상태인 카드의 수임비가 변경된 경우 →
-        // 02 계약수납관리 매칭 row(E열)도 sync update.
-        try {
-          const result = await syncContractFee.mutateAsync({
-            계약일: prevMeeting.미팅날짜,
-            업체명: prevMeeting.업체명,
-            수임비: partial.수임비,
-          });
-          say(
-            result.synced
-              ? "✓ 저장 완료 + 계약수납 수임비 sync"
-              : "✓ 저장 완료 (계약수납 매칭 row 없음 — 시트에서 수동 확인)",
-          );
-        } catch (e) {
-          say(
-            `⚠ 미팅은 저장됐으나 계약수납 sync 실패: ${(e as Error).message}`,
-          );
-        }
-      } else {
-        say("✓ 저장 완료");
-      }
-    } catch (e) {
-      say(`저장 실패: ${(e as Error).message}`);
-      if (opts?.quiet) throw e; // 자동 저장 큐가 실패로 인식해 초안 유지+재시도
-    } finally {
-      setPendingId(null);
-    }
-  };
-
+  // 미팅 저장(계약 장부 연결 포함) — 캘린더 한 달 보드와 같은 함수(./_lib/useMeetingPatch.ts, decideContractFanout).
+  const handlePatch = useMeetingPatch({
+    weekStart: viewStart, setPendingId, showToast, manualLink,
+    findMeeting: (id) => weekQuery.data?.daysByMeetingDate.flatMap((d) => d.meetings).find((m) => m.id === id),
+  });
 
   const mobile = useMobileExtras({ enabled: !isBoard, viewStart, courseWeekFri: fmtISO(friOf(parseISO(weekStart))), toast: showToast });
   const { handleReschedule, handleRevert, handleAddMeeting, handleDelete, handleReviveCase } =
@@ -274,6 +190,7 @@ export default function SchedulePage() {
           meetings={allMeetings} todayISO={TODAY_ISO} focusId={focusId} toast={showToast} extra={<DeletedMeetings />}
           onPrev={() => moveWeek(-1)} onNext={() => moveWeek(1)} onOrder={setOrder}
           onToday={() => guardedNav(() => setWeekStart(fmtISO(friOf(parseISO(TODAY_ISO)))))}
+          onMonth={(date) => guardedNav(() => router.push(`/calendar?date=${date}`))}
           renderMeeting={(m) => (
             <BoardMeetingPop key={m.id} meeting={m} pending={pendingId === m.id}
               onPatch={(partial, opts) => handlePatch(m.id, partial, opts)} onReschedule={(d, t, r) => handleReschedule(m, d, t, r)}

@@ -1,6 +1,7 @@
 /**
  * /api/schedule-notes — 일정·계약 탭 주간 보드의 일별 메모·주간 이슈.
- * GET ?from=YYYY-MM-DD&issuesWeek=YYYY-MM-DD → { memos, issues } (from 부터 7일 메모 + 그 수강 주 이슈)
+ * GET ?from=YYYY-MM-DD&issuesWeek=YYYY-MM-DD[&days=1~42] → { memos, issues } (from 부터 days 일(기본 7) 메모 + 그 수강 주 이슈)
+ *   days 는 한 달 보드(달력 6줄 = 42일)가 쓴다.
  * PUT { kind:"memo", date, text } | { kind:"issues", weekStart, issues } → { ok }
  * 대상은 보고 있는 수강생(트레이너 대리 보기 포함), 쓰기는 쓰기 권한이 있을 때만. 표가 아직 없으면 503.
  */
@@ -16,6 +17,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const NO_STORE = { "Cache-Control": "no-store" };
 const IsoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const Days = z.coerce.number().int().min(1).max(42).default(7);
 
 function fail(e: unknown) {
   if (e instanceof StudentViewContextError) return NextResponse.json({ error: e.code, code: e.code }, { status: e.status });
@@ -25,11 +27,12 @@ function fail(e: unknown) {
 async function GET_handler(req: NextRequest) {
   const from = IsoDate.safeParse(req.nextUrl.searchParams.get("from"));
   const week = IsoDate.safeParse(req.nextUrl.searchParams.get("issuesWeek"));
-  if (!from.success || !week.success) return NextResponse.json({ error: "invalid" }, { status: 400 });
+  const days = Days.safeParse(req.nextUrl.searchParams.get("days") ?? undefined);
+  if (!from.success || !week.success || !days.success) return NextResponse.json({ error: "invalid" }, { status: 400 });
   try {
     const context = await requireStudentViewContext();
     const start = parseISO(from.data);
-    const dates = Array.from({ length: 7 }, (_, i) => fmtISO(addDays(start, i)));
+    const dates = Array.from({ length: days.data }, (_, i) => fmtISO(addDays(start, i)));
     return NextResponse.json(await getScheduleNotes(context.email, dates, week.data), { headers: NO_STORE });
   } catch (e) {
     return fail(e);

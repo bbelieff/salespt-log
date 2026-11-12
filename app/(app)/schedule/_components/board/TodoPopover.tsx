@@ -76,7 +76,7 @@ export default function TodoPopover({ todo, anchor, onClose, onSaved }: {
           </div>
         </fieldset>
         {error && <p role="alert" className="text-xs font-semibold text-red-600">{error}</p>}
-        <button type="button" disabled={busy} onClick={save} className="h-11 rounded-xl bg-violet-700 text-sm font-bold text-white shadow-sm hover:bg-violet-800 disabled:opacity-60">
+        <button type="button" disabled={busy} onClick={save} className="wb-btn h-11 rounded-xl bg-violet-700 text-sm font-bold text-white shadow-sm hover:bg-violet-800 disabled:opacity-60">
           {busy ? "저장중.." : todo.완료여부 ? "결과 저장" : "완료하고 저장"}
         </button>
         {todo.contractRef && (

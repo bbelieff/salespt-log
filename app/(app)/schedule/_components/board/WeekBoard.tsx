@@ -16,21 +16,21 @@ import GoalPanel from "./BoardGoals";
 import TodoPopover from "./TodoPopover";
 import EventPopover from "./EventPopover";
 import BoardPopover from "./BoardPopover";
+import MeetingPopHead from "./MeetingPopHead";
 import { CH_DOT, type LayerKey, type Layers } from "./board-style";
 import "./week-board.css";
 
-/** 미팅은 한 시간으로 그린다(격자·결과 대기 판정과 같은 가정). */
-const plusHour = (t: string) => `${String((Number(t.slice(0, 2)) + 1) % 24).padStart(2, "0")}${t.slice(2)}`;
-
 type Opened = { kind: "m"; id: string; rect: DOMRect } | { kind: "t"; id: string; rect: DOMRect } | { kind: "new"; date: string; time: string | null; rect: DOMRect };
 
-export default function WeekBoard({ courseWeekFri, viewStart, courseStart, order, meetings, todayISO, focusId, onPrev, onNext, onToday, onOrder, renderMeeting, toast, extra }: {
+export default function WeekBoard({ courseWeekFri, viewStart, courseStart, order, meetings, todayISO, focusId, onPrev, onNext, onToday, onOrder, renderMeeting, toast, extra, onMonth }: {
   courseWeekFri: string; viewStart: string; courseStart: string; order: DayOrder; meetings: Meeting[]; todayISO: string;
   /** 캘린더에서 ?focus=<미팅 id> 로 넘어오면 그 미팅 창을 한 번 연다. */
   focusId?: string | null;
   onPrev: () => void; onNext: () => void; onToday: () => void; onOrder: (o: DayOrder) => void;
   /** 미팅 창 본문 — 페이지가 BoardMeetingPop 을 같은 저장 함수로 만들어 준다. */
   renderMeeting: (m: Meeting) => ReactNode; toast: (msg: string) => void; extra?: ReactNode;
+  /** 「주 | 월」의 「월」 — 캘린더 한 달 보드로(보이는 주의 가운데 날을 지닌 채). */
+  onMonth?: (date: string) => void;
 }) {
   const [layers, setLayers] = useState<Layers>({ meet: true, todo: true, event: true });
   const [opened, setOpened] = useState<Opened | null>(null);
@@ -78,7 +78,8 @@ export default function WeekBoard({ courseWeekFri, viewStart, courseStart, order
       <div aria-hidden="true" className="wb-backdrop"><i /><i /><i /></div>
       <div className="flex min-h-0 flex-col gap-3">
         <BoardTitle className="shrink-0" style={{ height: BOARD_TOP_H + 1 }} title={monthWeekLabel(viewStart)} range={`${md(days[0]!)} – ${md(days[6]!)}`} course={course}
-          order={order} layers={layers} onPrev={onPrev} onNext={onNext} onToday={onToday} onOrder={onOrder} onLayer={toggleLayer} />
+          order={order} layers={layers} onPrev={onPrev} onNext={onNext} onToday={onToday} onOrder={onOrder} onLayer={toggleLayer}
+          onView={onMonth ? () => onMonth(days.includes(todayISO) ? todayISO : days[3]!) : undefined} />
         <aside aria-label="이번 주 미팅 결과, 주간 이슈, 트레이닝 목표" className="wb-scroll flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto overflow-x-hidden p-1">
           <div className="wb-glass shrink-0 overflow-hidden"><ResultPanel meetings={meetings} now={now} onPending={(m) => setOpened({ kind: "m", id: m.id, rect: new DOMRect(300, 140, 0, 0) })} /></div>
           <div className="wb-glass wb-issues shrink-0 overflow-hidden"><IssuesPanel issues={notes.data?.issues ?? []} ready={notesReady} onChange={saveIssues} /></div>
@@ -95,15 +96,7 @@ export default function WeekBoard({ courseWeekFri, viewStart, courseStart, order
       </div>
 
       {openMeeting && opened?.kind === "m" && (
-        <BoardPopover glass width={320} anchor={opened.rect} onClose={close} label={`${openMeeting.업체명} 미팅 결과`} title={<>
-          <h3 className="wb-pop-h">{openMeeting.업체명}</h3>
-          <p className="wb-pop-meta">{openMeeting.미팅날짜.slice(5).replace("-", "/")} ({dayLabelKO(parseISO(openMeeting.미팅날짜))}) {openMeeting.미팅시간}–{plusHour(openMeeting.미팅시간)}{openMeeting.장소 ? ` · ${openMeeting.장소}` : ""}</p>
-          <div className="wb-pmeta">
-            <span><i className={CH_DOT[openMeeting.channel]} />{openMeeting.channel}</span>
-            {openMeeting.상태 === "예약" && <span><i className="bg-amber-500" />예약</span>}
-            {needsResult(openMeeting, now) && <span className="wb-need">결과 입력 필요</span>}
-          </div>
-        </>}>{renderMeeting(openMeeting)}</BoardPopover>
+        <BoardPopover glass width={320} anchor={opened.rect} onClose={close} label={`${openMeeting.업체명} 미팅 결과`} title={<MeetingPopHead meeting={openMeeting} now={now} />}>{renderMeeting(openMeeting)}</BoardPopover>
       )}
       {openTodo && opened?.kind === "t" && <TodoPopover todo={openTodo} anchor={opened.rect} onClose={close} onSaved={toast} />}
       {opened?.kind === "new" && <EventPopover key={`${opened.date}${opened.time}`} date={opened.date} time={opened.time} anchor={opened.rect} onClose={close} onSaved={toast} />}

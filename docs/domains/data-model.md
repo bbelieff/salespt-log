@@ -89,7 +89,7 @@ last_review: 2026-04-27
 - `ScheduleIssue` = { id, text(1~300자), urgent, done } · `ScheduleIssues` 최대 50개 · `ScheduleMemoText` 최대 2000자.
 - `ScheduleNotesView` = { memos: 날짜→메모, issues } · `ScheduleNotePut` = `{kind:"memo", date, text}` | `{kind:"issues", weekStart, issues}`(통째 저장).
 - 테이블 `schedule_notes`(email 소문자 + note_key PK, body jsonb, updated_at) — note_key `memo:YYYY-MM-DD` · `issues:<수강 주 금요일>`. 마이그레이션 `0022_schedule_notes.sql`(운영 적용은 db-migrate 워크플로). 표가 없으면 API 503 → 화면은 메모·이슈 칸만 잠그고 나머지는 그대로.
-- API `/api/schedule-notes` GET(?from=7일 첫날&issuesWeek=금요일) · PUT — 대상은 보고 있는 수강생(트레이너 대리 보기 포함), 쓰기는 쓰기 권한 계정만(실무투두와 같은 검사).
+- API `/api/schedule-notes` GET(?from=첫날&issuesWeek=금요일[&days=1~42, 기본 7 — 캘린더 한 달 보드는 달력 줄 수×7]) · PUT — 대상은 보고 있는 수강생(트레이너 대리 보기 포함), 쓰기는 쓰기 권한 계정만(실무투두와 같은 검사).
 
 ## 비용 원장 (2026-07-23, DB 전용)
 
