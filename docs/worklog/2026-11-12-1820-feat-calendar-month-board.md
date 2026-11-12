@@ -6,3 +6,5 @@
 - 미확인: 로그인한 운영 화면, 구글 캘린더 실제 연결 상태, 어두운 화면. 폰 화면은 범위 밖(따로 기획).
 - DB 변경 없음. 되돌리기 = 이 PR revert(1280px 미만 화면·데이터는 건드리지 않음).
 - [plan](../plans/completed/calendar-month-board.md)
+- 병합·배포(2026-11-13): PR #1431 — master 가 두 번 움직여(#1427 리베이스 · #1430 병합) 현재 head ff5ef091 에서 CI(build·check) 통과 → squash f035880c → Deploy to VPS run 43256702345 success, `/api/health` 200, `/calendar` 307(로그인으로), `/api/schedule-notes?…&days=42` 401(비로그인). 로그인한 운영 화면·구글 캘린더 실제 연결·어두운 화면은 NOT_RUN — belie 확인 요청.
+- 바로잡음: 기획 단계에서 폰 메뉴를 옛 하단 탭으로 잘못 전제했다(라이브는 사이드탭, ADR-0036). 문서 표현을 고쳤고 폰 화면은 따로 기획 중(시안 v2).
