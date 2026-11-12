@@ -101,9 +101,10 @@ async function settle(job: Job, call: Call, r: CodefResult) {
 }
 
 /** 사업장이 여럿인 개인사업자는 홈택스가 재무제표에 사업자번호를 요구한다(2026-11-10 운영 실측).
- *  사업자번호를 붙여 다시 보내면 대표가 또 승인해야 해서(같은 세션 재사용 안 됨, 2026-11-11 실측 — 4분 30초씩 대기) 자동 재요청은 하지 않고 이유만 알린다. */
+ *  받은 뒤에 사업자번호를 붙여 다시 보내면 대표가 또 승인해야 해서(같은 세션 재사용 안 됨, 2026-11-11 실측 — 4분 30초씩 대기) 자동 재요청은 하지 않는다.
+ *  대신 보낼 때 사업자번호를 받아 처음부터 사업장별로 요청한다(input.bizNos, 2026-11-12). 안 넣고 보냈으면 이유만 알린다. */
 const FS_NEEDS_BIZ = /사업자\s*번호를 입력/;
-const FS_MULTI_BIZ = "사업장이 여러 곳이면 홈택스가 재무제표를 내주지 않아요(사업자별 발급 필요).";
+const FS_MULTI_BIZ = "사업장이 여러 곳이에요. 사업자번호를 넣고 다시 보내 주세요.";
 
 /** 요청 하나 보내기. 2차 인증을 요구하면 lead 로 잡아 두고(승인 확인 대기), 아니면 결과를 정리한다. */
 async function fire(job: Job, call: Call) {
@@ -155,8 +156,14 @@ function startCertJob(job: Job) {
     // 요청 수는 법인 여부와 상관없이 같다 — 끝 판정(pending 0)은 처음부터 전체 수로.
     job.pending = buildCalls(job.input, ids, false).length;
     for (const c of buildCalls(job.input, ids, false, ["biz"])) await fire(job, c);
-    const corp = (job.datas.get("biz") ?? []).flatMap(asList).some((o) => /법인/.test(String(o.resBusinessmanType ?? "")));
-    for (const c of buildCalls(job.input, ids, corp, job.input.docs.filter((d) => d !== "biz"))) {
+    const bizList = (job.datas.get("biz") ?? []).flatMap(asList);
+    const corp = bizList.some((o) => /법인/.test(String(o.resBusinessmanType ?? "")));
+    // 승인이 없으니 번호를 안 넣었어도 사업자등록증명에 사업장이 2곳 이상이면 그 번호들로 재무제표를 사업장별로 받는다.
+    const found = [...new Set(bizList.map((o) => digitsOnly(String(o.resCompanyIdentityNo ?? ""))).filter((b) => b.length === 10))];
+    const fsBizNos = job.input.bizNos.length ? job.input.bizNos : found.length > 1 ? found : [];
+    const rest = buildCalls(job.input, ids, corp, job.input.docs.filter((d) => d !== "biz"), fsBizNos);
+    job.pending += rest.length - (buildCalls(job.input, ids, false).length - 1);
+    for (const c of rest) {
       if (job.finished) return;
       await fire(job, c);
     }

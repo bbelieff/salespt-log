@@ -38,6 +38,7 @@ vi.mock("@/repo/codef-client", () => ({
     h.calls.push({ path, params });
     const ok = (data: unknown) => ({ code: "CF-00000", message: "성공", extraMessage: "", data });
     if (path.endsWith("corporate-registration")) {
+      if (params.certFile) return ok(BIZ); // 공동인증서: 승인 없이 바로
       if (!params.is2Way) return { code: "CF-03002", message: "추가인증", extraMessage: "", data: { continue2Way: true, jobIndex: 0, threadIndex: 0, jti: "j", twoWayTimestamp: 1 } };
       if (!h.approved) return { code: "CF-03002", message: "추가인증", extraMessage: "", data: { continue2Way: true } };
       h.release?.();
@@ -138,6 +139,31 @@ describe("간편인증 보내기 → 승인 확인 → 결과", () => {
     expect(h.calls.filter((c) => c.path.endsWith("standard-financial-statements") && c.params.identity)).toHaveLength(0);
     const [done] = await listSimpleAuth(who);
     expect(done!.businesses[0]!.results.find((r) => r.key === "fs")!.reason).toMatch(/사업장이 여러 곳/);
+  });
+
+  it("사업자번호를 넣어 보내면 재무제표를 사업장마다 3년치씩 같은 묶음(같은 id)으로 요청하고, 사업장별로 받는다", async () => {
+    const req = await startSimpleAuth(who, { ...input, docs: ["biz", "vat", "fs"], bizNos: ["214-88-77123", "2141290311"] });
+    const fsCalls = () => h.calls.filter((c) => c.path.endsWith("standard-financial-statements"));
+    await wait(async () => fsCalls().length >= 6);
+    // 승인 전에 이미 6건(2곳 × 3년)이 나가 있다 — 승인 뒤에 따로 보내면 재승인이 필요하다.
+    expect(h.approved).toBe(false);
+    expect(fsCalls().map((c) => c.params.identity).sort()).toEqual(["2141290311", "2141290311", "2141290311", "2148877123", "2148877123", "2148877123"]);
+    expect(new Set(fsCalls().map((c) => c.params.id)).size).toBe(1);
+    expect(fsCalls()[0]!.params).toMatchObject({ applicationType: "01", id: h.calls[0]!.params.id });
+    h.approved = true;
+    await actSimpleAuth(who, req.id, { action: "confirm" });
+    await wait(async () => (await listSimpleAuth(who))[0]!.status === "done");
+    const [done] = await listSimpleAuth(who);
+    expect(done!.businesses.map((b) => [b.bizNo, b.results.find((r) => r.key === "fs")!.ok])).toEqual([["214-88-77123", true], ["214-12-90311", true]]);
+  });
+
+  it("공동인증서는 번호를 안 넣어도 사업자등록증명에 사업장이 2곳이면 그 번호들로 재무제표를 받는다", async () => {
+    await startSimpleAuth(who, { mode: "cert", owner: "김가상", phone: "", certPfx: "A".repeat(200), certPassword: "pw", docs: ["biz", "fs"] });
+    await wait(async () => (await listSimpleAuth(who))[0]!.status === "done");
+    const ids = h.calls.filter((c) => c.path.endsWith("standard-financial-statements")).map((c) => c.params.identity);
+    expect(ids.sort()).toEqual(["2141290311", "2141290311", "2141290311", "2148877123", "2148877123", "2148877123"]);
+    const [done] = await listSimpleAuth(who);
+    expect(done!.businesses.map((b) => b.results.find((r) => r.key === "fs")!.ok)).toEqual([true, true]);
   });
 
   it("서버가 재시작돼 작업이 사라져도 이미 받은 서류는 「받음」으로 남는다", async () => {

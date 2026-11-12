@@ -14,6 +14,7 @@ import AddressSearch from "./AddressSearch";
 import CertPicker, { type PickedCert } from "./CertPicker";
 import { SIMPLE_AUTH_APPS, SIMPLE_AUTH_CERT_DEFAULT_DOCS, SIMPLE_AUTH_DEFAULT_DOCS, SIMPLE_AUTH_DOCS, SIMPLE_AUTH_SITES, SIMPLE_AUTH_TELECOMS } from "@/config/simple-auth";
 import type { SimpleAuthAddress, SimpleAuthDocKey } from "@/types/simple-auth";
+import { formatBizNo } from "@/lib/document-ocr/bizno";
 
 type AuthMethod = (typeof SIMPLE_AUTH_APPS)[number];
 type DocKey = SimpleAuthDocKey;
@@ -30,6 +31,14 @@ const toBase64 = (f: File) => new Promise<string>((resolve, reject) => {
 
 const INPUT = "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base focus:border-blue-500 focus:outline-none";
 const LABEL = "text-sm font-medium text-slate-700";
+
+const BIZ_NO = /\d{3}-?\d{2}-?\d{5}/g;
+/** 「사업자번호」 칸 → 번호 목록(중복 제거). 쉼표·띄어쓰기·줄바꿈으로 나눠 넣는다. */
+const parseBizNos = (v: string) => [...new Set((v.match(BIZ_NO) ?? []).map(formatBizNo))];
+function bizNosError(v: string): string {
+  if (v.replace(BIZ_NO, "").replace(/[\s,·/]/g, "")) return "사업자번호 10자리를 쉼표로 나눠 넣어 주세요. 예: 123-45-67890, 234-56-78901";
+  return parseBizNos(v).length > 5 ? "사업자번호는 5곳까지 넣을 수 있어요." : "";
+}
 
 function birthError(v: string): string {
   if (!v) return "생년월일 8자리를 넣어 주세요.";
@@ -51,11 +60,13 @@ export default function RequestForm({ onSend, busy }: { onSend: (body: Record<st
   const [docs, setDocs] = useState<DocKey[]>([...SIMPLE_AUTH_DEFAULT_DOCS]);
   const [rrnBack, setRrnBack] = useState("");
   const [address, setAddress] = useState<SimpleAuthAddress | null>(null);
+  const [bizText, setBizText] = useState("");
   const [picked, setPicked] = useState<PickedCert | null>(null);
   const [certPw, setCertPw] = useState("");
   const [tried, setTried] = useState(false);
   const cert = mode === "cert";
   const gov24 = docs.includes("localTax");
+  const fsOn = docs.includes("fs");
   const shownDocs = DOCS.filter(d => (cert ? !d.simpleOnly : !d.certOnly));
 
   const errors = {
@@ -68,6 +79,7 @@ export default function RequestForm({ onSend, busy }: { onSend: (body: Record<st
     docs: docs.length ? "" : "받을 서류를 하나 이상 골라 주세요.",
     rrnBack: !cert && gov24 && !/^\d{7}$/.test(rrnBack) ? "주민번호 뒷자리 7자리를 넣어 주세요." : "",
     address: gov24 && !address ? "주소를 검색해 골라 주세요." : "",
+    bizNos: fsOn ? bizNosError(bizText) : "",
   };
   const show = (k: keyof typeof errors) => (tried && errors[k] ? <p id={`${id}-${k}-err`} className="mt-1 text-xs text-red-600">{errors[k]}</p> : null);
   const invalid = (k: keyof typeof errors) => (tried && errors[k] ? { "aria-invalid": true, "aria-describedby": `${id}-${k}-err` } : {});
@@ -86,7 +98,7 @@ export default function RequestForm({ onSend, busy }: { onSend: (body: Record<st
     e.preventDefault();
     setTried(true);
     if (Object.values(errors).some(Boolean)) return;
-    const common = { owner: owner.trim(), phone, docs, ...(gov24 && address ? { address } : {}) };
+    const common = { owner: owner.trim(), phone, docs, ...(gov24 && address ? { address } : {}), ...(fsOn ? { bizNos: parseBizNos(bizText) } : {}) };
     let body: Record<string, unknown>;
     try {
       body = cert
@@ -94,7 +106,7 @@ export default function RequestForm({ onSend, busy }: { onSend: (body: Record<st
         : { mode: "simple", ...common, birth, telecom, method, ...(gov24 ? { rrnBack } : {}) };
     } catch { return; }
     if (!(await onSend(body))) return;
-    setOwner(""); setBirth(""); setPhone(""); setTelecom(""); setRrnBack(""); setAddress(null); setPicked(null); setCertPw(""); setTried(false);
+    setOwner(""); setBirth(""); setPhone(""); setTelecom(""); setRrnBack(""); setAddress(null); setBizText(""); setPicked(null); setCertPw(""); setTried(false);
   }
 
   const tab = (m: Mode, label: string) => (
@@ -200,6 +212,14 @@ export default function RequestForm({ onSend, busy }: { onSend: (body: Record<st
                     <span>{d.caution}</span>
                   </p>
                 ))}
+                {fsOn && list.some(d => d.key === "fs") && (
+                  <div className="mt-2">
+                    <label htmlFor={`${id}-biznos`} className={LABEL}>사업자번호<span className="font-normal text-slate-500"> (사업장이 여러 곳일 때만)</span></label>
+                    <input id={`${id}-biznos`} value={bizText} onChange={e => setBizText(e.target.value)} autoComplete="off" placeholder="123-45-67890, 234-56-78901" className={`${INPUT} mt-1 tabular-nums`} {...invalid("bizNos")} />
+                    {show("bizNos")}
+                    <p className="mt-1 text-xs text-slate-500">{cert ? "비워 두면 사업자등록증명에 나온 사업장마다 받아요." : "1곳이면 비워 두세요. 여러 곳인데 비워 두면 재무제표가 안 들어와요."}</p>
+                  </div>
+                )}
               </div>
             );
           })}
