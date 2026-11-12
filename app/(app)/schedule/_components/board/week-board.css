@@ -99,3 +99,72 @@
   .wb-qa button { height: 44px; font-size: 14px; }
   .wb-qmaps button { height: 46px; font-size: 14px; }
 }
+
+/* 미팅 창 — 시안 v44 의 .pop·.pmeta·.acts·.form·.save·.dsum 값을 그대로 옮긴다(2026-11-12 belie 「라이브가 목업대로 안 된다」). */
+.wb-pop { padding: 14px; border-radius: 18px; background: linear-gradient(180deg, rgb(255 255 255 / 0.95), rgb(255 255 255 / 0.86)); -webkit-backdrop-filter: blur(36px) saturate(180%); backdrop-filter: blur(36px) saturate(180%); border: 1px solid rgb(255 255 255 / 0.75); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.75), 0 30px 60px -20px rgb(30 27 75 / 0.16), 0 8px 20px -8px rgb(30 27 75 / 0.16); animation: wb-popin 0.22s cubic-bezier(0.2, 0.9, 0.25, 1); color: rgb(15 23 42); }
+@keyframes wb-popin { from { opacity: 0; transform: translateY(4px) scale(0.98); } to { opacity: 1; transform: none; } }
+.wb-pop-h { margin: 0; font-size: 16px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.3; overflow-wrap: anywhere; color: rgb(15 23 42); }
+.wb-pop-meta { margin: 4px 0 0; font-size: 12px; color: rgb(100 116 139); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.wb-pmeta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; margin-top: 7px; font-size: 12px; font-weight: 600; color: rgb(100 116 139); }
+.wb-pmeta i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: 1px; }
+.wb-pmeta .wb-need { color: rgb(146 64 14); }
+.wb-st-con { --wb-a: rgb(22 163 74); } .wb-st-done { --wb-a: rgb(251 146 60); } .wb-st-chg { --wb-a: rgb(168 85 247); } .wb-st-can { --wb-a: rgb(239 68 68); }
+/* 결과 선택: 색은 점 하나로만. 고른 칸만 떠오르고 바탕은 무채색 */
+.wb-acts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin-top: 12px; padding: 3px; border-radius: 12px; background: rgb(15 23 42 / 0.06); }
+.wb-act { display: flex; align-items: center; justify-content: center; gap: 6px; height: 36px; min-width: 0; border: 0; border-radius: 9px; background: transparent; color: rgb(51 65 85); font: inherit; font-size: 12.5px; font-weight: 700; white-space: nowrap; cursor: pointer; transition: background 0.15s, color 0.15s, box-shadow 0.15s, transform 0.1s; }
+.wb-act::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--wb-a); opacity: 0.85; }
+.wb-act:hover { background: rgb(15 23 42 / 0.05); }
+.wb-act:active { transform: scale(0.97); }
+.wb-act[aria-pressed="true"] { background: rgb(255 255 255 / 0.95); color: rgb(15 23 42); font-weight: 800; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.75), 0 3px 10px -4px rgb(30 27 75 / 0.16); }
+.wb-act:disabled { opacity: 0.4; cursor: default; background: transparent; }
+.wb-form { margin-top: 12px; display: grid; gap: 8px; }
+.wb-form label, .wb-fld { display: grid; gap: 4px; min-width: 0; font-size: 11.5px; font-weight: 700; color: rgb(51 65 85); }
+.wb-form .wb-in { width: 100%; min-width: 0; height: 36px; box-sizing: border-box; border-radius: 10px; border: 1px solid rgb(15 23 42 / 0.12); background: rgb(255 255 255 / 0.7); padding: 0 10px; font: inherit; font-size: 13px; font-weight: 400; color: rgb(15 23 42); outline: none; font-variant-numeric: tabular-nums; }
+.wb-form textarea.wb-in { height: 56px; padding: 8px 10px; resize: none; line-height: 1.4; }
+.wb-form .wb-in:focus { border-color: rgb(124 58 237); }
+.wb-form .wb-in[readonly] { color: rgb(100 116 139); }
+.wb-row2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+.wb-warn { margin: 0; font-size: 11.5px; font-weight: 700; color: rgb(185 28 28); }
+.wb-save { height: 38px; border: 0; border-radius: 11px; background: rgb(124 58 237); color: rgb(255 255 255); font: inherit; font-weight: 800; font-size: 13px; cursor: pointer; box-shadow: 0 8px 18px -8px rgb(124 58 237); }
+.wb-save:hover { filter: brightness(1.06); }
+.wb-save:disabled { opacity: 0.6; cursor: default; }
+.wb-dsum { margin-top: 12px; padding: 12px; border-radius: 12px; background: rgb(15 23 42 / 0.04); border: 1px solid rgb(15 23 42 / 0.07); }
+.wb-dsum-h { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.wb-dsum-h b { font-weight: 800; }
+.wb-dsum-ico { flex: none; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: var(--wb-a); color: rgb(255 255 255); }
+.wb-dsum-ico svg { width: 12px; height: 12px; }
+.wb-dsum-ds { margin-top: 10px; font-size: 13px; gap: 7px 12px; }
+.wb-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 12px; margin-top: 10px; }
+.wb-links:empty { display: none; }
+.wb-links button { border: 0; background: transparent; padding: 4px 2px; font: inherit; font-size: 11.5px; font-weight: 700; color: rgb(100 116 139); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.wb-links button:hover { color: rgb(109 40 217); }
+.wb-links button:disabled { opacity: 0.5; cursor: default; }
+
+/* 주간 트레이닝 목표 판 — 시안 v44 의 .sub-h·.qn·.bar2·.ptask */
+.wb-subh { display: flex; align-items: baseline; gap: 6px; margin: 9px 0 6px; font-size: 11.5px; font-weight: 800; color: rgb(51 65 85); }
+.wb-subh:first-of-type { margin-top: 4px; }
+.wb-subh small { font-size: 10.5px; font-weight: 600; color: rgb(100 116 139); }
+.wb-qn { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.wb-qn li { display: grid; gap: 4px; }
+.wb-qn-top { display: flex; align-items: baseline; gap: 6px; font-size: 12.5px; color: rgb(15 23 42); }
+.wb-qn-top em { margin-left: auto; font-style: normal; font-size: 11.5px; font-weight: 800; font-variant-numeric: tabular-nums; color: rgb(51 65 85); }
+.wb-qn-top em small { font-weight: 600; color: rgb(100 116 139); }
+.wb-bar2 { height: 6px; border-radius: 3px; background: rgb(15 23 42 / 0.12); overflow: hidden; }
+.wb-bar2 b { display: block; height: 100%; border-radius: 3px; background: rgb(124 58 237); transition: width 0.4s cubic-bezier(0.2, 0.9, 0.25, 1); }
+.wb-qn li.wb-hit .wb-bar2 b { background: rgb(22 163 74); }
+.wb-qn li.wb-hit .wb-qn-top em { color: rgb(22 101 52); }
+.wb-ptask { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.wb-ptask li { display: flex; gap: 8px; font-size: 12.5px; line-height: 1.4; color: rgb(15 23 42); overflow-wrap: anywhere; }
+.wb-ptask-no { flex: none; width: 18px; height: 18px; display: grid; place-items: center; border-radius: 6px; background: rgb(124 58 237 / 0.1); color: rgb(109 40 217); font-size: 10.5px; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .wb-pop { background: rgb(255 255 255); } }
+@media (prefers-reduced-transparency: reduce) { .wb-pop { background: rgb(255 255 255); -webkit-backdrop-filter: none; backdrop-filter: none; } }
+@media (prefers-reduced-motion: reduce) { .wb-pop { animation: none; } .wb-act, .wb-bar2 b { transition: none; } .wb-act:active { transform: none; } }
+@media (forced-colors: active) { .wb-pop { -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; border: 1px solid CanvasText; } .wb-act[aria-pressed="true"] { outline: 2px solid Highlight; } }
+@media (max-width: 1023px) {
+  .wb-act { height: 44px; font-size: 14px; }
+  .wb-form .wb-in { height: 44px; font-size: 16px; }
+  .wb-form textarea.wb-in { height: 72px; }
+  .wb-save { height: 46px; font-size: 15px; }
+  .wb-links button { padding: 12px 6px; font-size: 13px; }
+}

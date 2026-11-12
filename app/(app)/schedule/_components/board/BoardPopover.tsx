@@ -5,8 +5,9 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
-export default function BoardPopover({ anchor, title, onClose, children, label, width = 320 }: {
-  anchor: DOMRect | null; title: ReactNode; label: string; onClose: () => void; children: ReactNode; width?: number;
+export default function BoardPopover({ anchor, title, onClose, children, label, width = 320, glass = false }: {
+  /** glass = 시안 v44 미팅 창 재질(.wb-pop). 폰 시트에서는 쓰지 않는다. */
+  anchor: DOMRect | null; title: ReactNode; label: string; onClose: () => void; children: ReactNode; width?: number; glass?: boolean;
 }) {
   const W = width;
   const ref = useRef<HTMLDivElement>(null);
@@ -53,7 +54,8 @@ export default function BoardPopover({ anchor, title, onClose, children, label, 
         style={sheet ? undefined : { left: pos?.left ?? -9999, top: pos?.top ?? 0, width: W }}
         className={sheet
           ? "fixed inset-x-0 bottom-0 z-[71] max-h-[86dvh] overflow-y-auto rounded-t-3xl border border-slate-200 bg-white px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2 shadow-2xl"
-          : "fixed z-[71] max-h-[calc(100dvh-16px)] overflow-y-auto rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-2xl backdrop-blur-xl"}
+          : glass ? "wb-pop fixed z-[71] max-h-[calc(100dvh-16px)] overflow-y-auto"
+            : "fixed z-[71] max-h-[calc(100dvh-16px)] overflow-y-auto rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-2xl backdrop-blur-xl"}
       >
         {sheet && <div aria-hidden="true" className="mx-auto mb-2 h-1 w-10 rounded-full bg-slate-300" />}
         <div className="flex items-start gap-2">

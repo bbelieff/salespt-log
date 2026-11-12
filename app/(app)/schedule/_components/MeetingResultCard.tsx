@@ -24,7 +24,7 @@ import CompanyInfoEditor from "@/components/CompanyInfoEditor";
 import CarryoverBadge from "@/components/CarryoverBadge";
 import { formatWon } from "@/lib/format/money";
 import { todayKST } from "@/util/week";
-import MapRouteButton from "./MapRouteButton"; import BoardCompanyRoute from "./board/BoardCompanyRoute";
+import MapRouteButton from "./MapRouteButton";
 
 type Action = "contract" | "done" | "reschedule" | "cancel" | null;
 
@@ -39,7 +39,7 @@ interface Props {
   onDelete?: () => void;
   hasFollowUp?: boolean;
   onReviveCase?: () => void;
-  initialOpen?: boolean; boardTools?: boolean; // 주간 보드 창: 처음부터 펼침 · 시안 v44 「업체정보 | 길찾기」 줄(입력칸은 「고치기」)
+  initialOpen?: boolean; // 주간 보드 창 안에서 띄울 때 — 처음부터 펼친 상태
 }
 
 export default function MeetingResultCard({
@@ -52,7 +52,7 @@ export default function MeetingResultCard({
   onAddMeeting,
   onDelete,
   hasFollowUp,
-  onReviveCase, initialOpen = false, boardTools = false,
+  onReviveCase, initialOpen = false,
 }: Props) {
   const state = meetingStateToCardState(meeting.상태);
   const [open, setOpen] = useState(initialOpen);
@@ -61,7 +61,7 @@ export default function MeetingResultCard({
   useEffect(()=>{if(focus&&new URLSearchParams(window.location.search).get("edit")==="schedule"){setOpen(true);setAction("reschedule");}},[focus]);
   const [addOpen, setAddOpen] = useState(false);
   const [ciDraft, setCiDraft] = useState<CompanyInfo | undefined>(meeting.업체정보);
-  const [ciTouched, setCiTouched] = useState(false); const [ciEdit, setCiEdit] = useState(false); // ciEdit = 보드 창에서 업체정보 입력칸을 연 상태
+  const [ciTouched, setCiTouched] = useState(false);
   const withCi = (p: Partial<Omit<Meeting, "id">>) => (ciTouched ? { ...p, 업체정보: ciDraft } : p);
 
   const { ref: rootRef, ring } = useFocusScroll<HTMLDivElement>(!!focus);
@@ -168,16 +168,15 @@ export default function MeetingResultCard({
 
       {open && (
         <div className="space-y-3 border-t border-slate-200/60 px-3 py-3">
-          {boardTools && <BoardCompanyRoute place={meeting.장소} info={ciDraft} editing={ciEdit} onEdit={() => setCiEdit((v) => !v)} />}
           <div className="flex items-center justify-between text-xs">
             <span className="text-slate-500">📅 예약일 <b className="text-slate-800">{meeting.예약일 || "—"}</b></span>
             <span className="text-slate-400">현재상태: <b className="text-slate-700">{CARD_LABEL[state]}</b></span>
           </div>
           {/* 🧭 길찾기(2026-11-07 belie) — 장소가 주소가 아니면 업체 소재지로. 검색어가 없으면 안 보임. */}
-          {!boardTools && <MapRouteButton place={meeting.장소} address={meeting.업체정보?.소재지} />}
+          <MapRouteButton place={meeting.장소} address={meeting.업체정보?.소재지} />
 
           <CarryoverBadge 구분={meeting.구분} variant="note" />
-          {(!boardTools || ciEdit) && <CompanyInfoEditor key={meeting.id} value={meeting.업체정보} busy={pending} txtCompanyName={meeting.업체명} identityKey={meeting.id} vaultTarget={{ meetingId: meeting.id }} hideSave onChange={(ci) => { setCiDraft(ci); setCiTouched(true); }} onSave={(ci) => onPatch({ 업체정보: ci })} />}
+          <CompanyInfoEditor key={meeting.id} value={meeting.업체정보} busy={pending} txtCompanyName={meeting.업체명} identityKey={meeting.id} vaultTarget={{ meetingId: meeting.id }} hideSave onChange={(ci) => { setCiDraft(ci); setCiTouched(true); }} onSave={(ci) => onPatch({ 업체정보: ci })} />
 
           {state !== "reserved" && (state === "contract" || meeting.미팅사유) && !editMode && (
             <div className="border-t border-slate-200/60 pt-2 text-xs">

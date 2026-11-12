@@ -36,6 +36,7 @@ import { useMeetingActions } from "./_lib/useMeetingActions";
 import { useBoardView } from "./_lib/useBoardView";
 import MeetingResultCard from "./_components/MeetingResultCard";
 import WeekBoard from "./_components/board/WeekBoard";
+import BoardMeetingPop from "./_components/board/BoardMeetingPop";
 import { useMobileExtras } from "./_components/board/useMobileExtras";
 
 const TODAY_ISO = fmtISO(new Date());
@@ -274,7 +275,7 @@ export default function SchedulePage() {
           onPrev={() => moveWeek(-1)} onNext={() => moveWeek(1)} onOrder={setOrder}
           onToday={() => guardedNav(() => setWeekStart(fmtISO(friOf(parseISO(TODAY_ISO)))))}
           renderMeeting={(m) => (
-            <MeetingResultCard key={m.id} initialOpen boardTools meeting={m} pending={pendingId === m.id}
+            <BoardMeetingPop key={m.id} meeting={m} pending={pendingId === m.id}
               onPatch={(partial, opts) => handlePatch(m.id, partial, opts)} onReschedule={(d, t, r) => handleReschedule(m, d, t, r)}
               onRevert={() => handleRevert(m.id)} onAddMeeting={(d, t) => handleAddMeeting(m, d, t)} onDelete={() => handleDelete(m)}
               hasFollowUp={followUpParentIds.has(m.id)} onReviveCase={() => handleReviveCase(m)} />

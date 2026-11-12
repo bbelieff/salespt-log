@@ -1,10 +1,9 @@
 "use client";
 /**
- * 주간 보드 왼쪽 판 — 이번 주 미팅 결과 · 주간 이슈 · 주간 트레이닝 목표(접힘이 기본). 각 판은 제목 줄을 눌러 접고 편다.
+ * 주간 보드 왼쪽 판 — 이번 주 미팅 결과 · 주간 이슈(트레이닝 목표 판은 BoardGoals.tsx). 각 판은 제목 줄을 눌러 접고 편다.
  */
 import { useState, type ReactNode } from "react";
 import type { Meeting, MeetingState, ScheduleIssue } from "@/types";
-import WeeklyGoalSummary from "@/components/weekly-goals/WeeklyGoalSummary";
 import { needsResult } from "../../_lib/board";
 import { dayLabelKO, parseISO } from "../../_lib/week";
 import { CH_DOT, ST_BAR } from "./board-style";
@@ -12,8 +11,9 @@ import { CH_DOT, ST_BAR } from "./board-style";
 const STATES: MeetingState[] = ["예약", "계약", "완료", "변경", "취소"];
 const ST_TEXT: Record<MeetingState, string> = { 예약: "text-amber-700", 계약: "text-green-700", 완료: "text-orange-700", 변경: "text-purple-700", 취소: "text-red-700" };
 
-export function Panel({ title, icon, summary, defaultOpen = true, tone = "", children }: {
-  title: string; icon: ReactNode; summary?: ReactNode; defaultOpen?: boolean; tone?: string; children: ReactNode;
+export function Panel({ title, icon, summary, closedSummary, defaultOpen = true, tone = "", children }: {
+  /** closedSummary = 접혀 있을 때만 보이는 요약(시안: 트레이닝 목표 「정량 2/5 · 과제 3」). */
+  title: string; icon: ReactNode; summary?: ReactNode; closedSummary?: ReactNode; defaultOpen?: boolean; tone?: string; children: ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
@@ -22,7 +22,7 @@ export function Panel({ title, icon, summary, defaultOpen = true, tone = "", chi
         <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
           className="flex w-full items-center gap-2 px-3.5 py-3 text-left text-sm font-extrabold text-slate-900 hover:bg-slate-900/[0.03]">
           <span className="text-violet-700 [&>svg]:h-4 [&>svg]:w-4">{icon}</span>{title}
-          <span className="ml-auto text-px-11 font-bold tabular-nums text-slate-500">{summary}</span>
+          <span className="ml-auto text-px-11 font-bold tabular-nums text-slate-500">{open ? summary : closedSummary ?? summary}</span>
           <svg aria-hidden="true" viewBox="0 0 24 24" className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${open ? "" : "-rotate-90"}`} fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round"><path d="M6 9l6 6 6-6" /></svg>
         </button>
       </h2>
@@ -104,14 +104,6 @@ export function IssuesPanel({ issues, ready, onChange }: { issues: ScheduleIssue
         <button type="button" disabled={!ready} aria-pressed={urgent} onClick={() => setUrgent((v) => !v)} title="급한 이슈로 추가"
           className={`shrink-0 rounded-md px-1.5 text-px-11 font-bold ${urgent ? "bg-red-50 text-red-700" : "border border-dashed border-red-200 text-slate-400"}`}>급함</button>
       </form>
-    </Panel>
-  );
-}
-
-export function GoalPanel({ courseWeekFri }: { courseWeekFri: string }) {
-  return (
-    <Panel title="주간 트레이닝 목표" defaultOpen={false} icon={<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="5" /><circle cx="12" cy="12" r="1.2" fill="currentColor" /></svg>}>
-      <WeeklyGoalSummary compact className="" date={courseWeekFri} metrics={["production", "inflow", "contacts", "meetings", "contracts"]} />
     </Panel>
   );
 }
