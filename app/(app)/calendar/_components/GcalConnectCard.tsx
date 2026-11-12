@@ -34,16 +34,20 @@ const GCAL_TOAST: Record<string, string> = {
 };
 const GCAL_TOAST_FALLBACK = "연결에 실패했어요. 다시 시도해도 안 되면 관리자에게 알려 주세요";
 
-export default function GcalConnectCard() {
+/** collapsed = PC 한 달 보드 왼쪽 열 — 접힌 한 줄로 시작하고, 연결이 안 됐거나 풀렸을 때만 펼친다. */
+export default function GcalConnectCard({ collapsed = false }: { collapsed?: boolean }) {
   const [state, setState] = useState<CardState | null>(null);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(!collapsed);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/gcal", { cache: "no-store" });
-    if (res.ok) setState(await res.json());
-  }, []);
+    if (!res.ok) return;
+    const data = (await res.json()) as CardState;
+    setState(data);
+    if (collapsed && (!data.connected || data.error)) setExpanded(true);
+  }, [collapsed]);
 
   useEffect(() => { void load(); }, [load]);
 

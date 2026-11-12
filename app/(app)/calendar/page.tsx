@@ -21,6 +21,8 @@ import GcalItemToggle from "./_components/GcalItemToggle";
 import GeneralEventModal from "./_components/GeneralEventModal";
 import TodoDayCard from "./_components/TodoDayCard";
 import TodoTypeIcon from "./_components/TodoTypeIcon";
+import MonthBoard from "./_components/board/MonthBoard";
+import { useBoardView } from "../schedule/_lib/useBoardView";
 import TopHeader from "@/components/TopHeader";
 import {
   CARD_ICON,
@@ -63,6 +65,13 @@ export default function CalendarPage() {
   const [yyyyMM, setYyyyMM] = useState<string>(TODAY_YYYYMM);
   const [selectedDate, setSelectedDate] = useState<string>(TODAY_ISO);
   const monthQuery = useMonthMeetings(yyyyMM);
+  // PC(1280px+)는 한 달 보드. 요일 순서는 일정·계약 주간 보드와 같은 설정.
+  const { order, setOrder, isBoard } = useBoardView(TODAY_ISO);
+  // 주간 보드의 「월」·알림 링크가 ?date= 로 넘어오면 그 달·그 날로 맞춘다. window 직접 파싱(Suspense 회피).
+  useEffect(() => {
+    const d = new URLSearchParams(window.location.search).get("date");
+    if (d && /^\d{4}-\d{2}-\d{2}$/.test(d)) { setSelectedDate(d); setYyyyMM(d.slice(0, 7)); }
+  }, []);
   const [eventModal, setEventModal] = useState(false); // 일반이벤트 생성 (§4-3)
   // gcal-2b: 일정별 담기/빼기 토글 — 연결 사용자만. 선택일 항목 상태 배치 조회.
   const [gcalConnected, setGcalConnected] = useState(false);
@@ -174,6 +183,21 @@ export default function CalendarPage() {
   };
 
   const [yearStr, monthStr] = yyyyMM.split("-");
+
+  if (isBoard) {
+    const pick = (date: string) => { setSelectedDate(date); setYyyyMM(date.slice(0, 7)); };
+    return (
+      <>
+        <TopHeader pageEmoji="📅" pageTitle="캘린더" />
+        <MonthBoard yyyyMM={yyyyMM} selected={selectedDate} todayISO={TODAY_ISO} order={order} onOrder={setOrder}
+          onMove={moveMonth} onThisMonth={() => guardedNav(() => pick(TODAY_ISO))}
+          onSelect={(date, out) => (out ? guardedNav(() => pick(date)) : setSelectedDate(date))}
+          onWeek={(date) => guardedNav(() => router.push(`/schedule?date=${date}`))}
+          gcal={{ connected: gcalConnected, states: gcalStates, onChange: onGcalChange, onToast: onGcalToast }} />
+        {gcalToast && <AppToast>{gcalToast}</AppToast>}
+      </>
+    );
+  }
 
   return (
     <>

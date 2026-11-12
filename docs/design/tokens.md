@@ -82,6 +82,8 @@
 | 일정·계약 | 3 | `bg-violet-600` | `text-violet-600` | #7c3aed |
 | 실무/수납 | 4 | `bg-rose-600` | `text-rose-600` | #e11d48 |
 
+캘린더 PC 한 달 보드의 화면 테마색은 **하늘**(2026-11-12 belie 「하늘색이 좋은 것 같다」, 주간 보드의 보라와 구분): 채움 `bg-sky-700`(#0369a1, 흰 글자 — 오늘·이번 주·저장 버튼), 옅은 바탕 `bg-sky-500/[0.05~0.10]`, 글자 `text-sky-700/800`, 선택 테두리 `rgb(2 132 199 / 0.62)`. 제목 칸·배경 빛 = `board/month-board.css` `.wb-sky`. 하단 탭 FAB 색(amber)과 미팅 상태색·채널색은 그대로다.
+
 - 비활성: 아이콘 칩 `bg-slate-200`(글리프 `text-slate-600`), STEP 배지 `bg-slate-100 text-slate-500`, 라벨 `text-slate-600`.
 - 활성: 칩·STEP 배지 = 탭 fill 채움(흰 글자)+`shadow`, 라벨 = 탭 text + `font-bold`.
 

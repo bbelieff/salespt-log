@@ -5,16 +5,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ScheduleNotePut, ScheduleNotesView } from "@/types";
 
 const ROOT = ["schedule-notes"] as const;
-export const scheduleNotesKey = (from: string, issuesWeek: string) => [...ROOT, from, issuesWeek] as const;
+/** days = from 부터 읽을 메모 날짜 수(기본 7, 한 달 보드는 35·42). 7일 때는 예전 키 그대로. */
+export const scheduleNotesKey = (from: string, issuesWeek: string, days = 7) => (days === 7 ? [...ROOT, from, issuesWeek] as const : [...ROOT, from, issuesWeek, days] as const);
 
-async function fetchNotes(from: string, issuesWeek: string): Promise<ScheduleNotesView> {
-  const res = await fetch(`/api/schedule-notes?from=${from}&issuesWeek=${issuesWeek}`);
+async function fetchNotes(from: string, issuesWeek: string, days: number): Promise<ScheduleNotesView> {
+  const res = await fetch(`/api/schedule-notes?from=${from}&issuesWeek=${issuesWeek}${days === 7 ? "" : `&days=${days}`}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return (await res.json()) as ScheduleNotesView;
 }
 
-export function useScheduleNotes(from: string, issuesWeek: string) {
-  return useQuery({ queryKey: scheduleNotesKey(from, issuesWeek), queryFn: () => fetchNotes(from, issuesWeek), retry: false, meta: { background: true } });
+export function useScheduleNotes(from: string, issuesWeek: string, days = 7) {
+  return useQuery({ queryKey: scheduleNotesKey(from, issuesWeek, days), queryFn: () => fetchNotes(from, issuesWeek, days), retry: false, meta: { background: true } });
 }
 
 /** 저장 — 보이는 캐시에 먼저 반영하고, 실패하면 다시 읽어 되돌린다. */
