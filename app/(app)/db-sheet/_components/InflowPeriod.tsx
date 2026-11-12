@@ -26,7 +26,7 @@ export function InflowPeriod({ period, from, to, onPeriod, onFrom, onTo }: Props
   }, [open, period, incomplete]);
   useEffect(() => {
     if (!open) return;
-    const outside = (event: PointerEvent) => { if (event.target instanceof Node && !group.current?.contains(event.target) && !panel.current?.contains(event.target)) setOpen(false); };
+    const outside = (event: PointerEvent) => { if (event.target instanceof Node && !group.current?.contains(event.target) && !panel.current?.contains(event.target) && !(event.target instanceof Element && event.target.closest(".date-pop"))) setOpen(false); };
     const escape = (event: KeyboardEvent) => { if (event.key === "Escape") { event.preventDefault(); setOpen(false); group.current?.querySelector<HTMLButtonElement>('[data-period="custom"]')?.focus(); } };
     document.addEventListener("pointerdown", outside); document.addEventListener("keydown", escape);
     return () => { document.removeEventListener("pointerdown", outside); document.removeEventListener("keydown", escape); };

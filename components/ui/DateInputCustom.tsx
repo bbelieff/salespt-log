@@ -27,6 +27,8 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { usePortalTarget } from "./top-layer";
 import { DAY_KO } from "@/util/week";
 
 
@@ -95,6 +97,23 @@ function formatDisplay(iso: string): string {
   return `${iso} (${dayKo})`;
 }
 
+/**
+ * 조상 중에 position:fixed 를 가두는 것(backdrop-filter·transform·filter·perspective·contain)이 있나.
+ * 있으면 달력의 fixed 좌표가 화면이 아니라 그 조상 기준이 되고, 조상이 스크롤 상자면 잘려서 안 보인다.
+ * 2026-11-12 사고: PC 주간 보드 미팅 창(backdrop-blur)에서 「새 날짜」를 눌러도 달력이 안 떴다(수강생 신고).
+ */
+export function trapsFixed(el: Element | null): boolean {
+  if (typeof window === "undefined") return false;
+  for (let n = el?.parentElement ?? null; n && n !== document.body; n = n.parentElement) {
+    if (n instanceof HTMLDialogElement) return false; // 최상단 층 창 — 그 안에서는 창 기준으로 정상 배치된다
+    const s = window.getComputedStyle(n) as CSSStyleDeclaration & { backdropFilter?: string; webkitBackdropFilter?: string };
+    const on = (v?: string) => !!v && v !== "none";
+    if (on(s.backdropFilter) || on(s.webkitBackdropFilter) || on(s.transform) || on(s.filter) || on(s.perspective)) return true;
+    if (/paint|layout|strict|content/.test(s.contain || "")) return true;
+  }
+  return false;
+}
+
 /* ────────────────────────────────── 컴포넌트 ────────────────────────────────── */
 
 interface Props {
@@ -158,6 +177,9 @@ export default function DateInputCustom({
   });
   // 부모가 clip 하는 경우가 있어 position:fixed 로 띄우고 좌표를 직접 잰다.
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  // 조상이 fixed 를 가두면(위 trapsFixed) 달력을 조상 밖(body·열린 창)으로 꺼내 그린다. 평소엔 제자리(초점·blur 계약 유지).
+  const [escape, setEscape] = useState(false);
+  const portalTarget = usePortalTarget();
 
   const place = useCallback(() => {
     const el = wrapRef.current;
@@ -176,6 +198,7 @@ export default function DateInputCustom({
   const openPicker = useCallback(() => {
     const p = parseIso(value) ?? parseIso(todayIso())!;
     setView([p[0], p[1]]);
+    setEscape(trapsFixed(wrapRef.current));
     place();
     setOpen(true);
   }, [value, place]);
@@ -286,7 +309,7 @@ export default function DateInputCustom({
         />
       )}
 
-      {open && pos && (
+      {open && pos && (() => { const popover = (
         <div
           ref={popRef}
           className="date-pop"
@@ -369,7 +392,7 @@ export default function DateInputCustom({
             </button>
           </div>
         </div>
-      )}
+      ); return escape && portalTarget ? createPortal(popover, portalTarget) : popover; })()}
     </>
   );
 }
