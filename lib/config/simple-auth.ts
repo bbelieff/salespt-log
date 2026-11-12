@@ -19,12 +19,21 @@ export type SimpleAuthDocDef = {
   certOnly?: boolean;
   /** 간편인증 탭에만 보인다. */
   simpleOnly?: boolean;
+  /** 서류 칩 옆 (i) 말풍선 — 마우스 올림·포커스·누르기로 연다(\n 줄바꿈). */
+  hint?: string;
+  /** 고르면 칩 아래에 남는 주의 한 줄 — 휴대폰은 마우스 올림이 없어서(belie 2026-11-12). */
+  caution?: string;
 };
 
 export const SIMPLE_AUTH_DOCS: readonly SimpleAuthDocDef[] = [
   { key: "biz", label: "사업자등록증명", short: "사업자등록", note: "필수", site: "홈택스", locked: true },
   { key: "vat", label: "부가세 과세표준증명", short: "부가세", note: "3년", site: "홈택스" },
-  { key: "fs", label: "표준재무제표증명", short: "재무제표", note: "3년", site: "홈택스" },
+  // 요청에 사업자번호가 없어 대표 명의 사업장이 2곳 이상이면 홈택스가 거절한다(2026-11-11 수강생 실패, FS_MULTI_BIZ).
+  {
+    key: "fs", label: "표준재무제표증명", short: "재무제표", note: "3년", site: "홈택스",
+    hint: "사업장이 여러 곳이면 안 들어와요\n· 사업장 1곳 — 최근 3년치를 받아요.\n· 2곳 이상 — 홈택스가 내주지 않아요. 대표님께 사업자별로 직접 발급해 보내 달라고 하세요.",
+    caution: "재무제표는 사업장이 1곳일 때만 3년치가 들어와요. 여러 곳이면 대표님께 사업자별로 직접 발급받아 달라고 하세요.",
+  },
   { key: "tax", label: "국세 완납증명", short: "국세", site: "홈택스" },
   { key: "income", label: "소득금액증명", short: "소득금액", note: "개인사업자", site: "홈택스", simpleOnly: true },
   // 폐업한 사업장만 나온다(계속사업장은 「신청가능한 계속사업장이 없습니다」 대신 이걸로). CODEF 간편인증 목록에 토스 없음.
