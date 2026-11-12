@@ -3,6 +3,8 @@
  * 3박스(수강생/아레나/테스트)로 묶어 표시(admin-cohort-category-boxes).
  * 데이터·정렬 불변, 표시만. 각 박스 안은 기존 CohortSection 그대로.
  * 비어있는 카테고리 박스는 렌더 안 함. AdminUserPicker 500줄 cap 분리용.
+ * 트레이너 화면(/trainer, TrainerCohortView)도 같은 상자를 쓴다 — `viewOnly` + `trainerEmailLc`
+ * 를 주고 onReorder·onAssignTrainers 는 주지 않는다(관리자 조작 없음, 2026-11-12).
  */
 "use client";
 
@@ -28,6 +30,7 @@ export default function CohortCategoryBoxes({
   activeTrainers,
   linkedBySheet,
   viewOnly,
+  trainerEmailLc,
   searching = false,
 }: {
   activeGroups: [string, Trainee[]][];
@@ -41,6 +44,8 @@ export default function CohortCategoryBoxes({
   activeTrainers?: Trainer[];
   linkedBySheet?: Map<string, string[]>;
   viewOnly?: boolean;
+  /** 트레이너 화면 — 본인 email(소문자). 카드의 [주간목표]·[웹앱] 노출 판단용(TraineeCard). */
+  trainerEmailLc?: string;
   /** 검색 중 — 박스를 펼쳐 결과를 바로 보여 준다. */
   searching?: boolean;
 }) {
@@ -70,6 +75,7 @@ export default function CohortCategoryBoxes({
                 activeTrainers={activeTrainers}
                 linkedBySheet={linkedBySheet}
                 viewOnly={viewOnly}
+                trainerEmailLc={trainerEmailLc}
                 searching={searching}
               />
             ) : (
@@ -89,6 +95,7 @@ export default function CohortCategoryBoxes({
                     activeTrainers={activeTrainers}
                     linkedBySheet={linkedBySheet}
                     viewOnly={viewOnly}
+                    trainerEmailLc={trainerEmailLc}
                     collapsed
                     forceOpen={searching}
                   />
