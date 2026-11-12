@@ -44,6 +44,14 @@
 }
 .wb-block:hover { transform: translateY(-1px); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.75), 0 10px 22px -10px rgb(30 27 75 / 0.16); z-index: 3; }
 
+/* 블록 안 글자 — 시안 .mt·.nm·.tm 값(2026-11-12 belie 「글씨가 아래로 처지고 선명하지 않다」).
+ * 버튼 기본값(세로 가운데)과 rem 여백(PC 루트 13.5px → 3.375px)을 쓰면 글자가 반 픽셀에 걸려 흐려지고 아래로 내려가 보인다.
+ * 위에서부터 정수 px 여백으로 놓고, 줄 높이도 글자 크기 기준으로 고정한다. */
+.wb-mt { display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; padding: 4px 7px 4px 8px; text-align: left; color: rgb(15 23 42); }
+.wb-mt-nm { display: flex; align-items: center; gap: 5px; min-width: 0; font-size: calc(12 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight: 800; line-height: 1.25; white-space: nowrap; }
+.wb-mt-ch { flex: none; width: 7px; height: 7px; border-radius: 2px; }
+.wb-mt-tm { display: block; font-size: calc(10.5 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight: 700; line-height: 1.35; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 /* 왼쪽 판 스크롤바: 화살표 없이, 열과 격자 사이 틈(12px)에만 — 판 너비를 줄이지 않아 제목 칸·아래 버튼과 폭이 같다.
  * 그림자 여백 4px(p-1) + 스크롤바 8px 만큼 오른쪽으로 내민다. */
 .wb-scroll { scrollbar-gutter: stable; margin: -4px -12px -4px -4px; }

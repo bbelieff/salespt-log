@@ -136,19 +136,19 @@ function DayColumn({ date, p, sep, today }: { date: string; index: number; p: Pr
           const m = item.m, s = ST_BLOCK[m.상태], need = needsResult(m, p.now), active = p.openKey === `m:${m.id}`;
           return (
             <button key={m.id} type="button" data-meet={m.id} style={style} onClick={(e) => p.onMeeting(m, rectOf(e))} aria-label={`${m.업체명} ${m.미팅시간} ${m.상태}${need ? ", 결과 입력 필요" : ""}`}
-              className={`wb-block absolute z-[2] overflow-hidden rounded-[9px] border px-1.5 py-1 text-left ${s.box} ${active ? "ring-2 ring-violet-500" : ""} ${p.openKey && !active ? "opacity-40 saturate-50" : ""}`}>
+              className={`wb-block wb-mt absolute z-[2] overflow-hidden rounded-[9px] border ${s.box} ${active ? "ring-2 ring-violet-500" : ""} ${p.openKey && !active ? "opacity-40 saturate-50" : ""}`}>
               {need && <i aria-hidden="true" className="absolute right-1 top-1 h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />}
-              <span className="flex min-w-0 items-center gap-1 text-px-12 font-bold text-slate-900"><i className={`h-1.5 w-1.5 shrink-0 rounded-full ${CH_DOT[m.channel]}`} /><span className={`truncate ${m.상태 === "취소" ? "line-through" : ""}`}>{m.업체명}</span></span>
-              <span className={`block truncate text-px-11 font-semibold tabular-nums ${s.text}`}>{m.상태 === "계약" && m.수임비 ? `${m.수임비.toLocaleString("ko-KR")}원` : `${m.미팅시간} · ${m.상태}`}</span>
+              <span className="wb-mt-nm"><i className={`wb-mt-ch ${CH_DOT[m.channel]}`} /><span className={`truncate ${m.상태 === "취소" ? "line-through" : ""}`}>{m.업체명}</span></span>
+              <span className={`wb-mt-tm ${m.상태 === "취소" ? "line-through" : ""} ${s.text}`}>{m.상태 === "계약" && m.수임비 ? `${m.수임비.toLocaleString("ko-KR")}원` : `${m.미팅시간} · ${m.상태}`}</span>
             </button>
           );
         }
         if (item.kind === "e") {
           const t = item.t;
           return (
-            <div key={t.id} style={style} title={t.제목} className={`wb-block absolute z-[2] overflow-hidden rounded-[9px] border border-l-[3px] border-teal-300 border-l-teal-600 bg-teal-50/70 px-1.5 py-1 ${p.openKey ? "opacity-40" : ""}`}>
-              <span className="block truncate text-px-12 font-bold text-slate-900">{t.제목}</span>
-              <span className="block text-px-11 tabular-nums text-teal-800">{t.예정시각}</span>
+            <div key={t.id} style={style} title={t.제목} className={`wb-block wb-mt absolute z-[2] overflow-hidden rounded-[9px] border border-l-[3px] border-teal-300 border-l-teal-600 bg-teal-50/70 ${p.openKey ? "opacity-40" : ""}`}>
+              <span className="wb-mt-nm"><span className="truncate">{t.제목}</span></span>
+              <span className="wb-mt-tm text-teal-800">{t.예정시각}</span>
             </div>
           );
         }
