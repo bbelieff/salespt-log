@@ -9,6 +9,8 @@ export const FirstStepsMemorySchema = z.object({
   never: z.array(z.enum(FIRST_STEP_TOUR_KEYS)).max(FIRST_STEP_TOUR_KEYS.length).default([]),
   finished: z.array(z.enum(FIRST_STEP_TOUR_KEYS)).max(FIRST_STEP_TOUR_KEYS.length).default([]),
   reviewSeen: z.boolean().default(false),
+  /** 대시보드 첫 판정 여부(그때 DB 가 있던 수강생은 hidden). 옛 저장값엔 없다. */
+  started: z.boolean().default(false),
 });
 
 /** PUT 본문·GET 응답 — memory + 끝낸 단계(done). */

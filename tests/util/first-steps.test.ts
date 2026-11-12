@@ -8,6 +8,8 @@ import {
   firstStepsStorageKey,
   parseFirstStepsMemory,
   shouldOfferTour,
+  hasDbInput,
+  startFirstSteps,
   type FirstStepCounts,
 } from "@/util/first-steps";
 
@@ -55,17 +57,41 @@ describe("memory", () => {
       never: ["meeting"],
       finished: ["db-add"],
       reviewSeen: true,
+      started: false,
     });
     expect(parseFirstStepsMemory("not json")).toEqual(EMPTY_FIRST_STEPS_MEMORY);
     expect(parseFirstStepsMemory(null)).toEqual(EMPTY_FIRST_STEPS_MEMORY);
   });
 
   it("offers a tour only on the trainee's own screen, before it is done or dismissed", () => {
-    const base = { tour: "meeting" as const, memory: EMPTY_FIRST_STEPS_MEMORY, isTraineeSelf: true, alreadyDone: false };
+    const started = { ...EMPTY_FIRST_STEPS_MEMORY, started: true };
+    const base = { tour: "meeting" as const, memory: started, isTraineeSelf: true, alreadyDone: false };
     expect(shouldOfferTour(base)).toBe(true);
     expect(shouldOfferTour({ ...base, isTraineeSelf: false })).toBe(false);
     expect(shouldOfferTour({ ...base, alreadyDone: true })).toBe(false);
-    expect(shouldOfferTour({ ...base, memory: { ...EMPTY_FIRST_STEPS_MEMORY, never: ["meeting"] } })).toBe(false);
-    expect(shouldOfferTour({ ...base, memory: { ...EMPTY_FIRST_STEPS_MEMORY, finished: ["meeting"] } })).toBe(false);
+    expect(shouldOfferTour({ ...base, memory: { ...started, never: ["meeting"] } })).toBe(false);
+    expect(shouldOfferTour({ ...base, memory: { ...started, finished: ["meeting"] } })).toBe(false);
+    // 대시보드에서 아직 시작 안 했거나, 이미 DB 가 있어 숨긴 수강생에게는 안 띄운다.
+    expect(shouldOfferTour({ ...base, memory: EMPTY_FIRST_STEPS_MEMORY })).toBe(false);
+    expect(shouldOfferTour({ ...base, memory: { ...started, hidden: true } })).toBe(false);
+  });
+});
+
+describe("이미 DB 입력이 있는 수강생은 첫걸음 없음(belie 2026-11-12)", () => {
+  it("DB 입력 = 생산 또는 유입이 있을 때", () => {
+    expect(hasDbInput({ 생산: 0, 유입: 0 })).toBe(false);
+    expect(hasDbInput({ 생산: 50, 유입: 0 })).toBe(true);
+    expect(hasDbInput({ 생산: 0, 유입: 3 })).toBe(true);
+  });
+
+  it("처음 판정 때 이미 DB 가 있으면 숨기고, 0건에서 시작했으면 나중에 DB 가 생겨도 계속 보인다", () => {
+    expect(startFirstSteps(EMPTY_FIRST_STEPS_MEMORY, true)).toMatchObject({ started: true, hidden: true });
+    const fresh = startFirstSteps(EMPTY_FIRST_STEPS_MEMORY, false);
+    expect(fresh).toMatchObject({ started: true, hidden: false });
+    expect(startFirstSteps(fresh, true)).toBe(fresh);
+  });
+
+  it("이미 안내를 쓰기 시작한 흔적이 있으면 DB 가 있어도 숨기지 않는다", () => {
+    expect(startFirstSteps({ ...EMPTY_FIRST_STEPS_MEMORY, finished: ["db-add"] }, true)).toMatchObject({ started: true, hidden: false });
   });
 });

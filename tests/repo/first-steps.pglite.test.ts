@@ -21,7 +21,7 @@ afterAll(async () => {
   await db?.close();
 });
 
-const memory = { hidden: false, never: [], finished: [], reviewSeen: false };
+const memory = { hidden: false, never: [], finished: [], reviewSeen: false, started: false };
 
 describe("첫걸음 계정별 기억", () => {
   it("저장한 적 없으면 null", async () => {

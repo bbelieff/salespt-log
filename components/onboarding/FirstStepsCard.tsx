@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useEffect, useMemo } from "react";
 import type { DashboardView } from "@/types";
 import { useContractPayments } from "@/query/contract-payment-hooks";
-import { FIRST_STEPS, firstStepDone, firstStepProgress, type FirstStepCounts } from "@/util/first-steps";
+import { FIRST_STEPS, firstStepDone, firstStepProgress, hasDbInput, startFirstSteps, type FirstStepCounts } from "@/util/first-steps";
 import { useFirstSteps } from "./useFirstSteps";
 
 type Slot = { 수납액?: number } | undefined;
@@ -42,6 +42,12 @@ export default function FirstStepsCard({ view }: { view: DashboardView }) {
   );
   const progress = firstStepProgress(done);
 
+  // 처음 판정: 이 순간 이미 DB 를 넣어 쓰던 수강생은 카드·안내를 모두 숨긴다(belie 2026-11-12 「이미 디비입력이 있는 수강생은 첫걸음 필요 없음」).
+  const dbInput = hasDbInput(countsOf(view));
+  useEffect(() => {
+    if (ready && isTraineeSelf && !memory.started) update((m) => startFirstSteps(m, dbInput));
+  }, [ready, isTraineeSelf, memory.started, dbInput, update]);
+
   // 끝낸 단계를 계정 기록에 올린다(관리 화면 「첫걸음 N/7」). 계약 행을 받은 뒤에만 — 수납 판정이 비지 않게.
   useEffect(() => {
     if (!isTraineeSelf || !contracts.data) return;
@@ -56,7 +62,7 @@ export default function FirstStepsCard({ view }: { view: DashboardView }) {
       update((m) => ({ ...m, finished: [...new Set([...m.finished, ...finished])] }));
   }, [done, isTraineeSelf, memory.finished, update]);
 
-  if (!ready || !isTraineeSelf || memory.hidden || !progress.next) return null;
+  if (!ready || !isTraineeSelf || !memory.started || memory.hidden || !progress.next) return null;
 
   return (
     <section aria-labelledby="first-steps-title" className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm" data-testid="first-steps-card">

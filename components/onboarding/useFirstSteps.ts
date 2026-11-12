@@ -69,6 +69,9 @@ export function useFirstSteps() {
 
   const serverState = server.data?.ok ? server.data.state : null;
   const memory: FirstStepsMemory = serverState ? (serverState.memory as FirstStepsMemory) : local;
+  // 같은 순간 두 번 고쳐도(예: 첫 판정 + 끝낸 안내 기록) 앞 수정을 덮지 않게 가장 최근 값을 따로 들고 있는다.
+  const latest = useRef(memory);
+  latest.current = memory;
   const done = useMemo(() => (serverState?.done ?? []) as FirstStepKey[], [serverState]);
 
   // 서버에 줄이 없는데 이 브라우저에 1차 기억이 있으면 한 번 올린다.
@@ -82,6 +85,7 @@ export function useFirstSteps() {
 
   const save = useCallback(
     (nextMemory: FirstStepsMemory, nextDone: FirstStepKey[]) => {
+      latest.current = nextMemory;
       setLocal(nextMemory);
       try {
         if (key) {
@@ -102,8 +106,8 @@ export function useFirstSteps() {
   );
 
   const update = useCallback(
-    (fn: (m: FirstStepsMemory) => FirstStepsMemory) => save(fn(memory), done),
-    [save, memory, done],
+    (fn: (m: FirstStepsMemory) => FirstStepsMemory) => save(fn(latest.current), done),
+    [save, done],
   );
 
   /** 대시보드 카드가 계산한 끝낸 단계를 올린다(관리 화면 진행 표시용). 바뀌었을 때만. */
@@ -113,9 +117,9 @@ export function useFirstSteps() {
       if (!view?.ok) return;
       const before = [...(view.state?.done ?? [])].sort().join();
       if (before === [...keys].sort().join()) return;
-      save(memory, keys);
+      save(latest.current, keys);
     },
-    [qc, save, memory],
+    [qc, save],
   );
 
   // 서버 기억을 받기 전에 제안 줄이 깜빡 떴다 사라지지 않게 기다린다.

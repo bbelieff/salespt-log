@@ -81,7 +81,7 @@ last_review: 2026-04-27
 
 ### 첫걸음(새 수강생 온보딩) 기억 — `lib/types/first-steps.ts` (2026-11-11)
 - `FIRST_STEP_KEYS`(purchase·lead·contact·meeting·result·payment·review) · `FIRST_STEP_TOUR_KEYS`(purchase·db-add·contact·meeting·result·payment).
-- `FirstStepsMemorySchema`: hidden · never[] · finished[] · reviewSeen. `FirstStepsState` = { memory, done[] }. `FirstStepsProgressMap` = { byEmail: 이메일→끝낸 단계 수, total }.
+- `FirstStepsMemorySchema`: hidden · never[] · finished[] · reviewSeen · started(대시보드 첫 판정 여부 — 그때 DB 가 있던 수강생은 hidden, 2026-11-12). `FirstStepsState` = { memory, done[] }. `FirstStepsProgressMap` = { byEmail: 이메일→끝낸 단계 수, total }.
 - 테이블 `first_steps`(email 소문자 PK, memory jsonb, done text[], updated_at) — 마이그레이션 `0021_first_steps.sql`(운영 적용은 별도 승인). 표가 없으면 화면은 브라우저 localStorage 로 동작.
 - API `/api/first-steps` GET·PUT(세션 이메일) · `/api/admin/first-steps` GET(관리 화면, 수강생별 진행 수). 판정 규칙은 `lib/util/first-steps.ts`(실제 기록 기준).
 
