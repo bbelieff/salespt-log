@@ -8,14 +8,14 @@ import { useState } from "react";
 import { MAP_APPS, detectPlatform, mapLaunch, mapQuery, type MapAppId } from "@/util/map-links";
 
 const KEY = "map-route-app";
-function readApp(): MapAppId | null {
+export function readApp(): MapAppId | null {
   try { const v = localStorage.getItem(KEY); return MAP_APPS.some(a => a.id === v) ? (v as MapAppId) : null; } catch { return null; }
 }
-function saveApp(v: MapAppId | null) {
+export function saveApp(v: MapAppId | null) {
   try { if (v) localStorage.setItem(KEY, v); else localStorage.removeItem(KEY); } catch { /* 못 저장하면 다음에 다시 고른다 */ }
 }
 
-function launch(app: MapAppId, query: string) {
+export function launch(app: MapAppId, query: string) {
   const { open, fallback } = mapLaunch(app, query, detectPlatform(navigator.userAgent), window.location.hostname);
   window.location.href = open;
   if (!fallback) return;
