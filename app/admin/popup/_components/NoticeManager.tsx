@@ -23,6 +23,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import type { Notice } from "@/types";
 import NoticePopup from "@/components/announcements/NoticePopup";
+import DateInputCustom from "@/components/ui/DateInputCustom";
 import {
   clearDraft,
   fingerprint,
@@ -353,20 +354,24 @@ export default function NoticeManager({
           </label>
           <label className="text-xs font-semibold text-slate-500">
             시작일 (빈값 = 즉시)
-            <input
-              type="date"
+            <DateInputCustom
+              clearable
               className={inputCls}
+              ariaLabel="시작일"
+              placeholder="즉시"
               value={form.start}
-              onChange={(e) => update({ start: e.target.value })}
+              onChange={(start) => update({ start })}
             />
           </label>
           <label className="text-xs font-semibold text-slate-500">
             종료일 (빈값 = 무제한)
-            <input
-              type="date"
+            <DateInputCustom
+              clearable
               className={inputCls}
+              ariaLabel="종료일"
+              placeholder="무제한"
               value={form.end}
-              onChange={(e) => update({ end: e.target.value })}
+              onChange={(end) => update({ end })}
             />
           </label>
         </div>

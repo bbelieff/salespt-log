@@ -17,6 +17,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import ExpenseLedgerTable from "@/components/dashboard/expense-ledger/ExpenseLedgerTable";
 import type { ExpenseLedgerView, RecognizedExpense } from "@/types/expense-ledger";
+import { pickDate } from "./pick-date";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 
@@ -219,7 +220,7 @@ describe("expense one-off inline edit", () => {
     expect(patchCount()).toBe(0);
     expect(document.body.textContent).toContain("금액을 1원 이상 숫자로 입력해 주세요.");
     changeInput(field(row, "금액(원)") as HTMLInputElement, "120000");
-    changeInput(field(row, "종료일") as HTMLInputElement, "2026-08-01");
+    pickDate(field(row, "종료일"), "2026-08-01"); // 달력(DateInputCustom)으로 고른다
     blurGroup(row);
     await advance(3000);
     expect(patchCount()).toBe(0);

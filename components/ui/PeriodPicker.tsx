@@ -6,6 +6,7 @@
  * (기간 계산 = `@/util/finance-period` periodBounds). 상태는 부모가 소유한다.
  */
 import { PERIOD_LABEL, type FinancePeriod } from "@/util/finance-period";
+import DateInputCustom from "./DateInputCustom";
 
 const ORDER: FinancePeriod[] = ["all", "month", "week", "custom"];
 
@@ -41,9 +42,9 @@ export default function PeriodPicker({ period, from, to, onPeriod, onFrom, onTo,
       ))}
       {period === "custom" && showRangeInputs && (
         <>
-          <input aria-label="조회 시작일" type="date" value={from} onChange={(e) => onFrom(e.target.value)} className="h-7 rounded-md border border-slate-200 px-1.5 text-xs" />
+          <DateInputCustom compact clearable ariaLabel="조회 시작일" value={from} onChange={onFrom} className="h-7 !w-32 shrink-0 !rounded-md !border-slate-200 !px-1.5" />
           <span className="text-slate-300">–</span>
-          <input aria-label="조회 종료일" type="date" value={to} onChange={(e) => onTo(e.target.value)} className="h-7 rounded-md border border-slate-200 px-1.5 text-xs" />
+          <DateInputCustom compact clearable ariaLabel="조회 종료일" value={to} onChange={onTo} className="h-7 !w-32 shrink-0 !rounded-md !border-slate-200 !px-1.5" />
           {incomplete && <span className="whitespace-nowrap text-xs text-amber-700">시작일과 종료일을 고르면 그 기간만 계산해요</span>}
         </>
       )}

@@ -25,21 +25,6 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
-/** 아직 네이티브 날짜 칸을 쓰는 곳 — 이번 범위 밖(DB 목록 담당 영역·셀 편집기·관리자·가계부). 새로 늘리지 않는다. */
-const NATIVE_DATE_ALLOWED = new Set([
-  "app/(app)/db-sheet/_components/AbsenceLog.tsx",
-  "app/(app)/db-sheet/_components/CallConfirmScreen.tsx",
-  "app/(app)/db-sheet/_components/Grid.tsx",
-  "app/(app)/db-sheet/_components/ImportDialog.tsx",
-  "app/(app)/db-sheet/_components/InflowPeriod.tsx",
-  "app/admin/popup/_components/NoticeManager.tsx",
-  "components/auth/CohortCreateModal.tsx",
-  "components/auth/SeasonStartInput.tsx",
-  "components/dashboard/expense-ledger/ExpenseEntryEditor.tsx",
-  "components/dashboard/expense-ledger/ExpenseLedgerDialog.tsx",
-  "components/ui/PeriodPicker.tsx",
-]);
-
 const SWAPPED = [
   "app/(app)/calendar/_components/GeneralEventModal.tsx",
   "app/(app)/payment/_components/LinkedFieldsEditor.tsx",
@@ -52,6 +37,18 @@ const SWAPPED = [
   "app/(app)/schedule/_components/AddMeetingForm.tsx",
   "app/(app)/schedule/_components/BasicEditDetails.tsx",
   "app/(app)/schedule/_components/RescheduleForm.tsx",
+  // 2차(2026-11-12) — 남은 11곳
+  "app/(app)/db-sheet/_components/AbsenceLog.tsx",
+  "app/(app)/db-sheet/_components/CallConfirmScreen.tsx",
+  "app/(app)/db-sheet/_components/Grid.tsx",
+  "app/(app)/db-sheet/_components/ImportDialog.tsx",
+  "app/(app)/db-sheet/_components/InflowPeriod.tsx",
+  "app/admin/popup/_components/NoticeManager.tsx",
+  "components/auth/CohortCreateModal.tsx",
+  "components/auth/SeasonStartInput.tsx",
+  "components/dashboard/expense-ledger/ExpenseEntryEditor.tsx",
+  "components/dashboard/expense-ledger/ExpenseLedgerDialog.tsx",
+  "components/ui/PeriodPicker.tsx",
 ];
 
 const code = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
@@ -63,10 +60,9 @@ describe("결정 5 — 네이티브 날짜 칸 교체", () => {
     expect(src).toMatch(/<DateInputCustom\b/);
   });
 
-  it("app·components 에 허용 목록 밖 type=date 가 새로 생기지 않는다", () => {
+  it("app·components 어디에도 네이티브 type=date 가 남지 않는다(예외 없음)", () => {
     const offenders = [...walk(resolve(root, "app")), ...walk(resolve(root, "components"))]
-      .filter((p) => /type=["']date["']/.test(code(read(p))))
-      .filter((p) => !NATIVE_DATE_ALLOWED.has(p));
+      .filter((p) => /type=\{?["']date["']\}?/.test(code(read(p))));
     expect(offenders).toEqual([]);
   });
 });
@@ -122,6 +118,71 @@ describe("DateInputCustom — 라벨·필수·비활성 계약", () => {
     });
     expect(document.querySelector(".date-pop")).not.toBeNull();
     expect(leaked).toBe(0);
+  });
+});
+
+describe("DateInputCustom — 2차 교체에 필요한 계약(autoFocus·defaultOpen·clearable·Esc·aria)", () => {
+  beforeEach(() => {
+    document.body.innerHTML = "";
+  });
+  const mount = (node: React.ReactElement) => {
+    const host = document.createElement("div");
+    document.body.append(host);
+    act(() => createRoot(host).render(node));
+    return host;
+  };
+
+  it("autoFocus·defaultOpen 이면 처음부터 겉 칸에 포커스, 달력이 열린다", () => {
+    mount(h(DateInputCustom, { value: "", onChange: () => {}, autoFocus: true, defaultOpen: true, ariaLabel: "다음 연락일" }));
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("다음 연락일");
+    expect(document.querySelector(".date-pop")).not.toBeNull();
+  });
+
+  it("clearable 이면 [지우기] 가 onChange('') 로 비운다 — 값이 없으면 비활성, 기본은 없음", () => {
+    const seen: string[] = [];
+    const host = mount(h(DateInputCustom, { value: "2026-11-12", onChange: (v: string) => seen.push(v), clearable: true }));
+    act(() => host.querySelector<HTMLButtonElement>(".custom-date-wrapper")!.click());
+    act(() => document.querySelector<HTMLButtonElement>(".date-pop-clear")!.click());
+    expect(seen).toEqual([""]);
+    expect(document.querySelector(".date-pop")).toBeNull();
+    document.body.innerHTML = "";
+    const plain = mount(h(DateInputCustom, { value: "2026-11-12", onChange: () => {} }));
+    act(() => plain.querySelector<HTMLButtonElement>(".custom-date-wrapper")!.click());
+    expect(document.querySelector(".date-pop-clear")).toBeNull();
+  });
+
+  it("열린 달력의 Esc 는 달력만 닫고 감싼 쪽(dialog cancel·부모 단축키)으로 새지 않는다", () => {
+    let parentEsc = 0;
+    const host = mount(h("div", { onKeyDown: (e: React.KeyboardEvent) => { if (e.key === "Escape") parentEsc += 1; } }, h(DateInputCustom, { value: "2026-11-12", onChange: () => {} })));
+    const btn = host.querySelector<HTMLButtonElement>(".custom-date-wrapper")!;
+    act(() => btn.click());
+    const ev = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+    act(() => {
+      btn.dispatchEvent(ev);
+    });
+    expect(document.querySelector(".date-pop")).toBeNull();
+    expect(ev.defaultPrevented).toBe(true); // <dialog> 의 cancel(닫힘) 기본 동작을 막는다
+    expect(parentEsc).toBe(0);
+    // 달력이 닫힌 뒤의 Esc 는 평소처럼 부모에게 간다.
+    act(() => {
+      btn.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    });
+    expect(parentEsc).toBe(1);
+  });
+
+  it("달력 안 mousedown 은 포커스를 겉 칸에서 빼앗지 않는다(감싼 blur 저장이 고르기 전에 안 돈다)", () => {
+    const host = mount(h(DateInputCustom, { value: "2026-11-12", onChange: () => {} }));
+    act(() => host.querySelector<HTMLButtonElement>(".custom-date-wrapper")!.click());
+    const down = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+    document.querySelector(".date-pop-day")!.dispatchEvent(down);
+    expect(down.defaultPrevented).toBe(true);
+  });
+
+  it("ariaInvalid·ariaDescribedBy 는 겉 칸에 그대로 붙는다", () => {
+    const host = mount(h(DateInputCustom, { value: "", onChange: () => {}, ariaInvalid: false, ariaDescribedBy: "hint" }));
+    const btn = host.querySelector(".custom-date-wrapper")!;
+    expect(btn.getAttribute("aria-invalid")).toBe("false");
+    expect(btn.getAttribute("aria-describedby")).toBe("hint");
   });
 });
 

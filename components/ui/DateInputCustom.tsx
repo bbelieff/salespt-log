@@ -115,6 +115,16 @@ interface Props {
   required?: boolean;
   /** FormData 로 읽는 폼용 이름(숨은 입력에 붙는다). */
   name?: string;
+  /** 겉 칸의 aria-invalid(폼 검사 표시). */
+  ariaInvalid?: boolean;
+  /** 겉 칸의 aria-describedby(미리보기·안내 문구 id). */
+  ariaDescribedBy?: string;
+  /** 달력 아래 [지우기] — 빈 값이 뜻이 있는 칸(선택 입력·「빈값 = 무제한」 등)용. onChange("") 로 알린다. */
+  clearable?: boolean;
+  /** 처음 그려질 때 겉 칸에 포커스. */
+  autoFocus?: boolean;
+  /** 처음 그려질 때 달력을 바로 연다(표 셀 편집기처럼 "누르면 곧 고르기" 인 곳). */
+  defaultOpen?: boolean;
 }
 
 export default function DateInputCustom({
@@ -130,6 +140,11 @@ export default function DateInputCustom({
   disabled = false,
   required = false,
   name,
+  ariaInvalid,
+  ariaDescribedBy,
+  clearable = false,
+  autoFocus = false,
+  defaultOpen = false,
 }: Props) {
   const autoId = useId();
   const id = idProp ?? autoId;
@@ -165,6 +180,13 @@ export default function DateInputCustom({
     setOpen(true);
   }, [value, place]);
 
+  // 첫 렌더 한 번만 — autoFocus·defaultOpen.
+  useEffect(() => {
+    if (autoFocus) wrapRef.current?.focus();
+    if (defaultOpen && !disabled) openPicker();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // 바깥 클릭 · Esc · 스크롤/리사이즈 대응
   useEffect(() => {
     if (!open) return;
@@ -173,16 +195,22 @@ export default function DateInputCustom({
       if (popRef.current?.contains(t) || wrapRef.current?.contains(t)) return;
       setOpen(false);
     };
+    // 열린 달력의 Esc 는 달력만 닫는다 — 감싼 <dialog>(cancel)·팝오버·표 편집기의 Esc 로 새지 않게
+    // document 캡처 단계에서 먼저 받아 막는다.
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      setOpen(false);
+      wrapRef.current?.focus();
     };
     document.addEventListener("pointerdown", onDown, true);
-    document.addEventListener("keydown", onKey);
+    document.addEventListener("keydown", onKey, true);
     window.addEventListener("resize", place);
     window.addEventListener("scroll", place, true);
     return () => {
       document.removeEventListener("pointerdown", onDown, true);
-      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("keydown", onKey, true);
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
     };
@@ -217,6 +245,8 @@ export default function DateInputCustom({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={ariaLabel}
+        aria-invalid={ariaInvalid}
+        aria-describedby={ariaDescribedBy}
         onClick={openPicker}
         onKeyDown={(e) => {
           // 감싼 줄·폼의 Enter=저장 / Esc=닫기 단축키가 달력 조작까지 먹지 않게 여기서 멈춘다.
@@ -266,6 +296,8 @@ export default function DateInputCustom({
           style={{ top: pos.top, left: pos.left }}
           // <label> 안에 놓이면 팝오버 빈 곳 클릭이 라벨을 거쳐 겉 칸을 다시 누른다(#654 류) — 막는다.
           onClick={(e) => e.preventDefault()}
+          // 달력 안을 눌러도 포커스는 겉 칸에 남긴다 — 감싼 쪽의 blur(=저장/닫기)가 고르기 전에 돌지 않게.
+          onMouseDown={(e) => e.preventDefault()}
         >
           <div className="date-pop-head">
             <button
@@ -327,6 +359,11 @@ export default function DateInputCustom({
             >
               오늘
             </button>
+            {clearable && (
+              <button type="button" className="date-pop-clear" onClick={() => pick("")} disabled={!value}>
+                지우기
+              </button>
+            )}
             <button type="button" className="date-pop-close" onClick={() => setOpen(false)}>
               닫기
             </button>

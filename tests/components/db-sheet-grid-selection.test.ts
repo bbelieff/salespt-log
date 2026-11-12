@@ -39,7 +39,7 @@ it('keeps 컨택결과 and 다음 연락일 editable inline',()=>{
  act(()=>{select.value='단순거절';select.dispatchEvent(new Event('change',{bubbles:true}));});
  expect(onChange).toHaveBeenCalledWith('a','result','단순거절');
  act(()=>byLabel('예시상사 다음 연락일 바로 고치기').click());
- expect(host.querySelector<HTMLInputElement>('input.sheet-editor')!.type).toBe('date');
+ expect(host.querySelector('button.sheet-editor.custom-date-wrapper')).not.toBeNull();expect(document.querySelector('.date-pop')).not.toBeNull();
  expect(onDetail).not.toHaveBeenCalled();
 });
 it('shows the recall guidance under the row after an inline 재통화 with no 다음 연락일',()=>{
@@ -51,9 +51,37 @@ it('shows the recall guidance under the row after an inline 재통화 with no �
  const notice=host.querySelector('.sheet-recall-row')!;
  expect(notice.textContent).toContain('재통화 일정을 정해 주세요');
  act(()=>[...notice.querySelectorAll('button')].find(x=>x.textContent?.includes('다음 연락일 정하기'))!.click());
- expect(host.querySelector<HTMLInputElement>('input.sheet-editor')!.type).toBe('date');
+ expect(host.querySelector('button.sheet-editor.custom-date-wrapper')).not.toBeNull();expect(document.querySelector('.date-pop')).not.toBeNull();
  view({rows:[{...a,result:'재통화',next:'2026-10-27'},b]});
  expect(host.querySelector('.sheet-recall-row')).toBeNull();
+});
+it('다음 연락일 셀 편집기 = 요일 달력 — 고르면 바로 저장, 지우기는 빈 값 저장, Esc 는 달력 먼저·다음 Esc 는 취소',()=>{
+ const {onChange}=renderGrid();
+ act(()=>byLabel('예시상사 다음 연락일 바로 고치기').click());
+ const day=document.querySelector<HTMLButtonElement>('.date-pop-day:not(.is-out)')!;
+ act(()=>day.click());
+ expect(onChange).toHaveBeenCalledWith('a','next',day.getAttribute('aria-label'));
+ expect(host.querySelector('.sheet-editor')).toBeNull();
+ act(()=>byLabel('예시상사 다음 연락일 바로 고치기').click());
+ const clear=document.querySelector<HTMLButtonElement>('.date-pop-clear')!;
+ expect(clear.disabled).toBe(true); // 값이 없으면 지울 것도 없다
+ act(()=>document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
+ expect(document.querySelector('.date-pop')).toBeNull();
+ expect(host.querySelector('.sheet-editor')).not.toBeNull(); // 첫 Esc 는 달력만 닫는다
+ act(()=>host.querySelector('.sheet-editor')!.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})));
+ expect(host.querySelector('.sheet-editor')).toBeNull();
+ expect(onChange).toHaveBeenCalledTimes(1);
+});
+it('다음 연락일 편집기 — 값이 있으면 지우기로 빈 값 저장, Enter 는 현재 값 저장(달력을 다시 열지 않음)',()=>{
+ const {onChange}=renderGrid({rows:[{...a,next:'2026-10-27'},b]});
+ act(()=>byLabel('예시상사 다음 연락일 바로 고치기').click());
+ expect(host.querySelector('.sheet-editor')!.textContent).toContain('2026-10-27 (화)');
+ act(()=>document.querySelector<HTMLButtonElement>('.date-pop-clear')!.click());
+ expect(onChange).toHaveBeenLastCalledWith('a','next','');
+ act(()=>byLabel('예시상사 다음 연락일 바로 고치기').click());
+ act(()=>host.querySelector('.sheet-editor')!.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true})));
+ expect(onChange).toHaveBeenLastCalledWith('a','next','2026-10-27');
+ expect(host.querySelector('.sheet-editor')).toBeNull();
 });
 it('does not show the guidance for rows that were already 재통화 when loaded',()=>{
  renderGrid({rows:[{...a,result:'재통화'},b]});

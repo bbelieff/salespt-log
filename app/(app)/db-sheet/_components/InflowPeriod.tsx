@@ -2,6 +2,7 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import PeriodPicker from "@/components/ui/PeriodPicker";
+import DateInputCustom from "@/components/ui/DateInputCustom";
 import { inflowPeriodBounds, type InflowPeriodId } from "./inflow-period";
 
 type Props = { period: InflowPeriodId; from: string; to: string; onPeriod: (value: InflowPeriodId) => void; onFrom: (value: string) => void; onTo: (value: string) => void };
@@ -36,7 +37,7 @@ export function InflowPeriod({ period, from, to, onPeriod, onFrom, onTo }: Props
     <PeriodPicker period={period} from={from} to={to} onPeriod={value => { onPeriod(value); setOpen(value === "custom" && (period !== "custom" || !open)); }} onFrom={onFrom} onTo={onTo} labels={{ custom: "범위 지정" }} showRangeInputs={false}/>
     {open && period === "custom" && createPortal(<div ref={panel} id={id} className="sheet-filter-popover sheet-range-popover" role="dialog" aria-label="유입일 범위" style={position}>
       <header><strong>유입일 범위</strong><button type="button" aria-label="범위 입력 닫기" onClick={() => { setOpen(false); group.current?.querySelector<HTMLButtonElement>('[data-period="custom"]')?.focus(); }}>✕</button></header>
-      <div className="sheet-range-inputs"><label>시작일<input autoFocus className="sheet-input" aria-label="조회 시작일" type="date" value={from} onInput={event => onFrom(event.currentTarget.value)} onChange={event => onFrom(event.target.value)}/></label><span aria-hidden>–</span><label>종료일<input className="sheet-input" aria-label="조회 종료일" type="date" value={to} onInput={event => onTo(event.currentTarget.value)} onChange={event => onTo(event.target.value)}/></label></div>
+      <div className="sheet-range-inputs"><label>시작일<DateInputCustom clearable autoFocus compact className="sheet-input" ariaLabel="조회 시작일" value={from} onChange={onFrom}/></label><span aria-hidden>–</span><label>종료일<DateInputCustom clearable compact className="sheet-input" ariaLabel="조회 종료일" value={to} onChange={onTo}/></label></div>
       {incomplete && <p role="status">시작일·종료일을 확인해 주세요. 현재 전체 기간을 표시합니다.</p>}
     </div>, document.body)}
   </div>;

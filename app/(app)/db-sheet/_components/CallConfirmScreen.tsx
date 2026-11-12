@@ -10,6 +10,7 @@ import { confirmDiscard } from "@/components/ui/confirm-discard";
 import { useMemo, useRef, useState } from "react";
 import { useTopLayerDialog } from "@/components/ui/top-layer";
 import { ChevronLeft } from "lucide-react";
+import DateInputCustom from "@/components/ui/DateInputCustom";
 import type { CallRecord } from "@/types/call";
 import { DB_SHEET_RESULTS, dbSheetResultLabel, type DbSheetLead } from "@/types/db-sheet";
 import { buildCiRows, confirmBlocker, confirmBody, missingQuestions, noteDraft, timeOptions, type CiRow, type ConfirmState, type DbSheetResult } from "./call-confirm-model";
@@ -90,7 +91,7 @@ export function CallConfirmScreen({ lead, call, onSaved, onClose }: { lead: DbSh
             {x.evidence.meeting && <p className="dbs-cc-said">“{x.evidence.meeting}”</p>}
             {x.meeting && !x.meeting.meetingDate && <p className="dbs-call-note is-warn">들은 날짜가 달력과 안 맞아요. 날짜를 골라 주세요.</p>}
             <div className="dbs-cc-two">
-              <label className="dbs-cc-field">날짜<input type="date" className="sheet-input num" value={s.meeting.meetingDate} onChange={e => setMeeting({ meetingDate: e.target.value })} /></label>
+              <label className="dbs-cc-field">날짜<DateInputCustom compact className="sheet-input num" value={s.meeting.meetingDate} onChange={meetingDate => setMeeting({ meetingDate })} /></label>
               <label className="dbs-cc-field">시간<select className="sheet-input num" value={s.meeting.time} onChange={e => setMeeting({ time: e.target.value })}><option value="">고르기</option>{timeOptions(s.meeting.time).map(t => <option key={t}>{t}</option>)}</select></label>
             </div>
             <label className="dbs-cc-field">장소<input className="sheet-input" value={s.meeting.place} onChange={e => setMeeting({ place: e.target.value })} /></label>

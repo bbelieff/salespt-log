@@ -12,6 +12,7 @@
 import { useState } from "react";
 import { formatWon, parseMoney } from "@/lib/format/money";
 import MoneyInput from "@/components/ui/MoneyInput";
+import DateInputCustom from "@/components/ui/DateInputCustom";
 import type { RecognizedExpense } from "@/types/expense-ledger";
 import AutosaveStatus from "@/components/autosave/AutosaveStatus";
 import { isPartiallyRecognized, useExpenseEntryAutosave } from "./useExpenseEntryAutosave";
@@ -103,22 +104,24 @@ export default function ExpenseEntryEditor({ entry, categories, view, month }: P
         </label>
         <label className="block">
           <span className="mb-0.5 block text-xs text-slate-500">시작일</span>
-          <input
-            type="date"
-            aria-label="시작일"
+          <DateInputCustom
+            compact
+            clearable
+            ariaLabel="시작일"
             className={inputCls}
             value={draft.periodStart}
-            onChange={(e) => stage({ periodStart: e.target.value })}
+            onChange={(periodStart) => stage({ periodStart })}
           />
         </label>
         <label className="block">
           <span className="mb-0.5 block text-xs text-slate-500">종료일</span>
-          <input
-            type="date"
-            aria-label="종료일"
+          <DateInputCustom
+            compact
+            clearable
+            ariaLabel="종료일"
             className={inputCls}
             value={draft.periodEnd}
-            onChange={(e) => stage({ periodEnd: e.target.value })}
+            onChange={(periodEnd) => stage({ periodEnd })}
           />
         </label>
       </div>

@@ -193,8 +193,9 @@ describe("one-off expense autosave", () => {
     expect(createExpenseMutation.mutateAsync).not.toHaveBeenCalled();
     expect(document.querySelector<HTMLInputElement>('input[placeholder="예: 사무실 임차료"]')?.value).toBe("미완성");
 
-    const dates = document.querySelectorAll<HTMLInputElement>('input[type="date"]');
-    changeInput(dates[0]!, "");
+    // 발생일을 달력의 [지우기]로 비운다(요일 달력 DateInputCustom).
+    act(() => document.querySelector<HTMLButtonElement>(".custom-date-wrapper")!.click());
+    act(() => document.querySelector<HTMLButtonElement>(".date-pop-clear")!.click());
     expect(document.body.textContent).toContain("발생일을 올바르게 입력해 주세요.");
     await advance(2000);
     blurRecordForm();
