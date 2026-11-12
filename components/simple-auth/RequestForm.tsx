@@ -6,7 +6,8 @@
  * 인증서 파일·비밀번호·주민번호 뒷자리는 서버가 요청에만 쓰고 저장하지 않는다(비밀번호는 서버에서 CODEF 공개키로 암호화).
  */
 import { useId, useState } from "react";
-import { FileKey2, Send } from "lucide-react";
+import { AlertTriangle, FileKey2, Info, Send } from "lucide-react";
+import HintTooltip from "@/components/ui/HintTooltip";
 import PhoneInput from "@/components/ui/PhoneInput";
 import AuthMethodIcon from "./AuthMethodIcon";
 import AddressSearch from "./AddressSearch";
@@ -183,15 +184,22 @@ export default function RequestForm({ onSend, busy }: { onSend: (body: Record<st
                   {list.map(d => {
                     const on = docs.includes(d.key);
                     return (
-                      <li key={d.key}>
+                      <li key={d.key} className="inline-flex items-center">
                         <label className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm transition-colors has-[:focus-visible]:outline has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-blue-500 ${on ? "border-blue-500 bg-blue-50 font-semibold text-blue-700" : "border-slate-300 text-slate-700"} ${d.locked ? "cursor-default" : "cursor-pointer hover:bg-slate-50"}`}>
                           <input type="checkbox" checked={on} disabled={d.locked} onChange={() => toggleDoc(d.key)} className="sr-only" />
                           {d.label}{d.note && <span className={on ? "font-normal text-blue-600" : "text-slate-500"}>{d.note}</span>}
                         </label>
+                        {d.hint && <HintTooltip label={d.label} text={d.hint} trigger={<span className="inline-flex h-8 w-7 items-center justify-center text-amber-600 hover:text-amber-700"><Info className="h-4 w-4" aria-hidden /></span>} />}
                       </li>
                     );
                   })}
                 </ul>
+                {list.filter(d => d.caution && docs.includes(d.key)).map(d => (
+                  <p key={d.key} className="mt-2 flex items-start gap-1.5 rounded-lg bg-amber-50 px-2.5 py-2 text-sm leading-snug text-amber-800">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+                    <span>{d.caution}</span>
+                  </p>
+                ))}
               </div>
             );
           })}
