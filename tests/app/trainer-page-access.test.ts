@@ -38,6 +38,7 @@ vi.mock("@/repo/users", () => ({
 }));
 vi.mock("@/service/trainer-student-access", () => ({
   trainerActiveGrant: async () => ({ read: false, write: false }),
+  trainerReadGrants: async () => ({ active: false, arena: false, archived: false }),
 }));
 vi.mock("@/repo/cohorts", () => ({
   getArchivedCohortSet: m.archivedCohorts,
