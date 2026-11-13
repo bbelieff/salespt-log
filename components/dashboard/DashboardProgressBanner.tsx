@@ -11,6 +11,8 @@ import CountUp from "@/components/motion/CountUp";
  *   1. 매출/비용 박스 분리 — 본문 상단 "재무 한 세트"로 이동
  *   2. D-day 통합 — TopHeader 슬림바에서 빠지고 우측에 배치
  *   3. (화면 마감 v2, 2026-11-10) 페이지 맨 위 .surface-hero 띠 안에 재무 3종과 함께 놓인다 — 자체 바탕·선 없음.
+ *   4. (A안, 2026-11-13) PC 는 같은 줄 오른쪽에 기간 칩이 붙는다 — 자리를 내려고 PC 에서만 「M/D 시작」·「종강총회」 글을 숨긴다
+ *      (D-day 배지는 그대로). 폰 세 줄은 그대로.
  *
  * SSOT: docs/design/components.md §9-1
  */
@@ -58,7 +60,7 @@ export default function DashboardProgressBanner({
 
   return (
     <div>
-      {/* PC(1024+)는 한 줄: 날짜·주차 | 시작 | 진행바 | 진행률 | 종강총회 | D-day (belie 2026-10-24 「풀사이즈면 한 줄」).
+      {/* PC(1024+)는 한 줄: 날짜·주차 | 진행바 | 진행률 | D-day (belie 2026-10-24 「풀사이즈면 한 줄」, A안 2026-11-13 시작·종강총회 글은 PC 에서 뺌 — 오른쪽에 기간 칩).
           좁은 화면은 지금처럼 세 줄 — 묶음 div 를 pc:contents 로 풀고 order 로 순서만 바꾼다. */}
       <div className="px-3 pb-2.5 pt-3 pc:flex pc:items-center pc:gap-4 pc:py-2.5">
         {/* 상단 라벨 — 현재 날짜·주차 + D-day (요청 [6] — D-day 진행표 우측) */}
@@ -113,14 +115,14 @@ export default function DashboardProgressBanner({
 
         {/* 시작 · 진행률 · 종강총회 — 3-라벨 justify-between */}
         <div className="flex items-center justify-between text-xs pc:contents">
-          <span className="text-slate-400 pc:order-2 pc:shrink-0 pc:whitespace-nowrap pc:text-xs">{startDate} 시작</span>
+          <span className="text-slate-400 pc:hidden">{startDate} 시작</span>
           <span
             className="font-bold text-red-700 pc:order-4 pc:shrink-0 pc:whitespace-nowrap pc:text-xs"
             style={{ fontVariantNumeric: "tabular-nums" }}
           >
             <CountUp value={Math.round(pct)} play={play} format={(n) => `${n}%`} /> 진행
           </span>
-          <span className="text-slate-500 pc:order-5 pc:shrink-0 pc:whitespace-nowrap pc:text-xs">🎓 {graduationDate} 종강총회</span>
+          <span className="text-slate-500 pc:hidden">🎓 {graduationDate} 종강총회</span>
         </div>
         </>}
       </div>
