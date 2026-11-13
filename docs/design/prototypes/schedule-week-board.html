@@ -544,6 +544,24 @@ button,input,textarea{font:inherit;color:inherit}
 .qbox .addr{display:flex;align-items:flex-start;gap:6px;font-size:12.5px;font-weight:700;color:var(--fg);line-height:1.4}
 .qbox .addr svg{flex:none;width:14px;height:14px;margin-top:2px;color:var(--res-fg)}
 .qbox .addr small{display:block;font-size:11px;font-weight:600;color:var(--fg3)}
+/* v45 — 길찾기 주소: 믿을 만한 순서로 고르고, 애매하면 직접 적기 */
+.srcs{display:grid;gap:4px;margin-top:8px}
+.srcs button{display:grid;grid-template-columns:14px auto 1fr;align-items:center;gap:7px;min-height:32px;padding:5px 8px;border-radius:9px;border:1px solid transparent;background:transparent;font:inherit;font-size:12px;color:var(--fg2);text-align:left;cursor:pointer}
+.srcs button:hover{background:color-mix(in srgb,var(--fg) 5%,transparent)}
+.srcs button::before{content:"";width:12px;height:12px;border-radius:50%;border:1.5px solid var(--fg4);box-sizing:border-box}
+.srcs button[aria-checked="true"]{border-color:var(--line2);background:var(--input);color:var(--fg)}
+.srcs button[aria-checked="true"]::before{border:4px solid var(--accent)}
+.srcs b{font-weight:800;white-space:nowrap}
+.srcs span{min-width:0;overflow-wrap:anywhere;color:var(--fg3)}
+.srcs .best{justify-self:start;font-style:normal;font-size:10px;font-weight:800;color:var(--con-fg);background:color-mix(in srgb,var(--con) 14%,transparent);border-radius:5px;padding:0 5px;margin-left:5px}
+.vague{display:flex;gap:5px;margin-top:6px;font-size:11px;font-weight:700;color:var(--res-fg)}
+.addrin{display:grid;grid-template-columns:1fr auto;gap:6px;margin-top:8px}
+.addrin input{min-width:0;height:36px;box-sizing:border-box;border-radius:10px;border:1px solid var(--line2);background:var(--input);padding:0 10px;font:inherit;font-size:13px;color:var(--fg);outline:none}
+.addrin input:focus{border-color:var(--accent)}
+.addrin button{height:36px;padding:0 12px;border:0;border-radius:10px;background:var(--accent);color:var(--on-accent);font:inherit;font-size:12px;font-weight:800;cursor:pointer;white-space:nowrap}
+.addrlink{display:block;margin:6px 0 0;border:0;background:transparent;padding:4px 2px;font:inherit;font-size:11.5px;font-weight:700;color:var(--fg3);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.addrlink:hover{color:var(--accent-fg)}
+@media (max-width:860px){.srcs button{min-height:44px;font-size:13.5px}.addrin input,.addrin button{height:46px;font-size:15px}.addrlink{padding:10px 2px;font-size:13px}}
 .maps{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:9px}
 .maps button{height:36px;border-radius:10px;border:1px solid var(--line2);background:var(--input);font:inherit;font-size:12px;font-weight:800;color:var(--fg);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap;min-width:0}
 .maps button i{width:8px;height:8px;border-radius:50%;flex:none}
@@ -668,7 +686,22 @@ let order='fri', base=weekStartOf(NOW,'fri'), openId=null, openAct=null, editId=
 let qOpen=null, mapApp=null, mapKeep=true;
 const CI={'한빛정밀':{rep:'김○○',biz:'정밀부품 제조',addr:'경기 안산시 단원구 성곡동',emp:'23명',sales:'41억'},'다온푸드':{rep:'이○○',biz:'식품 제조',addr:'경기 시흥시 정왕동',emp:'12명',sales:'18억'},'테화산주조':{rep:'박○○',biz:'주류 제조(탁주)',addr:'경기 김포시 양촌읍 양곡리',emp:'9명',sales:'7억'},'성원산업':{rep:'최○○',biz:'금속 가공',addr:'경기 부천시 오정구 삼정동',emp:'31명',sales:'52억'}};
 const MAPS=[['kakao','카카오맵','#eab308'],['naver','네이버지도','#16a34a'],['tmap','티맵','#2563eb']];
-const routeQ=m=>{if(/화상|온라인|전화/.test(m.place||''))return'';const c=CI[m.name];return c?.addr||m.place||''};
+/* v45 — 주소 후보: 믿을 만한 순서(직접 적은 주소 > 사업자등록증 > 업체정보 소재지 > 미팅 장소). 모두 합성 예시값 */
+const REG={'테화산주조':'경기 김포시 양촌읍 황금로 117','한빛정밀':'경기 안산시 단원구 성곡로 176'};
+let addrPick={}, addrOwn={}, addrEdit=false;
+const isAddr=x=>/(시|군|구)\s.*(로|길|동|읍|면|리)/.test(x||'');
+const vague=x=>!/\d/.test(x||'');
+function routeC(m){
+  if(/화상|온라인|전화/.test(m.place||''))return[];
+  const c=CI[m.name],out=[];
+  if(addrOwn[m.id])out.push({k:'own',src:'직접 적은 주소',v:addrOwn[m.id]});
+  if(REG[m.name])out.push({k:'reg',src:'사업자등록증',v:REG[m.name]});
+  if(c?.addr)out.push({k:'ci',src:'업체정보 소재지',v:c.addr});
+  if(m.place&&(isAddr(m.place)||!out.length))out.push({k:'place',src:'미팅 장소',v:m.place});
+  return out;
+}
+const routeSel=m=>{const cs=routeC(m);return cs.find(x=>x.k===addrPick[m.id])||cs[0]||null};
+const routeQ=m=>routeSel(m)?.v||'';
 const layers={meet:true,todo:true,event:true};
 
 const evOn=(e,k)=>e.t?e.d===k:(e.d<=k&&k<=(e.ed||e.d));
@@ -860,7 +893,12 @@ function quick(m){
       :`<div class="qbox" id="qInfo"><p class="mempty" style="margin:2px 0 6px">아직 적은 업체정보가 없어요</p><div class="qfoot"><span>대표·업종·소재지·매출</span><button type="button" data-qedit>업체정보 적기</button></div></div>`;
   }
   if(qOpen==='route'&&q){
-    box=`<div class="qbox" id="qRoute"><div class="addr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.1 7-12a7 7 0 10-14 0c0 5.9 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg><span>${esc(q)}<small>${c?'업체 소재지로 찾아요 (장소 「'+esc(m.place)+'」는 주소가 아님)':'미팅 장소로 찾아요'}</small></span></div>
+    const cs=routeC(m),sel=routeSel(m);
+    const why=sel.k==='own'?'직접 적은 주소로 찾아요':sel.k==='reg'?'사업자등록증 주소로 찾아요 — 등록된 정보 중 가장 정확해요':sel.k==='ci'?`업체정보 소재지로 찾아요${m.place&&!isAddr(m.place)?' (장소 「'+esc(m.place)+'」는 주소가 아님)':''}`:'미팅 장소로 찾아요';
+    box=`<div class="qbox" id="qRoute"><div class="addr"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s7-6.1 7-12a7 7 0 10-14 0c0 5.9 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg><span>${esc(q)}<small>${why}</small></span></div>
+      ${vague(q)?'<p class="vague" style="margin-bottom:0">번지·도로명 번호가 없어 근처까지만 안내될 수 있어요 — 아래에 정확한 주소를 적어 주세요</p>':''}
+      ${cs.length>1?`<div class="srcs" role="radiogroup" aria-label="찾을 주소">${cs.map((x,i)=>`<button type="button" role="radio" data-src="${x.k}" aria-checked="${x.k===sel.k}"><b>${x.src}${i===0&&x.k!=='own'?'<i class="best">추천</i>':''}</b><span>${esc(x.v)}</span></button>`).join('')}</div>`:''}
+      ${addrEdit||vague(q)?`<div class="addrin"><input id="addrIn" aria-label="주소 직접 적기" placeholder="예: 경기 김포시 양촌읍 황금로 117" value="${esc(addrOwn[m.id]||'')}"><button type="button" data-addr-ok>이 주소로</button></div>`:`<button type="button" class="addrlink" data-addr-edit>${addrOwn[m.id]?'적은 주소 고치기':'주소 직접 적기'}</button>`}
       <div class="maps" role="group" aria-label="지도 앱">${MAPS.map(([k,l,col])=>`<button type="button" data-map="${k}" aria-pressed="${mapApp===k}"><i style="background:${col}"></i>${l}</button>`).join('')}</div>
       <label class="keep"><input type="checkbox" id="mapKeep" ${mapKeep?'checked':''}>다음에도 이 앱으로 바로 열기</label></div>`;
   }
@@ -1006,6 +1044,9 @@ document.addEventListener('click',e=>{
   const qb=e.target.closest('[data-q]');if(qb){const k=qb.dataset.q;const m=meetings.find(x=>x.id===openId);
     if(k==='route'&&mapApp&&qOpen!=='route'){toast(`${MAPS.find(x=>x[0]===mapApp)[1]}에서 「${routeQ(m)}」 길찾기를 바로 열어요 (목업)`);qOpen='route';openPop(true);return}
     qOpen=qOpen===k?null:k;openPop(true);return}
+  const sr=e.target.closest('[data-src]');if(sr){addrPick[openId]=sr.dataset.src;openPop(true);return}
+  if(e.target.closest('[data-addr-edit]')){addrEdit=true;openPop(true);document.getElementById('addrIn')?.focus();return}
+  if(e.target.closest('[data-addr-ok]')){const v=document.getElementById('addrIn')?.value.trim();if(!v){toast('주소를 적어 주세요');return}addrOwn[openId]=v;addrPick[openId]='own';addrEdit=false;openPop(true);toast('이 미팅은 적은 주소로 찾아요 — 업체정보 소재지에도 저장할지 물어봐요 (목업)');return}
   const mp=e.target.closest('[data-map]');if(mp){const m=meetings.find(x=>x.id===openId);mapKeep=document.getElementById('mapKeep')?.checked??true;mapApp=mapKeep?mp.dataset.map:null;qOpen=null;openPop(true);toast(`${MAPS.find(x=>x[0]===mp.dataset.map)[1]}에서 「${routeQ(m)}」 길찾기를 열어요 (목업)`);return}
   if(e.target.closest('[data-qedit]')){const m=meetings.find(x=>x.id===openId);toast(`${m.name} 업체정보 입력칸이 열려요 — 운영 미팅 카드와 같은 입력 (목업)`);return}
   const mt=e.target.closest('[data-meet]');if(mt){openId=openId===mt.dataset.meet?null:mt.dataset.meet;openAct=null;editId=null;qOpen=null;render();return}

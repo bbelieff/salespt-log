@@ -96,6 +96,24 @@
 .wb-qaddr { display: flex; align-items: flex-start; gap: 6px; font-size: 12.5px; font-weight: 700; line-height: 1.4; color: rgb(15 23 42); overflow-wrap: anywhere; }
 .wb-qaddr svg { flex: none; width: 14px; height: 14px; margin-top: 2px; color: rgb(146 64 14); }
 .wb-qaddr small { display: block; font-size: 11px; font-weight: 600; color: rgb(100 116 139); }
+/* 길찾기 주소 고르기·직접 적기 — 시안 v45 의 .srcs·.vague·.addrin·.addrlink */
+.wb-qsrcs { display: grid; gap: 4px; margin-top: 8px; }
+.wb-qsrcs button { display: grid; grid-template-columns: 14px auto 1fr; align-items: center; gap: 7px; min-height: 32px; padding: 5px 8px; border-radius: 9px; border: 1px solid transparent; background: transparent; font: inherit; font-size: 12px; color: rgb(51 65 85); text-align: left; cursor: pointer; }
+.wb-qsrcs button:hover { background: rgb(15 23 42 / 0.05); }
+.wb-qsrcs button::before { content: ""; width: 12px; height: 12px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid rgb(100 116 139); }
+.wb-qsrcs button[aria-checked="true"] { border-color: rgb(15 23 42 / 0.12); background: rgb(255 255 255 / 0.7); color: rgb(15 23 42); }
+.wb-qsrcs button[aria-checked="true"]::before { border: 4px solid rgb(124 58 237); }
+.wb-qsrcs b { font-weight: 800; white-space: nowrap; }
+.wb-qsrcs span { min-width: 0; overflow-wrap: anywhere; color: rgb(100 116 139); }
+.wb-qbest { margin-left: 5px; padding: 0 5px; border-radius: 5px; font-style: normal; font-size: 10px; font-weight: 800; color: rgb(22 101 52); background: rgb(22 163 74 / 0.14); }
+.wb-qvague { margin: 6px 0 0; font-size: 11px; font-weight: 700; color: rgb(146 64 14); }
+.wb-qaddrin { display: grid; grid-template-columns: 1fr auto; gap: 6px; margin-top: 8px; }
+.wb-qaddrin input { min-width: 0; height: 36px; box-sizing: border-box; border-radius: 10px; border: 1px solid rgb(15 23 42 / 0.12); background: rgb(255 255 255 / 0.7); padding: 0 10px; font: inherit; font-size: 13px; color: rgb(15 23 42); outline: none; }
+.wb-qaddrin input:focus { border-color: rgb(124 58 237); }
+.wb-qaddrin button { height: 36px; padding: 0 12px; border: 0; border-radius: 10px; background: rgb(124 58 237); color: rgb(255 255 255); font: inherit; font-size: 12px; font-weight: 800; white-space: nowrap; cursor: pointer; }
+.wb-qaddrlinks { display: flex; flex-wrap: wrap; gap: 0 12px; margin-top: 6px; }
+.wb-qaddrlinks button { border: 0; background: transparent; padding: 4px 2px; font: inherit; font-size: 11.5px; font-weight: 700; color: rgb(100 116 139); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.wb-qaddrlinks button:hover { color: rgb(109 40 217); }
 .wb-qmaps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 9px; }
 .wb-qmaps button { display: flex; align-items: center; justify-content: center; gap: 5px; height: 36px; min-width: 0; border-radius: 10px; border: 1px solid rgb(15 23 42 / 0.12); background: rgb(255 255 255 / 0.7); font: inherit; font-size: 12px; font-weight: 800; color: rgb(15 23 42); cursor: pointer; white-space: nowrap; }
 .wb-qmaps button i { flex: none; width: 8px; height: 8px; border-radius: 50%; }
@@ -106,6 +124,9 @@
 @media (max-width: 1023px) {
   .wb-qa button { height: 44px; font-size: 14px; }
   .wb-qmaps button { height: 46px; font-size: 14px; }
+  .wb-qsrcs button { min-height: 44px; font-size: 13.5px; }
+  .wb-qaddrin input, .wb-qaddrin button { height: 46px; font-size: 16px; }
+  .wb-qaddrlinks button { padding: 10px 2px; font-size: 13px; }
 }
 
 /* 미팅 창 — 시안 v44 의 .pop·.pmeta·.acts·.form·.save·.dsum 값을 그대로 옮긴다(2026-11-12 belie 「라이브가 목업대로 안 된다」). */

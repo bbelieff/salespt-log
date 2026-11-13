@@ -51,9 +51,33 @@ export function mapLaunch(app: MapAppId, query: string, platform: Platform, appN
 }
 
 /** 지도에 넣을 검색어 — 장소 칸이 비었거나 「사무실」처럼 주소가 아니면 업체 주소를 쓴다. */
+const looksAddress = (s: string) => /(시|군|구|동|읍|면|로|길)\s*\d|[가-힣]+(로|길)\b|\d+-\d+/.test(s);
+
+/** 번지·도로명 번호가 없어 근처까지만 안내되는 주소(예: 「경기 부천시 오정구 삼정동」). */
+export const isVagueAddress = (s: string): boolean => !/\d/.test(s);
+
+export type RouteSource = "own" | "place" | "company";
+export interface RouteCandidate { source: RouteSource; address: string }
+
+/**
+ * 길찾기에 쓸 주소 후보를 믿을 만한 순서로(2026-11-12 belie 「가장 신빙성있는걸 가져오기」). 첫 후보가 기본값.
+ * 직접 적은 주소 → 미팅 장소(번호까지 있는 주소일 때 — 그 미팅이 실제로 열리는 곳) → 업체정보 소재지
+ * (사업자등록증 판독·간편인증이 채우는 칸) → 미팅 장소(그 밖). 주소 모양이 아닌 장소는 다른 후보가 없을 때만.
+ */
+export function routeCandidates(place: string | undefined, address: string | undefined, own?: string): RouteCandidate[] {
+  const p = (place ?? "").trim(), a = (address ?? "").trim(), o = (own ?? "").trim();
+  const out: RouteCandidate[] = [];
+  const add = (source: RouteSource, v: string) => { if (v && !out.some((c) => c.address === v)) out.push({ source, address: v }); };
+  add("own", o);
+  const placeIsAddress = !!p && looksAddress(p);
+  if (placeIsAddress && !isVagueAddress(p)) add("place", p);
+  add("company", a);
+  if (placeIsAddress || out.length === 0) add("place", p);
+  return out;
+}
+
 export function mapQuery(place: string | undefined, address: string | undefined): string {
   const p = (place ?? "").trim(), a = (address ?? "").trim();
-  const looksAddress = (s: string) => /(시|군|구|동|읍|면|로|길)\s*\d|[가-힣]+(로|길)\b|\d+-\d+/.test(s);
   if (p && looksAddress(p)) return p;
   if (a) return a;
   return p;
