@@ -6,7 +6,7 @@
  * 계약일은 따로 받지 않는다 — 앱 규칙이 「계약일 = 미팅 날짜」(lib/service/contract-meeting-link.ts).
  */
 import { useId, useState } from "react";
-import type { CompanyInfo, Meeting } from "@/types";
+import { CompanyInfo, type Meeting } from "@/types";
 import { useDirtyEntry } from "@/components/DirtyGuard";
 import CompanyInfoEditor from "@/components/CompanyInfoEditor";
 import CarryoverBadge from "@/components/CarryoverBadge";
@@ -79,6 +79,12 @@ export default function BoardMeetingPop({ meeting: m, pending, onPatch, onResche
     setCiTouched(false);
   }, settle, `${m.업체명} · ${st}`);
 
+  // 길찾기에서 직접 적은 주소를 업체정보 소재지로 저장 — 열려 있던 입력칸은 닫아 옛 값으로 덮어쓰지 않게 한다.
+  const saveAddress = (addr: string) => {
+    const next = CompanyInfo.parse({ ...ciDraft, 소재지: addr });
+    setCiDraft(next); setCiEdit(false); setCiTouched(false);
+    onPatch({ 업체정보: next });
+  };
   const pick = (a: Act) => { setWarn(""); setReason(""); setAct((cur) => (cur === a ? null : a)); };
   const choosing = st === "예약" || (st === "계약" && edit);
   const tone = st === "계약" ? "con" : st === "완료" ? "done" : st === "변경" ? "chg" : "can";
@@ -93,7 +99,7 @@ export default function BoardMeetingPop({ meeting: m, pending, onPatch, onResche
   return (
     <div>
       <CarryoverBadge 구분={m.구분} variant="note" />
-      <BoardCompanyRoute place={m.장소} info={ciDraft} editing={ciEdit} onEdit={() => setCiEdit((v) => !v)} />
+      <BoardCompanyRoute meetingId={m.id} place={m.장소} info={ciDraft} editing={ciEdit} onEdit={() => setCiEdit((v) => !v)} onSaveAddress={saveAddress} />
       {ciEdit && (
         <div className="mt-2">
           <CompanyInfoEditor key={m.id} value={m.업체정보} busy={pending} txtCompanyName={m.업체명} identityKey={m.id} vaultTarget={{ meetingId: m.id }} hideSave

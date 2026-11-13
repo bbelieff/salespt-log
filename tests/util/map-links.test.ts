@@ -43,3 +43,23 @@ describe("map-links", () => {
     expect(mapQuery("", "")).toBe("");
   });
 });
+
+describe("routeCandidates — 길찾기 주소 후보 순서", () => {
+  it("직접 적은 주소가 맨 앞", async () => {
+    const { routeCandidates } = await import("@/util/map-links");
+    expect(routeCandidates("김포 양촌", "경기 김포시 양촌읍 양곡리", "경기 김포시 양촌읍 황금로 117").map((c) => c.source)).toEqual(["own", "company"]);
+  });
+  it("번호까지 있는 미팅 장소는 소재지보다 앞, 주소 모양이 아닌 장소는 소재지가 있으면 뺀다", async () => {
+    const { routeCandidates } = await import("@/util/map-links");
+    expect(routeCandidates("서울 강남구 테헤란로 123", "경기 안산시 단원구 성곡로 176").map((c) => c.source)).toEqual(["place", "company"]);
+    expect(routeCandidates("안산", "경기 안산시 단원구 성곡로 176").map((c) => c.source)).toEqual(["company"]);
+  });
+  it("소재지가 없으면 장소라도 쓰고, 둘 다 없으면 빈 목록 · 같은 주소는 한 번만", async () => {
+    const { routeCandidates, isVagueAddress } = await import("@/util/map-links");
+    expect(routeCandidates("김포 양촌", "")).toEqual([{ source: "place", address: "김포 양촌" }]);
+    expect(routeCandidates("", undefined)).toEqual([]);
+    expect(routeCandidates("성곡로 176", "성곡로 176")).toHaveLength(1);
+    expect(isVagueAddress("경기 부천시 오정구 삼정동")).toBe(true);
+    expect(isVagueAddress("경기 김포시 양촌읍 황금로 117")).toBe(false);
+  });
+});
