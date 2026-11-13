@@ -58,3 +58,9 @@
 
 /* 판 제목 통일(2026-11-11): 진행건 막대(WorkStatusBar, 실무/수납과 공용)의 「전체 진행건」도 대시보드에서는 다른 판 제목과 같은 14px. */
 .dashboard-work-status-slot [data-work-status-bar] > div > strong:first-child { font-size: calc(14 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight: 800; color: var(--ui-text); }
+
+/* A안(belie 2026-11-13): PC 는 「전체 진행건」이 맨 위 띠의 네 번째 칸(FinanceWorkColumn)으로 올라가 아래 판을 숨긴다.
+   폰(1024 미만)은 지금 자리·순서 그대로. */
+@media (min-width: 1024px) {
+  .dashboard-work-status-slot { display: none; }
+}

@@ -1133,9 +1133,10 @@ PageBanner: 페이지 이모지·제목 | 선택적 부제
 app/(app)/dashboard/page.tsx
   TopHeader                                  # 공용 반응형 헤더 + 페이지 배너
   sticky top-app-content z-30 래퍼
-    PageContainer > DashboardProgressBanner  # 날짜·주차·진행도·D-day (PC 1024+ 한 줄: 날짜·주차|시작|진행바|진행률|종강총회|D-day, 좁으면 세 줄)
+    PageContainer > .surface-hero 띠
+      [DashboardProgressBanner | PeriodPicker]  # A안(2026-11-13) PC 한 줄: 날짜·주차|진행바|진행률|D-day ‥ 오른쪽 기간 칩. 폰: 진행 세 줄 / 선 / 칩
+      DashboardFinance > FinanceSummaryBoxes    # 폰 3열 숫자만 · PC 4열(매출·비용·영업이익·진행건 FinanceWorkColumn) + 칸 아래 미리보기 두 줄
   PageContainer > 일반 본문
-    FinanceSummaryBoxes # 매출·비용·영업이익 3열 1행 한 세트 (상세 패널 내장)
     [생산성 + DashboardWorkStatus] + WeeklyGoalSummary  # ≥1600px 윗줄 반반
     MobileChartCarousel > FunnelChart / WeeklyDualChart / ChannelPerformance  # ≥1600px 아랫줄 3등분 (1024~1599: 2열) · <1024px 옆으로 넘기기
 ```
@@ -1144,7 +1145,7 @@ app/(app)/dashboard/page.tsx
 
 **높이 정렬(2026-09-28)**: PC 그리드는 `pc:items-stretch`로 같은 줄 카드의 바닥선을 맞춘다. 늘어난 높이는 카드 안에서 흡수한다 — 퍼널·주차 추이 차트는 `.chart-fill`(셸 스코프, 차트 영역 최소 14rem)로 카드의 남은 높이를 채운다 — svg를 흐름 밖에 두어 차트 비율이 줄 높이를 키우지 않는다(범례는 바닥), 주간목표 PT과제는 날짜 아래 한 줄로 표시하고 상단 두 열은 콘텐츠 높이에 맞춘다. 고정 px 높이는 쓰지 않는다. 줄 높이는 가장 긴 카드의 내용이 정하고, 차트는 viewBox + meet 스케일·무클리핑·중앙 정렬로 그 높이에 맞춘다. 모바일에서는 카드가 콘텐츠 높이에 맞춰 한 열로 이어진다.
 
-`DashboardWorkStatus`는 실무/수납과 같은 계약·Todo 조회와 상태 분류를 사용한다. 해지·숨김 계약을 동일하게 제외하고(이월은 포함, ADR-0034), 마지막 카드의 상태 목록에서 업체를 선택하면 `/payment?row=<행>&slot=<회차>`로 이동해 그 진행을 연다. 대시보드 팝오버는 마지막 카드 위쪽으로 펼친다.
+`DashboardWorkStatus`는 실무/수납과 같은 계약·Todo 조회와 상태 분류를 사용한다(자료 훅 `useDashboardWorkItems(todayISO)` — 맨 위 띠의 「진행건」 칸과 같이 쓴다, 같은 조회 키라 새 요청 없음). **A안(2026-11-13)부터 PC(1024~)에서는 이 판(`.dashboard-work-status-slot`)을 숨기고 띠의 네 번째 칸이 대신한다** — 폰은 지금 자리·순서 그대로. 해지·숨김 계약을 동일하게 제외하고(이월은 포함, ADR-0034), 마지막 카드의 상태 목록에서 업체를 선택하면 `/payment?row=<행>&slot=<회차>`로 이동해 그 진행을 연다. 대시보드 팝오버는 마지막 카드 위쪽으로 펼친다.
 
 ### 9-1. DashboardProgressBanner
 
@@ -1172,10 +1173,11 @@ app/(app)/dashboard/page.tsx
 - 상단 왼쪽: `현재 M/D (요일)`과 `N주차 진행중` 또는 `🎓 수료 후 N주`. 오른쪽: `DDayBadge`. 계산은 `app/(app)/dashboard/_lib/course-banner.ts`.
 - 진행바: `h-1.5 bg-slate-100 rounded-full`, 파란 그라데이션과 amber SVG 끝점. 위아래 `mb-3`, 컨테이너 `pt-3 pb-2.5`.
 - 하단: 시작일 / 진행률 / `🎓 종강총회일` 세 라벨. 날짜와 기간은 저장된 시작·종강일을 사용하며 고정 57일을 적용하지 않는다.
+- A안(belie 2026-11-13): 페이지가 같은 띠 윗줄 오른쪽에 기간 칩(`PeriodPicker`, `data-testid="dashboard-period-chips"`)을 붙인다 — 배너 래퍼 `pc:flex-1 pc:basis-96`, 칩 `pc:ml-auto`(좁으면 칩이 아랫줄로 넘어감). 자리를 내려고 **PC 에서만** 「M/D 시작」·「🎓 종강총회」 글을 숨긴다(`pc:hidden`) — D-day 배지·진행률은 그대로. 폰은 세 줄 그대로, 칩은 선(`border-t`) 아래.
 - 수료 뒤(`graduated`)에는 진행바와 하단 세 라벨을 그리지 않는다 — `현재 M/D (요일) · 🎓 수료 후 N주 · DDayBadge` 한 줄만(belie 2026-11-08).
 - 진행 배너의 코스 주차(시작일 앵커)와 주간목표의 금~목 주차는 서로 다른 계약이다.
 
-### 9-2. FinanceSummaryBoxes (매출·비용·영업이익 3열 1행)
+### 9-2. FinanceSummaryBoxes (매출·비용·영업이익 3열 1행 · PC 4열 A안)
 
 **용도**: 매출/비용/영업이익 `grid grid-cols-3 gap-2` 한 행. 일반 본문 상단의 한 section을
 구성하며 스크롤 고정하지 않는다. 2026-09-16 개편으로 기존 매출/비용 2열 + 별도
@@ -1190,7 +1192,13 @@ app/(app)/dashboard/page.tsx
 - `onOpenExpenseLedger: () => void`: 비용 상세 안 추가 비용 행 클릭 시 같은 페이지의 경비장부 모달 열기.
 - `periodLabel?` (기본 「전체」), `contractCount?`: 영업이익 상세의 기간·계약건수 부연.
 - `profitDetail?: ReactNode` (2026-10-12 #7): 영업이익 상세에서 기존 줄 아래에 붙는 내용(`ChannelProfitBreakdown`). 없으면 기존 그대로.
+- `work?: WorkColumnData` (A안 2026-11-13, `components/dashboard/FinanceWorkColumn.tsx`): `{ items: WorkStatusItem[] | null; failed; onRetry; onNavigate }`.
+  주면 네 번째 칸 「진행건」(`#fin-col-work`, `hidden pc:flex` — PC 만)을 더하고 행이 `grid-cols-3 pc:grid-cols-4`(네 칸 균등, 칸 차지 없음)가 된다.
+  칸 = 「진행건」 + `N건`(불러오는 중·실패 「—」) + 상태별 건수 두 줄(0건 상태 빼고 막대 순서, 예 「진행 9 · 수납완료 1」/「장기관리 6」, `workPreviewLines`).
+  누르면 다른 칸처럼 그 칸 아래 `#fin-detail-panel` 에 실무/수납과 같은 `WorkStatusBar`(막대·범례·상태별 목록 팝업, `popoverAlign="end"` — 칸 오른쪽 끝에 맞춰 띠 밖으로 넘치지 않음)가 열린다. 실패면 「다시 시도」.
 - 2026-10-08 시즌/이월/전체 분리 props·표 삭제 — 기간 선택이 대신한다(ADR-0034).
+
+**DashboardFinance** A안(2026-11-13): props `periodState?`(`useFinancePeriodState()` 반환값)를 주면 칩을 그리지 않고 그 기간으로 계산한다 — 대시보드 페이지가 칩을 진행 줄 오른쪽에 그린다(칩 한 벌). 없으면(시험·합성 화면) 지금처럼 자기 칩. `work?` 는 `FinanceSummaryBoxes` 로 그대로 넘긴다(불러오는 중 뼈대도 PC 네 칸).
 
 **DashboardFinance** (`components/dashboard/DashboardFinance.tsx`, 2026-10-08): 대시보드 매출·비용·영업이익
 묶음(slate-100 section) 제목 줄에 `PeriodPicker`(기본 「전체」= 기록된 기간 전체)를 두고, `useContractPayments`·
@@ -1226,7 +1234,8 @@ app/(app)/dashboard/page.tsx
 
 **디자인 / 동작**:
 
-- 세 컬럼은 320px 모바일에서도 데스크탑에서도 항상 한 행에 나란히 선다(동일 폭 3등분).
+- 세 컬럼은 320px 모바일에서도 데스크탑에서도 항상 한 행에 나란히 선다(동일 폭 3등분). A안(2026-11-13): 대시보드 PC 는 「진행건」을 더해 네 칸 균등.
+- 미리보기(A안, PC 만 `hidden pc:flex`, `data-finance-preview`): 큰 숫자 아래 늘 보이는 두 줄 — 매출 = 수임비·수수료, 비용 = DB 비용·추가 비용(못 읽으면 「확인 못 했어요」, 0원으로 대신하지 않음), 영업이익 = 이익률(소수 1자리)·계약 N건. `formatWon` 전체 금액, 잘라 숨기지 않고 좁으면 줄을 바꾼다. 버튼 안이라 눌러도 같은 칸 상세가 열린다. 폰은 지금처럼 숫자만.
   흰색 배경, slate-200 테두리, rounded-xl, ＋/−/＝ 배지를 공유하고, 라벨은 금액 위에 둔다.
 - 금액 색: 매출 slate-900, 비용 red-600, 영업이익은 0 이상 파랑 `#1d4ed8`·음수 보라 `#7c3aed`
   (음수도 비용 빨강과 혼동되지 않게 한다). 영업이익 = 매출 − 비용, 기존 음수 부호 유지.
@@ -1240,7 +1249,7 @@ app/(app)/dashboard/page.tsx
   320px에서도 한 줄(`white-space:nowrap`, `overflow-wrap:normal`)에 전부 보인다.
   `overflow-wrap:anywhere`·줄바꿈·`overflow:hidden`·ellipsis·truncate·축약은 금지.
   좁은 폭 대응은 cqi 유동 글꼴·최소 패딩 + 실측 맞춤(ResizeObserver·font-load ready·
-  값 변경에 재측정, 3열 동일 최대 폰트·넘칠 때만 축소)이며 DOM 텍스트는 항상 전체
+  값 변경에 재측정, 3열(PC 진행건 포함 4열 — 숨은 칸은 폭 0 이라 저절로 빠짐) 동일 최대 폰트·넘칠 때만 축소)이며 DOM 텍스트는 항상 전체
   금액(접근성 유지). SSR 안전·관찰자/이벤트 정리.
 - 영업이익 = 매출 − 비용, 이익률 소수 1자리 계산은 그대로다.
 
