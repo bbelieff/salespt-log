@@ -19,7 +19,7 @@ export function recordsDbSheetFirstContact(result: string): boolean { return ["�
  */
 export function nextDbSheetFirstContact(first: string, result: string, date: string): string { return first || (recordsDbSheetFirstContact(result) ? date : ""); }
 /** 화면에 보이는 컨택결과 이름 — 저장값(enum)은 그대로 두고 이름만 바꾼다(2026-10-23 belie). */
-const DB_SHEET_RESULT_LABELS: Readonly<Record<string, string>> = { 컨택진행: "미팅예약", "상담 후 거절": "컨택 후 거절", AS예정: "AS신청" };
+const DB_SHEET_RESULT_LABELS: Readonly<Record<string, string>> = { 컨택진행: "미팅예약", "상담 후 거절": "컨택완료", AS예정: "AS신청" };
 export function dbSheetResultLabel(result: string): string { return DB_SHEET_RESULT_LABELS[result] ?? result; }
 /** 현재상태 중 컨택결과로 자동 계산하는 값. 미팅·계약 단계는 미팅/계약 기록이 정한다. */
 export const DB_SHEET_CONTACT_STAGES = ["미컨택", "DB컨택중", "상담 중", "장기관리", "진행종료"] as const;

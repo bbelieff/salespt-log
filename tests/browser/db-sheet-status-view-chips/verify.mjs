@@ -46,10 +46,13 @@ try {
     page.on("request", request => { if (request.method() !== "GET") writeRequests.push(`${request.method()} ${request.url()}`); });
     await page.goto(serverUrl, { waitUntil: "networkidle" });
 
-    assert.equal(await page.getByRole("group", { name: "DB 상태 필터" }).count(), 1);
-    const chips = page.getByRole("button").filter({ has: page.locator(".sheet-status-chip-check") });
-    assert.equal(await chips.count(), 5);
-    assert.deepEqual(await chips.evaluateAll(nodes => nodes.map(node => node.getAttribute("aria-pressed"))), ["false", "false", "false", "false", "false"]);
+    const group = page.getByRole("group", { name: "DB 상태 필터" });
+    assert.equal(await group.count(), 1);
+    const chips = group.getByRole("button");
+    const labels = ["미컨택", "부재", "단순거절", "재통화", "미팅예약·컨택완료", "AS신청", "장기관리", "계약업체"];
+    assert.deepEqual(await chips.allTextContents(), labels);
+    const unpressed = labels.map(() => "false");
+    assert.deepEqual(await chips.evaluateAll(nodes => nodes.map(node => node.getAttribute("aria-pressed"))), unpressed);
     const metrics = await page.evaluate(() => ({
       innerWidth,
       clientWidth: document.documentElement.clientWidth,
@@ -61,16 +64,22 @@ try {
     assert.ok(metrics.chipHeights.every(height => height >= (viewport.width <= 640 ? 44 : 36)), `${viewport.name}: touch target`);
     if (viewport.width <= 430) assert.ok(metrics.chipTops.length >= 2, `${viewport.name}: chips must wrap`);
 
-    await chips.nth(1).click();
-    await chips.nth(4).click();
+    const contract = group.getByRole("button", { name: "계약업체", exact: true });
+    await contract.click();
+    assert.equal(await contract.getAttribute("aria-pressed"), "true");
+    assert.deepEqual(await page.locator(".fixture-list li strong").allTextContents(), ["가상 단순거절"]);
+    await contract.click();
+    const selected = ["부재", "미팅예약·컨택완료"];
+    for (const name of selected) await group.getByRole("button", { name, exact: true }).click();
     assert.deepEqual(await page.locator(".fixture-list li").evaluateAll(nodes => nodes.map(node => node.getAttribute("data-result"))), ["부재", "컨택진행", "상담 후 거절"]);
     assert.equal(await page.getByTestId("filtered-count").textContent(), "3");
-    for (const index of [0, 2, 3]) await chips.nth(index).click();
+    assert.equal(await page.locator('[data-result="상담 후 거절"] span').textContent(), "컨택완료");
+    for (const name of labels.filter(label => !selected.includes(label))) await group.getByRole("button", { name, exact: true }).click();
     assert.equal(await page.locator(".fixture-list li").count(), 7);
     assert.equal(await page.locator('[data-result="새 결과"]').count(), 1);
     assert.equal(await page.locator(".sheet-status-filter-summary").textContent(), "전체 표시");
     await page.getByRole("button", { name: "초기화" }).click();
-    assert.deepEqual(await chips.evaluateAll(nodes => nodes.map(node => node.getAttribute("aria-pressed"))), ["false", "false", "false", "false", "false"]);
+    assert.deepEqual(await chips.evaluateAll(nodes => nodes.map(node => node.getAttribute("aria-pressed"))), unpressed);
     await chips.first().focus();
     await page.keyboard.press("Space");
     assert.equal(await chips.first().getAttribute("aria-pressed"), "true");

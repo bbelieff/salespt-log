@@ -15,20 +15,23 @@ export default function BoardPopover({ anchor, title, onClose, children, label, 
   const [sheet, setSheet] = useState(false);
 
   useLayoutEffect(() => {
+    const panel = ref.current;
     const place = () => {
       const mobile = window.innerWidth < 1024;
       setSheet(mobile || !anchor);
-      if (mobile || !anchor || !ref.current) return;
-      const h = ref.current.offsetHeight;
-      let left = anchor.right + 8;
-      if (left + W > window.innerWidth - 8) left = anchor.left - W - 8;
-      let top = anchor.top;
-      if (top + h > window.innerHeight - 8) top = Math.max(8, window.innerHeight - h - 8);
-      setPos({ left: Math.max(8, left), top });
+      if (mobile || !anchor || !panel) return;
+      const right = anchor.right + 8;
+      const left = Math.max(8, right + W > window.innerWidth - 8 ? anchor.left - W - 8 : right);
+      const top = Math.max(8, Math.min(anchor.top, window.innerHeight - panel.offsetHeight - 8));
+      setPos((previous) => previous?.left === left && previous.top === top ? previous : { left, top });
     };
     place();
+    if (!anchor || !panel) return;
+    // 결과·편집 폼이 열려 창이 커지면 아래쪽 버튼이 화면 밖으로 나가지 않게 한다.
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(place);
+    observer?.observe(panel);
     window.addEventListener("resize", place);
-    return () => window.removeEventListener("resize", place);
+    return () => { observer?.disconnect(); window.removeEventListener("resize", place); };
   }, [anchor, W]);
 
   useEffect(() => {

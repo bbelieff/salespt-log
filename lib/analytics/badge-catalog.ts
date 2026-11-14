@@ -38,7 +38,7 @@ export const BADGES: readonly BadgeDef[] = [
   { id: "days-100", group: "steady", name: "나무 · 100일", how: "누적 영업활동 100일", img: "deciduous_tree", tier: "gold", ready: true, cta: RECORD },
   { id: "week-goal-1", group: "steady", name: "주 목표 첫 달성", how: "내가 고른 주 목표(2·3·5일)를 처음 채움", img: "check_mark_button", tier: "", ready: false },
   { id: "week-goal-4", group: "steady", name: "주 목표 4번", how: "주 목표를 4번 채움(연속 아님)", img: "glowing_star", tier: "silver", ready: false },
-  { id: "first-consult", group: "win", name: "첫 상담", how: "상담기록(컨택진행·상담 후 거절)을 처음 저장", img: "speech_balloon", tier: "silver", ready: true, cta: { label: "DB 목록 열기", href: "/db-sheet" } },
+  { id: "first-consult", group: "win", name: "첫 상담", how: "상담기록(미팅예약·컨택완료)을 처음 저장", img: "speech_balloon", tier: "silver", ready: true, cta: { label: "DB 목록 열기", href: "/db-sheet" } },
   { id: "first-meeting", group: "win", name: "첫 미팅 완료", how: "미팅 결과를 처음 「완료」로 저장", img: "handshake", tier: "silver", ready: true, cta: { label: "미팅 일정 보기", href: "/schedule" } },
   { id: "first-contract", group: "win", name: "첫 계약", how: "계약을 처음 기록", img: "money_bag", tier: "gold", ready: true, cta: { label: "진행건 보기", href: "/payment" } },
   { id: "first-payment", group: "win", name: "첫 수납", how: "수납액을 처음 기록", img: "coin", tier: "gold", ready: true, cta: { label: "진행건에 수납 적기", href: "/payment" } },
