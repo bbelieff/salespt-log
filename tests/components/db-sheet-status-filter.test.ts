@@ -15,6 +15,7 @@ type FixtureRow = {
   supplier: string;
   date: string;
   result: string;
+  funnel?: "계약" | "미팅";
 };
 
 const fixtureResults = [
@@ -30,6 +31,7 @@ const fixtureResults = [
 const rows: FixtureRow[] = fixtureResults.map(([id, result], index) => ({
   id,
   result,
+  funnel: index === 5 ? "계약" : index === 4 ? "미팅" : undefined,
   company: index === 4 ? "선택 회사" : `합성 회사 ${index}`,
   owner: "김가상",
   phone: `010-0000-000${index}`,
@@ -46,6 +48,7 @@ const expectedResultByFilter: Record<StatusFilterId, string[]> = {
   progress: ["컨택진행", "상담 후 거절"],
   "as-planned": ["AS예정"],
   "long-term": [],
+  contract: [],
 };
 
 describe("DB관리시트 상태 보기 필터", () => {
@@ -62,7 +65,7 @@ describe("DB관리시트 상태 보기 필터", () => {
       const actual = filterDbSheetRows(rows, { selectedStatuses: selected });
       const unrestricted = selected.length === 0 || selected.length === filterIds.length;
       const accepted = new Set(selected.flatMap(id => expectedResultByFilter[id]));
-      const expected = unrestricted ? rows : rows.filter(row => accepted.has(row.result));
+      const expected = unrestricted ? rows : rows.filter(row => accepted.has(row.result) || (selected.includes("contract") && row.funnel === "계약"));
 
       expect(actual.map(row => row.id)).toEqual(expected.map(row => row.id));
       expect(new Set(actual.map(row => row.id)).size).toBe(actual.length);
@@ -72,6 +75,7 @@ describe("DB관리시트 상태 보기 필터", () => {
   );
 
   it("unknown 결과는 0개·전체 선택에서만 전체 보기의 일부로 유지한다", () => {
+    expect(STATUS_FILTERS.find(filter => filter.id === "contract")?.label).toBe("계약업체");
     expect(filterDbSheetRows(rows, { selectedStatuses: [] }).at(-1)?.id).toBe("unknown");
     expect(filterDbSheetRows(rows, { selectedStatuses: filterIds }).at(-1)?.id).toBe("unknown");
     expect(filterDbSheetRows(rows, { selectedStatuses: ["progress"] }).some(row => row.id === "unknown")).toBe(false);
@@ -90,6 +94,14 @@ describe("DB관리시트 상태 보기 필터", () => {
     expect(actual).toEqual([rows[4]]);
     expect(actual[0]).toBe(rows[4]);
     expect(rows).toEqual(original);
+  });
+
+  it("계약업체는 현재 투영 계약만, 컨택결과·표시 상태와 무관하게 검색과 함께 거른다", () => {
+    const active = { ...rows[0]!, company: "가상 업체", stage: "수납대기", funnel: "계약" as const };
+    const terminated = { ...rows[1]!, company: "가상 업체", stage: "계약해지", funnel: "미팅" as const };
+    const unprojected = { ...rows[2]!, company: "가상 업체", stage: "계약" };
+    const other = { ...active, company: "다른 업체" };
+    expect(filterDbSheetRows([active, terminated, unprojected, other], { selectedStatuses: ["contract"], search: "가상 업체" })).toEqual([active]);
   });
 
   it("칩을 독립적으로 켜고 끄며 빈 배열로 reset할 수 있다", () => {
