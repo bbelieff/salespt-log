@@ -11,6 +11,11 @@ export const CH_DOT: Record<Channel, string> = {
   매입DB: "bg-blue-700", 직접생산: "bg-green-700", 현수막: "bg-amber-700", "콜·지·기·소": "bg-violet-600",
 };
 
+/** 폰 월 보기 일정 줄의 왼쪽 띠 — 채널 색. */
+export const CH_EDGE: Record<Channel, string> = {
+  매입DB: "border-l-blue-700", 직접생산: "border-l-green-700", 현수막: "border-l-amber-700", "콜·지·기·소": "border-l-violet-600",
+};
+
 /** 시간 칸 블록 — 상태색 옅은 바탕 + 테두리, 글자는 같은 색 진한 단계. 변경은 점선·흐림, 취소는 흐림. */
 export const ST_BLOCK: Record<MeetingState, { box: string; text: string }> = {
   예약: { box: "border-amber-300 bg-amber-50/75", text: "text-amber-800" },

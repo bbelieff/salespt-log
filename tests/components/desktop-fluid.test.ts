@@ -273,9 +273,10 @@ describe("⑤ desktop arrangements keep order, workflow, and natural scroll", ()
     expect(read("app/(app)/schedule/_components/WeekBody.tsx")).toContain(
       "pc:grid-cols-2",
     );
+    // 캘린더는 2026-11-13 PC 한 달 보드(MonthBoard, 왼쪽 272px + 달력)로 바뀌었다 — 옛 7단 격자(pc:grid-cols-7) 대신 보드 틀을 확인한다.
     const cal = read("app/(app)/calendar/page.tsx");
-    expect(cal).toContain("pc:grid-cols-7");
-    expect(cal).toContain("pc:col-span-5");
+    expect(cal).toContain("<MonthBoard");
+    expect(read("app/(app)/calendar/_components/board/MonthBoard.tsx")).toContain("grid-cols-[272px_minmax(0,1fr)]");
     const pay = read("app/(app)/payment/page.tsx");
     expect(pay).toContain("gridTemplateColumns: `${masterWidth}px 8px minmax(0, 1fr)`");
     expect(pay).toContain("aria-label=\"목록과 상세 너비 조절\"");
@@ -304,7 +305,7 @@ describe("⑥ bottom spacers — desktop scoped, mobile safe-area intact", () =>
     "app/(app)/dashboard/page.tsx",
     "app/(app)/db/page.tsx",
     "app/(app)/schedule/_components/WeekBody.tsx",
-    "app/(app)/calendar/page.tsx",
+    // 캘린더는 2026-11-13 부터 폰에서도 화면 높이를 꽉 채우는 달력이라 아래 여백(옛 하단 탭 자리)을 두지 않는다 — 목록에서 뺀다.
     "app/(app)/payment/page.tsx",
   ])("%s keeps its mobile spacer with a pc: override", (rel) => {
     const attrs = classAttrs(read(rel)).join("\n");
