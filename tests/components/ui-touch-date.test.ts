@@ -36,7 +36,7 @@ const SWAPPED = [
   "app/(app)/payment/_components/TodoSection.tsx",
   "app/(app)/schedule/_components/AddMeetingForm.tsx",
   "app/(app)/schedule/_components/BasicEditDetails.tsx",
-  "app/(app)/schedule/_components/RescheduleForm.tsx",
+  "app/(app)/schedule/_components/board/BoardMeetingPop.tsx",
   // 2차(2026-11-12) — 남은 11곳
   "app/(app)/db-sheet/_components/AbsenceLog.tsx",
   "app/(app)/db-sheet/_components/CallConfirmScreen.tsx",
@@ -197,8 +197,7 @@ describe("결정 2-A — 보이지 않는 44px 누름 영역", () => {
   it.each([
     ["app/(app)/contact/_components/ChannelTabsAndPanel.tsx", /stepper-btn hit-44/g, 4],
     ["app/(app)/db/_components/RowCard.tsx", /hit-44 /g, 2],
-    ["app/(app)/schedule/_components/RescheduleForm.tsx", /hit-44 /g, 1],
-    ["app/(app)/schedule/_components/CancelForm.tsx", /hit-44 /g, 1],
+    ["app/(app)/schedule/_components/board/BoardMeetingPop.tsx", /hit-44 /g, 1],
     ["components/ui/TimePicker15.tsx", /hit-44-y /g, 1],
     ["components/auth/TraineeCard.tsx", /hit-44 /g, 2],
     ["components/FontScaleControl.tsx", /hit-44 /g, 1],
@@ -243,6 +242,7 @@ describe("달력이 fixed 를 가두는 조상 밖으로 나온다(2026-11-12 �
   });
   it("주간 보드 창은 달력(role=dialog) 안을 눌러도 닫히지 않는다", () => {
     const src = readFileSync("app/(app)/schedule/_components/board/BoardPopover.tsx", "utf8");
-    expect(src).toContain('t.closest("[role=dialog],[role=alertdialog],[data-board-keep]")');
+    expect(src).toContain('t.closest("[role=dialog],[role=alertdialog],[data-board-keep]');
+    expect(src).toContain("[data-spotlight-root]"); // 첫 안내 말풍선을 눌러도 창은 그대로(2026-11-15 폰 미팅 창)
   });
 });

@@ -38,8 +38,8 @@ export default function BoardPopover({ anchor, title, onClose, children, label, 
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     const onDown = (e: PointerEvent) => {
       const t = e.target as Element | null;
-      // 창 안, 또는 창이 띄운 달력·확인 창(포털) 안을 누른 건 닫지 않는다.
-      if (!t || ref.current?.contains(t) || t.closest("[role=dialog],[role=alertdialog],[data-board-keep]")) return;
+      // 창 안, 또는 창이 띄운 달력·확인 창(포털)·첫 안내 말풍선 안을 누른 건 닫지 않는다.
+      if (!t || ref.current?.contains(t) || t.closest("[role=dialog],[role=alertdialog],[data-board-keep],[data-spotlight-root]")) return;
       onClose();
     };
     window.addEventListener("keydown", onKey);
@@ -56,7 +56,7 @@ export default function BoardPopover({ anchor, title, onClose, children, label, 
         aria-label={label}
         style={sheet ? undefined : { left: pos?.left ?? -9999, top: pos?.top ?? 0, width: W }}
         className={sheet
-          ? "fixed inset-x-0 bottom-0 z-[71] max-h-[86dvh] overflow-y-auto rounded-t-3xl border border-slate-200 bg-white px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2 shadow-2xl"
+          ? "wb-sheet fixed inset-x-0 bottom-0 z-[71] max-h-[86dvh] overflow-y-auto rounded-t-3xl border border-slate-200 bg-white px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2 shadow-2xl"
           : glass ? "wb-pop fixed z-[71] max-h-[calc(100dvh-16px)] overflow-y-auto"
             : "fixed z-[71] max-h-[calc(100dvh-16px)] overflow-y-auto rounded-2xl border border-slate-200 bg-white/95 p-3.5 shadow-2xl backdrop-blur-xl"}
       >

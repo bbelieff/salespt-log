@@ -92,7 +92,7 @@ describe("화면별 기본값", () => {
     const read = (p: string) => readFileSync(join(process.cwd(), p), "utf8");
     expect(read("components/CompanyInfoContractSection.tsx")).toContain('defaultLayout="extended"');
     expect(read("app/(app)/contact/_components/MeetingSlotItem.tsx")).not.toContain("defaultLayout");
-    expect(read("app/(app)/schedule/_components/MeetingResultCard.tsx")).not.toContain("defaultLayout");
+    expect(read("app/(app)/schedule/_components/board/BoardMeetingPop.tsx")).not.toContain("defaultLayout");
   });
 });
 

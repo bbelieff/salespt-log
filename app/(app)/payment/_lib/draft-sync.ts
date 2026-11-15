@@ -9,7 +9,7 @@
  *
  * 해법 = **값 비교가 아니라 사용자 편집 의도**로 dirty 를 판정한다.
  * 레포 선례: app/(app)/contact/page.tsx(metricsTouched AND 절),
- *            app/(app)/schedule/_components/MeetingResultCard.tsx(action/editMode 플래그).
+ *            app/(app)/schedule/_components/board/BoardMeetingPop.tsx(act/ciTouched 플래그).
  *
  * 이 파일은 순수 함수만 둔다(React·DOM 참조 0) — vitest environment:"node" 로 회귀 고정 가능.
  */

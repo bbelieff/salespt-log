@@ -1,7 +1,7 @@
 /**
  * useFocusScroll — 캘린더 → 탭 이동 시 대상 카드 스크롤 + 3초 하이라이트 링.
  * active=true 가 되면 ref 요소로 smooth scroll + ring=true(3초 후 자동 false).
- * 사용: MeetingResultCard(미팅 focus) · TodoSection(투두 focus).
+ * 사용: 일정·계약 폰 목록의 미팅 줄(DaySection) · TodoSection(투두 focus).
  */
 "use client";
 

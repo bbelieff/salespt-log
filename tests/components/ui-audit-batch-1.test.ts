@@ -53,7 +53,7 @@ describe("시간 선택 08~21시", () => {
 
 describe("개발 용어", () => {
   it("관리자·일정 확인창에 개발 용어가 없다", () => {
-    for (const p of ["components/auth/AdminUserPickerSections.tsx", "components/auth/TraineeCard.tsx", "components/auth/ImpersonationBanner.tsx", "components/auth/TrainerMgmtPanel.tsx", "components/auth/MigrateCacheButton.tsx", "app/(app)/schedule/_components/MeetingResultCard.tsx"]) {
+    for (const p of ["components/auth/AdminUserPickerSections.tsx", "components/auth/TraineeCard.tsx", "components/auth/ImpersonationBanner.tsx", "components/auth/TrainerMgmtPanel.tsx", "components/auth/MigrateCacheButton.tsx", "app/(app)/schedule/_components/board/BoardMeetingPop.tsx"]) {
       const s = read(p).split("\n").filter((l) => !/^\s*(\/\/|\*|\/\*|\{\/\*)/.test(l)).join("\n");
       expect(s, p).not.toMatch(/registry row|5탭 UI|— impersonation|>\s*Impersonating|row 를 삭제|row가 삭제|trainer row|수납탭 계약카드|계약수납관리 row|backfill/);
     }

@@ -4,7 +4,7 @@
  *
  * 흐름:
  *   - useWeekMeetings(weekStart) → ScheduleWeekView (7일 미팅, 미팅날짜 기준)
- *   - 카드 클릭 → 펼침 → 액션 선택(계약/완료/변경/취소) → 폼 입력 → 확정
+ *   - 미팅 줄/칸 클릭 → 미팅 창(BoardMeetingPop — PC 는 칸 옆, 폰·태블릿은 아래 시트) → 결과 선택 → 저장
  *   - 계약/완료/취소: usePatchMeeting → invalidate week-key
  *   - 변경: useAppendMeeting(새 미팅) + usePatchMeeting(원본=변경) 순차 → invalidate week
  */
@@ -34,10 +34,11 @@ import { useWeekStartSync } from "./_lib/useWeekStartSync";
 import { useMeetingActions } from "./_lib/useMeetingActions";
 import { useMeetingPatch } from "./_lib/useMeetingPatch";
 import { useBoardView } from "./_lib/useBoardView";
-import MeetingResultCard from "./_components/MeetingResultCard";
 import WeekBoard from "./_components/board/WeekBoard";
 import ViewSwitch from "./_components/board/ViewSwitch";
 import BoardMeetingPop from "./_components/board/BoardMeetingPop";
+import BoardPopover from "./_components/board/BoardPopover";
+import MeetingPopHead from "./_components/board/MeetingPopHead";
 import { useMobileExtras } from "./_components/board/useMobileExtras";
 
 const TODAY_ISO = fmtISO(new Date());
@@ -50,18 +51,22 @@ export default function SchedulePage() {
   const [weekStart, setWeekStart] = useState<string>(TODAY_ISO);
 
   // 보이는 7일: 금~목은 수강 주(weekStart) 그대로, 월~일은 그 안의 월요일부터. PC(1280px+)는 주간 보드.
-  const { order, setOrder, viewStart, isBoard } = useBoardView(weekStart);
+  const { order, setOrder, viewStart, isBoard, ready } = useBoardView(weekStart);
   const weekQuery = useWeekMeetings(viewStart);
   const manualLink = useManualLinkPrompt(); // 같은 이름 「영업기록 없이 추가」 업체 → 연결 제안
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [toast, setToast] = useState("");
   const dayRefs = useRef<Array<HTMLDivElement | null>>([]);
 
-  // 캘린더 → ?focus=<meetingId> → 그 카드 스크롤+하이라이트. window.location 직접 파싱(Suspense 회피).
+  // 다른 화면 → ?focus=<meetingId> → 그 미팅 창을 한 번 연다(폰은 줄도 스크롤+하이라이트). window.location 직접 파싱(Suspense 회피).
+  // ?edit=schedule(DB 화면 「날짜·시간 고치기」)이면 폰·태블릿 창을 「변경」이 골라진 채로.
   const [focusId, setFocusId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
   useEffect(() => {
-    const f = new URLSearchParams(window.location.search).get("focus");
-    if (f) setFocusId(f);
+    const q = new URLSearchParams(window.location.search), f = q.get("focus");
+    if (!f) return;
+    setFocusId(f);
+    if (q.get("edit") === "schedule") setEditId(f);
   }, []);
 
   // weekStart 동기화: ?date= 우선(그 주차로 잠금), 없으면 today 주차로 정렬.
@@ -129,6 +134,17 @@ export default function SchedulePage() {
     return set;
   }, [allMeetings]);
 
+  // 폰·태블릿: 미팅 줄을 누르면 아래에서 올라오는 창 — 주간 보드·캘린더와 같은 창.
+  const [openId, setOpenId] = useState<string | null>(null);
+  const focusOpened = useRef(false);
+  useEffect(() => {
+    if (!ready || isBoard || !weekQuery.data) return;
+    const has = (id: string | null) => !!id && allMeetings.some((m) => m.id === id);
+    if (!focusOpened.current && has(focusId)) { focusOpened.current = true; setOpenId(focusId); }
+    else if (openId && !has(openId)) setOpenId(null); // 지운 미팅의 창은 닫아 둔다(되살려도 저절로 뜨지 않게)
+  }, [ready, isBoard, weekQuery.data, allMeetings, focusId, openId]);
+  const closeSheet = () => { setOpenId(null); setEditId(null); };
+
   const countsByDay = useMemo(() => {
     if (!weekQuery.data) return Array(7).fill(0) as number[];
     return weekQuery.data.daysByMeetingDate.map((d) => d.meetings.length);
@@ -164,23 +180,19 @@ export default function SchedulePage() {
         dayRefs.current[globalIndex] = el;
       }}
     >
-      <DaySection
-        date={day.date}
-        meetings={day.meetings}
-        todayISO={TODAY_ISO}
-        pendingId={pendingId}
-        focusId={focusId}
-        onPatch={handlePatch}
-        onReschedule={handleReschedule}
-        onRevert={handleRevert}
-        onAddMeeting={handleAddMeeting}
-        onDelete={handleDelete}
-        followUpParentIds={followUpParentIds}
-        onReviveCase={handleReviveCase}
-        extra={mobile.dayExtra(day.date)}
-      />
+      <DaySection date={day.date} meetings={day.meetings} todayISO={TODAY_ISO} focusId={focusId}
+        onOpen={(m) => setOpenId(m.id)} extra={mobile.dayExtra(day.date)} />
     </div>
   );
+
+  // 미팅 창 본문 — PC 보드의 칸 옆 창과 폰·태블릿의 아래 시트가 같은 저장 함수를 쓴다.
+  const meetingPop = (m: Meeting, initialAct?: "chg") => (
+    <BoardMeetingPop key={m.id} meeting={m} pending={pendingId === m.id} initialAct={initialAct}
+      onPatch={(partial, opts) => handlePatch(m.id, partial, opts)} onReschedule={(d, t, r) => handleReschedule(m, d, t, r)}
+      onRevert={() => handleRevert(m.id)} onAddMeeting={(d, t) => handleAddMeeting(m, d, t)} onDelete={() => handleDelete(m)}
+      hasFollowUp={followUpParentIds.has(m.id)} onReviveCase={() => handleReviveCase(m)} />
+  );
+  const sheetMeeting = openId ? allMeetings.find((m) => m.id === openId) : undefined;
 
   if (isBoard) {
     return (
@@ -192,12 +204,7 @@ export default function SchedulePage() {
           onPrev={() => moveWeek(-1)} onNext={() => moveWeek(1)} onOrder={setOrder}
           onToday={() => guardedNav(() => setWeekStart(fmtISO(friOf(parseISO(TODAY_ISO)))))}
           onMonth={(date) => guardedNav(() => router.push(`/calendar?date=${date}`))}
-          renderMeeting={(m) => (
-            <BoardMeetingPop key={m.id} meeting={m} pending={pendingId === m.id}
-              onPatch={(partial, opts) => handlePatch(m.id, partial, opts)} onReschedule={(d, t, r) => handleReschedule(m, d, t, r)}
-              onRevert={() => handleRevert(m.id)} onAddMeeting={(d, t) => handleAddMeeting(m, d, t)} onDelete={() => handleDelete(m)}
-              hasFollowUp={followUpParentIds.has(m.id)} onReviveCase={() => handleReviveCase(m)} />
-          )} />
+          renderMeeting={(m) => meetingPop(m)} />
         {toast && <AppToast>{toast}</AppToast>}
         {manualLink.element}
       </>
@@ -246,6 +253,11 @@ export default function SchedulePage() {
         lastDays={daysByMeetingDate.slice(3).map((day, j) => renderDay(day, j + 3))} />
 
       {mobile.sheets}
+      {sheetMeeting && (
+        <BoardPopover anchor={null} onClose={closeSheet} label={`${sheetMeeting.업체명} 미팅 결과`} title={<MeetingPopHead meeting={sheetMeeting} now={new Date()} />}>
+          {meetingPop(sheetMeeting, editId === sheetMeeting.id ? "chg" : undefined)}
+        </BoardPopover>
+      )}
       {toast && (
         <AppToast>{toast}</AppToast>
       )}

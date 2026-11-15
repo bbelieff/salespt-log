@@ -6,6 +6,7 @@
  * - 단계마다 `target`(CSS 선택자) 중 화면에 보이는 첫 요소를 밝힌다. 아직 없으면 생길 때까지 기다린다.
  * - 넘어가는 법: `click`(그 요소를 누르면) · `gone`(밝히던 요소가 사라지면 — 예: 미팅 카드 등록 완료) · `next`(「다음」).
  * - 다른 창(모달)이 떠 있으면 잠시 숨는다 — 창과 겹치지 않게.
+ * - 밝힐 요소가 아래에서 올라온 창(시트) 안이고 화면 아래쪽이면, 좁은 화면 말풍선은 위에 붙인다 — 가리지 않게.
  * - 「나중에」·Esc 는 이번만 닫고, 「다시 보지 않기」는 부르는 쪽이 기억한다.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -59,6 +60,7 @@ export default function Spotlight({ label, steps, final, onFinish, onLater, onNe
   const [rect, setRect] = useState<DOMRect | null>(null);
   const [paused, setPaused] = useState(false);
   const [narrow, setNarrow] = useState(false);
+  const [low, setLow] = useState(false); // 밝힌 곳이 창(시트) 안의 화면 아래쪽 — 좁은 화면 말풍선을 위로
   const seen = useRef(false);
   const goneAt = useRef<number | null>(null);
   const finished = useRef(false);
@@ -98,7 +100,9 @@ export default function Spotlight({ label, steps, final, onFinish, onLater, onNe
           const r = el.getBoundingClientRect();
           if (r.top < 64 || r.bottom > window.innerHeight - 160) el.scrollIntoView?.({ block: "center", behavior: "smooth" });
         }
-        setRect(el.getBoundingClientRect());
+        const r = el.getBoundingClientRect();
+        setRect(r);
+        setLow(!!el.closest('[role="dialog"]') && r.bottom > window.innerHeight - 220);
       } else {
         setRect(null);
         if (step.advance === "gone" && seen.current) {
@@ -136,7 +140,7 @@ export default function Spotlight({ label, steps, final, onFinish, onLater, onNe
   const hole = !done && rect ? { top: rect.top - PAD, left: rect.left - PAD, width: rect.width + PAD * 2, height: rect.height + PAD * 2 } : null;
   // 말풍선 자리: 좁은 화면은 아래에 붙이고, 넓으면 밝힌 곳 아래(공간 없으면 위).
   const bubbleStyle: React.CSSProperties = narrow || !hole
-    ? { left: 12, right: 12, bottom: "calc(12px + env(safe-area-inset-bottom, 0px))" }
+    ? low && hole ? { left: 12, right: 12, top: "calc(12px + env(safe-area-inset-top, 0px))" } : { left: 12, right: 12, bottom: "calc(12px + env(safe-area-inset-bottom, 0px))" }
     : hole.top + hole.height + 200 < window.innerHeight
       ? { top: hole.top + hole.height + 12, left: Math.max(12, Math.min(hole.left, window.innerWidth - 372)), width: 360 }
       : { top: Math.max(12, hole.top - 12 - 180), left: Math.max(12, Math.min(hole.left, window.innerWidth - 372)), width: 360 };
