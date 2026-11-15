@@ -20,6 +20,15 @@ function key(k: string) { act(() => { memo()!.dispatchEvent(new KeyboardEvent("k
 afterEach(() => { act(() => root?.unmount()); el?.remove(); root = undefined; el = undefined; });
 
 describe("완료 Todo 결과 메모", () => {
+  it("결과 없는 완료 Todo 의 두 추가 버튼은 삭제와 같은 줄에 있고 빈 메모 줄은 없다", () => {
+    const node = render();
+    const row = node.querySelector("[data-todo-id]")!;
+    const actions = q('[aria-label="기록 삭제"]')!.parentElement!;
+    expect(actions.parentElement).toBe(row.firstElementChild);
+    expect(actions.querySelector('[aria-label$="결과 적기"]')).not.toBeNull();
+    expect(actions.querySelector('[aria-label$="다음 할 일 적기"]')).not.toBeNull();
+    expect(row.children).toHaveLength(1);
+  });
   it("결과 없는 완료 Todo 는 「+ 결과」 태그 → 누르면 입력, Enter 로 저장", () => {
     render();
     const tag = q('[aria-label="재무제표 3년치 요청 결과 적기"]')!; expect(tag.textContent).toContain("+ 결과");

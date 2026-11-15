@@ -21,7 +21,8 @@ const size = (n: number) => n >= 1024 * 1024 ? `${(n / 1024 / 1024).toFixed(1)}M
 export function CallUploadDialog({ row, call, asked, onUploaded, onClose }: {
   row: Row; call: CallRecord | null; asked: boolean; onUploaded: (id: string) => void; onClose: () => void;
 }) {
-  const ios = typeof navigator !== "undefined" && isIos(navigator.userAgent);
+  const ua = typeof navigator === "undefined" ? "" : navigator.userAgent;
+  const ios = isIos(ua), android = /Android/i.test(ua);
   const saved = readCallApp();
   const inApp = saved === "ixio" || saved === "adot";
   const app = inApp ? callAppName(saved) : "녹음 앱";
@@ -50,7 +51,8 @@ export function CallUploadDialog({ row, call, asked, onUploaded, onClose }: {
   }
 
   const title = notice ? "처음 한 번만 확인해 주세요" : asked ? `방금 ${row.company}와 통화하셨나요?` : `${row.company} 녹음 올리기`;
-  const pick = <input ref={input} type="file" accept={`${CALL_AUDIO_ACCEPT},audio/*`} hidden onChange={e => { setFile(e.target.files?.[0] ?? null); setError(""); e.target.value = ""; }} />;
+  // Android에서는 audio/*가 녹음 앱을 먼저 제안할 수 있어 일반 파일 선택기를 연다. 선택 후 검증은 동일하다.
+  const pick = <input ref={input} type="file" accept={android ? undefined : `${CALL_AUDIO_ACCEPT},audio/*`} hidden onChange={e => { setFile(e.target.files?.[0] ?? null); setError(""); e.target.value = ""; }} />;
   const later = asked && <button className="dbs-button" disabled={busy} onClick={onClose}>나중에</button>;
 
   let body: React.ReactNode, foot: React.ReactNode;
@@ -76,12 +78,12 @@ export function CallUploadDialog({ row, call, asked, onUploaded, onClose }: {
     body = <>
       <p className="dbs-call-lead">{ios ? <>{app}에서 녹음이나 통화 내용(.txt·.pdf)을 <b>「파일에 저장」</b>한 뒤 골라 주세요.</>
         : inApp ? <>{app}에서 녹음이나 통화 내용(.txt·.pdf)을 <b>폰에 저장</b>한 뒤 골라 주세요.</>
-        : <>녹음은 <b>내 파일 › Recordings › Call</b> 맨 위에 있어요. 통화 내용(.txt·.pdf)도 돼요.</>}</p>
+        : android ? <>갤럭시 기본 전화 앱 녹음은 <b>내 파일 › 내장 저장공간 › Recordings › Call</b>에서 찾아보세요.</>
+        : <>저장해 둔 녹음이나 통화 내용(.txt·.pdf)을 골라 주세요.</>}</p>
+      <p className="dbs-muted">녹음은 14MB까지 올릴 수 있어요.</p>
       {(ios || inApp) && <button type="button" className="dbs-text-button" onClick={() => setTab("text")}>녹음 대신 받아쓴 글 붙여 넣기</button>}
-      {/* 안드로이드 Chrome 은 녹음 파일 고르기 전에 「오디오 녹음 허용?」을 묻는다(코드로 못 없앰, 실기기 2026-11-05) — 거절해도 고르기는 열린다. */}
-      {!ios && <p className="dbs-muted">녹음 허용을 물으면 「허용 안 함」도 괜찮아요.</p>}
     </>;
-    foot = <>{later}<button className="dbs-button primary" onClick={() => input.current?.click()}>파일 고르기</button></>;
+    foot = <>{later}<button className="dbs-button primary" onClick={() => input.current?.click()}>{android ? "내 파일에서 고르기" : "파일 고르기"}</button></>;
   } else {
     const c = check!;
     const ok = !c.fileError && !c.warn;

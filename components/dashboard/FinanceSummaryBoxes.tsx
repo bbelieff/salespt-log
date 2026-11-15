@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type R
 import { formatWon } from "@/lib/format/money";
 import { usePlayOnOpen } from "@/components/motion/useMotion";
 import { useCountUp } from "@/components/motion/CountUp";
+import FinanceWorkColumn, { FinancePreview, FinanceWorkDetail, type WorkColumnData } from "./FinanceWorkColumn";
 
 /**
  * FinanceSummaryBoxes — 매출/비용/영업이익 3열 1행 요약.
@@ -29,6 +30,8 @@ import { useCountUp } from "@/components/motion/CountUp";
  *   고른 기간(전체·이번 달·이번 주·직접 설정)으로 계산해 넘기고, 이 컴포넌트는 표시만 한다.
  *   매출 상세에 반환(계약해지)이 있으면 따로 보인다.
  * 변경 (2026-10-12 #7): 영업이익 상세의 기존 줄 아래에 profitDetail(채널별 남은 돈 표)을 그린다.
+ * 변경 (2026-11-13 A안): PC(1024~)는 칸 아래에 늘 보이는 미리보기 두 줄(수임비·수수료 / DB 비용·추가 비용 /
+ *   이익률·계약 N건)을 두고, `work` 가 오면 네 번째 칸 「진행건」(FinanceWorkColumn)을 더해 네 칸 균등. 폰은 세 칸 숫자만.
  */
 interface Props {
   revenue: number;
@@ -45,6 +48,8 @@ interface Props {
   contractCount?: number; // 기간 안 계약 건수 (없으면 부연 우측 비움)
   /** 영업이익 상세에서 기존 줄 아래에 붙는 내용(ChannelProfitBreakdown). 없으면 기존 그대로. */
   profitDetail?: ReactNode;
+  /** 네 번째 칸 「진행건」 자료(대시보드 A안). 없으면 세 칸 그대로. PC 에서만 보인다. */
+  work?: WorkColumnData;
 }
 
 /** 실측 맞춤 하한 — 그 아래로는 줄이지 않는다(가독성). */
@@ -212,7 +217,7 @@ function useUniformSingleLineFit(
 
 
 /** 한 번에 열리는 상세 패널 — null이면 전부 닫힘. */
-type Panel = "revenue" | "cost" | "profit";
+type Panel = "revenue" | "cost" | "profit" | "work";
 
 /**
  * 좁은 폭 대응: 금액은 항상 한 줄(white-space:nowrap, overflow-wrap:normal).
@@ -251,6 +256,7 @@ export default function FinanceSummaryBoxes({
   periodLabel = "전체",
   contractCount,
   profitDetail,
+  work,
 }: Props) {
   const [open, setOpen] = useState<Panel | null>(null);
   // 처음엔 금액이 올라가며 멈추고, 기간을 바꾸면 이전 금액에서 이어서 바뀐다(belie 2026-10-09).
@@ -265,7 +271,9 @@ export default function FinanceSummaryBoxes({
   const revenueAmountRef = useRef<HTMLSpanElement | null>(null);
   const costAmountRef = useRef<HTMLSpanElement | null>(null);
   const profitAmountRef = useRef<HTMLSpanElement | null>(null);
-  useUniformSingleLineFit(containerRef, [revenueAmountRef, costAmountRef, profitAmountRef], `${revenue}|${cost}|${profit}`);
+  const workAmountRef = useRef<HTMLSpanElement | null>(null);
+  // 숨은 칸(폰의 진행건)은 폭이 0 이라 맞춤 계산에서 저절로 빠진다(calcSingleLineScale → 1).
+  useUniformSingleLineFit(containerRef, [revenueAmountRef, costAmountRef, profitAmountRef, workAmountRef], `${revenue}|${cost}|${profit}|${work?.items?.length ?? ""}`);
 
   // 상자 없이 칸만 — 고른 칸은 옅은 흰 바탕으로 표시(화면 마감 v2, belie 2026-11-10).
   const columnClass = (selected: boolean, ring: string) =>
@@ -317,12 +325,13 @@ export default function FinanceSummaryBoxes({
         {profitDetail}
       </>
     )}
+    {open === "work" && work && <FinanceWorkDetail work={work} />}
     </div>
   );
 
   return (
     <div ref={containerRef} style={{ containerType: "inline-size" }}>
-      <div role="group" aria-label="매출·비용·영업이익" className="stat-split grid min-w-0 grid-cols-3">
+      <div role="group" aria-label="매출·비용·영업이익" className={`stat-split grid min-w-0 grid-cols-3${work ? " pc:grid-cols-4" : ""}`}>
         {/* 매출 컬럼 */}
         <div className="flex min-w-0 flex-col">
         <button
@@ -344,6 +353,7 @@ export default function FinanceSummaryBoxes({
           <span ref={revenueAmountRef} className="block w-full min-w-0 max-w-full font-bold tabular-nums text-slate-900" style={amountStyle}>
             <Amount value={revenue} play={play} />
           </span>
+          <FinancePreview rows={[["수임비", formatWon(feeIncome)], ["수수료", formatWon(commissionIncome)]]} />
         </button>
         {open === "revenue" && detail}
         </div>
@@ -369,6 +379,7 @@ export default function FinanceSummaryBoxes({
           <span ref={costAmountRef} className="block w-full min-w-0 max-w-full font-bold tabular-nums text-red-600" style={amountStyle}>
             <Amount value={cost} play={play} />
           </span>
+          <FinancePreview rows={[["DB 비용", formatWon(dbCostTotal)], ["추가 비용", additionalCost === null ? "확인 못 했어요" : formatWon(additionalCost)]]} />
         </button>
         {open === "cost" && detail}
         </div>
@@ -399,9 +410,24 @@ export default function FinanceSummaryBoxes({
           >
             <Amount value={profit} play={play} />
           </span>
+          <FinancePreview rows={[["이익률", `${profitRate.toFixed(1)}%`], ...(typeof contractCount === "number" ? [["계약", `${contractCount}건`] as [string, string]] : [])]} />
         </button>
         {open === "profit" && detail}
         </div>
+
+        {/* 진행건 칸 — PC 만(A안). 누르면 그 칸 아래에 실무/수납과 같은 진행 막대가 열린다. */}
+        {work && (
+          <FinanceWorkColumn
+            work={work}
+            open={open === "work"}
+            onToggle={() => toggle("work")}
+            style={columnStyle}
+            className={columnClass(open === "work", "focus-visible:ring-slate-500")}
+            amountStyle={amountStyle}
+            amountRef={workAmountRef}
+            detail={detail}
+          />
+        )}
       </div>
 
       {open === null && <div id="fin-detail-panel" role="region" hidden />}

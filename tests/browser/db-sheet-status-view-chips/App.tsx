@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { dbSheetResultLabel } from "@/types/db-sheet";
 import {
   STATUS_FILTERS,
   filterDbSheetRows,
@@ -12,6 +13,7 @@ type FixtureRow = {
   id: string;
   company: string;
   result: string;
+  funnel?: "계약" | "미팅";
   owner: string;
   phone: string;
   supplier: string;
@@ -24,13 +26,14 @@ const fixtureResults = [
   ["3", "가상 단순거절", "단순거절"],
   ["4", "가상 재통화", "재통화"],
   ["5", "가상 컨택진행", "컨택진행"],
-  ["6", "가상 상담거절", "상담 후 거절"],
+  ["6", "가상 컨택완료", "상담 후 거절"],
   ["7", "가상 새결과", "새 결과"],
 ] as const;
 const rows: FixtureRow[] = fixtureResults.map(([id, company, result]) => ({
   id,
   company,
   result,
+  funnel: id === "3" ? "계약" : id === "5" ? "미팅" : undefined,
   owner: "김가상",
   phone: `010-0000-000${id}`,
   supplier: "합성 공급처",
@@ -84,7 +87,7 @@ function Fixture() {
       {mode === "empty" && <p className="fixture-state">표시할 DB가 없습니다.</p>}
       {mode === "ready" && filtered.length === 0 && <p className="fixture-state">선택한 조건에 맞는 DB가 없습니다.</p>}
       <ul className="fixture-list" aria-label="필터 결과">
-        {filtered.map(row => <li key={row.id} data-result={row.result}><strong>{row.company}</strong><span>{row.result}</span></li>)}
+        {filtered.map(row => <li key={row.id} data-result={row.result}><strong>{row.company}</strong><span>{dbSheetResultLabel(row.result)}</span></li>)}
       </ul>
       <footer className="fixture-foot">총 <span data-testid="filtered-count">{filtered.length}</span>건</footer>
     </section>

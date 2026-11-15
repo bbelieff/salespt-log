@@ -1133,9 +1133,10 @@ PageBanner: 페이지 이모지·제목 | 선택적 부제
 app/(app)/dashboard/page.tsx
   TopHeader                                  # 공용 반응형 헤더 + 페이지 배너
   sticky top-app-content z-30 래퍼
-    PageContainer > DashboardProgressBanner  # 날짜·주차·진행도·D-day (PC 1024+ 한 줄: 날짜·주차|시작|진행바|진행률|종강총회|D-day, 좁으면 세 줄)
+    PageContainer > .surface-hero 띠
+      [DashboardProgressBanner | PeriodPicker]  # A안(2026-11-13) PC 한 줄: 날짜·주차|진행바|진행률|D-day ‥ 오른쪽 기간 칩. 폰: 진행 세 줄 / 선 / 칩
+      DashboardFinance > FinanceSummaryBoxes    # 폰 3열 숫자만 · PC 4열(매출·비용·영업이익·진행건 FinanceWorkColumn) + 칸 아래 미리보기 두 줄
   PageContainer > 일반 본문
-    FinanceSummaryBoxes # 매출·비용·영업이익 3열 1행 한 세트 (상세 패널 내장)
     [생산성 + DashboardWorkStatus] + WeeklyGoalSummary  # ≥1600px 윗줄 반반
     MobileChartCarousel > FunnelChart / WeeklyDualChart / ChannelPerformance  # ≥1600px 아랫줄 3등분 (1024~1599: 2열) · <1024px 옆으로 넘기기
 ```
@@ -1144,7 +1145,7 @@ app/(app)/dashboard/page.tsx
 
 **높이 정렬(2026-09-28)**: PC 그리드는 `pc:items-stretch`로 같은 줄 카드의 바닥선을 맞춘다. 늘어난 높이는 카드 안에서 흡수한다 — 퍼널·주차 추이 차트는 `.chart-fill`(셸 스코프, 차트 영역 최소 14rem)로 카드의 남은 높이를 채운다 — svg를 흐름 밖에 두어 차트 비율이 줄 높이를 키우지 않는다(범례는 바닥), 주간목표 PT과제는 날짜 아래 한 줄로 표시하고 상단 두 열은 콘텐츠 높이에 맞춘다. 고정 px 높이는 쓰지 않는다. 줄 높이는 가장 긴 카드의 내용이 정하고, 차트는 viewBox + meet 스케일·무클리핑·중앙 정렬로 그 높이에 맞춘다. 모바일에서는 카드가 콘텐츠 높이에 맞춰 한 열로 이어진다.
 
-`DashboardWorkStatus`는 실무/수납과 같은 계약·Todo 조회와 상태 분류를 사용한다. 해지·숨김 계약을 동일하게 제외하고(이월은 포함, ADR-0034), 마지막 카드의 상태 목록에서 업체를 선택하면 `/payment?row=<행>&slot=<회차>`로 이동해 그 진행을 연다. 대시보드 팝오버는 마지막 카드 위쪽으로 펼친다.
+`DashboardWorkStatus`는 실무/수납과 같은 계약·Todo 조회와 상태 분류를 사용한다(자료 훅 `useDashboardWorkItems(todayISO)` — 맨 위 띠의 「진행건」 칸과 같이 쓴다, 같은 조회 키라 새 요청 없음). **A안(2026-11-13)부터 PC(1024~)에서는 이 판(`.dashboard-work-status-slot`)을 숨기고 띠의 네 번째 칸이 대신한다** — 폰은 지금 자리·순서 그대로. 해지·숨김 계약을 동일하게 제외하고(이월은 포함, ADR-0034), 마지막 카드의 상태 목록에서 업체를 선택하면 `/payment?row=<행>&slot=<회차>`로 이동해 그 진행을 연다. 대시보드 팝오버는 마지막 카드 위쪽으로 펼친다.
 
 ### 9-1. DashboardProgressBanner
 
@@ -1172,10 +1173,11 @@ app/(app)/dashboard/page.tsx
 - 상단 왼쪽: `현재 M/D (요일)`과 `N주차 진행중` 또는 `🎓 수료 후 N주`. 오른쪽: `DDayBadge`. 계산은 `app/(app)/dashboard/_lib/course-banner.ts`.
 - 진행바: `h-1.5 bg-slate-100 rounded-full`, 파란 그라데이션과 amber SVG 끝점. 위아래 `mb-3`, 컨테이너 `pt-3 pb-2.5`.
 - 하단: 시작일 / 진행률 / `🎓 종강총회일` 세 라벨. 날짜와 기간은 저장된 시작·종강일을 사용하며 고정 57일을 적용하지 않는다.
+- A안(belie 2026-11-13): 페이지가 같은 띠 윗줄 오른쪽에 기간 칩(`PeriodPicker`, `data-testid="dashboard-period-chips"`)을 붙인다 — 배너 래퍼 `pc:flex-1 pc:basis-96`, 칩 `pc:ml-auto`(좁으면 칩이 아랫줄로 넘어감). 자리를 내려고 **PC 에서만** 「M/D 시작」·「🎓 종강총회」 글을 숨긴다(`pc:hidden`) — D-day 배지·진행률은 그대로. 폰은 세 줄 그대로, 칩은 선(`border-t`) 아래.
 - 수료 뒤(`graduated`)에는 진행바와 하단 세 라벨을 그리지 않는다 — `현재 M/D (요일) · 🎓 수료 후 N주 · DDayBadge` 한 줄만(belie 2026-11-08).
 - 진행 배너의 코스 주차(시작일 앵커)와 주간목표의 금~목 주차는 서로 다른 계약이다.
 
-### 9-2. FinanceSummaryBoxes (매출·비용·영업이익 3열 1행)
+### 9-2. FinanceSummaryBoxes (매출·비용·영업이익 3열 1행 · PC 4열 A안)
 
 **용도**: 매출/비용/영업이익 `grid grid-cols-3 gap-2` 한 행. 일반 본문 상단의 한 section을
 구성하며 스크롤 고정하지 않는다. 2026-09-16 개편으로 기존 매출/비용 2열 + 별도
@@ -1190,7 +1192,13 @@ app/(app)/dashboard/page.tsx
 - `onOpenExpenseLedger: () => void`: 비용 상세 안 추가 비용 행 클릭 시 같은 페이지의 경비장부 모달 열기.
 - `periodLabel?` (기본 「전체」), `contractCount?`: 영업이익 상세의 기간·계약건수 부연.
 - `profitDetail?: ReactNode` (2026-10-12 #7): 영업이익 상세에서 기존 줄 아래에 붙는 내용(`ChannelProfitBreakdown`). 없으면 기존 그대로.
+- `work?: WorkColumnData` (A안 2026-11-13, `components/dashboard/FinanceWorkColumn.tsx`): `{ items: WorkStatusItem[] | null; failed; onRetry; onNavigate }`.
+  주면 네 번째 칸 「진행건」(`#fin-col-work`, `hidden pc:flex` — PC 만)을 더하고 행이 `grid-cols-3 pc:grid-cols-4`(네 칸 균등, 칸 차지 없음)가 된다.
+  칸 = 「진행건」 + `N건`(불러오는 중·실패 「—」) + 상태별 건수 두 줄(0건 상태 빼고 막대 순서, 예 「진행 9 · 수납완료 1」/「장기관리 6」, `workPreviewLines`).
+  누르면 다른 칸처럼 그 칸 아래 `#fin-detail-panel` 에 실무/수납과 같은 `WorkStatusBar`(막대·범례·상태별 목록 팝업, `popoverAlign="end"` — 칸 오른쪽 끝에 맞춰 띠 밖으로 넘치지 않음)가 열린다. 실패면 「다시 시도」.
 - 2026-10-08 시즌/이월/전체 분리 props·표 삭제 — 기간 선택이 대신한다(ADR-0034).
+
+**DashboardFinance** A안(2026-11-13): props `periodState?`(`useFinancePeriodState()` 반환값)를 주면 칩을 그리지 않고 그 기간으로 계산한다 — 대시보드 페이지가 칩을 진행 줄 오른쪽에 그린다(칩 한 벌). 없으면(시험·합성 화면) 지금처럼 자기 칩. `work?` 는 `FinanceSummaryBoxes` 로 그대로 넘긴다(불러오는 중 뼈대도 PC 네 칸).
 
 **DashboardFinance** (`components/dashboard/DashboardFinance.tsx`, 2026-10-08): 대시보드 매출·비용·영업이익
 묶음(slate-100 section) 제목 줄에 `PeriodPicker`(기본 「전체」= 기록된 기간 전체)를 두고, `useContractPayments`·
@@ -1226,7 +1234,8 @@ app/(app)/dashboard/page.tsx
 
 **디자인 / 동작**:
 
-- 세 컬럼은 320px 모바일에서도 데스크탑에서도 항상 한 행에 나란히 선다(동일 폭 3등분).
+- 세 컬럼은 320px 모바일에서도 데스크탑에서도 항상 한 행에 나란히 선다(동일 폭 3등분). A안(2026-11-13): 대시보드 PC 는 「진행건」을 더해 네 칸 균등.
+- 미리보기(A안, PC 만 `hidden pc:flex`, `data-finance-preview`): 큰 숫자 아래 늘 보이는 두 줄 — 매출 = 수임비·수수료, 비용 = DB 비용·추가 비용(못 읽으면 「확인 못 했어요」, 0원으로 대신하지 않음), 영업이익 = 이익률(소수 1자리)·계약 N건. `formatWon` 전체 금액, 잘라 숨기지 않고 좁으면 줄을 바꾼다. 버튼 안이라 눌러도 같은 칸 상세가 열린다. 폰은 지금처럼 숫자만.
   흰색 배경, slate-200 테두리, rounded-xl, ＋/−/＝ 배지를 공유하고, 라벨은 금액 위에 둔다.
 - 금액 색: 매출 slate-900, 비용 red-600, 영업이익은 0 이상 파랑 `#1d4ed8`·음수 보라 `#7c3aed`
   (음수도 비용 빨강과 혼동되지 않게 한다). 영업이익 = 매출 − 비용, 기존 음수 부호 유지.
@@ -1240,7 +1249,7 @@ app/(app)/dashboard/page.tsx
   320px에서도 한 줄(`white-space:nowrap`, `overflow-wrap:normal`)에 전부 보인다.
   `overflow-wrap:anywhere`·줄바꿈·`overflow:hidden`·ellipsis·truncate·축약은 금지.
   좁은 폭 대응은 cqi 유동 글꼴·최소 패딩 + 실측 맞춤(ResizeObserver·font-load ready·
-  값 변경에 재측정, 3열 동일 최대 폰트·넘칠 때만 축소)이며 DOM 텍스트는 항상 전체
+  값 변경에 재측정, 3열(PC 진행건 포함 4열 — 숨은 칸은 폭 0 이라 저절로 빠짐) 동일 최대 폰트·넘칠 때만 축소)이며 DOM 텍스트는 항상 전체
   금액(접근성 유지). SSR 안전·관찰자/이벤트 정리.
 - 영업이익 = 매출 − 비용, 이익률 소수 1자리 계산은 그대로다.
 
@@ -1447,8 +1456,8 @@ D R7 PC bare 상세는 `page.tsx` 기존 제목줄의 `data-payment-pc-status-sl
 | **PaymentSlotForm** | 분할 수납 1 슬롯 입력 폼 (6필드: 진행기관/진행률/현황/승인금액/수납액/수납일). 슬롯 색 = teal/cyan/fuchsia. 진행기관·진행상품·현황·메모는 입력 중 draft만 보관하고 칸 blur 시 저장한다. 로드맵·계약 비고도 같으며 진행률·체크 선택은 기존 자동저장 유지. 실패·재시도·이탈 보호는 공유 큐를 사용한다. 2026-10-27: 모든 진행건은 접힌 채 시작(belie) — 예외 autoOpen(캘린더·알림·진행기관 목록에서 고른 진행건). 2026-10-31: 비어 있는 진행건도 접힘, 방금 「진행 추가」로 만든 진행건만 펼침(ContractSlots `added`). 업체 목록에서 대표 진행건을 자동으로 펼치던 동작 제거(page.tsx). 2026-10-28: 펼칠 때 본문이 `card-open-anim`(위에서 4px 내려오며 나타남, 0.2초). 2026-10-31: 펼친 진행건의 제목 줄(`.payment-slot-head`, 진행건 색 바탕)이 「실무진행」 제목 바로 아래에 붙어 있다 — 스크롤 중에도 어느 진행건인지 보인다. top = 제목 top + 2.25rem(PC 1.875rem), 휴대폰에서 입력 중이면 제목처럼 풀린다. 2026-10-31: 제목 줄 오른쪽에 그 진행건의 다음 할 일 배지(`WorkActivityBadge`, 목록 카드와 같은 모양) — 미완료 Todo 의 가장 이른 예정일, 지남 D+N 빨강·오늘 D0·앞으로 D-N 노랑. 미완료 Todo 가 없으면 없음. 접혀 있어도 어느 진행건을 챙길지 보인다. |
 | **LinkedFieldsEditor** | 계약 핵심필드(업체명·계약일·수임비) 수정 토글(payment_contract_edit_toggle). Props: `cp: ContractPayment`. **평소 = [✎ 계약정보 수정] 버튼만**(값 미표시 — 업체명·계약일·수임비는 ContractRow 헤더가 이미 표시. 중복 박스 제거 2026-07-14; 헤더가 `<button>`이라 버튼 중첩 불가 → 펼침 본문 최상단 우측 배치). 클릭 시 이 카드만 편집모드(input+[저장]/[취소]+배지). 변경 없으면 시트 쓰기 0. 저장 시 연결 미팅 id(AK)로 대상 특정해 02↔04↔06 양방향 연동(업체명→02 D+04 G+06 / 계약일→02 C만, 미팅날짜·통계 불변 / 수임비→02 E+04 L). `useEditContractLinkedFields`, DirtyGuard(편집중 변경 시), 일부 시트 실패 시 시트명 안내+save throw. contract-edit-linked-fields. |
 | **DriveLinkBar** | Drive 바로가기 버튼. 미연결 시 재연결 폼. |
-| **TodoSection** | 진행 슬롯 내 ToDo 목록 + 한 줄 바로 추가 (Scope 2). (계약×기관) 단위, institutionRef=슬롯 진행기관(빈값이면 추가 비활성). 제목·날짜 Enter/「추가」 = 팝업 없이 저장(날짜 비면 할 일 내일·한 일 오늘, 09:00), 「자세히」 = TodoFormModal. 새 줄 2초 강조·제목 칸 재포커스. Props: `contractRef/institutionRef/companyName/todos/slot`. 2026-10-27: 목록은 흰 판 하나 + 줄 구분선(기록마다 상자 없음), 추가 칸 2줄(Todo/History+제목 / 날짜·추가·자세히), 제목 누르면 TodoFormModal 수정 모드. 2026-10-28: 목록에 `fx-stagger`(줄마다 40ms씩 늦게 떠오름, 0.3초 안). |
-| **TodoRow** | TodoSection 의 기록 한 줄. 완료 토글·삭제·「진행 N 기록으로」. 완료 Todo 는 점선 「+ 결과」 → 한 줄 입력(Enter 저장·Esc/빈 blur 취소), 결과는 초록 「결과 · …」 눌러 고침. 완료 Todo·History 는 점선 「+ 다음」 → 제목+날짜(기본 내일) 한 줄, Enter = 같은 진행건에 새 할 일(prevId=원래 기록). 2026-10-27: 한 줄(체크·[History]·[종류≠기타]·제목(누르면 고치기)·날짜·×), 아래 줄은 결과·+결과·+다음·진행건 지정이 있을 때만. 「+ 다음」 입력은 바깥 누르기로 닫히지 않고 저장·취소 버튼(휴대폰 달력 열면 입력칸이 닫히던 버그). 2026-10-28: 방금 완료로 바꾼 체크만 `fx-check-pop`(톡 튐, 처음 그릴 때 완료인 줄은 가만히). |
+| **TodoSection** | 진행 슬롯 내 ToDo 목록 + 한 줄 바로 추가 (Scope 2). (계약×기관) 단위, institutionRef=슬롯 진행기관(빈값이면 추가 비활성). 제목·날짜 Enter/「추가」 = 팝업 없이 저장(날짜 비면 할 일 내일·한 일 오늘, 09:00), 「자세히」 = TodoFormModal. 새 줄 2초 강조·제목 칸 재포커스. Props: `contractRef/institutionRef/companyName/todos/slot`. 2026-10-27: 목록은 흰 판 하나 + 줄 구분선(기록마다 상자 없음), 추가 칸 2줄(Todo/History+제목 / 날짜·시각·추가·자세히, 날짜와 시각 높이는 동일), 제목 누르면 TodoFormModal 수정 모드. 2026-10-28: 목록에 `fx-stagger`(줄마다 40ms씩 늦게 떠오름, 0.3초 안). |
+| **TodoRow** | TodoSection 의 기록 한 줄. 완료 토글·삭제·「진행 N 기록으로」. 완료 Todo 는 점선 「+ 결과」 → 한 줄 입력(Enter 저장·Esc/빈 blur 취소), 결과는 초록 「결과 · …」 눌러 고침. 완료 Todo·History 는 점선 「+ 다음」 → 제목+날짜(기본 내일) 한 줄, Enter = 같은 진행건에 새 할 일(prevId=원래 기록). 2026-10-27: 한 줄(체크·[History]·[종류≠기타]·제목(누르면 고치기)·날짜·×), 「+ 결과」·「+ 다음」은 삭제 옆에 두고 좁을 때만 줄바꿈. 아래 줄은 결과 메모·진행건 지정·열린 입력이 있을 때만. 「+ 다음」 입력은 바깥 누르기로 닫히지 않고 저장·취소 버튼(휴대폰 달력 열면 입력칸이 닫히던 버그). 2026-10-28: 방금 완료로 바꾼 체크만 `fx-check-pop`(톡 튐, 처음 그릴 때 완료인 줄은 가만히). |
 | **TodoFormModal** | 실무 ToDo 생성 팝업 (Pluuug 모티브, 담당자 없음). type 4종·제목·예정일자·예정시각(시08~20/분00·30)·상세·캘린더표시 ON. Props: `contractRef/institutionRef/companyName/onClose`. 2026-10-27: `editing` 이면 수정 모드(만들기와 같은 모양 — 제목 「할 일」·버튼 「저장」, 종류 탭 숨김, 저장 = PATCH type·제목·예정일자·예정시각·상세·showOnCalendar), 목록 밖 시각(예 14:20)도 유지. 날짜·시·분 칸 = 4열 격자(날짜 2칸) 같은 높이 h-10·min-w-0·appearance-none. 2026-10-28: 휴대폰(<768) = 아래에서 올라오는 서랍(`fx-sheet-wrap`·`fx-sheet`, 위 모서리만 둥글게·높이 88vh), PC 는 가운데 창 그대로. 2026-11-10: AppDialog 로 통일 — 서랍/가운데 배치·초점·뒤 스크롤 잠금은 AppDialog(lg 기준, `fx-sheet` 대신 `app-dialog.css`), Esc·× = 미저장 가드, 바깥 누르기로는 안 닫힘. |
 
 > **분할 수납 색 매핑** (tailwind.config.ts safelist 기준):
@@ -1866,7 +1875,7 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 
 ## DB관리시트 통화 정리 앞단 (2026-11-03, plan call-summary PR-5a)
 - 묶음 `CallUi.tsx`(`useCallUi(rows)` → `slot`·`bar`·`layer`) — 페이지는 Grid `callSlot`·DbDetail `callBar` 와 대화상자 층만 꽂는다. `GET /api/calls` 404(스위치 밖)면 아무것도 그리지 않아 카드 모양이 그대로.
-- `CallDial`(`CallDial.tsx`): `CallButton`(lucide Phone, 모바일 카드 오른쪽 52px 칸 — 아이콘에 초록 동그라미 green-100/#15803d, DB정보는 「전화 걸기」 `.dbs-call-dial` 진한 초록 바탕·흰 글자(2026-11-05 강조), 번호 없는 줄은 같은 폭 빈칸) · `CallChip`(`.dbs-call-chip` 녹음 필요 slate·정리 중 blue-50·확인 필요 blue-100 굵게·정리 실패 red-50) · `CallDialDialog`(앱 이름 `.dbs-choice-link` — 누르면 바로 걸고(익시오·에이닷은 폰 기본 통화 앱으로 tel:, 처음 한 번 「설정 › … › 익시오」 안내 — PR-9), `.dbs-check` 「다음에도 이 앱으로」 기본 켬. 녹음 앱은 번호를 크게(`.dbs-call-number`) + 한 줄 안내) · `CallUploadDialog`(폰별 안내 한 줄 `.dbs-call-lead`, 아이폰은 「녹음 대신 받아쓴 글 붙여 넣기」 `.dbs-text-button`, 파일 고르기는 녹음과 받아쓴 통화 내용(.txt·.pdf, 글만 뽑아 보냄 — PR-7)을 함께 받음, 고른 녹음 `.dbs-file` + 판정 한 줄(맞아요 green·번호가 달라요/시각 차이 amber·파일 오류 red), 이 폰에서 처음 보낼 때 외부 AI 고지 3줄 `.dbs-call-notice` + 「자세히」 — PR-6). 모두 `SheetDialog`·recording.css 대화상자 부품 재사용, 스타일 `call.css`. **글자 원칙(belie 2026-11-04)**: 50대·디지털 비친숙 기준 — 제목이 한 말은 다시 쓰지 않고, 버튼은 할 일 이름(올리기·그래도 올리기·저장하기), 안내는 한 줄, 드문 설명은 접기. 크기는 토큰 단계 그대로(큰 글씨는 글자 크기 단계 `--font-scale`).
+- `CallDial`(`CallDial.tsx`): `CallButton`(lucide Phone, 모바일 카드 오른쪽 52px 칸 — 아이콘에 초록 동그라미 green-100/#15803d, DB정보는 「전화 걸기」 `.dbs-call-dial` 진한 초록 바탕·흰 글자(2026-11-05 강조), 번호 없는 줄은 같은 폭 빈칸) · `CallChip`(`.dbs-call-chip` 녹음 필요 slate·정리 중 blue-50·확인 필요 blue-100 굵게·정리 실패 red-50) · `CallDialDialog`(앱 이름 `.dbs-choice-link` — 누르면 바로 걸고(익시오·에이닷은 폰 기본 통화 앱으로 tel:, 처음 한 번 「설정 › … › 익시오」 안내 — PR-9), `.dbs-check` 「다음에도 이 앱으로」 기본 켬. 녹음 앱은 번호를 크게(`.dbs-call-number`) + 한 줄 안내) · `CallUploadDialog`(폰별 안내 한 줄 `.dbs-call-lead`, 아이폰은 「녹음 대신 받아쓴 글 붙여 넣기」 `.dbs-text-button`, Android는 일반 시스템 파일 선택기 「내 파일에서 고르기」(기본 전화 앱: 내 파일 › 내장 저장공간 › Recordings › Call), 녹음은 기존 14MB 제한. 파일 고르기는 녹음과 받아쓴 통화 내용(.txt·.pdf, 글만 뽑아 보냄 — PR-7)을 함께 받음, 고른 녹음 `.dbs-file` + 판정 한 줄(맞아요 green·번호가 달라요/시각 차이 amber·파일 오류 red), 이 폰에서 처음 보낼 때 외부 AI 고지 3줄 `.dbs-call-notice` + 「자세히」 — PR-6). 모두 `SheetDialog`·recording.css 대화상자 부품 재사용, 스타일 `call.css`. **글자 원칙(belie 2026-11-04)**: 50대·디지털 비친숙 기준 — 제목이 한 말은 다시 쓰지 않고, 버튼은 할 일 이름(올리기·그래도 올리기·저장하기), 안내는 한 줄, 드문 설명은 접기. 크기는 토큰 단계 그대로(큰 글씨는 글자 크기 단계 `--font-scale`).
 - `CallScriptSheet`(`CallScriptSheet.tsx`, 2026-11-07 모바일 기획 2판 ①②): 📜 대본 창. DB정보 「통화」 줄 끝 `.dbs-call-script` 「대본 보기」(lucide ScrollText, 폰 430px 이하 한 줄 전체)로 열고, 📞 로 실제로 건 뒤 거는 창이 닫히면 열려 있다(전화 앱에서 돌아오면 대본이 먼저). 대본이 열린 동안 「방금 통화하셨나요?」는 미뤘다가 닫으면 묻는다. 내용은 업체정보 「대본」 탭과 같은 `ContactScriptPanel`(그 길도 그대로) — 이 창은 DB 줄 번호를 `phone` 으로 넘겨 「문자 앱」이 받는 사람까지 채운다. `SheetDialog` + 아래 [닫기], 글자 14px `.dbs-call-script-body`.
   - 「정리 기다리는 통화 N건」 줄(`useCallUi().strip`, `.dbs-pending-strip`, 2026-11-07 ③): DB관리시트 목록 맨 위. 최근 7일 통화 중 녹음 필요·정리 실패·확인 필요만 센다(정리 중 제외), 0건이면 없음. 누르면 그 업체만 걸러 보기(`aria-pressed`, 다른 필터 위에 한 겹), 다시 누르면 전체. 파랑 blue-50 바탕·44px.
 - 규칙(`call-client.ts`): 파일 이름 번호 ≠ 📞 번호 또는 시각 30분 초과 → 한 번 묻기, 받침 따라 을/를·로/으로. 상태 `use-calls.ts`: 정리 중이면 4초 폴링, 📞 뒤 돌아오면 묻기(sessionStorage).

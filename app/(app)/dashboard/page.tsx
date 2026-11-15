@@ -1,4 +1,4 @@
-/** 대시보드: 공용 헤더 → 맨 위 요약 띠(.surface-hero: 날짜/진행 + 재무 3종) → 할 일·목표 → 분석. SSOT: docs/design/components.md §8–9. */
+/** 대시보드: 공용 헤더 → 맨 위 요약 띠(.surface-hero: 진행 줄+기간 칩 / 재무 3종·PC 진행건) → 할 일·목표 → 분석. SSOT: docs/design/components.md §8–9. */
 "use client";
 import PageContainer from "@/components/PageContainer";
 import DashboardActionOverview from "@/components/dashboard/DashboardActionOverview";
@@ -13,7 +13,9 @@ import TopHeader from "@/components/TopHeader";
 import { useMe } from "@/query/me-hook";
 import { useDashboard } from "@/query/dashboard-hooks";
 import DashboardProgressBanner from "@/components/dashboard/DashboardProgressBanner";
-import DashboardFinance from "@/components/dashboard/DashboardFinance";
+import DashboardFinance, { useFinancePeriodState } from "@/components/dashboard/DashboardFinance";
+import { useDashboardWorkItems } from "@/components/dashboard/DashboardWorkStatus";
+import PeriodPicker from "@/components/ui/PeriodPicker";
 import MobileChartCarousel from "@/components/dashboard/MobileChartCarousel";
 import FunnelChart from "@/components/dashboard/FunnelChart";
 import WeeklyDualChart from "@/components/dashboard/WeeklyDualChart";
@@ -56,6 +58,9 @@ export default function DashboardPage() {
     return { ...b, startDate: fmtMD(me.data?.courseStartISO ?? ""), graduationDate: fmtMD(b.endISO) };  }, [me.data, today, weeks]);
 
   const graduated = banner.hasDates && banner.graduated;
+  // A안(belie 2026-11-13): 기간 칩은 진행 줄 오른쪽(PC)·재무 칸 위(폰), 진행건은 PC 띠의 네 번째 칸 — 아래 진행건 판과 같은 조회.
+  const financePeriod = useFinancePeriodState();
+  const work = useDashboardWorkItems(today);
 
   // pc:min-h-0: short content must not force viewport height — the (app)
   // shell reserves no desktop tabbar space and page bottom padding stays small.
@@ -66,30 +71,49 @@ export default function DashboardPage() {
       <PageContainer width="fluid">
 
       {/* 화면 마감 v2 (belie 2026-11-10 승인 시안): 맨 위 요약 한 칸 — 진행도 + 매출·비용·영업이익을
-          밝은 그라데이션 한 띠(.surface-hero)로 묶는다. 재무는 데이터가 오면 같은 띠 아래쪽에 붙는다. */}
+          밝은 그라데이션 한 띠(.surface-hero)로 묶는다. 재무는 데이터가 오면 같은 띠 아래쪽에 붙는다.
+          A안(belie 2026-11-13): PC 는 진행 줄 오른쪽에 기간 칩(세 줄 → 두 줄), 재무는 네 칸(매출·비용·영업이익·진행건)+미리보기.
+          폰은 그대로 — 진행 줄 / 선 / 칩 / 세 칸 숫자. */}
       <div className="px-3 pt-3">
         <div className="surface-hero" data-testid="dashboard-hero">
-          <div role="group" aria-label="오늘 날짜와 수강 진행">
-            <DashboardProgressBanner
-              hasDates={banner.hasDates}
-              today={fmtMD(today)}
-              weekday={KO_DAY[new Date(today + "T00:00").getDay()] ?? ""}
-              currentWeek={banner.hasDates ? banner.currentWeek : 0}
-              graduated={banner.hasDates ? banner.graduated : false}
-              weeksAfterGraduation={banner.hasDates ? banner.weeksAfterGraduation : 0}
-              startDate={banner.hasDates ? banner.startDate : ""}
-              progressPercent={banner.hasDates ? banner.progressPercent : 0}
-              graduationDate={banner.hasDates ? banner.graduationDate : ""}
-              graduationISO={banner.hasDates ? banner.endISO : me.data?.graduationISO}
-            />
+          <div className="pc:flex pc:flex-wrap pc:items-center" data-testid="dashboard-hero-top">
+            <div role="group" aria-label="오늘 날짜와 수강 진행" className="min-w-0 pc:flex-1 pc:basis-96">
+              <DashboardProgressBanner
+                hasDates={banner.hasDates}
+                today={fmtMD(today)}
+                weekday={KO_DAY[new Date(today + "T00:00").getDay()] ?? ""}
+                currentWeek={banner.hasDates ? banner.currentWeek : 0}
+                graduated={banner.hasDates ? banner.graduated : false}
+                weeksAfterGraduation={banner.hasDates ? banner.weeksAfterGraduation : 0}
+                startDate={banner.hasDates ? banner.startDate : ""}
+                progressPercent={banner.hasDates ? banner.progressPercent : 0}
+                graduationDate={banner.hasDates ? banner.graduationDate : ""}
+                graduationISO={banner.hasDates ? banner.endISO : me.data?.graduationISO}
+              />
+            </div>
+            {dash.data && (
+              <div role="group" aria-label="매출·비용 기간" data-testid="dashboard-period-chips"
+                className="flex flex-wrap items-center gap-1.5 border-t border-slate-200/70 px-3 pt-3 pc:ml-auto pc:justify-end pc:border-t-0 pc:py-2 pc:pl-0">
+                <PeriodPicker
+                  period={financePeriod.period}
+                  from={financePeriod.from}
+                  to={financePeriod.to}
+                  onPeriod={financePeriod.setPeriod}
+                  onFrom={financePeriod.setFrom}
+                  onTo={financePeriod.setTo}
+                />
+              </div>
+            )}
           </div>
           {(dash.data || !dash.isError) && (
-            <div className="border-t border-slate-200/70 px-3 pb-3 pt-3">
+            <div className={dash.data ? "px-3 pb-3 pt-2 pc:border-t pc:border-slate-200/70 pc:pt-3" : "border-t border-slate-200/70 px-3 pb-3 pt-3"}>
               {dash.data ? (
                 <DashboardFinance
                   contractChannels={dash.data.contractChannels}
                   onRefreshChannels={dash.refetch}
                   channelsRefreshing={dash.isFetching}
+                  periodState={financePeriod}
+                  work={work}
                 />
               ) : <HeroFinanceSkeleton />}
             </div>

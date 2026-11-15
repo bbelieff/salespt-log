@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState, type MouseEvent } from "react";
 import type { WorkStatusItem, WorkStatusKey } from "@/lib/analytics/payment-work-status";
 
-const STATUS: Array<{ key: WorkStatusKey; label: string; color: string; text: string }> = [
+export const STATUS: Array<{ key: WorkStatusKey; label: string; color: string; text: string }> = [
   { key: "waiting", label: "진행대기", color: "bg-slate-300", text: "text-slate-800" },
   { key: "progress", label: "진행", color: "bg-gradient-to-r from-sky-400 to-blue-500", text: "text-white" },
   { key: "approved", label: "승인", color: "bg-gradient-to-r from-violet-400 to-fuchsia-400", text: "text-white" },
@@ -20,9 +20,11 @@ interface Props {
   items: WorkStatusItem[];
   onNavigate: (row: number | null, slot: number) => void;
   popoverPlacement?: "top" | "bottom";
+  /** "end" = 팝업을 막대 오른쪽 끝에 맞춘다 — 좁은 칸(대시보드 맨 위 띠 「진행건」 칸) 밖으로 넘치지 않게. 기본은 마우스 지점. */
+  popoverAlign?: "pointer" | "end";
 }
 
-export default function WorkStatusBar({ items, onNavigate, popoverPlacement = "bottom" }: Props) {
+export default function WorkStatusBar({ items, onNavigate, popoverPlacement = "bottom", popoverAlign = "pointer" }: Props) {
   const [open, setOpen] = useState<WorkStatusKey | null>(null);
   // 팝업은 마우스(또는 누른 버튼)가 있는 가로 위치에서 뜬다 — 막대 오른쪽 끝에 고정되지 않게(belie 2026-09-29).
   const [anchorX, setAnchorX] = useState<number | null>(null);
@@ -74,7 +76,7 @@ export default function WorkStatusBar({ items, onNavigate, popoverPlacement = "b
   const rootWidth = rootRef.current?.getBoundingClientRect().width ?? 0;
   const popoverWidth = Math.min(POPOVER_WIDTH, typeof window === "undefined" ? POPOVER_WIDTH : window.innerWidth * 0.9);
   // 포인터 지점이 팝업 왼쪽 위 모서리 근처에 오도록 두되, 작업판 밖으로 나가면 안쪽으로 당긴다.
-  const left = anchorX === null ? null : Math.max(0, Math.min(anchorX - 16, rootWidth - popoverWidth));
+  const left = anchorX === null || popoverAlign === "end" ? null : Math.max(0, Math.min(anchorX - 16, rootWidth - popoverWidth));
 
   return (
     <div ref={rootRef} className="relative min-w-0 self-center" data-work-status-bar onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>

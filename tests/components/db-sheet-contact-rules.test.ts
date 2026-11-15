@@ -1,22 +1,24 @@
 /** 컨택결과 규칙(2026-10-23 belie) — 화면 이름·현재상태·최초상담일·부재 다음 연락일·재통화 안내. 합성값. */
 import { describe, expect, it } from "vitest";
-import { autoDbSheetNextContact, dbSheetContactStage, dbSheetResultLabel, DB_SHEET_RESULTS, nextDbSheetFirstContact } from "@/types/db-sheet";
+import { autoDbSheetNextContact, dbSheetContactStage, dbSheetResultLabel, DB_SHEET_QUALIFIED_RESULTS, DB_SHEET_RESULTS, isQualifiedDbSheetContact, nextDbSheetFirstContact } from "@/types/db-sheet";
 import { blank, needsRecallDate, outcomeDisplayLabel, outcomeLabel, recordContact } from "@/app/(app)/db-sheet/_components/model";
 import { STATUS_FILTERS } from "@/app/(app)/db-sheet/_components/status-filter";
 
 describe("result display labels (stored values unchanged)", () => {
   it("renames only the display text", () => {
     expect(dbSheetResultLabel("컨택진행")).toBe("미팅예약");
-    expect(dbSheetResultLabel("상담 후 거절")).toBe("컨택 후 거절");
+    expect(dbSheetResultLabel("상담 후 거절")).toBe("컨택완료");
     expect(dbSheetResultLabel("AS예정")).toBe("AS신청");
     for (const v of ["미컨택", "부재", "단순거절", "재통화"]) expect(dbSheetResultLabel(v)).toBe(v);
     expect(DB_SHEET_RESULTS).toEqual(["미컨택", "부재", "단순거절", "재통화", "컨택진행", "상담 후 거절", "AS예정"]);
+    expect(DB_SHEET_QUALIFIED_RESULTS).toEqual(["컨택진행", "상담 후 거절"]);
+    expect(isQualifiedDbSheetContact("재통화")).toBe(false);
   });
   it("routes select options and filters through the same label", () => {
     expect(outcomeDisplayLabel).toBe(dbSheetResultLabel);
     expect(outcomeLabel("컨택진행")).toBe("미팅예약 · 일별 기록 컨택진행 +1");
-    expect(outcomeLabel("상담 후 거절")).toBe("컨택 후 거절 · 일별 기록 컨택진행 +1");
-    expect(STATUS_FILTERS.find(f => f.id === "progress")!.label).toBe("미팅예약·컨택 후 거절");
+    expect(outcomeLabel("상담 후 거절")).toBe("컨택완료 · 일별 기록 컨택진행 +1");
+    expect(STATUS_FILTERS.find(f => f.id === "progress")!.label).toBe("미팅예약·컨택완료");
   });
 });
 

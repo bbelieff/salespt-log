@@ -90,6 +90,16 @@ describe("할 일 바로 추가 — 시각 고르기(2026-11-11 belie 「안 그
     expect(src).toContain('<TimeSelectPair value={time} onChange={setTime} ariaLabel="기록 시각"/>');
     expect(src).toContain("예정시각: time || QUICK_HHMM");
   });
+  it("시각 두 칸을 고르면 바로 저장에 선택한 값이 들어간다", async () => {
+    const node = render();
+    for (const [label, value] of [["기록 시각 시", "14"], ["기록 시각 분", "30"]] as const) {
+      const select = node.querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`)!;
+      act(() => { select.value = value; select.dispatchEvent(new Event("change", { bubbles: true })); });
+    }
+    setValue(input("기록 제목"), "담당자 통화");
+    await pressEnter(input("기록 제목"));
+    expect(mocks.create.mock.calls[0]?.[0]).toMatchObject({ 예정시각: "14:30" });
+  });
   it("날짜 칸은 요일까지 보이게 넓다(9.5rem)", () => {
     expect(src).toContain("!w-[9.5rem]");
     expect(src).not.toContain("!w-32");

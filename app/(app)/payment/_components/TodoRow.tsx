@@ -7,6 +7,7 @@ import DateInputCustom from "@/components/ui/DateInputCustom";
 const TYPE_BADGE: Record<TodoType, string> = { 미팅: "bg-blue-100 text-blue-700", 전화: "bg-green-100 text-green-700", 메시지: "bg-violet-100 text-violet-700", 기타: "bg-slate-100 text-slate-600", 일반: "bg-teal-100 text-teal-700" };
 /** 「+ 결과」·「+ 다음」 점선 태그 — 부모(group) hover 때 실선·옅은 파랑. */
 const TAG = "inline-block whitespace-nowrap rounded border border-dashed border-slate-300 bg-white px-1.5 text-px-11 font-semibold leading-5 text-blue-600 group-hover:border-solid group-hover:border-blue-300";
+const ACTION = "group inline-flex h-11 min-w-11 items-center justify-center rounded hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 pc:h-9";
 const INPUT = "h-9 rounded-md border border-slate-300 bg-white px-2 text-xs focus:border-blue-500 focus:outline-none";
 const tomorrowKST = () => new Date(Date.now() + 86_400_000).toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
 
@@ -30,9 +31,9 @@ interface Props {
 }
 
 /**
- * Todo/History 한 줄(2026-10-27 belie 「투두 칸을 세 줄씩 쓸 필요 없음」) — 체크·제목·날짜·× 를 한 줄에.
+ * Todo/History 한 줄 — 체크·제목·날짜와 「+ 결과」·「+ 다음」·× 를 모으고 좁으면 줄바꿈.
  * 「Todo」 배지는 체크박스가 이미 말하므로 빼고 History 만, 종류 배지는 「기타」가 아닐 때만.
- * 아래 줄은 결과·「+ 결과」·「+ 다음」이 있을 때만 생긴다. 제목을 누르면 고치기.
+ * 아래 줄은 결과 메모·진행건 지정·열린 입력이 있을 때만 생긴다. 제목을 누르면 고치기.
  */
 const TodoRow = forwardRef<HTMLDivElement, Props>(function TodoRow({ todo: t, ring, fresh, assignSlot, assignTitle, onToggleDone, onSaveResult, onCreateNext, onEdit, onAssignSlot, onRemove }, ref) {
   const history = t.기록종류 === "history";
@@ -59,14 +60,14 @@ const TodoRow = forwardRef<HTMLDivElement, Props>(function TodoRow({ todo: t, ri
   const when = `${t.예정일자.slice(5).replace("-", "/")}${t.예정시각 ? ` ${t.예정시각}` : ""}`;
   return (
     <div ref={ref} data-todo-id={t.id} className={`px-2 py-1.5 transition-colors duration-700 ${tint}`}>
-      <div className="flex min-w-0 items-center gap-1.5">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5">
         {!history && <input type="checkbox" aria-label="완료 토글" checked={t.완료여부} onChange={(e) => { setPop(e.target.checked); onToggleDone(e.target.checked); }} onAnimationEnd={() => setPop(false)} className={`h-4 w-4 shrink-0 accent-blue-600 ${pop ? "fx-check-pop" : ""}`}/>}
         {history && <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-px-11 font-bold text-amber-700">History</span>}
         {t.type !== "기타" && <span className={`shrink-0 rounded px-1.5 py-0.5 text-px-11 ${TYPE_BADGE[t.type]}`}>{t.type}</span>}
         {onEdit ? (
-          <button type="button" onClick={onEdit} aria-label={`${t.제목} 고치기`} className={`min-w-0 flex-1 truncate rounded text-left text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${done ? "text-slate-400 line-through" : "text-slate-800"}`}>{t.제목}</button>
+          <button type="button" onClick={onEdit} aria-label={`${t.제목} 고치기`} className={`min-w-12 flex-1 truncate rounded text-left text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 ${done ? "text-slate-400 line-through" : "text-slate-800"}`}>{t.제목}</button>
         ) : (
-          <span className={`min-w-0 flex-1 truncate text-xs ${done ? "text-slate-400 line-through" : "text-slate-800"}`}>{t.제목}</span>
+          <span className={`min-w-12 flex-1 truncate text-xs ${done ? "text-slate-400 line-through" : "text-slate-800"}`}>{t.제목}</span>
         )}
         {/* 일정을 눌러도 고치기(2026-10-28 belie 「다음으로 넣은 투두 일정을 지우고 다시 만들기 번거롭다」). */}
         {onEdit ? (
@@ -74,18 +75,20 @@ const TodoRow = forwardRef<HTMLDivElement, Props>(function TodoRow({ todo: t, ri
         ) : (
           <span className="shrink-0 text-px-11 tabular-nums text-slate-400">{when}</span>
         )}
-        <button type="button" onClick={onRemove} className="-mr-1 inline-flex h-7 w-6 shrink-0 items-center justify-center text-slate-300 hover:text-red-500" aria-label="기록 삭제">×</button>
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          {done && !result && !editing && <button type="button" onClick={open} aria-label={`${t.제목} 결과 적기`} className={ACTION}><span className={TAG}>+ 결과</span></button>}
+          {canNext && !nextOpen && <button type="button" onClick={() => setNextOpen(true)} aria-label={`${t.제목} 다음 할 일 적기`} className={ACTION}><span className={TAG}>+ 다음</span></button>}
+          <button type="button" onClick={onRemove} className="-mr-1 inline-flex h-7 w-6 shrink-0 items-center justify-center text-slate-300 hover:text-red-500" aria-label="기록 삭제">×</button>
+        </div>
       </div>
-      {/* 아래 줄 — 결과(초록)·「+ 결과」·「+ 다음」·진행건 지정. 없으면 줄 자체가 없다. */}
-      {((done && !editing) || (canNext && !nextOpen) || assignSlot) && (
+      {/* 아래 줄 — 결과 메모(초록)·진행건 지정. 없으면 줄 자체가 없다. */}
+      {((done && result && !editing) || assignSlot) && (
         <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-1 pl-5">
           {done && result && !editing && (
             <button type="button" onClick={open} aria-label="결과 고치기" className="min-w-0 max-w-full truncate rounded px-0.5 text-left text-px-11 text-emerald-700 hover:bg-emerald-50">
               <span className="text-slate-400">결과 · </span>{result}
             </button>
           )}
-          {done && !result && !editing && <button type="button" onClick={open} aria-label={`${t.제목} 결과 적기`} className="group rounded px-0.5 hover:bg-blue-50"><span className={TAG}>+ 결과</span></button>}
-          {canNext && !nextOpen && <button type="button" onClick={() => setNextOpen(true)} aria-label={`${t.제목} 다음 할 일 적기`} className="group rounded px-0.5 hover:bg-blue-50"><span className={TAG}>+ 다음</span></button>}
           {assignSlot && <button type="button" onClick={onAssignSlot} title={assignTitle} className="shrink-0 rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-px-11 font-semibold text-amber-800 hover:bg-amber-100">진행 {assignSlot} 기록으로</button>}
         </div>
       )}

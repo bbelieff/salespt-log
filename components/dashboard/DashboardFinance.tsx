@@ -10,6 +10,8 @@
  * 2026-10-19 구조 개선 ③④: 비용 원장 창도 여기서 연다 — 서버 대시보드는 원장을 계산·생성하지 않는다.
  * 2026-10-12 #7: 영업이익 상세에 「채널별 남은 돈」(ChannelProfitBreakdown) — 같은 기간·같은 행으로
  *   다시 계산만 한다(칩 전환 시 새 요청 없음). 계약별 채널은 /api/dashboard 의 contractChannels.
+ * 2026-11-13 A안: 대시보드는 기간 칩을 맨 위 진행 줄 오른쪽에 둔다 — 페이지가 `useFinancePeriodState()` 로 상태를 갖고
+ *   `periodState` 로 넘기면 이 컴포넌트는 칩을 그리지 않는다(없으면 지금처럼 자기 칩). `work` 는 네 번째 칸 「진행건」.
  */
 import { useEffect, useMemo, useState } from "react";
 import type { DashboardContractChannel } from "@/types";
@@ -27,12 +29,30 @@ import {
 import { todayKST } from "@/util/week";
 import PeriodPicker from "@/components/ui/PeriodPicker";
 import FinanceSummaryBoxes from "./FinanceSummaryBoxes";
+import type { WorkColumnData } from "./FinanceWorkColumn";
 import ExpenseLedgerDialog from "./expense-ledger/ExpenseLedgerDialog";
 import ChannelProfitBreakdown from "./ChannelProfitBreakdown";
 import { channelBucketOf, missingChannelKeys, periodChannelProfit } from "./channel-profit";
 
 // 같은 탭에서 화면을 다시 열어도 동일한 어긋남은 한 번만 재조회한다.
 const refreshedChannelGroups = new Set<string>();
+
+export interface FinancePeriodState {
+  period: FinancePeriod;
+  from: string;
+  to: string;
+  setPeriod: (p: FinancePeriod) => void;
+  setFrom: (v: string) => void;
+  setTo: (v: string) => void;
+}
+
+/** 기간 칩 상태(기본 「전체」) — 칩을 이 컴포넌트 밖(대시보드 맨 위 진행 줄)에 둘 때 페이지가 갖는다. */
+export function useFinancePeriodState(): FinancePeriodState {
+  const [period, setPeriod] = useState<FinancePeriod>("all");
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  return { period, from, to, setPeriod, setFrom, setTo };
+}
 
 interface Props {
   /** /api/dashboard 의 계약별 채널. 없으면(배포 직후 캐시된 옛 응답) 채널 표를 그리지 않는다. */
@@ -41,14 +61,17 @@ interface Props {
   onRefreshChannels?: () => unknown;
   /** 대시보드를 다시 불러오는 중(「확인 중」 줄 문구). */
   channelsRefreshing?: boolean;
+  /** 주면 칩을 그리지 않고 이 기간으로 계산한다(칩은 부모가 그린다). */
+  periodState?: FinancePeriodState;
+  /** 네 번째 칸 「진행건」(PC 만). */
+  work?: WorkColumnData;
 }
 
-export default function DashboardFinance({ contractChannels, onRefreshChannels, channelsRefreshing = false }: Props) {
+export default function DashboardFinance({ contractChannels, onRefreshChannels, channelsRefreshing = false, periodState, work }: Props) {
   const [ledgerOpen, setLedgerOpen] = useState(false);
   const onOpenExpenseLedger = () => setLedgerOpen(true);
-  const [period, setPeriod] = useState<FinancePeriod>("all");
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
+  const own = useFinancePeriodState();
+  const { period, from, to, setPeriod, setFrom, setTo } = periodState ?? own;
   const today = todayKST();
   const range = periodBounds(period, from, to, today);
 
@@ -83,25 +106,27 @@ export default function DashboardFinance({ contractChannels, onRefreshChannels, 
 
   return (
     <section aria-label="매출·비용·영업이익">
-      <div className="mb-2 flex flex-wrap items-center gap-1.5">
-        <PeriodPicker
-          period={period}
-          from={from}
-          to={to}
-          onPeriod={setPeriod}
-          onFrom={setFrom}
-          onTo={setTo}
-        />
-      </div>
+      {!periodState && (
+        <div className="mb-2 flex flex-wrap items-center gap-1.5">
+          <PeriodPicker
+            period={period}
+            from={from}
+            to={to}
+            onPeriod={setPeriod}
+            onFrom={setFrom}
+            onTo={setTo}
+          />
+        </div>
+      )}
       {failed ? (
         <div className="flex items-center justify-between gap-3 py-3 text-xs text-slate-600">
           <span>매출·비용을 불러오지 못했어요.</span>
           <button type="button" onClick={() => { void contracts.refetch(); void db.refetch(); }} className="shrink-0 rounded-lg border border-slate-200 px-2 py-1 font-semibold text-blue-700">다시 시도</button>
         </div>
       ) : !totals || ledger.isLoading ? (
-        <div role="status" aria-busy="true" className="stat-split grid grid-cols-3">
+        <div role="status" aria-busy="true" className={`stat-split grid grid-cols-3${work ? " pc:grid-cols-4" : ""}`}>
           {/* stat-split 이 「앞 칸 다음 칸」에 세로 선을 긋으므로 sr-only 안내는 맨 뒤(absolute 라 칸을 차지하지 않음). */}
-          {[0, 1, 2].map((i) => <div key={i} aria-hidden="true" className="space-y-2 py-3 pr-3"><div className="fx-skeleton h-3 w-10 rounded-md" /><div className="fx-skeleton h-5 w-full rounded-md" /></div>)}
+          {(work ? [0, 1, 2, 3] : [0, 1, 2]).map((i) => <div key={i} aria-hidden="true" className={`space-y-2 py-3 pr-3${i === 3 ? " hidden pc:block" : ""}`}><div className="fx-skeleton h-3 w-10 rounded-md" /><div className="fx-skeleton h-5 w-full rounded-md" /></div>)}
           <span className="sr-only">불러오는 중…</span>
         </div>
       ) : (
@@ -116,6 +141,7 @@ export default function DashboardFinance({ contractChannels, onRefreshChannels, 
           onOpenExpenseLedger={onOpenExpenseLedger}
           periodLabel={label}
           contractCount={totals.revenue.contracts}
+          work={work}
           profitDetail={totals.channels ? (
             <ChannelProfitBreakdown
               table={totals.channels}
