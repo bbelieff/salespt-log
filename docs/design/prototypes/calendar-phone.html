@@ -1,5 +1,5 @@
 <!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{box-sizing:border-box}body{margin:0}[hidden]{display:none!important}</style></head><body>
-<!-- 캘린더 탭 폰 화면 시안 v2 (2026-11-13 belie 「사이드탭 · 구글캘린더처럼 일당 서너개」). 합성 예시 데이터. -->
+<!-- 캘린더 탭 폰 화면 시안 v3 (2026-11-15 belie 「왼쪽 테두리 없는 게」 — 일정 줄 왼쪽 띠 제거). 합성 예시 데이터. -->
 <title>캘린더 폰 화면 시안</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -77,7 +77,7 @@ button,input,textarea{font:inherit;color:inherit}
 .dc.today .dn b{background:var(--accent);color:#fff}
 .dn em{font-style:normal;font-size:9px;font-weight:800;color:var(--accent-fg);white-space:nowrap}
 .dn .nt{width:5px;height:5px;border-radius:50%;background:var(--res)}
-.bar{flex:none;height:17px;box-sizing:border-box;padding:0 3px;border-radius:4px;font-size:11px;font-weight:700;line-height:17px;white-space:nowrap;overflow:hidden;border-left:3px solid var(--k);background:var(--b);color:var(--f)}
+.bar{flex:none;height:17px;box-sizing:border-box;padding:0 4px;border-radius:4px;font-size:11px;font-weight:700;line-height:17px;white-space:nowrap;overflow:hidden;background:var(--b);color:var(--f)}
 .bar.res{--b:var(--res-bg);--f:var(--res-fg)} .bar.con{--b:var(--con-bg);--f:var(--con-fg)} .bar.done{--b:var(--done-bg);--f:var(--done-fg)}
 .bar.need{box-shadow:inset 0 0 0 1.5px var(--res)}
 .bar.td{--k:var(--todo);--b:var(--todo);--f:#fff} .bar.td.ok{opacity:.5;text-decoration:line-through}
@@ -161,18 +161,18 @@ button,input,textarea{font:inherit;color:inherit}
 
 <div class="stage">
   <div class="phone" id="phone">
-    <div class="app">경영일지<small>시안 v2 · 합성 예시</small></div>
+    <div class="app">경영일지<small>시안 v3 · 합성 예시</small></div>
     <div class="band" id="band"></div>
     <div class="chips" id="chips"></div>
     <div id="main" style="flex:1;min-height:0;display:flex;flex-direction:column"></div>
     <div class="toast" id="toast" hidden></div>
   </div>
   <aside class="notes">
-    <h1>폰 화면 시안 v2</h1>
+    <h1>폰 화면 시안 v3</h1>
     <p>폰 한 대 크기로 그렸습니다. 직접 눌러 볼 수 있어요. 업체·일정 이름은 가짜 예시입니다.</p>
     <ol>
       <li><b>메뉴는 왼쪽 사이드탭</b>입니다. 맨 위 왼쪽 버튼을 누르면 서랍이 열립니다(지금 라이브와 같음). 하단 탭은 없습니다.</li>
-      <li><b>달력이 화면을 꽉 채우고 칸마다 일정이 3~4줄</b> 보입니다. 넘치면 「+N」. 미팅은 상태색 바탕에 채널 색 띠, 투두는 진회색, 일반 일정은 청록입니다. 테두리가 있는 주황 줄은 결과를 안 넣은 미팅입니다.</li>
+      <li><b>달력이 화면을 꽉 채우고 칸마다 일정이 3~4줄</b> 보입니다. 넘치면 「+N」. 미팅은 상태색 바탕, 투두는 진회색, 일반 일정은 청록입니다(왼쪽 띠 없음). 테두리가 있는 주황 줄은 결과를 안 넣은 미팅입니다.</li>
       <li><b>날짜 칸을 누르면</b> 아래에서 그 날 창이 올라옵니다. 메모, 전체 일정, 「+ 일정」이 있습니다.</li>
       <li>창에서 <b>일정을 누르면</b> 같은 창 안에서 미팅 결과 입력·투두 완료로 넘어갑니다. 다른 탭으로 가지 않습니다.</li>
       <li><b>「주 | 월」</b>로 월 보기(하늘)와 주 보기(보라)를 오갑니다. 금요일 칸의 작은 「10주」는 수강 주차입니다.</li>

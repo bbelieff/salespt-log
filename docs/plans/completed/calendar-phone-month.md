@@ -10,7 +10,7 @@ worktree: .claude/worktrees/kind-bouman-a6d15c
 ## Intent (왜)
 belie 2026-11-12 「pc는 먼저 진행하고 폰화면기획 따로」 → 폰 기획안·시안 → 2026-11-13 「바텀탭 아니고 사이드탭 · 구글캘린더처럼 일당 서너개는 일정이 보여야」 → 시안 v2 → 「추천대로 구현」.
 폰 캘린더는 칸 글씨가 잘려 읽기 어렵고, 일정을 누르면 다른 탭으로 넘어갔다. 달력을 화면 가득 쓰고 그 자리에서 처리하게 한다.
-시안: docs/design/prototypes/calendar-phone.html (v2). PC: docs/plans/completed/calendar-month-board.md
+시안: docs/design/prototypes/calendar-phone.html (v3 — 2026-11-15 일정 줄 왼쪽 띠 제거). PC: docs/plans/completed/calendar-month-board.md
 
 ## Acceptance Criteria (수용 기준)
 - [x] 1280px 미만 캘린더 = 달력이 화면 높이를 꽉 채우고 칸마다 일정 이름 3줄 이상(5줄 달 4~5줄, 6줄 달 3~4줄), 넘치면 「+N」

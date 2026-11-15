@@ -14,7 +14,7 @@ import BoardMeetingPop from "../../../schedule/_components/board/BoardMeetingPop
 import BoardPopover from "../../../schedule/_components/board/BoardPopover";
 import MeetingPopHead from "../../../schedule/_components/board/MeetingPopHead";
 import TodoPopover from "../../../schedule/_components/board/TodoPopover";
-import { CH_DOT, CH_EDGE, LAYER_DOT, LAYER_LABEL, type LayerKey } from "../../../schedule/_components/board/board-style";
+import { CH_DOT, LAYER_DOT, LAYER_LABEL, type LayerKey } from "../../../schedule/_components/board/board-style";
 import "../../../schedule/_components/board/week-board.css";
 import GcalConnectCard from "../GcalConnectCard";
 import GcalItemToggle from "../GcalItemToggle";
@@ -154,11 +154,11 @@ function PhoneGrid({ rows, order, todayISO, active, now, onDay }: { rows: MonthR
     ro.observe(el);
     return () => ro.disconnect();
   }, [rows.length]);
-  const BAR = "h-[17px] shrink-0 overflow-hidden whitespace-nowrap rounded border-l-[3px] px-[3px] text-px-11 font-bold leading-[17px]";
+  const BAR = "h-[17px] shrink-0 overflow-hidden whitespace-nowrap rounded px-1 text-px-11 font-bold leading-[17px]";
   const bar = (it: DayItem) => {
-    if (it.kind === "m") return <span key={it.id} className={`${BAR} ${CH_EDGE[it.m.channel]} ${ST_BAR[it.m.상태]}${needsResult(it.m, now) ? " ring-1 ring-inset ring-amber-500" : ""}`}>{it.m.업체명}</span>;
-    if (it.kind === "e") return <span key={it.id} className={`${BAR} border-l-teal-600 bg-teal-100 text-teal-900`}>{it.t.제목}</span>;
-    return <span key={it.id} className={`${BAR} border-l-slate-700 bg-slate-700 text-white${it.t.완료여부 ? " line-through opacity-50" : ""}`}>{todoCompany(it.t) || it.t.제목}</span>;
+    if (it.kind === "m") return <span key={it.id} className={`${BAR} ${ST_BAR[it.m.상태]}${needsResult(it.m, now) ? " ring-1 ring-inset ring-amber-500" : ""}`}>{it.m.업체명}</span>;
+    if (it.kind === "e") return <span key={it.id} className={`${BAR} bg-teal-100 text-teal-900`}>{it.t.제목}</span>;
+    return <span key={it.id} className={`${BAR} bg-slate-700 text-white${it.t.완료여부 ? " line-through opacity-50" : ""}`}>{todoCompany(it.t) || it.t.제목}</span>;
   };
   return (
     <div ref={ref} className="grid min-h-0 flex-1 overflow-hidden" style={{ gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gridTemplateRows: `${HEAD_H}px`, gridAutoRows: "minmax(0, 1fr)" }}>
