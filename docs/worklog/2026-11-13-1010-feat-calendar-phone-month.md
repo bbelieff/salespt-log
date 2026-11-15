@@ -7,3 +7,4 @@
 - DB 변경 없음. 되돌리기 = 이 PR revert.
 - [plan](../plans/completed/calendar-phone-month.md)
 - 2026-11-15 belie 「왼쪽 테두리 없는게 나을듯」: 폰 달력 일정 줄의 채널 색 왼쪽 띠 제거(`CH_EDGE` 삭제), 시안 v3. 채널은 그 날 창의 점으로 본다.
+- 병합·배포(2026-11-15): PR #1435 — master 두 번 합침(#1433, #1434·#1436) 뒤 현재 head b56847b7 에서 CI(build·check) 통과 → squash ddfd1cf8 → Deploy to VPS run 43661745022 success, `/api/health` 200, `/calendar` 307(로그인으로). 실제 폰 기기·로그인한 운영 화면·어두운 화면은 NOT_RUN — belie 확인 요청.
