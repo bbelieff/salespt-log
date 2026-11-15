@@ -9,7 +9,7 @@ import { useRemoveTodo } from "@/query/todos-hooks";
 import { dayLabelKO, parseISO } from "../../../schedule/_lib/week";
 import BoardPopover from "../../../schedule/_components/board/BoardPopover";
 
-export default function EventViewPopover({ todo: t, anchor, onClose, onSaved }: { todo: Todo; anchor: DOMRect | null; onClose: () => void; onSaved: (msg: string) => void }) {
+export default function EventViewPopover({ todo: t, anchor, onClose, onSaved, onBack }: { todo: Todo; anchor: DOMRect | null; onClose: () => void; onSaved: (msg: string) => void; onBack?: () => void }) {
   const remove = useRemoveTodo();
   const [asking, setAsking] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -19,7 +19,7 @@ export default function EventViewPopover({ todo: t, anchor, onClose, onSaved }: 
     remove.mutate({ contractRef: t.contractRef, id: t.id }, { onSuccess: () => { onSaved(`✓ 「${t.제목}」 일정을 지웠어요`); onClose(); }, onError: () => setFailed(true) });
   };
   return (
-    <BoardPopover glass anchor={anchor} onClose={onClose} label={`${t.제목} 일정`} title={<>
+    <BoardPopover glass anchor={anchor} onClose={onClose} onBack={onBack} label={`${t.제목} 일정`} title={<>
       <h3 className="wb-pop-h">{t.제목}</h3>
       <p className="wb-pop-meta">{d.getMonth() + 1}/{d.getDate()} ({dayLabelKO(d)}) {t.예정시각 || "종일"}{t.업체명 ? ` · ${t.업체명}` : ""}</p>
       <div className="wb-pmeta"><span><i className="bg-teal-600" />일반 일정 · 점수에 안 들어가요</span></div>

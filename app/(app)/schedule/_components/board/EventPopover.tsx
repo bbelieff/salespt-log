@@ -12,17 +12,15 @@ import BoardPopover from "./BoardPopover";
 
 const INPUT = "h-10 w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-violet-500 focus:outline-none";
 
-export default function EventPopover({ date, time, anchor, onClose, onSaved, chooseTime = false }: {
-  /** chooseTime = 한 달 보드 「+ 일정」: 종일로 열고 「시각 정하기」로 바꿀 수 있다. */
-  date: string; time: string | null; anchor: DOMRect | null; onClose: () => void; onSaved: (msg: string) => void; chooseTime?: boolean;
+export default function EventPopover({ date, time, anchor, onClose, onSaved }: {
+  date: string; time: string | null; anchor: DOMRect | null; onClose: () => void; onSaved: (msg: string) => void;
 }) {
   const create = useCreateTodo();
   const [title, setTitle] = useState("");
   const [start, setStart] = useState(time ?? "");
   const [memo, setMemo] = useState("");
   const [error, setError] = useState("");
-  const [timed, setTimed] = useState(time !== null);
-  const allDay = !timed;
+  const allDay = time === null;
 
   const save = async () => {
     if (!title.trim()) return setError("제목을 적어 주세요.");
@@ -49,14 +47,6 @@ export default function EventPopover({ date, time, anchor, onClose, onSaved, cho
         <label className="grid gap-1 text-xs font-bold text-slate-600">제목
           <input autoFocus value={title} maxLength={100} onChange={(e) => setTitle(e.target.value)} placeholder="예: 점심 약속, 병원" className={INPUT} />
         </label>
-        {chooseTime && (
-          <div role="group" aria-label="종일 또는 시각" className="grid grid-cols-2 gap-1.5">
-            {[false, true].map((on) => (
-              <button key={String(on)} type="button" aria-pressed={timed === on} onClick={() => { setTimed(on); if (on && !start) setStart("09:00"); }}
-                className="h-9 rounded-xl border border-slate-300 bg-white text-px-13 font-bold text-slate-600 aria-pressed:border-teal-600 aria-pressed:bg-teal-50 aria-pressed:text-slate-900">{on ? "시각 정하기" : "종일"}</button>
-            ))}
-          </div>
-        )}
         {!allDay && (
           <div className="grid gap-1 text-xs font-bold text-slate-600">시작 시각
             <TimeSelectPair value={start} onChange={setStart} hourMin={7} hourMax={21} ariaLabel="일정 시작 시각" />

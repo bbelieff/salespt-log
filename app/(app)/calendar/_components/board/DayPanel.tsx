@@ -64,7 +64,7 @@ export default function DayPanel({ date, todayISO, items, now, memo, memoReady, 
 }
 
 /** 메모 — 0.8초 뒤·칸을 떠날 때 저장(주간 보드 메모 칸과 같은 방식). */
-function DayMemo({ date, value, ready, onSave }: { date: string; value: string; ready: boolean; onSave: (date: string, text: string) => void }) {
+export function DayMemo({ date, value, ready, onSave }: { date: string; value: string; ready: boolean; onSave: (date: string, text: string) => void }) {
   const [text, setText] = useState(value);
   const saved = useRef(value);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);

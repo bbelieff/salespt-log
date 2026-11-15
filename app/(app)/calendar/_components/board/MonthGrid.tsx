@@ -12,7 +12,8 @@ import { CH_DOT, ST_BLOCK } from "../../../schedule/_components/board/board-styl
 export type DayItem =
   | { kind: "m"; id: string; time: string; m: Meeting }
   | { kind: "t" | "e"; id: string; time: string; t: Todo };
-export interface MonthCell { date: string; day: number; month: number; dow: number; out: boolean; items: DayItem[]; count: number; memo: boolean }
+/** cw = 그 날의 수강 주차(시작 전·모르면 0). */
+export interface MonthCell { date: string; day: number; month: number; dow: number; out: boolean; items: DayItem[]; count: number; memo: boolean; cw: number }
 export interface MonthRow { start: string; label: string; course: boolean; stats: string; current: boolean; cells: MonthCell[] }
 
 const DOW = ["일", "월", "화", "수", "목", "금", "토"];

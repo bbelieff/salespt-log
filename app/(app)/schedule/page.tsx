@@ -36,6 +36,7 @@ import { useMeetingPatch } from "./_lib/useMeetingPatch";
 import { useBoardView } from "./_lib/useBoardView";
 import MeetingResultCard from "./_components/MeetingResultCard";
 import WeekBoard from "./_components/board/WeekBoard";
+import ViewSwitch from "./_components/board/ViewSwitch";
 import BoardMeetingPop from "./_components/board/BoardMeetingPop";
 import { useMobileExtras } from "./_components/board/useMobileExtras";
 
@@ -207,10 +208,13 @@ export default function SchedulePage() {
     <>
       {deleteConfirm.element}
       <div className="mx-auto flex w-full justify-end px-4 py-2"><DeletedMeetings /></div>
-      <TopHeader
-        pageEmoji="📋"
-        pageTitle="일정·계약"
-      />
+      {/* 폰·태블릿 페이지 띠 오른쪽 「주 | 월」 — 「월」은 캘린더(월 보기)로, 보이는 주의 날짜를 지닌 채. */}
+      <TopHeader pageEmoji="📋" pageTitle="일정·계약" pageNavigation={
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 text-sm font-semibold text-slate-700 sm:gap-2">
+          <span aria-hidden="true" className="shrink-0 text-base leading-none">📋</span><span className="truncate">일정·계약</span>
+          <ViewSwitch view="week" className="ml-auto" onView={() => guardedNav(() => router.push(`/calendar?date=${TODAY_ISO >= viewStart && TODAY_ISO <= fmtISO(addDays(parseISO(viewStart), 6)) ? TODAY_ISO : fmtISO(addDays(parseISO(viewStart), 3))}`))} />
+        </div>
+      } />
       {/* WeekHeader + SummaryBar 를 하나의 sticky 컨테이너로 묶어 drift 방지.
           (이전: 각자 sticky → top 값 추정에 의존하여 살짝 흔들림) */}
       <div className="sticky top-app-content z-30 bg-white shadow-sm" {...weekSwipe}>

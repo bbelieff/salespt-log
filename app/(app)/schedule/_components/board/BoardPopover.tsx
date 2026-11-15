@@ -5,9 +5,9 @@
  */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
-export default function BoardPopover({ anchor, title, onClose, children, label, width = 320, glass = false }: {
-  /** glass = 시안 v44 미팅 창 재질(.wb-pop). 폰 시트에서는 쓰지 않는다. */
-  anchor: DOMRect | null; title: ReactNode; label: string; onClose: () => void; children: ReactNode; width?: number; glass?: boolean;
+export default function BoardPopover({ anchor, title, onClose, children, label, width = 320, glass = false, onBack }: {
+  /** glass = 시안 v44 미팅 창 재질(.wb-pop). 폰 시트에서는 쓰지 않는다. onBack = 제목 왼쪽 「뒤로」(폰 월 보기: 일정 → 그 날 목록). */
+  anchor: DOMRect | null; title: ReactNode; label: string; onClose: () => void; children: ReactNode; width?: number; glass?: boolean; onBack?: () => void;
 }) {
   const W = width;
   const ref = useRef<HTMLDivElement>(null);
@@ -62,6 +62,11 @@ export default function BoardPopover({ anchor, title, onClose, children, label, 
       >
         {sheet && <div aria-hidden="true" className="mx-auto mb-2 h-1 w-10 rounded-full bg-slate-300" />}
         <div className="flex items-start gap-2">
+          {onBack && (
+            <button type="button" onClick={onBack} aria-label="목록으로" className="-ml-2 -mt-2 grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-500 hover:bg-slate-100">
+              <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+            </button>
+          )}
           <div className="min-w-0 flex-1">{title}</div>
           <button type="button" onClick={onClose} aria-label="닫기" className="-mr-2 -mt-2 grid h-10 w-10 shrink-0 place-items-center rounded-xl text-slate-500 hover:bg-slate-100">
             <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>

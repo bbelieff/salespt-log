@@ -16,8 +16,8 @@ import { TodoTypeGlyph } from "./glyphs";
 
 const INPUT = "h-10 w-full min-w-0 rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 focus:border-violet-500 focus:outline-none";
 
-export default function TodoPopover({ todo, anchor, onClose, onSaved }: {
-  todo: Todo; anchor: DOMRect | null; onClose: () => void; onSaved: (msg: string) => void;
+export default function TodoPopover({ todo, anchor, onClose, onSaved, onBack }: {
+  todo: Todo; anchor: DOMRect | null; onClose: () => void; onSaved: (msg: string) => void; onBack?: () => void;
 }) {
   const patch = usePatchTodo();
   const create = useCreateTodo();
@@ -55,7 +55,7 @@ export default function TodoPopover({ todo, anchor, onClose, onSaved }: {
 
   const when = `${todo.예정일자.slice(5).replace("-", "/")}${todo.예정시각 ? ` ${todo.예정시각}` : ""}`;
   return (
-    <BoardPopover anchor={anchor} onClose={onClose} label={`${todo.업체명} ${todo.제목}`} title={<>
+    <BoardPopover anchor={anchor} onClose={onClose} onBack={onBack} label={`${todo.업체명} ${todo.제목}`} title={<>
       <h3 className="truncate text-lg font-black tracking-tight text-slate-900">{todo.업체명 || "실무 투두"}</h3>
       <p className="mt-0.5 flex items-start gap-1.5 text-px-15 font-bold leading-snug text-slate-800"><TodoTypeGlyph type={todo.type} className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" /><span>{todo.제목}</span></p>
       <p className="mt-1 text-xs tabular-nums text-slate-500">{when} · {todo.type}{todo.institutionRef ? ` · ${todo.institutionRef}${todo.slot ? ` 진행건 ${todo.slot}` : ""}` : ""}</p>
