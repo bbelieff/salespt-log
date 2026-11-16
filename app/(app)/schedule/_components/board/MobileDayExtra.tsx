@@ -1,15 +1,16 @@
 "use client";
 /**
- * 폰·태블릿(1280px 미만) 날짜 판 아래쪽 — 그날 메모 한 줄 · 종일/시간 실무 투두 · 일반 일정 · 「+ 일정」.
+ * 폰·태블릿(1280px 미만) 날짜 판 아래쪽 — 그날 메모 한 줄 · 종일/시간 실무 투두 · 일반 일정.
+ * 「＋ 일정」은 날짜 제목 띠 오른쪽(DayAddButton — 2026-11-16, 아래 한 줄을 차지하던 것).
  * 미팅 줄은 기존 DaySection 그대로, 이 칸만 더한다. 투두·일정 창은 아래에서 올라오는 시트(BoardPopover).
  */
 import { useEffect, useRef, useState } from "react";
 import type { Todo } from "@/types";
 import { TodoTypeGlyph } from "./glyphs";
 
-export default function MobileDayExtra({ date, todos, memo, memoReady, onMemo, onTodo, onCreate }: {
+export default function MobileDayExtra({ date, todos, memo, memoReady, onMemo, onTodo }: {
   date: string; todos: Todo[]; memo: string; memoReady: boolean;
-  onMemo: (date: string, text: string) => void; onTodo: (t: Todo) => void; onCreate: (date: string) => void;
+  onMemo: (date: string, text: string) => void; onTodo: (t: Todo) => void;
 }) {
   const [text, setText] = useState(memo);
   const saved = useRef(memo);
@@ -43,7 +44,11 @@ export default function MobileDayExtra({ date, todos, memo, memoReady, onMemo, o
           ))}
         </ul>
       )}
-      <button type="button" onClick={() => onCreate(date)} className="mt-1.5 inline-flex h-9 items-center gap-1 rounded-xl border border-dashed border-teal-500/60 px-3 text-xs font-bold text-teal-700 hover:bg-teal-50">＋ 일정</button>
     </div>
   );
+}
+
+/** 날짜 제목 띠 오른쪽 「＋ 일정」 — 그날 일반 일정 만들기. 누르는 자리는 44px(hit-44). */
+export function DayAddButton({ date, onCreate }: { date: string; onCreate: (date: string) => void }) {
+  return <button type="button" aria-label={`${date} 일정 추가`} onClick={() => onCreate(date)} className="hit-44 inline-flex h-7 shrink-0 items-center rounded-lg border border-dashed border-teal-600/60 bg-white/70 px-2 text-xs font-bold text-teal-700 hover:bg-teal-50">＋ 일정</button>;
 }

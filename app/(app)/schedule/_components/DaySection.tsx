@@ -24,6 +24,8 @@ interface Props {
   onOpen: (meeting: Meeting) => void;
   /** 폰·태블릿: 미팅 줄 아래 메모·실무 투두·일반 일정(주간 보드 2026-11-11). */
   extra?: ReactNode;
+  /** 폰·태블릿: 제목 띠 오른쪽(건수 옆) 「＋ 일정」(2026-11-16 — 아래 한 줄을 차지하던 버튼). */
+  action?: ReactNode;
 }
 
 /** 미팅 한 줄 — 상태 아이콘·시간·채널·업체명·장소(·수임비). 결과 입력·고치기는 누르면 뜨는 창에서. */
@@ -51,20 +53,16 @@ function MeetingRow({ meeting, focus, onOpen }: { meeting: Meeting; focus: boole
   );
 }
 
-export default function DaySection({ date, meetings, todayISO, focusId, onOpen, extra }: Props) {
+export default function DaySection({ date, meetings, todayISO, focusId, onOpen, extra, action }: Props) {
   const d = parseISO(date);
   const dow = d.getDay();
   const isWeekend = dow === 0 || dow === 6;
   const isToday = date === todayISO;
 
-  // 화면 마감 v2(2026-11-10·11): 하루 = 흰 판 하나(.surface-panel) + 제목 줄(.section-head) + 미팅 줄 목록.
-  //  - 오늘: 파란 제목 글자 + 「오늘」 칩 + 제목 줄 파란 밑줄(꼭 봐야 하는 날 하나만 강조)
-  //  - 주말(토/일): 요일 빨강 글자
-  const dayNameCls = isToday
-    ? "text-blue-700"
-    : isWeekend
-      ? "text-red-500"
-      : "text-slate-500";
+  // 화면 마감 v2(2026-11-10·11): 하루 = 흰 판 하나(.surface-panel) + 제목 띠 + 미팅 줄 목록.
+  // 제목 띠는 요일별 바탕색으로 날짜를 가른다(2026-11-16 belie): 오늘 파랑 · 토 하늘 · 일 빨강 · 평일 회색.
+  const band = isToday ? "bg-blue-100" : dow === 6 ? "bg-sky-50" : dow === 0 ? "bg-red-50" : "bg-slate-100";
+  const dayNameCls = isToday ? "text-blue-700" : dow === 6 ? "text-sky-700" : dow === 0 ? "text-red-600" : "text-slate-500";
   const dateCls = isToday ? "text-blue-900" : "text-slate-900";
 
   return (
@@ -73,11 +71,7 @@ export default function DaySection({ date, meetings, todayISO, focusId, onOpen, 
       // 위로 스크롤(앞 요일 클릭) 시 sticky 헤더에 가려지지 않도록 여유 확보.
       className={`surface-panel scroll-mt-[280px] !py-3 ${isToday ? "!border-blue-300 ring-1 ring-blue-200" : ""}`}
     >
-      <header
-        className={`section-head !items-center !justify-start ${
-          isToday ? "!border-b-2 !border-blue-600" : ""
-        }`}
-      >
+      <header className={`section-head !items-center !justify-start rounded-lg !border-b-0 px-2.5 !pb-1.5 pt-1.5 ${band}`}>
         <span className={`text-sm font-bold ${dateCls}`}>{fmtMD(d)}</span>
         <span className={`text-sm font-semibold ${dayNameCls}`}>
           ({dayLabelKO(d)})
@@ -87,13 +81,10 @@ export default function DaySection({ date, meetings, todayISO, focusId, onOpen, 
             오늘
           </span>
         )}
-        <span
-          className={`ml-auto text-xs ${
-            isToday ? "font-semibold text-blue-700" : "text-slate-400"
-          }`}
-        >
+        <span className={`ml-auto text-xs ${isToday ? "font-semibold text-blue-700" : "text-slate-500"}`}>
           {meetings.length > 0 ? `${meetings.length}건` : ""}
         </span>
+        {action}
       </header>
 
       {meetings.length === 0 ? (

@@ -54,10 +54,27 @@ export function swipeBlocked(target: EventTarget | null): boolean {
   return false;
 }
 
-/** 화면 왼쪽 끝 이 폭 안에서 시작한 터치는 브라우저 뒤로 가기 대신 서랍이 받는다. */
+/** 화면 왼쪽·오른쪽 끝 이 폭 안에서 시작한 터치는 브라우저 「뒤로/앞으로 가기」 밀기 대신 앱이 받는다. */
 export const EDGE_ZONE = 24;
-const TAPPABLE = 'a,button,input,select,textarea,label,summary,[role="button"],[role="link"],[tabindex]:not([tabindex="-1"])';
-/** 왼쪽 끝에서 시작했고 누를 수 있는 것 위가 아니면 true — touchstart 기본 동작(뒤로 가기)을 막는다. 탭은 버튼 위에서 그대로 동작. */
-export function claimEdgeTouch(x: number, target: EventTarget | null): boolean {
-  return x <= EDGE_ZONE && !(target instanceof Element && target.closest(TAPPABLE));
+const TAPPABLE = 'a,button,label,summary,[role="button"],[role="link"],[tabindex]:not([tabindex="-1"])';
+/**
+ * 왼쪽 끝 또는 오른쪽 끝(width 를 주면)에서 시작한 터치면 true — touchstart 기본 동작(뒤로·앞으로 가기)을 막는다.
+ * 2026-11-16 belie 「왼쪽은 아직도 뒤로 가지고, 오른쪽 끝을 밀면 월로 넘어간다」: 예전엔 버튼·링크 위에서 시작한 터치는
+ * 막지 않았는데, 일정 줄처럼 화면 끝까지 닿는 버튼 위에서는 그대로 뒤로 갔다. 이제 끝에서는 늘 막고,
+ * 제자리 누르기였으면 edgeTapTarget 으로 대신 눌러 준다. 입력 칸은 호출하는 쪽이 먼저 거른다(swipeSkipped).
+ */
+export function claimEdgeTouch(x: number, width = Infinity): boolean {
+  return x <= EDGE_ZONE || x >= width - EDGE_ZONE;
+}
+/** 오른쪽 끝을 재는 화면 폭 — 밀기 자리 계산용(배치는 폭으로 가르지 않는다, DesktopNav ⑤). */
+export const viewportWidth = (): number => window.innerWidth;
+/** 입력 칸·크기 조절 손잡이 위 터치 — 기본 동작(초점·끌기)을 막으면 안 된다. */
+export function swipeSkipped(target: EventTarget | null): boolean {
+  return target instanceof Element && !!target.closest(SWIPE_SKIP);
+}
+export const TAP_SLOP = 10;
+/** 끝에서 막은 터치가 거의 안 움직이고 끝났을 때 대신 눌러 줄 것(기본 동작을 막아 click 이 생기지 않으므로). */
+export function edgeTapTarget(target: EventTarget | null, dx: number, dy: number): HTMLElement | null {
+  if (Math.hypot(dx, dy) > TAP_SLOP || !(target instanceof Element)) return null;
+  return target.closest<HTMLElement>(TAPPABLE);
 }
