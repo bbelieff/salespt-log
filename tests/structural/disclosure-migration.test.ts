@@ -28,7 +28,7 @@ const inventory: Array<[string,number,number]> = [
  ['components/auth/TraineeCard.tsx',1,1],
  ['components/auth/TrainerAssignCard.tsx',1,1],
  ['components/auth/TrainerCohortView.tsx',1,1],
- // components/auth/TrainerMgmtSections.tsx(1→1): 2026-11-16 admin-phase1 에서 「수강생 명단확인」 구역째 제거 — 목록에서 뺐다(46→45, 44→43).
+ // components/auth/TrainerMgmtSections.tsx(1→1): 2026-11-16 admin-phase1 에서 「수강생 명단확인」 구역째 제거 — 목록에서 뺐다(45→44, 43→42).
  ['components/company-info/CompanyInfoLayoutToggle.tsx',1,1],
  ['components/dashboard/DashboardFollowUpsView.tsx',3,3],
  ['components/dashboard/FinanceSummaryBoxes.tsx',3,3],
@@ -43,9 +43,9 @@ describe('approved disclosure migration boundary',()=>{
   expect(source).toContain('aria-expanded={rawOpen} onClick={()=>setRawOpen(!rawOpen)}');
   expect(source).toContain('<DisclosureChevron open={rawOpen} />');
  });
- it('maps exactly 45 legacy positions to 43 shared indicators without forcing alternate pairs',()=>{
-  expect(inventory.reduce((sum,[,before])=>sum+before,0)).toBe(45);
-  expect(inventory.reduce((sum,[,,after])=>sum+after,0)).toBe(43);
+ it('maps exactly 44 legacy positions to 42 shared indicators without forcing alternate pairs',()=>{
+  expect(inventory.reduce((sum,[,before])=>sum+before,0)).toBe(44);
+  expect(inventory.reduce((sum,[,,after])=>sum+after,0)).toBe(42);
   for(const [file,,after] of inventory){
    const source=readFileSync(file,'utf8');
    expect((source.match(/<DisclosureChevron(?:\s|\/|>)/g)??[]).length,file).toBe(after);
