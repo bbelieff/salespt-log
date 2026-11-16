@@ -73,8 +73,9 @@ export function toText(rich: unknown): LogText[] {
   });
 }
 
+// heading_4 는 노션이 2026년에 더한 제목 4단계 — 빠뜨리면 그 아래 내용까지 통째로 사라진다(김태진 6주차, 2026-11-16).
 const SIMPLE: Record<string, LogBlockType> = {
-  paragraph: "p", heading_1: "h1", heading_2: "h2", heading_3: "h3",
+  paragraph: "p", heading_1: "h1", heading_2: "h2", heading_3: "h3", heading_4: "h3",
   bulleted_list_item: "ul", numbered_list_item: "ol", to_do: "todo", toggle: "toggle",
   quote: "quote", callout: "callout", code: "code",
 };
@@ -85,7 +86,8 @@ function fileUrl(body: Json): string {
 }
 
 /**
- * 노션 블록 1개 → 화면 블록(자식은 호출자가 채움). 그릴 수 없는 블록(하위 DB·임베드 등)은 null.
+ * 노션 블록 1개 → 화면 블록(자식은 호출자가 채움). 그릴 수 없는 블록(하위 DB 등)은 null.
+ * 모르는 종류라도 글자나 자식이 있으면 문단으로 남긴다 — 노션이 새 블록을 더해도 내용이 조용히 빠지지 않게.
  * 제목 블록이 토글이면(is_toggleable) 토글로 바꿔 자식이 접혀 보이게 한다.
  */
 export function toLogBlock(block: Json): LogBlock | null {
@@ -108,7 +110,11 @@ export function toLogBlock(block: Json): LogBlock | null {
   if (type === "table") return { type: "table", text: [], rows: [] };
   if (type === "column_list" || type === "column" || type === "synced_block") return { type: "p", text: [] };
   const mapped = SIMPLE[type];
-  if (!mapped) return null;
+  if (!mapped) {
+    // 일지 안에 만든 하위 페이지는 제목을 글자로 남기고 그 내용을 아래에 펼친다.
+    const text = type === "child_page" && typeof body.title === "string" && body.title.trim() ? [{ text: body.title.trim(), bold: true }] : toText(body.rich_text);
+    return text.length || block.has_children === true ? { type: "p", text } : null;
+  }
   const toggleHeading = mapped.startsWith("h") && body.is_toggleable === true;
   const out: LogBlock = { type: toggleHeading ? "toggle" : mapped, text: toText(body.rich_text) };
   if (mapped === "todo") out.checked = body.checked === true;

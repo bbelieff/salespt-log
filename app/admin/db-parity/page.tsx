@@ -69,7 +69,7 @@ export default async function DbParityPage({
         </table>
         <p className="mt-3 text-xs text-slate-400">
           ※ dual-write 는 배포 후 쓰기부터 쌓임 — backfill(Actions → DB Backfill) 전에는
-          DB 쪽이 적은 게 정상. <Link href="/admin" className="underline">← 마스터 메뉴</Link>
+          DB 쪽이 적은 게 정상. <Link href="/admin/settings" className="underline">← 설정</Link>
         </p>
       </div>
     </main>

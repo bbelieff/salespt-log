@@ -2,6 +2,7 @@
  * 트레이닝일지 — 수강생은 자기 일지만(belie 2026-10-30). 노션·레지스트리는 가짜, 이름·내용은 모두 가상.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { toLogBlock } from "@/service/training-log-blocks";
 
 const users: Record<string, { email: string; role: string; cohort: string; name: string }> = {
   "a@example.com": { email: "a@example.com", role: "trainee", cohort: "11", name: "가상일" },
@@ -87,5 +88,20 @@ describe("training log — own entries only", () => {
     expect((await listMyTrainingLogs("t@example.com")).status).toBe("no_cohort");
     notion.configured = false;
     expect((await listMyTrainingLogs("a@example.com")).status).toBe("not_configured");
+  });
+});
+
+describe("training log — blocks are not silently dropped", () => {
+  const rt = (t: string) => ({ rich_text: [{ plain_text: t }] });
+  it("heading_4 (노션 제목 4단계) shows as a small heading, and as a toggle when it folds its children", () => {
+    expect(toLogBlock({ type: "heading_4", has_children: false, heading_4: rt("가상 소제목") })).toEqual({ type: "h3", text: [{ text: "가상 소제목" }] });
+    expect(toLogBlock({ type: "heading_4", has_children: true, heading_4: { ...rt("가상 6단계"), is_toggleable: true } })).toEqual({ type: "toggle", text: [{ text: "가상 6단계" }] });
+  });
+  it("an unknown block keeps its text and its children; an empty unknown leaf is skipped", () => {
+    expect(toLogBlock({ type: "future_block", has_children: true, future_block: rt("가상") })).toEqual({ type: "p", text: [{ text: "가상" }] });
+    expect(toLogBlock({ type: "future_block", has_children: true, future_block: {} })).toEqual({ type: "p", text: [] });
+    expect(toLogBlock({ type: "child_page", has_children: true, child_page: { title: "가상 하위 메모" } })).toEqual({ type: "p", text: [{ text: "가상 하위 메모", bold: true }] });
+    expect(toLogBlock({ type: "table_of_contents", has_children: false, table_of_contents: {} })).toBeNull();
+    expect(toLogBlock({ type: "child_database", has_children: false, child_database: { title: "숨김" } })).toBeNull();
   });
 });

@@ -19,8 +19,8 @@ import {
 } from "./AdminUserPickerSections";
 import { type PrepItem } from "./TraineePrepBulkForm";
 import UnifiedPrepCard from "./UnifiedPrepCard";
-import MigrateCacheButton from "./MigrateCacheButton";
 import BulkReserveButton from "./BulkReserveButton";
+import { ADMIN_FEATURES } from "@/config/admin-features";
 import { apiErrorMessage } from "@/lib/util/api-error-message";
 
 export default function AdminUserPicker({
@@ -370,9 +370,10 @@ export default function AdminUserPicker({
               기수별 등록된 수강생 ({users.length}명)
             </p>
           </div>
-          {!viewOnly && (
+          {/* 유보 처리는 기능 스위치(ADMIN_FEATURES.reserve)가 켜진 곳에서만. 유보 수강생 목록·복귀는 아래에 늘 있다.
+              「동기화」는 설정 > 진단(/admin/settings)으로 옮겼다(admin-phase1). */}
+          {!viewOnly && ADMIN_FEATURES.reserve && (
             <div className="flex shrink-0 flex-wrap items-center gap-2">
-              {/* 2026-05-17 [A5]: 카드별 유보 버튼 → 헤더 통합 */}
               <BulkReserveButton
                 trainees={users.map((u) => ({
                   email: u.email,
@@ -384,7 +385,6 @@ export default function AdminUserPicker({
                   router.refresh();
                 }}
               />
-              <MigrateCacheButton />
             </div>
           )}
         </div>

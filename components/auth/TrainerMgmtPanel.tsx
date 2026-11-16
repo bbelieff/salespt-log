@@ -6,8 +6,11 @@
  *   2) 권한부여           — 페이지가 children 으로 주입 (TrainerAccessEditor)
  *   3) SectionPending     — 트레이너 요청관리 (pending 승인/거절)
  *   4) 초대관리           — 페이지가 children 으로 주입 (TrainerInvites)
- *   5) SectionTraineeList — 수강생 명단
+ *   5) 수강생 명단 → 수강생 관리로 가는 링크(admin-phase1, 2026-11-16 — 같은 명단이 두 화면에 있던 것 정리)
  *   6) SectionManagement  — 관리부서 명단
+ *
+ * 담당 배정의 주 화면은 수강생 관리(/admin/users, 수강생별 담당 고르기)다. 1) 담당부여는
+ * 「한 트레이너에게 여러 수강생을 한꺼번에(기수·전체 일괄)」가 수강생 관리에 없어 남겨 두었다.
  *
  * ★ 헤더는 이 패널이 소유한다. 페이지 최상단 sticky 한 곳뿐이며, 모든 섹션은
  *   그 아래 같은 셸 폭(max-w-3xl pc:max-w-5xl) 안에 정렬된다. 이전에는 초대·권한이
@@ -26,7 +29,6 @@ import {
   SectionPending,
   SectionAssign,
   SectionManagement,
-  SectionTraineeList,
 } from "./TrainerMgmtSections";
 
 export default function TrainerMgmtPanel({
@@ -241,11 +243,20 @@ export default function TrainerMgmtPanel({
         {inviteSlot}
         </section>
 
-        {/* 5. 수강생 명단 (조회 only) */}
-        <SectionTraineeList
-          trainees={trainees}
-          activeTrainers={activeTrainers}
-        />
+        {/* 5. 수강생 명단 — 수강생 관리에 같은 명단(담당 포함)이 있어 링크로 대신한다. */}
+        <section aria-labelledby="trainee-roster-link-title" className="surface-panel flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h2 id="trainee-roster-link-title" className="text-base font-bold text-slate-900">수강생 명단 ({trainees.length})</h2>
+            <p className="mt-0.5 text-xs text-slate-500">명단 확인과 수강생별 담당 배정은 수강생 관리에서 해요.</p>
+          </div>
+          <Link
+            href="/admin/users"
+            data-roster-link
+            className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
+          >
+            수강생 관리로 가기 →
+          </Link>
+        </section>
 
         {/* 6. 관리부서 명단 — viewOnly 면 액션 버튼 숨김. */}
         <SectionManagement

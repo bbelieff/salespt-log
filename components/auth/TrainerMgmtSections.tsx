@@ -3,13 +3,11 @@
  *
  *   SectionPending     — pending 승인/거절
  *   SectionAssign      — 트레이너별 카드 + 수강생 다중 체크박스
- *   SectionTraineeList — 수강생 명단 (기수별 아코디언)
  *   SectionTrainerList — 트레이너 명단 (담당 수강생 아코디언)
  */
 "use client";
 
 import SortableList from "./SortableList";
-import DisclosureChevron from "@/components/ui/DisclosureChevron";
 import TrainerAssignCard from "./TrainerAssignCard";
 
 export interface PanelUser {
@@ -169,66 +167,6 @@ export function SectionAssign({
   );
 }
 
-
-/* ─────────────────────── Section 3 ─────────────────────── */
-export function SectionTraineeList({
-  trainees,
-  activeTrainers,
-}: {
-  trainees: PanelUser[];
-  activeTrainers: PanelUser[];
-}) {
-  const grouped = groupByCohort(trainees);
-  // email → 이름 매핑 (담당 표시용). 이름 없으면 email 그대로.
-  const nameByEmail = new Map<string, string>();
-  for (const t of activeTrainers) {
-    nameByEmail.set(t.email.toLowerCase(), t.name || t.email);
-  }
-  const resolveTrainerName = (e: string) =>
-    nameByEmail.get(e.toLowerCase()) ?? e;
-  return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4">
-      <h2 className="mb-4 text-base font-bold text-slate-900">
-        수강생 명단확인 ({trainees.length})
-      </h2>
-      <div className="space-y-2">
-        {grouped.map(([cohort, list]) => (
-          <details
-            key={cohort}
-            className="group overflow-hidden rounded-xl border border-slate-200 bg-white open:bg-slate-50"
-          >
-            <summary className="disclosure-summary flex cursor-pointer items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50">
-              <span className="text-sm font-bold text-slate-900">
-                {cohort === "—" ? "미분류" : `${cohort}기`} · {list.length}명
-              </span>
-              <DisclosureChevron className="text-slate-400" />
-            </summary>
-            <div className="border-t border-slate-100 p-3">
-              <ul className="ml-3 space-y-1 text-xs">
-                {list.map((s) => {
-                  const assigned = parseAssigned(s.assignedTrainer);
-                  const names = assigned.map(resolveTrainerName);
-                  return (
-                    <li key={s.email}>
-                      <div className="text-slate-800">
-                        ㄴ <span className="font-semibold">{s.name || s.email}</span>
-                        {s.captainOf ? <span title="회장"> 👑</span> : null}{" "}
-                        <span className="text-slate-400">({s.email})</span>
-                      </div>
-                      <div className="ml-4 text-px-10 text-slate-500">
-                        {names.length > 0 ? `담당: ${names.join(", ")}` : "미배정"}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </details>
-        ))}
-      </div>
-    </section>
-  );
-}
 
 // Section 4 (관리부서 명단) → ./TrainerMgmtManagement 분리 (파일 크기 가드).
 export { SectionManagement } from "./TrainerMgmtManagement";

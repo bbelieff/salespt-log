@@ -47,7 +47,7 @@ describe("admin trainers page shell", () => {
     const headerAt = src.indexOf("<header");
     const headerEnd = src.indexOf("</header>");
     // 섹션·슬롯이 전부 </header> 뒤에 있어야 한다.
-    for (const marker of ["{accessSlot}", "{inviteSlot}", "<SectionAssign", "<SectionPending", "<SectionTraineeList", "<SectionManagement"]) {
+    for (const marker of ["{accessSlot}", "{inviteSlot}", "<SectionAssign", "<SectionPending", "data-roster-link", "<SectionManagement"]) {
       const at = src.indexOf(marker);
       expect(at, `${marker} 가 없다`).toBeGreaterThan(-1);
       expect(at, `${marker} 가 헤더보다 위에 있다`).toBeGreaterThan(headerEnd);
@@ -55,20 +55,28 @@ describe("admin trainers page shell", () => {
     expect(headerAt).toBeGreaterThan(-1);
   });
 
-  it("섹션 순서 — 담당부여 → 권한부여 → 요청관리 → 초대관리 → 수강생명단 → 관리부서", () => {
+  it("섹션 순서 — 담당부여 → 권한부여 → 요청관리 → 초대관리 → 수강생명단(링크) → 관리부서", () => {
     // 2026-09-14 belie 가 직접 지정한 순서. 바꾸려면 사용자 확인이 필요하다.
+    // 2026-11-16(admin-phase1, belie 승인): ⑤ 수강생 명단은 수강생 관리와 겹쳐 그 자리에 링크만 둔다.
     const src = read("components/auth/TrainerMgmtPanel.tsx");
     const order = [
       "<SectionAssign",
       "{accessSlot}",
       "<SectionPending",
       "{inviteSlot}",
-      "<SectionTraineeList",
+      "data-roster-link",
       "<SectionManagement",
     ].map(m => ({ m, at: src.indexOf(m) }));
     expect(order.filter(o => o.at < 0)).toEqual([]);
     const positions = order.map(o => o.at);
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
+  });
+
+  it("수강생 명단은 다시 그리지 않고 수강생 관리로 보낸다", () => {
+    const src = read("components/auth/TrainerMgmtPanel.tsx");
+    expect(src).not.toContain("SectionTraineeList");
+    expect(src).toMatch(/href="\/admin\/users"\s+data-roster-link/);
+    expect(read("components/auth/TrainerMgmtSections.tsx")).not.toContain("export function SectionTraineeList");
   });
 
   it("TrainerInvites 루트가 폭을 다시 선언하지 않는다", () => {

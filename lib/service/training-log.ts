@@ -56,7 +56,8 @@ export async function listMyTrainingLogs(email: string): Promise<TrainingLogList
   }
 }
 
-const MAX_DEPTH = 4;
+// 트레이너 일지는 목록 안 목록이 6단까지 내려간다(김태진 6주차 실측 2026-11-16) — 4단에서 끊으면 맨 안쪽 내용이 사라졌다. 전체 양은 MAX_BLOCKS 가 막는다.
+const MAX_DEPTH = 8;
 const MAX_BLOCKS = 600;
 
 async function readBlocks(blockId: string, depth: number, budget: { left: number }): Promise<LogBlock[]> {

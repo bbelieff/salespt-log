@@ -1,22 +1,36 @@
 ---
-status: stale
+status: current
 created: 2026-04-21
 owner: belie
-last_review: 2026-04-21
+last_review: 2026-11-16
 ---
 
 > **📄 이 문서는 무엇인가요?**
-> - **한 줄 요약**: 8주 수강생 전용 MVP의 명확한 IN/OUT 경계와 편집 기간 용어 정의
-> - **누가 읽나요**: 개발자, 기획자, 에이전트 (Claude)
-> - **어떤 기능·작업과 연결?**: 모든 개발 작업의 가드레일 역할
-> - **읽고 나면 알 수 있는 것**:
->   - MVP에 포함/제외되는 기능의 명확한 구분
->   - "수강 기간" vs "편집 가능 기간" vs "완전 종료"의 차이
->   - 확장 계획 방향성
-> - **관련 문서**: [향후 확장](./future/extensions.md), [CLAUDE.md](../CLAUDE.md), [API 명세](./domains/api-spec.md)
+> - **한 줄 요약**: 지금 제품이 누구를 위해 무엇까지 하는지(범위)를 짧게 적는다. 아래 「이력」은 2026-04 초기 MVP 정의다.
+> - **누가 읽나요**: 개발 세션(Claude·Codex)·belie
+> - **관련 문서**: [CLAUDE.md](../CLAUDE.md) · [architecture.md](./architecture.md) · [data-model](./domains/data-model.md) · [향후 확장](./future/extensions.md)
 
-> ⚠️ **낡은 문서(2026-10-15 점검)** — 2026-04~05 초기 설계 기록이다. 그 뒤 바뀐 것: 데이터 정본은 Postgres(시트는 미러·백업, 2026-08-24), 숫자 10기 이후 12주 과정(ADR-0032), 수료 후에도 계속 입력(ADR-0031 — '완전 종료=읽기 전용' 폐지), 기간 상수 정본 `lib/config/cohort-dates.ts`. **현재 구조는 [architecture.md](/docs/architecture.md)·CLAUDE.md·`docs/domains/data-model.md`·`sheet-structure.md` 를 본다.** 이 문서는 이력으로만 남긴다.
+# 현재 범위 (2026-11-16)
 
+**대상 — 모두 범위 안이다.**
+- **수강생**: 기록·CRM·트레이닝. 숫자 10기 이후는 12주 과정([ADR-0032](./decisions/0032-twelve-week-courses.md)).
+- **수료생**: 수료 뒤에도 자기 기록을 계속 입력·수정한다([ADR-0031](./decisions/0031-unlimited-crm-supersede-0005.md) — 옛 「완전 종료 = 읽기 전용」 폐지).
+- **트레이너**: 담당 수강생 조회·주간 목표(`/trainer`). 등급·권한은 트레이너 관리의 권한부여가 정한다.
+- **관리자(마스터) · 관리부서**: 관리자 화면(`/admin`). 마스터는 변경까지, 관리부서는 조회만. 메뉴는 다섯 묶음(운영 현황·사람·과정·알림·설정) — [admin-phase1](./plans/completed/admin-phase1.md).
+- **아레나**: 교육기관 전용 선택 기능([ADR-0014](./decisions/0014-arena-registry-conventions.md)).
+
+**데이터·기간**
+- 정본은 Postgres, 시트는 미러·백업이다(CLAUDE.md §2).
+- 기간·주차 상수는 `lib/config/cohort-dates.ts`·`lib/util/week.ts` 가 정본. 9기 이하는 [ADR-0005](./decisions/0005-week-counting-convention.md).
+- 화면 기간 매출 정의는 [ADR-0034](./decisions/0034-revenue-all-contracts-by-period.md).
+
+**범위 밖(지금)**: 오프라인 사용(서비스워커 없음), 고객별 분리 운영(계획만 있음 — 관리자 기능 스위치 `lib/config/admin-features.ts` 가 그 씨앗).
+
+범위를 넓히거나 줄이는 결정은 새 ADR 로 남긴다. 아래는 이력이며 현재 규칙이 아니다.
+
+---
+
+> ⚠️ **이력 — 2026-04~05 초기 설계 기록.** 8주 전용·편집 10주·「완전 종료」 등은 위 ADR 로 바뀌었다. 지금 규칙으로 읽지 않는다.
 
 # MVP 스코프 정의
 

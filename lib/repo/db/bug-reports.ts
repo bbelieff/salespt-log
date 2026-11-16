@@ -52,3 +52,70 @@ export async function countRecentBugReports(email: string): Promise<number> {
     [email.trim().toLowerCase()]);
   return Number(r.rows[0]?.n ?? 0);
 }
+
+/* ───────── 관리자 조회(admin-phase1, 2026-11-16) — 읽기만. 표를 만들지 않는다(GET 이 DDL 을 하지 않게). ───────── */
+
+/** 목록 한 줄 — 그림(image)은 무거워 싣지 않고 있는지만 알린다. */
+export interface BugReportListRow {
+  id: string;
+  createdAt: string;
+  email: string;
+  name: string;
+  cohort: string;
+  category: string;
+  body: string;
+  hasImage: boolean;
+  context: unknown;
+  status: string;
+}
+
+/** 표가 아직 없으면(신고가 한 번도 없던 DB) 빈 결과로 본다. */
+async function readOrEmpty<T>(run: () => Promise<T>, empty: T): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if ((error as { code?: string } | null)?.code === "42P01") return empty;
+    throw error;
+  }
+}
+
+export async function listBugReports(limit: number, offset: number): Promise<BugReportListRow[]> {
+  return readOrEmpty(async () => {
+    const r = await pool().query<{
+      id: string; created_at: Date; email: string; name: string; cohort: string;
+      category: string; body: string; has_image: boolean; context: unknown; status: string;
+    }>(
+      `select id, created_at, email, name, cohort, category, body, (image <> '') as has_image, context, status
+         from public.bug_reports order by created_at desc, id desc limit $1 offset $2`,
+      [limit, offset]);
+    return r.rows.map((x) => ({
+      id: x.id, createdAt: new Date(x.created_at).toISOString(), email: x.email, name: x.name, cohort: x.cohort,
+      category: x.category, body: x.body, hasImage: !!x.has_image, context: x.context, status: x.status,
+    }));
+  }, []);
+}
+
+export async function countBugReports(): Promise<number> {
+  return readOrEmpty(async () => {
+    const r = await pool().query<{ n: string }>(`select count(*)::text as n from public.bug_reports`);
+    return Number(r.rows[0]?.n ?? 0);
+  }, 0);
+}
+
+/** 아직 확인 안 한(status=new) 최근 N일 신고 수 — 관리자 홈 「오늘 할 일」. */
+export async function countNewBugReports(days: number): Promise<number> {
+  return readOrEmpty(async () => {
+    const r = await pool().query<{ n: string }>(
+      `select count(*)::text as n from public.bug_reports where status='new' and created_at > now() - make_interval(days => $1::int)`,
+      [days]);
+    return Number(r.rows[0]?.n ?? 0);
+  }, 0);
+}
+
+/** 한 건의 캡처(data URL). 없으면 빈 문자열, 그런 신고가 없으면 null. */
+export async function getBugReportImage(id: string): Promise<string | null> {
+  return readOrEmpty(async () => {
+    const r = await pool().query<{ image: string }>(`select image from public.bug_reports where id=$1`, [id]);
+    return r.rows[0] ? r.rows[0].image : null;
+  }, null);
+}
