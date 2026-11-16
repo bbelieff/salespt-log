@@ -3,13 +3,22 @@
  * 주간 보드 창 — PC 는 누른 칸 옆에 뜨는 작은 창, 폰은 아래에서 올라오는 시트.
  * Esc·바깥 누르기·X 로 닫힌다. 창 크기가 바뀌면 다시 만들지 않고 위치만 옮긴다(2026-11-11 belie 「X가 잘 안 눌린다」).
  */
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+
+const WIDE = 460;
+const WideContext = createContext<(on: boolean) => void>(() => {});
+/** 창 안의 내용이 넓은 자리가 필요할 때(업체정보 입력칸) PC 창 너비를 넓힌다. 폰 시트는 원래 전폭. */
+export function useBoardPopWide(on: boolean) {
+  const set = useContext(WideContext);
+  useEffect(() => { set(on); return () => set(false); }, [on, set]);
+}
 
 export default function BoardPopover({ anchor, title, onClose, children, label, width = 320, glass = false, onBack }: {
   /** glass = 시안 v44 미팅 창 재질(.wb-pop). 폰 시트에서는 쓰지 않는다. onBack = 제목 왼쪽 「뒤로」(폰 월 보기: 일정 → 그 날 목록). */
   anchor: DOMRect | null; title: ReactNode; label: string; onClose: () => void; children: ReactNode; width?: number; glass?: boolean; onBack?: () => void;
 }) {
-  const W = width;
+  const [wide, setWide] = useState(false);
+  const W = wide ? Math.max(width, WIDE) : width;
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   const [sheet, setSheet] = useState(false);
@@ -72,7 +81,7 @@ export default function BoardPopover({ anchor, title, onClose, children, label, 
             <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg>
           </button>
         </div>
-        <div className="mt-2">{children}</div>
+        <div className="mt-2"><WideContext.Provider value={setWide}>{children}</WideContext.Provider></div>
       </div>
     </>
   );

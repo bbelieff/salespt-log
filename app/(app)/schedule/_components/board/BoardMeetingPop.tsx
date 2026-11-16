@@ -18,6 +18,8 @@ import { dayLabelKO, parseISO } from "../../_lib/week";
 import AddMeetingForm from "../AddMeetingForm";
 import BasicEditDetails from "../BasicEditDetails";
 import BoardCompanyRoute from "./BoardCompanyRoute";
+import { useBoardPopWide } from "./BoardPopover";
+import MeetingNameFix from "./MeetingNameFix";
 
 type Act = "con" | "done" | "chg" | "can";
 const ACTS: [Act, string][] = [["con", "계약"], ["done", "완료"], ["chg", "변경"], ["can", "취소"]];
@@ -45,6 +47,7 @@ export default function BoardMeetingPop({ meeting: m, pending, onPatch, onResche
   const [edit, setEdit] = useState(false); // 계약 결과 고치기
   const [basic, setBasic] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [nameFix, setNameFix] = useState(false); // 결과가 난 미팅의 업체명·장소 고치기
   const [ciDraft, setCiDraft] = useState<CompanyInfo | undefined>(m.업체정보);
   const [ciTouched, setCiTouched] = useState(false);
   const [ciEdit, setCiEdit] = useState(false);
@@ -55,6 +58,7 @@ export default function BoardMeetingPop({ meeting: m, pending, onPatch, onResche
   const [newTime, setNewTime] = useState(m.미팅시간);
   const [warn, setWarn] = useState("");
 
+  useBoardPopWide(ciEdit); // 업체정보 입력칸이 열리면 창을 넓힌다 — 320px 에 두 묶음이 나란히 끼던 것(2026-11-16 belie)
   const withCi = (p: Partial<Omit<Meeting, "id">>) => (ciTouched ? { ...p, 업체정보: ciDraft } : p);
   const settle = () => { setAct(null); setEdit(false); setCiTouched(false); setReason(""); setWarn(""); };
   // 사유는 회차별로 쌓는다 — 목록 화면 미팅 카드와 같은 규칙.
@@ -114,9 +118,11 @@ export default function BoardMeetingPop({ meeting: m, pending, onPatch, onResche
       <CarryoverBadge 구분={m.구분} variant="note" />
       <BoardCompanyRoute meetingId={m.id} place={m.장소} info={ciDraft} editing={ciEdit} onEdit={() => setCiEdit((v) => !v)} onSaveAddress={saveAddress} />
       {ciEdit && (
-        <div className="mt-2">
-          <CompanyInfoEditor key={m.id} value={m.업체정보} busy={pending} txtCompanyName={m.업체명} identityKey={m.id} vaultTarget={{ meetingId: m.id }} hideSave
+        <div className="mt-2" id="wb-qinfo">
+          {/* value 는 고치던 값(ciDraft) — 입력칸을 닫았다 다시 열어도 적던 내용이 그대로 보인다. */}
+          <CompanyInfoEditor key={m.id} value={ciDraft} busy={pending} txtCompanyName={m.업체명} identityKey={m.id} vaultTarget={{ meetingId: m.id }} hideSave stacked
             onChange={(ci) => { setCiDraft(ci); setCiTouched(true); }} onSave={(ci) => onPatch({ 업체정보: ci })} />
+          <div className="wb-links"><button type="button" onClick={() => setCiEdit(false)}>업체정보 입력칸 닫기</button></div>
         </div>
       )}
 
@@ -142,7 +148,9 @@ export default function BoardMeetingPop({ meeting: m, pending, onPatch, onResche
             <button type="button" disabled={pending} onClick={revert}>{st === "변경" ? "일정 변경 되돌리기" : "예약으로 되돌리기"}</button>
             {st !== "변경" && !hasFollowUp && !addOpen && <button type="button" disabled={pending} onClick={() => setAddOpen(true)}>추가 미팅 잡기</button>}
             {st !== "변경" && hasFollowUp && <button type="button" disabled={pending} onClick={onReviveCase}>추가 미팅에서 진행 중 · 되살리기</button>}
+            {!nameFix && <button type="button" disabled={pending} onClick={() => setNameFix(true)}>업체명·장소 고치기</button>}
           </div>
+          {nameFix && <MeetingNameFix name={m.업체명} place={m.장소} contract={st === "계약"} pending={pending} onSave={(partial) => onPatch(partial)} onCancel={() => setNameFix(false)} />}
           {addOpen && (
             <div className="mt-2">
               <AddMeetingForm vendor={m.업체명.replace(/^\(변경\)\s*/, "")} defaultDate={todayKST()} minDate={m.미팅날짜} pending={pending}
