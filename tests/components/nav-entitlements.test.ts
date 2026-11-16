@@ -20,10 +20,23 @@ describe("화면 모드·복귀 링크·트레이너 신청", () => {
     expect(viewModeFor("/dashboard")).toBe("student");
     expect(viewModeFor("/trainer", "student")).toBe("student");
   });
-  it("두 역할 트레이너 화면은 토글만, 수강생 화면은 항상 복귀 링크", () => {
-    const trainer = { canStudent: true, canTrainer: true };
-    expect(headerEntitlements({ me: undefined, trainer, pathname: "/trainer" })).toMatchObject({ roleToggleShown: true, showStudentDashboardLink: false });
-    expect(headerEntitlements({ me: undefined, trainer, pathname: "/dashboard" }).showStudentDashboardLink).toBe(true);
+  it("머리의 「← 대시보드」 판정은 어느 화면·어느 자격에도 없다(2026-11-16 belie — 모든 화면에서 제거)", () => {
+    for (const pathname of ["/dashboard", "/payment", "/db-sheet", "/trainer", "/updates"]) {
+      for (const trainer of [undefined, { canStudent: true, canTrainer: true }, { canStudent: true, canTrainer: false }, { canStudent: false, canTrainer: true }]) {
+        expect(headerEntitlements({ me: undefined, trainer, pathname })).not.toHaveProperty("showStudentDashboardLink");
+      }
+    }
+    // 토글 조건은 그대로 — 두 역할 계정은 수강생·트레이너 화면 모두에서 토글이 뜬다.
+    const dual = { canStudent: true, canTrainer: true };
+    expect(headerEntitlements({ me: undefined, trainer: dual, pathname: "/trainer" })).toMatchObject({ roleView: "trainer", roleToggleShown: true });
+    expect(headerEntitlements({ me: undefined, trainer: dual, pathname: "/dashboard" })).toMatchObject({ roleView: "student", roleToggleShown: true });
+  });
+  it("역할 토글은 수강생이면서 트레이너인 계정에만", () => {
+    const shown = (trainer: { canStudent?: boolean; canTrainer?: boolean } | undefined) => headerEntitlements({ me: undefined, trainer, pathname: "/payment" }).roleToggleShown;
+    expect(shown({ canStudent: true, canTrainer: true })).toBe(true);
+    expect(shown({ canStudent: true, canTrainer: false })).toBe(false); // 수강생만
+    expect(shown({ canStudent: false, canTrainer: true })).toBe(false); // 트레이너만
+    expect(shown(undefined)).toBe(false); // 자격 확인 전
   });
   it("트레이너 신청은 트레이너·관리자가 아닐 때만", () => {
     expect(headerEntitlements({ me: undefined, trainer: { canTrainer: false, status: "pending" }, pathname: "/dashboard" })).toMatchObject({ showTrainerApply: true, trainerApplyPending: true });

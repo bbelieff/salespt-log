@@ -1,16 +1,17 @@
 "use client";
 
 /**
- * FinanceWorkColumn — 대시보드 맨 위 띠의 네 번째 칸 「진행건」과 칸 아래 미리보기 두 줄(A안, belie 2026-11-13).
+ * FinanceWorkColumn — 대시보드 맨 위 띠의 네 번째 칸 「진행건」(A안, belie 2026-11-13).
  *
  * SSOT: docs/design/components.md §9-2. PC(1024~)에만 보인다(`hidden pc:flex`) — 폰은 지금처럼 세 칸 + 아래 진행건 판.
- * 칸을 누르면 다른 칸과 같이 그 칸 바로 아래에 상세가 열리고, 상세는 실무/수납과 같은 `WorkStatusBar`(상태별 목록 팝업)다.
+ * 2026-11-16 belie 「안 눌러도 그냥 나오게」: 요약 두 줄 + 눌러 펼치기를 없애고, 실무/수납과 같은 `WorkStatusBar`
+ * (막대·범례·상태별 목록 팝업)를 늘 보여 준다. 그래서 이 칸은 버튼이 아니다. 높이는 막대 + 범례 여섯 개로 정해져 있어
+ * 칸 안 스크롤을 두지 않는다 — 스크롤 상자로 감싸면 칸 밖으로 뜨는 상태별 목록 팝업이 잘린다.
  * 자료는 `useDashboardWorkItems`(DashboardWorkStatus) — 아래 진행건 판과 같은 조회라 새 요청이 없다.
  */
 import type { CSSProperties, ReactNode, RefObject } from "react";
-import DisclosureChevron from "@/components/ui/DisclosureChevron";
 import SkeletonBars from "@/components/ui/SkeletonBars";
-import WorkStatusBar, { STATUS } from "@/components/payment/WorkStatusBar";
+import WorkStatusBar from "@/components/payment/WorkStatusBar";
 import type { WorkStatusItem } from "@/lib/analytics/payment-work-status";
 
 export interface WorkColumnData {
@@ -35,57 +36,31 @@ export function FinancePreview({ rows }: { rows: Array<[string, ReactNode?]> }) 
   );
 }
 
-/** 상태별 건수를 두 줄로 — 0건 상태는 빼고 실무/수납 막대와 같은 순서(예 「진행 9 · 수납완료 1」 / 「장기관리 6」). */
-export function workPreviewLines(items: WorkStatusItem[]): string[] {
-  const parts = STATUS
-    .map((s) => [s.label, items.filter((item) => item.status === s.key).length] as const)
-    .filter(([, n]) => n > 0)
-    .map(([label, n]) => `${label} ${n}`);
-  if (parts.length === 0) return ["진행건 없음"];
-  const half = Math.ceil(parts.length / 2);
-  return [parts.slice(0, half).join(" · "), parts.slice(half).join(" · ")].filter(Boolean);
-}
-
 interface ColumnProps {
   work: WorkColumnData;
-  open: boolean;
-  onToggle: () => void;
-  className: string;
   style: CSSProperties;
   amountStyle: CSSProperties;
   amountRef: RefObject<HTMLSpanElement | null>;
-  detail: ReactNode;
 }
 
-export default function FinanceWorkColumn({ work, open, onToggle, className, style, amountStyle, amountRef, detail }: ColumnProps) {
-  const lines = work.failed ? ["불러오지 못했어요"] : work.items ? workPreviewLines(work.items) : [];
+export default function FinanceWorkColumn({ work, style, amountStyle, amountRef }: ColumnProps) {
   return (
     <div data-finance-work-column className="hidden min-w-0 flex-col pc:flex">
-      <button
-        type="button"
-        id="fin-col-work"
-        aria-expanded={open}
-        aria-controls="fin-detail-panel"
-        onClick={onToggle}
-        style={style}
-        className={className}
-      >
-        <span className="flex min-w-0 items-center gap-1">
-          <span className="min-w-0 whitespace-nowrap text-base font-extrabold text-slate-600">진행건</span>
-          <DisclosureChevron open={open} className="ml-auto text-slate-400" />
-        </span>
+      <div id="fin-col-work" style={style} className="flex min-w-0 flex-col gap-1">
+        <span className="min-w-0 whitespace-nowrap text-base font-extrabold text-slate-600">진행건</span>
         <span ref={amountRef} className="block w-full min-w-0 max-w-full font-bold tabular-nums text-slate-900" style={amountStyle}>
           {work.items && !work.failed ? `${work.items.length}건` : "—"}
         </span>
-        {lines.length > 0 && <FinancePreview rows={lines.map((line): [string] => [line])} />}
-      </button>
-      {open && detail}
+      </div>
+      <div role="group" aria-labelledby="fin-col-work" data-finance-work-detail className="pr-2">
+        <FinanceWorkDetail work={work} />
+      </div>
     </div>
   );
 }
 
-/** 「진행건」 칸 상세 — 실무/수납과 같은 막대·범례·상태별 목록. 팝업은 칸 오른쪽 끝에 맞춰 띠 밖으로 넘치지 않게. */
-export function FinanceWorkDetail({ work }: { work: WorkColumnData }) {
+/** 「진행건」 칸 본문 — 실무/수납과 같은 막대·범례·상태별 목록. 팝업은 칸 오른쪽 끝에 맞춰 띠 밖으로 넘치지 않게. */
+function FinanceWorkDetail({ work }: { work: WorkColumnData }) {
   if (work.failed) {
     return (
       <div className="flex items-center justify-between gap-2 text-xs text-slate-600">

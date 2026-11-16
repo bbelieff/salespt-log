@@ -52,34 +52,43 @@ describe("shared header real React rendering", () => {
     expect(render()).not.toContain("D-—");
     expect(banner.match(/D-—/g)).toHaveLength(1);
   });
-  it("renders the real role switch next to dashboard, with identity but no duplicate header D-day", () => {
+  it("renders the real role switch alone in the actions (no dashboard link), with identity but no duplicate header D-day", () => {
+    state.pathname = "/payment";
     const html = render();
     expect(html).toContain('aria-label="접속 역할"');
     expect(html).toContain('aria-pressed="true"');
     expect(html).toContain("합성 사용자");
     expect(html).not.toContain("data-header-dday");
     const actions = (html.split("data-header-actions")[1] ?? "").split("</header>")[0] ?? "";
-    expect(actions).toContain("대시보드");
+    expect(actions).not.toContain("대시보드");
+    expect(actions).not.toContain('href="/dashboard"');
     expect(actions).toContain("트레이너");
     expect(actions).not.toContain("data-header-dday");
     expect(actions).not.toContain("합성 사용자");
   });
   it.each([
-    [false, true, "/trainer", false, false],
-    [true, false, "/dashboard", true, false],
-    [true, true, "/trainer", false, true],
-    [true, true, "/dashboard", true, true],
-  ] as const)("student=%s trainer=%s at %s exposes only usable student entry", (canStudent, canTrainer, pathname, link, toggle) => {
+    // 2026-11-16 belie 「대시보드 버튼은 다른 화면에서도 없애줘」: 「← 대시보드」 링크는 어디에도 없다 — 역할 토글 조건은 그대로.
+    [false, true, "/trainer", false],
+    [true, false, "/payment", false],
+    [true, true, "/trainer", true],
+    [true, true, "/payment", true],
+    [true, false, "/dashboard", false],
+    [true, true, "/dashboard", true],
+  ] as const)("student=%s trainer=%s at %s shows the toggle only for dual-role accounts and never a dashboard link", (canStudent, canTrainer, pathname, toggle) => {
     Object.assign(state.trainer, { canStudent, canTrainer }); state.pathname = pathname;
     const html = render();
-    expect(html.includes('aria-label="수강생 대시보드로 이동"')).toBe(link);
+    expect(html).not.toContain('aria-label="수강생 대시보드로 이동"');
     expect(html.includes('aria-label="접속 역할"')).toBe(toggle);
   });
-  it.each(["/dashboard", "/db", "/contact", "/calendar", "/schedule", "/payment", "/weekly-goals", "/updates"])("keeps dashboard entry on %s when trainer capability is unavailable", pathname => {
-    Object.assign(state.trainer, { canStudent: undefined, canTrainer: undefined }); state.pathname = pathname;
-    expect(render()).toContain('aria-label="수강생 대시보드로 이동"');
-    Object.assign(state.trainer, { canStudent: false, canTrainer: false });
-    expect(render()).toContain('aria-label="수강생 대시보드로 이동"');
+  it.each(["/dashboard", "/db", "/contact", "/calendar", "/schedule", "/payment", "/weekly-goals", "/updates", "/trainer"])("has no header dashboard link on %s whatever the capability state", pathname => {
+    for (const cap of [{ canStudent: undefined, canTrainer: undefined }, { canStudent: false, canTrainer: false }, { canStudent: true, canTrainer: false }, { canStudent: true, canTrainer: true }]) {
+      Object.assign(state.trainer, cap); state.pathname = pathname;
+      const html = render();
+      const actions = (html.split("data-header-actions")[1] ?? "").split("</header>")[0] ?? "";
+      expect(html).not.toContain('aria-label="수강생 대시보드로 이동"');
+      expect(actions).not.toContain("대시보드");
+      expect(actions).not.toContain('href="/dashboard"');
+    }
   });
   it("does not expose a trainer-page student entry while capability is unresolved", () => {
     Object.assign(state.trainer, { canStudent: undefined, canTrainer: undefined }); state.pathname = "/trainer";
@@ -209,16 +218,11 @@ const mocks = [
       assert.ok(result.info.right<=result.actions.left,label+' information/action separation');
       const dual=fixture.canStudent&&fixture.canTrainer;
       const dashboard=page.getByRole('link',{name:'수강생 대시보드로 이동',exact:true});
-      const expectedLink=!scenario.start || (fixture.canStudent && !dual);
-      assert.equal(await dashboard.count(),expectedLink?1:0,label+' real dashboard entry eligibility');
+      assert.equal(await dashboard.count(),0,label+' header dashboard link removed everywhere (2026-11-16)');
+      assert.equal(await page.locator('[data-header-actions] a[href="/dashboard"]').count(),0,label+' no dashboard anchor in header actions');
       if(fixture.canTrainer && !fixture.canStudent){
         assert.equal(new URL(page.url()).pathname,'/trainer',label+' trainer-only stays in trainer view');
         assert.ok(!posts.some(p=>p.role==='student'),label+' no fake student role request');
-      }
-      if(fixture.canStudent && !fixture.canTrainer){
-        assert.equal(await dashboard.getAttribute('href'),'/dashboard',label+' student return destination');
-        await Promise.all([page.waitForNavigation(),dashboard.click()]);
-        assert.equal(new URL(page.url()).pathname,'/dashboard',label+' student-only dashboard navigation');
       }
       assert.equal(await page.getByRole('group',{name:'접속 역할'}).count(),dual?1:0,label+' capabilities');
       if(dual){

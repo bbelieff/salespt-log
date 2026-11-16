@@ -64,3 +64,6 @@
 @media (min-width: 1024px) {
   .dashboard-work-status-slot { display: none; }
 }
+
+/* 2026-11-16: 띠의 「진행건」 칸은 늘 펼쳐 있다 — 칸 머리에 이미 「진행건 N건」이 있어 막대(WorkStatusBar)의 「전체 진행건 N건」은 숨긴다. */
+[data-finance-work-column] [data-work-status-bar] > div:first-child > :is(strong, b) { display: none; }
