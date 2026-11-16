@@ -1,5 +1,5 @@
 /**
- * /admin/popup — 팝업관리 (announcement-popup §4, admin 전용).
+ * /admin/popup — 알림(공지 · 업데이트 소식). 예전 이름 「팝업관리」(announcement-popup §4, admin 전용).
  *
  * 상단: 공지 작성/수정 (MD 에디터 + 이미지 업로드 + 노출 옵션).
  * 하단: 배포 시 자동 수집된 업데이트 현황 (title_user/visible/milestone 보정).
@@ -26,9 +26,9 @@ export default async function AdminPopupPage() {
           <Link href="/admin" className="text-sm font-bold text-slate-400 hover:text-slate-700 pc:hidden">
             ← 메뉴
           </Link>
-          <h1 className="text-sm font-black text-slate-900">📢 팝업관리</h1>
+          <h1 className="text-sm font-black text-slate-900">📢 알림</h1>
           <span className="ml-auto text-xs text-slate-400">
-            새소식 팝업 — 공지 작성·업데이트 문구 보정
+            공지 · 업데이트 소식 — 새소식 팝업에 나가요
           </span>
         </div>
       </header>

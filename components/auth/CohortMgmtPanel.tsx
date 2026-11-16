@@ -17,6 +17,7 @@ import ArenaCreateModal from "./ArenaCreateModal";
 import CohortPendingRetryButton from "./CohortPendingRetryButton";
 import SeasonStartInput from "./SeasonStartInput";
 import { apiErrorMessage } from "@/lib/util/api-error-message";
+import { ADMIN_FEATURES } from "@/config/admin-features";
 
 interface Cohort {
   label: string;
@@ -148,7 +149,8 @@ export default function CohortMgmtPanel({
                       />
                     )}
                   </div>
-                  {!viewOnly && (
+                  {/* 보관 처리는 기능 스위치(ADMIN_FEATURES.cohortArchive)가 켜진 곳에서만 — 아래 「보관한 기수」의 활성화는 늘 있다. */}
+                  {!viewOnly && ADMIN_FEATURES.cohortArchive && (
                     <button
                       type="button"
                       disabled={busy !== null}
@@ -180,9 +182,11 @@ export default function CohortMgmtPanel({
           )}
         </section>
 
-        <section>
+        {/* 보관 기능을 끈 곳에서는 보관한 기수가 있을 때만 — 이미 보관한 기수는 언제든 다시 활성화할 수 있어야 한다. */}
+        {(ADMIN_FEATURES.cohortArchive || archived.length > 0) && (
+        <section aria-label="보관한 기수">
           <h2 className="mb-2 text-lg font-black tracking-tight text-slate-900">
-            보관 기수 ({archived.length})
+            보관한 기수 ({archived.length})
           </h2>
           <p className="mb-4 text-xs text-slate-500">
             보관된 기수. 수강생 관리·트레이너 명단에서 별도 collapsed 섹션으로 표시.
@@ -221,6 +225,7 @@ export default function CohortMgmtPanel({
             </ul>
           )}
         </section>
+        )}
       </div>
     </main>
   );
