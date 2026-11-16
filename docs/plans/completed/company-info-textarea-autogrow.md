@@ -6,8 +6,10 @@
 - 여러 줄 칸은 줄바꿈 수뿐 아니라 긴 줄이 접혀 늘어난 만큼도 높이가 늘고, 지우면 줄어든다. 안쪽 스크롤 없음.
 - 업체정보 편집기를 쓰는 모든 화면(일정·계약 미팅 창, DB관리, 일별 기록, 실무/수납, 팝업)에 같이 적용 — 한 칸 부품(`CompanyInfoField`) 한 곳만 고친다.
 
+- (추가, 같은 날 belie) 칸 아래 테두리를 잡고 늘리고 줄일 수 있고, 두 번 누르면 최소(두 줄) ↔ 최대(내용 전체).
+
 ## 변경
-- `components/company-info/CompanyInfoField.tsx`: `useAutoGrow`(값·칸 너비가 바뀔 때 내용 높이로 맞춤).
+- `components/company-info/CompanyInfoField.tsx`: `useAutoGrow`(값·칸 너비가 바뀔 때 내용 높이로 맞춤), `ResizeGrip`·`gripMinOf`·`toggleGrip`(손으로 정하는 높이).
 
 ## 검증
-- `tests/components/company-info-autogrow.test.ts`, 실제 브라우저에서 긴 글 입력(50px → 90px, 스크롤 없음), `bash scripts/check.sh`.
+- `tests/components/company-info-autogrow.test.ts`, 실제 브라우저에서 긴 글 입력(50px → 90px, 스크롤 없음)·손잡이 끌기(178 → 148 → 238px)·두 번 누르기(43 ↔ 178px), `bash scripts/check.sh`.

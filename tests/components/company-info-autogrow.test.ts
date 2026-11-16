@@ -3,7 +3,7 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
-import CompanyInfoField from "@/components/company-info/CompanyInfoField";
+import CompanyInfoField, { GRIP_MAX, gripMinOf, toggleGrip } from "@/components/company-info/CompanyInfoField";
 import type { FieldDef } from "@/components/company-info-defs";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
@@ -27,5 +27,32 @@ it("값이 길어지면 내용 높이(scrollHeight)에 맞춰 늘어나고, 한 
   draw("짧게");
   expect(area.style.height).toBe("40px"); // 지우면 다시 줄어든다
   expect((host.querySelector("#b") as HTMLInputElement).style.height).toBe("");
+  React.act(() => root.unmount()); host.remove();
+});
+
+it("아래 손잡이를 끌면 높이를 직접 정하고, 두 번 누르면 최소 ↔ 최대(내용 전체)", () => {
+  vi.spyOn(HTMLTextAreaElement.prototype, "scrollHeight", "get").mockImplementation(function (this: HTMLTextAreaElement) { return Math.max(2, Math.ceil(this.value.length / 60)) * 20; });
+  vi.spyOn(HTMLTextAreaElement.prototype, "offsetHeight", "get").mockImplementation(function (this: HTMLTextAreaElement) { return parseInt(this.style.height, 10) || 0; });
+  const host = document.createElement("div"); document.body.append(host);
+  const root = createRoot(host);
+  React.act(() => root.render(React.createElement(CompanyInfoField, { def: ["기대출개인", "기대출 개인", "설명", 2, true] as unknown as FieldDef, value: "가".repeat(300), onChange: () => {}, id: "a" })));
+  const area = host.querySelector("textarea")!, grip = host.querySelector<HTMLElement>('[role="separator"]')!;
+  expect(grip.getAttribute("aria-label")).toBe("기대출 개인 칸 높이 조절");
+  const GRIP_MIN = gripMinOf(area); // jsdom: 줄 높이를 못 재면 20px 두 줄 = 40
+  expect(GRIP_MIN).toBe(40);
+  expect(area.style.height).toBe("100px"); // 처음엔 내용 전체(최대)
+  const fire = (type: string, y: number) => React.act(() => { const e = new Event(type, { bubbles: true }); Object.assign(e, { clientY: y, pointerId: 1 }); grip.dispatchEvent(e); });
+  fire("pointerdown", 500); fire("pointermove", 460); fire("pointerup", 460); // 40px 위로 → 줄인다
+  expect(area.style.height).toBe("60px");
+  expect(area.className).toContain("overflow-y-auto"); // 줄이면 칸 안에서 스크롤
+  fire("pointerdown", 460); fire("pointermove", 100); fire("pointerup", 100); // 한참 위로 → 최소에서 멈춤
+  expect(area.style.height).toBe(`${GRIP_MIN}px`);
+  React.act(() => { grip.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })); }); // 최소 → 최대
+  expect(area.style.height).toBe("100px");
+  expect(area.className).toContain("overflow-hidden");
+  React.act(() => { grip.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })); }); // 최대 → 최소
+  expect(area.style.height).toBe(`${GRIP_MIN}px`);
+  expect(toggleGrip(null, 40)).toBe(40); expect(toggleGrip(40, 40)).toBeNull(); expect(toggleGrip(300, 40)).toBe(40);
+  expect(GRIP_MAX).toBeGreaterThan(GRIP_MIN);
   React.act(() => root.unmount()); host.remove();
 });
