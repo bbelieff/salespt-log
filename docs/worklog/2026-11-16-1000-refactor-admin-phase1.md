@@ -1,0 +1,10 @@
+## 2026-11-16 · 관리자 모드 1단계 정리 — 메뉴 다섯 묶음 · 오늘 할 일 · 안 쓰는 기능 숨김 · 오류 신고함
+
+- 브랜치 refactor/admin-phase1. 기준 master 5fab5fa1628c3a3da958aafb27f05699d3ec408f. belie 2026-11-13 결정 + 2026-11-16 「진행」. [계획](../plans/completed/admin-phase1.md).
+- 담당 파일: `app/admin/**`(layout·page·settings·reports·arena/page·popup/page·db-parity/page), `components/auth/Admin{SideNav,MenuList,TodoList,UserPicker}.tsx`·`SystemStatusStrip`·`CohortMgmtPanel`·`TrainerMgmt{Panel,Sections}`·`MigrateCacheButton`, `lib/config/admin-{features,nav}.ts`, `lib/service/{admin-pending,bug-reports-admin,bug-reports,index}.ts`, `lib/repo/db/bug-reports.ts`. 공용 계약(`lib/config`·`lib/service/index.ts`)은 추가만 했다.
+- 변경: ① 메뉴 다섯 묶음(운영 현황·사람·과정·알림·설정), 폰 메뉴는 홈 아래 같은 목록 ② 홈 = 오늘 할 일(숫자 + 링크, 읽기 전용 `getAdminTodoCounts`) ③ `ADMIN_FEATURES`(reserve·cohortArchive·shareScores = false)로 유보 처리·보관 처리·공유왕 링크 숨김 — 유보 목록·복귀, 보관한 기수·활성화는 유지 ④ 트레이너 관리 ⑤ 수강생 명단확인 → 수강생 관리 링크. ① 담당부여는 일괄 배정이 수강생 관리에 없어 **유지** ⑤ `TrainerPlayerToggle` 삭제 ⑥ `/admin` 레이아웃 서버 가드 ⑦ `/admin/reports` 오류 신고함(읽기 전용) ⑧ `/admin/settings` 설정 > 진단(시스템 상태·DB 대조·동기화) ⑨ scope.md 현재 범위.
+- 데이터·스키마·API 계약 변경 0. 기존 주소 전부 유지. 운영 DB 접근 0. 오류신고 푸시 링크만 `/admin` → `/admin/reports`.
+- 검증: `npx tsc --noEmit -p .` 통과. 바뀐 파일 eslint 오류 0. vitest — 새 시험 admin-side-nav 8 · admin-todo-counts 5 · admin-feature-flags 11 · admin-role-guard 14 · bug-report/admin-list 19 통과. 묶음: tests/structural·components·app·bug-report 233파일 통과(고친 뒤 재실행 포함), tests/service·api·auth 170파일 1,604건 통과. 기존 시험 3개를 변경에 맞춰 고침(admin-page-shell: 명단 → 링크, ui-repo-boundary: 홈이 repo 를 안 불러 목록에서 뺌, disclosure-migration: 지운 구역의 화살표 1개 46→45·44→43). `TrainerPlayerToggle.tsx` 삭제는 `git ls-files` 를 보는 design-b-slate 시험 때문에 색인에 삭제만 올려 두었다(커밋 아님).
+- NOT_RUN: `bash scripts/check.sh`, production build, 실제 화면(PC·폰) 확인, PR·CI·배포 — 총괄이 이어서 한다.
+- 미완료/확인 필요: ① 담당부여 제거 여부(수강생 관리에 일괄 배정을 먼저 넣을지), 전광판 「공유왕」 탭, 오류 신고 상태 변경 기능, 「새 신고」 7일 기준.
+- 위험/복구: 화면 진입점만 바뀌었다. 숨긴 기능은 `lib/config/admin-features.ts` 값을 true 로 바꾸면 돌아온다. 전체 복구는 이 PR revert.

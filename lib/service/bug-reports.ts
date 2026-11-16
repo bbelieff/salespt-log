@@ -30,7 +30,7 @@ async function notifyAdmins(title: string, where: string): Promise<void> {
   if (!pushConfigured()) return;
   for (const admin of adminEmails()) {
     for (const sub of await listActiveSubscriptions(admin)) {
-      const r = await sendPush(sub, { title: `🐞 오류신고 · ${title}`, body: where ? `화면: ${where}` : "새 오류신고가 들어왔어요", url: "/admin", d: null }, { ttlSeconds: 86_400, topic: "bug-report" });
+      const r = await sendPush(sub, { title: `🐞 오류신고 · ${title}`, body: where ? `화면: ${where}` : "새 오류신고가 들어왔어요", url: "/admin/reports", d: null }, { ttlSeconds: 86_400, topic: "bug-report" });
       await recordSendResult(sub.id, r.ok, !r.ok && r.gone).catch(() => undefined);
     }
   }

@@ -1,5 +1,7 @@
 /**
- * MigrateCacheButton — registry I~L 캐시 일괄 동기화 (헤더용 작은 버튼, PR B-3).
+ * MigrateCacheButton — registry I~L 캐시 일괄 동기화 (작은 버튼, PR B-3).
+ *
+ * 자리: 설정 > 진단(/admin/settings). 2026-11-16(admin-phase1) 수강생 관리 머리줄에서 옮김.
  *
  * 동작:
  *   1. [🔄 동기화] 클릭 → confirm

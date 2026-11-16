@@ -28,7 +28,7 @@ const inventory: Array<[string,number,number]> = [
  ['components/auth/TraineeCard.tsx',1,1],
  ['components/auth/TrainerAssignCard.tsx',1,1],
  ['components/auth/TrainerCohortView.tsx',1,1],
- ['components/auth/TrainerMgmtSections.tsx',1,1],
+ // components/auth/TrainerMgmtSections.tsx(1→1): 2026-11-16 admin-phase1 에서 「수강생 명단확인」 구역째 제거 — 목록에서 뺐다(46→45, 44→43).
  ['components/company-info/CompanyInfoLayoutToggle.tsx',1,1],
  ['components/dashboard/DashboardFollowUpsView.tsx',3,3],
  ['components/dashboard/FinanceSummaryBoxes.tsx',3,3],

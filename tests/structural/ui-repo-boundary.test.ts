@@ -16,7 +16,6 @@ const GRANDFATHERED = new Set<string>([
   "app/(app)/layout.tsx",
   "app/admin/arena/page.tsx",
   "app/admin/cohorts/page.tsx",
-  "app/admin/page.tsx",
   "app/admin/trainers/page.tsx",
   "app/admin/users/_components/UsersRoster.tsx",
   "app/api/admin/add-trainee-prep/route.ts",
