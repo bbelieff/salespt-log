@@ -3,11 +3,11 @@
 import * as React from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
-import CompanyInfoField, { GRIP_MAX, gripMinOf, toggleGrip } from "@/components/company-info/CompanyInfoField";
+import CompanyInfoField, { GRIP_MAX, gripMinOf, loadFieldHeight, toggleGrip } from "@/components/company-info/CompanyInfoField";
 import type { FieldDef } from "@/components/company-info-defs";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); window.localStorage.clear(); });
 
 it("값이 길어지면 내용 높이(scrollHeight)에 맞춰 늘어나고, 한 줄 칸은 건드리지 않는다", () => {
   // 합성 측정값: 글자 60자마다 한 줄(20px) — 줄바꿈 없이 길게 적어도 접힌 줄만큼 늘어야 한다.
@@ -55,4 +55,42 @@ it("아래 손잡이를 끌면 높이를 직접 정하고, 두 번 누르면 최
   expect(toggleGrip(null, 40)).toBe(40); expect(toggleGrip(40, 40)).toBeNull(); expect(toggleGrip(300, 40)).toBe(40);
   expect(GRIP_MAX).toBeGreaterThan(GRIP_MIN);
   React.act(() => root.unmount()); host.remove();
+});
+
+it("정한 높이를 칸 종류마다 기억한다 — 다시 열면 그 높이, 최대로 되돌리면 기억을 지운다", () => {
+  vi.spyOn(HTMLTextAreaElement.prototype, "scrollHeight", "get").mockImplementation(function (this: HTMLTextAreaElement) { return Math.max(2, Math.ceil(this.value.length / 60)) * 20; });
+  vi.spyOn(HTMLTextAreaElement.prototype, "offsetHeight", "get").mockImplementation(function (this: HTMLTextAreaElement) { return parseInt(this.style.height, 10) || 0; });
+  const def = (k: string) => [k, k, k, 2, true] as unknown as FieldDef;
+  const open = () => {
+    const host = document.createElement("div"); document.body.append(host);
+    const root = createRoot(host);
+    React.act(() => root.render(React.createElement(React.Fragment, null,
+      React.createElement(CompanyInfoField, { def: def("기대출개인"), value: "가".repeat(300), onChange: () => {}, id: "a" }),
+      React.createElement(CompanyInfoField, { def: def("기타메모"), value: "가".repeat(300), onChange: () => {}, id: "b" }))));
+    const areas = host.querySelectorAll("textarea"), grip = host.querySelector<HTMLElement>('[role="separator"]')!;
+    return { a: areas[0]!, b: areas[1]!, grip, close: () => { React.act(() => root.unmount()); host.remove(); } };
+  };
+  const fire = (grip: HTMLElement, type: string, y: number) => React.act(() => { const e = new Event(type, { bubbles: true }); Object.assign(e, { clientY: y, pointerId: 1 }); grip.dispatchEvent(e); });
+  let v = open();
+  fire(v.grip, "pointerdown", 500); fire(v.grip, "pointermove", 560); fire(v.grip, "pointerup", 560); // 100 → 160
+  expect(v.a.style.height).toBe("160px");
+  expect(loadFieldHeight("기대출개인")).toBe(160);
+  expect(loadFieldHeight("기타메모")).toBeNull(); // 다른 칸은 그대로
+  v.close();
+  v = open(); // 화면을 나갔다 다시 열기(다른 업체여도 같은 칸)
+  expect(v.a.style.height).toBe("160px");
+  expect(v.a.className).toContain("overflow-y-auto");
+  expect(v.b.style.height).toBe("100px"); // 정한 적 없는 칸은 내용 높이
+  React.act(() => { v.grip.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })); }); // → 최소(기억)
+  expect(loadFieldHeight("기대출개인")).toBe(40);
+  React.act(() => { v.grip.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })); }); // → 최대(자동) = 기억 지움
+  expect(loadFieldHeight("기대출개인")).toBeNull();
+  v.close();
+  v = open();
+  expect(v.a.style.height).toBe("100px");
+  v.close();
+  window.localStorage.setItem("ci-field-height:기대출개인", "99999"); // 망가진 값은 위쪽 한계로
+  expect(loadFieldHeight("기대출개인")).toBe(GRIP_MAX);
+  window.localStorage.setItem("ci-field-height:기대출개인", "abc");
+  expect(loadFieldHeight("기대출개인")).toBeNull();
 });
