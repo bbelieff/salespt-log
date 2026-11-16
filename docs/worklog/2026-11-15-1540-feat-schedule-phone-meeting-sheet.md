@@ -7,3 +7,4 @@
 - 미확인: 실제 폰 기기, 로그인한 운영 화면, 어두운 화면, 지우기 확인 창을 거친 흐름.
 - DB 변경 없음. 되돌리기 = 이 PR revert.
 - [plan](../plans/completed/schedule-phone-meeting-sheet.md)
+- 병합·배포(2026-11-16): PR #1438 — head f32a06b2 에서 CI(build·check) 통과, master 변동 없음 → squash a80f8562 → Deploy to VPS run 43846478256 success, `/api/health` 200, `/schedule` 307(로그인으로). 실제 폰 기기·로그인한 운영 화면·어두운 화면·지우기 흐름은 NOT_RUN — belie 확인 요청.
