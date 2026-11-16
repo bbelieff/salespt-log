@@ -2,6 +2,7 @@
 /**
  * 대시보드 맨 위 띠 A안(belie 2026-11-13 승인):
  *  - PC: 진행 줄과 기간 칩이 한 줄(진행 왼쪽·칩 오른쪽), 재무는 매출·비용·영업이익·진행건 네 칸 + 칸 아래 미리보기 두 줄.
+ *    2026-11-16: 진행건 칸은 늘 펼침(버튼 아님), 연 칸의 미리보기는 숨김, 폰·태블릿 영업이익 상세는 세 칸 전체 폭.
  *  - 아래 「전체 진행건」 판은 PC 에서 숨긴다(띠로 올라감). 폰(1024 미만)은 지금 그대로 — 세 칸 숫자, 미리보기·네 번째 칸 숨김.
  */
 import * as React from "react";
@@ -10,7 +11,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import FinanceSummaryBoxes from "@/components/dashboard/FinanceSummaryBoxes";
-import { workPreviewLines, type WorkColumnData } from "@/components/dashboard/FinanceWorkColumn";
+import type { WorkColumnData } from "@/components/dashboard/FinanceWorkColumn";
 import type { WorkStatusItem, WorkStatusKey } from "@/lib/analytics/payment-work-status";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
@@ -50,8 +51,14 @@ afterEach(() => {
   container?.remove();
   root = undefined;
   container = undefined;
+  vi.unstubAllGlobals();
 });
 const byId = (id: string) => document.getElementById(id) as HTMLButtonElement;
+
+/** 화면 폭 흉내 — jsdom 에는 matchMedia 가 없어 기본은 폰(1024 미만)으로 본다. */
+function stubPc(matches: boolean) {
+  vi.stubGlobal("matchMedia", (query: string) => ({ matches, media: query, addEventListener: () => {}, removeEventListener: () => {} }));
+}
 
 describe("A안 네 칸 + 미리보기 (FinanceSummaryBoxes)", () => {
   it("진행건이 오면 PC 네 칸 균등, 네 번째 칸은 폰에서 숨는다", () => {
@@ -62,11 +69,9 @@ describe("A안 네 칸 + 미리보기 (FinanceSummaryBoxes)", () => {
     expect(group.children).toHaveLength(4);
     const col = view.querySelector("[data-finance-work-column]")!;
     expect(col.className.split(" ")).toEqual(expect.arrayContaining(["hidden", "pc:flex"]));
-    const btn = byId("fin-col-work");
-    expect(btn.getAttribute("aria-expanded")).toBe("false");
-    expect(btn.getAttribute("aria-controls")).toBe("fin-detail-panel");
-    expect(btn.textContent).toContain("진행건");
-    expect(btn.textContent).toContain("16건");
+    const head = byId("fin-col-work");
+    expect(head.textContent).toContain("진행건");
+    expect(head.textContent).toContain("16건");
   });
 
   it("진행건 없이 쓰면 지금처럼 세 칸(PC 네 칸 클래스 없음)", () => {
@@ -80,7 +85,7 @@ describe("A안 네 칸 + 미리보기 (FinanceSummaryBoxes)", () => {
   it("칸 아래 미리보기 두 줄은 PC 에서만 보인다(폰 hidden)", () => {
     render({ work: work() });
     const preview = (id: string) => byId(id).querySelector<HTMLElement>("[data-finance-preview]")!;
-    for (const id of ["fin-col-revenue", "fin-col-cost", "fin-col-profit", "fin-col-work"]) {
+    for (const id of ["fin-col-revenue", "fin-col-cost", "fin-col-profit"]) {
       const p = preview(id);
       expect(p, id).not.toBeNull();
       expect(p.className.split(" ")).toEqual(expect.arrayContaining(["hidden", "pc:flex"]));
@@ -92,7 +97,6 @@ describe("A안 네 칸 + 미리보기 (FinanceSummaryBoxes)", () => {
     expect(preview("fin-col-cost").textContent).toContain("추가 비용300,000원");
     expect(preview("fin-col-profit").textContent).toContain("이익률-152.4%");
     expect(preview("fin-col-profit").textContent).toContain("계약2건");
-    expect(preview("fin-col-work").textContent).toBe("진행 9 · 수납완료 1장기관리 6");
     // 미리보기가 있어도 칸 아래 상세 패널은 닫혀 있다.
     expect((document.querySelector("#fin-detail-panel") as HTMLElement).hidden).toBe(true);
   });
@@ -104,38 +108,86 @@ describe("A안 네 칸 + 미리보기 (FinanceSummaryBoxes)", () => {
     expect(text).not.toMatch(/추가 비용0원/);
   });
 
-  it("진행건 칸을 누르면 그 칸 아래에만 실무/수납과 같은 진행 막대가 열리고, 다른 칸을 열면 닫힌다", () => {
+  it("칸을 열면 그 칸 미리보기만 숨는다 — 같은 내용이 미리보기와 상세에 두 번 나오지 않게(2026-11-16)", () => {
+    stubPc(true);
     const view = render({ work: work() });
-    act(() => byId("fin-col-work").click());
-    expect(byId("fin-col-work").getAttribute("aria-expanded")).toBe("true");
-    const panel = view.querySelector<HTMLElement>("#fin-detail-panel")!;
-    expect(panel.getAttribute("aria-labelledby")).toBe("fin-col-work");
-    expect(view.querySelector("[data-finance-work-column]")!.contains(panel)).toBe(true);
-    expect(panel.querySelector("[data-work-status-bar]")).not.toBeNull();
+    const has = (id: string) => byId(id).querySelector("[data-finance-preview]") !== null;
+    const panelText = () => view.querySelector("#fin-detail-panel")!.textContent ?? "";
+    act(() => byId("fin-col-revenue").click());
+    expect([has("fin-col-revenue"), has("fin-col-cost"), has("fin-col-profit")]).toEqual([false, true, true]);
+    expect(panelText()).toContain("수임비1,800,000원");
+    expect(panelText()).not.toContain("DB 비용");
+    act(() => byId("fin-col-cost").click());
+    expect([has("fin-col-revenue"), has("fin-col-cost"), has("fin-col-profit")]).toEqual([true, false, true]);
+    expect(panelText()).toContain("DB 비용 합계 5,000,000원");
+    expect(panelText()).not.toContain("수임비");
+    // 매출 상세와 비용 상세는 서로 다른 내용이고, 각각 자기 칸 안에 있다.
+    expect(byId("fin-col-cost").parentElement!.contains(view.querySelector("#fin-detail-panel"))).toBe(true);
+    act(() => byId("fin-col-cost").click());
+    expect([has("fin-col-revenue"), has("fin-col-cost"), has("fin-col-profit")]).toEqual([true, true, true]);
+  });
+
+  it("영업이익 상세 — 폰·태블릿은 세 칸 아래 전체 폭, PC 는 그 칸 아래(2026-11-16)", () => {
+    const detail = createElement("div", { "data-testid": "profit-detail" }, "채널 표 자리");
+    // 폰(matchMedia 없음 = 1024 미만): 칸 묶음 밖, 바로 아래 형제 — 세 칸을 합친 폭.
+    let view = render({ profitDetail: detail });
+    let group = view.querySelector('[role="group"][aria-label="매출·비용·영업이익"]')!;
+    act(() => byId("fin-col-profit").click());
+    let panel = view.querySelector<HTMLElement>("#fin-detail-panel")!;
+    expect(panel.getAttribute("aria-labelledby")).toBe("fin-col-profit");
+    expect(panel.querySelector('[data-testid="profit-detail"]')).not.toBeNull();
+    expect(group.contains(panel)).toBe(false);
+    expect(group.nextElementSibling).toBe(panel);
+    expect(group.children).toHaveLength(3);
+    expect(view.querySelectorAll("#fin-detail-panel")).toHaveLength(1);
+    // 폰에서도 매출·비용 상세는 지금처럼 누른 칸 아래.
+    act(() => byId("fin-col-revenue").click());
+    expect(byId("fin-col-revenue").parentElement!.contains(view.querySelector("#fin-detail-panel"))).toBe(true);
+    act(() => root?.unmount());
+    container?.remove();
+
+    // PC: 영업이익 칸 안(그 칸 아래).
+    stubPc(true);
+    view = render({ profitDetail: detail, work: work() });
+    group = view.querySelector('[role="group"][aria-label="매출·비용·영업이익"]')!;
+    act(() => byId("fin-col-profit").click());
+    panel = view.querySelector<HTMLElement>("#fin-detail-panel")!;
+    expect(byId("fin-col-profit").parentElement!.contains(panel)).toBe(true);
+    expect(group.contains(panel)).toBe(true);
+    expect(view.querySelectorAll("#fin-detail-panel")).toHaveLength(1);
+  });
+
+  it("진행건 칸은 누르지 않아도 실무/수납과 같은 진행 막대가 보이고, 다른 칸을 여닫아도 그대로다(2026-11-16)", () => {
+    const view = render({ work: work() });
+    const col = view.querySelector("[data-finance-work-column]")!;
+    const bar = () => col.querySelector("[data-work-status-bar]");
+    expect(bar()).not.toBeNull();
+    expect(bar()!.textContent).toContain("진행 9");
+    expect(bar()!.textContent).toContain("장기관리 6");
+    // 누르는 칸이 아니다 — 여닫는 버튼·미리보기 요약이 없고 상세 패널도 쓰지 않는다.
+    expect(byId("fin-col-work").tagName).toBe("DIV");
+    expect(col.querySelector("[aria-controls='fin-detail-panel']")).toBeNull();
+    expect(col.querySelector("[data-finance-preview]")).toBeNull();
+    expect((view.querySelector("#fin-detail-panel") as HTMLElement).hidden).toBe(true);
     expect(document.querySelectorAll("button button").length).toBe(0);
     act(() => byId("fin-col-revenue").click());
-    expect(byId("fin-col-work").getAttribute("aria-expanded")).toBe("false");
-    expect(view.querySelector("[data-work-status-bar]")).toBeNull();
+    expect(bar()).not.toBeNull();
+    expect(col.contains(view.querySelector("#fin-detail-panel"))).toBe(false);
     act(() => byId("fin-col-revenue").click());
-    expect((view.querySelector("#fin-detail-panel") as HTMLElement).hidden).toBe(true);
+    expect(bar()).not.toBeNull();
   });
 
-  it("불러오는 중·실패도 칸을 지키고 실패면 다시 시도", () => {
+  it("불러오는 중·실패도 칸을 지키고 실패면 누르지 않아도 다시 시도가 보인다", () => {
     const onRetry = vi.fn();
-    render({ work: work({ items: null }) });
+    const view = render({ work: work({ items: null }) });
     expect(byId("fin-col-work").textContent).toContain("—");
     act(() => root?.render(createElement(FinanceSummaryBoxes, { ...baseProps, work: work({ items: null, failed: true, onRetry }) })));
-    expect(byId("fin-col-work").textContent).toContain("불러오지 못했어요");
-    act(() => byId("fin-col-work").click());
-    const retry = [...document.querySelectorAll<HTMLButtonElement>("#fin-detail-panel button")].find((b) => b.textContent === "다시 시도");
+    const col = view.querySelector("[data-finance-work-column]")!;
+    expect(byId("fin-col-work").textContent).toContain("—");
+    expect(col.textContent).toContain("불러오지 못했어요");
+    const retry = [...col.querySelectorAll<HTMLButtonElement>("button")].find((b) => b.textContent === "다시 시도");
     act(() => retry?.click());
     expect(onRetry).toHaveBeenCalledOnce();
-  });
-
-  it("상태별 건수 두 줄 — 0건은 빼고 막대 순서", () => {
-    expect(workPreviewLines([])).toEqual(["진행건 없음"]);
-    expect(workPreviewLines([item("longterm", 1)])).toEqual(["장기관리 1"]);
-    expect(workPreviewLines(ITEMS)).toEqual(["진행 9 · 수납완료 1", "장기관리 6"]);
   });
 });
 

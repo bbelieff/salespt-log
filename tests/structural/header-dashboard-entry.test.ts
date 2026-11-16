@@ -7,10 +7,10 @@
  * 는 `/api/role-view` 로 self-view 를 세운 뒤 이동하므로 정상 동작한다. 즉 같은 자리에
  * 진입점이 «둘» 이고 그 중 하나만 가드를 지났다.
  *
- * 현재 계약:
- *  1. 수강생 화면은 자격 조회 결과와 무관하게 Link를 표시한다. 트레이너 화면의 dual-role은 안전한 토글만 사용한다.
- *  2. 일반 수강생(canStudent=true, canTrainer=false)은 토글이 안 뜨므로 Link 를 유지한다 — /dashboard
- *     /calendar /contact /db /payment /schedule /updates /captain /claim 의 유일한 복귀 동선이다.
+ * 현재 계약(2026-11-16 belie 「대시보드 버튼은 다른 화면에서도 없애줘」):
+ *  1. 헤더에는 `/dashboard` 로 가는 Link 가 «없다». 대시보드 복귀는 사이드 메뉴·메뉴 서랍의 「대시보드」 항목.
+ *     → 가드를 못 지나는 직행 진입점이 다시 생기지 않는다.
+ *  2. 수강생↔트레이너 이동은 `RoleViewSwitch` 하나 — 두 역할(canStudent && canTrainer) 계정에만 뜬다.
  *  3. 화면 판정은 `roleMode` prop 을 믿지 않는다. 실제로 넘기는 호출부가 한 곳뿐이라
  *     `/trainer` 에서는 undefined 다 → RoleViewSwitch 와 «같은» pathname 폴백을 쓴다.
  */
@@ -23,19 +23,22 @@ const read = (rel: string) => fs.readFileSync(path.join(process.cwd(), rel), "ut
 describe("헤더 수강생 대시보드 진입점", () => {
   const header = read("components/TopHeader.tsx");
 
-  it("Link 는 조건부다 — 무조건 렌더하면 트레이너가 다시 튕긴다", () => {
-    expect(header).toMatch(/\{showStudentDashboardLink && \(\s*<Link href="\/dashboard"/);
+  it("헤더에 대시보드 직행 Link 가 없다 — 다시 넣으면 트레이너가 가드에 튕긴다", () => {
+    expect(header).not.toMatch(/href="\/dashboard"/);
+    expect(header).not.toContain("수강생 대시보드로 이동");
+    expect(header).not.toContain("showStudentDashboardLink");
+    // 수강생 화면 진입은 역할 토글 하나.
+    expect(header).toContain("<RoleViewSwitch modeHint={roleMode} />");
   });
 
   // 2026-10-19 구조 개선 ⑨: 판정은 components/auth/nav-entitlements.ts 하나 — 헤더와 역할 전환이 같이 부른다.
   const ent = read("components/auth/nav-entitlements.ts");
 
-  it("학생 권한 확인과 dual-role 트레이너 진입점 중복 방지를 모두 적용한다", () => {
-    // 기존 조건은 trainer-only에도 가짜 학생 진입점을 노출했다.
+  it("판정은 한 곳에서 받고, 토글 조건은 두 역할이며, 대시보드 링크 판정은 없다", () => {
     // 실제 capability/이동 회귀는 components/top-header-regression.test.ts에서 검증한다.
     expect(header).toMatch(/headerEntitlements\(\{ me: me\.data, trainer: trainer\.data, pathname, roleMode \}\)/);
     expect(ent).toMatch(/const roleToggleShown\s*=\s*!!trainer\?\.canStudent && !!trainer\?\.canTrainer/);
-    expect(ent).toMatch(/showStudentDashboardLink: roleView === "student" \|\| \(trainer\?\.canStudent === true && !roleToggleShown\)/);
+    expect(ent).not.toContain("showStudentDashboardLink");
   });
 
   it("화면 판정은 roleMode 가 없을 때 pathname 으로 폴백한다", () => {

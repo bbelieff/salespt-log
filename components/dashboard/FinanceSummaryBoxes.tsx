@@ -1,11 +1,11 @@
 "use client";
 
 import DisclosureChevron from '@/components/ui/DisclosureChevron';
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { formatWon } from "@/lib/format/money";
 import { usePlayOnOpen } from "@/components/motion/useMotion";
 import { useCountUp } from "@/components/motion/CountUp";
-import FinanceWorkColumn, { FinancePreview, FinanceWorkDetail, type WorkColumnData } from "./FinanceWorkColumn";
+import FinanceWorkColumn, { FinancePreview, type WorkColumnData } from "./FinanceWorkColumn";
 
 /**
  * FinanceSummaryBoxes — 매출/비용/영업이익 3열 1행 요약.
@@ -32,6 +32,9 @@ import FinanceWorkColumn, { FinancePreview, FinanceWorkDetail, type WorkColumnDa
  * 변경 (2026-10-12 #7): 영업이익 상세의 기존 줄 아래에 profitDetail(채널별 남은 돈 표)을 그린다.
  * 변경 (2026-11-13 A안): PC(1024~)는 칸 아래에 늘 보이는 미리보기 두 줄(수임비·수수료 / DB 비용·추가 비용 /
  *   이익률·계약 N건)을 두고, `work` 가 오면 네 번째 칸 「진행건」(FinanceWorkColumn)을 더해 네 칸 균등. 폰은 세 칸 숫자만.
+ * 변경 (2026-11-16 belie): ① 폰·태블릿(1024 미만)의 영업이익 상세는 그 칸 아래(1/3 폭)가 아니라 세 칸 전체 폭으로 편다
+ *   — 채널 표가 잘리지 않게. 매출·비용 상세와 PC 는 그대로 누른 칸 아래. ② 칸을 열면 그 칸 미리보기는 숨긴다
+ *   — PC 에서 미리보기와 상세가 같은 내용을 두 번 보여 주던 것. ③ 진행건 칸은 누르지 않아도 늘 펼쳐 둔다(버튼 아님).
  */
 interface Props {
   revenue: number;
@@ -216,8 +219,18 @@ function useUniformSingleLineFit(
 }
 
 
-/** 한 번에 열리는 상세 패널 — null이면 전부 닫힘. */
-type Panel = "revenue" | "cost" | "profit" | "work";
+/** 한 번에 열리는 상세 패널 — null이면 전부 닫힘. 진행건 칸은 늘 펼쳐 있어 여기 없다. */
+type Panel = "revenue" | "cost" | "profit";
+
+/** PC(1024~, tailwind `pc`)인가 — 영업이익 상세를 칸 아래(PC)에 둘지 세 칸 전체 폭(폰·태블릿)에 둘지 정한다. */
+const PC_QUERY = "(min-width: 1024px)";
+function subscribePc(onChange: () => void): () => void {
+  const mq = window.matchMedia?.(PC_QUERY);
+  mq?.addEventListener("change", onChange);
+  return () => mq?.removeEventListener("change", onChange);
+}
+const isPc = () => !!window.matchMedia?.(PC_QUERY).matches;
+const isPcOnServer = () => false;
 
 /**
  * 좁은 폭 대응: 금액은 항상 한 줄(white-space:nowrap, overflow-wrap:normal).
@@ -262,6 +275,7 @@ export default function FinanceSummaryBoxes({
   // 처음엔 금액이 올라가며 멈추고, 기간을 바꾸면 이전 금액에서 이어서 바뀐다(belie 2026-10-09).
   const play = usePlayOnOpen("finance-amounts");
   const toggle = (panel: Panel) => setOpen((prev) => (prev === panel ? null : panel));
+  const pc = useSyncExternalStore(subscribePc, isPc, isPcOnServer);
 
   // 기존 OperatingProfitCard 계산 그대로.
   const profit = revenue - cost;
@@ -280,6 +294,7 @@ export default function FinanceSummaryBoxes({
     `flex min-w-0 flex-col gap-1 text-left transition hover:bg-white/50 focus-visible:outline-none focus-visible:ring-2 ${selected ? "bg-white/70" : ""} ${ring}`;
 
   // 상세는 누른 칸 바로 아래, 그 칸 너비 안에서만 펼친다(2026-11-11 belie 「누른 그 영역 아래 영역 한정」). 한 번에 하나.
+  // 예외(2026-11-16 belie): 폰·태블릿의 영업이익 상세만 세 칸 아래 전체 폭 — 1/3 폭에서는 채널 표가 잘린다.
   const detail = (
     <div
       id="fin-detail-panel"
@@ -325,7 +340,6 @@ export default function FinanceSummaryBoxes({
         {profitDetail}
       </>
     )}
-    {open === "work" && work && <FinanceWorkDetail work={work} />}
     </div>
   );
 
@@ -353,7 +367,7 @@ export default function FinanceSummaryBoxes({
           <span ref={revenueAmountRef} className="block w-full min-w-0 max-w-full font-bold tabular-nums text-slate-900" style={amountStyle}>
             <Amount value={revenue} play={play} />
           </span>
-          <FinancePreview rows={[["수임비", formatWon(feeIncome)], ["수수료", formatWon(commissionIncome)]]} />
+          {open !== "revenue" && <FinancePreview rows={[["수임비", formatWon(feeIncome)], ["수수료", formatWon(commissionIncome)]]} />}
         </button>
         {open === "revenue" && detail}
         </div>
@@ -379,7 +393,7 @@ export default function FinanceSummaryBoxes({
           <span ref={costAmountRef} className="block w-full min-w-0 max-w-full font-bold tabular-nums text-red-600" style={amountStyle}>
             <Amount value={cost} play={play} />
           </span>
-          <FinancePreview rows={[["DB 비용", formatWon(dbCostTotal)], ["추가 비용", additionalCost === null ? "확인 못 했어요" : formatWon(additionalCost)]]} />
+          {open !== "cost" && <FinancePreview rows={[["DB 비용", formatWon(dbCostTotal)], ["추가 비용", additionalCost === null ? "확인 못 했어요" : formatWon(additionalCost)]]} />}
         </button>
         {open === "cost" && detail}
         </div>
@@ -410,25 +424,16 @@ export default function FinanceSummaryBoxes({
           >
             <Amount value={profit} play={play} />
           </span>
-          <FinancePreview rows={[["이익률", `${profitRate.toFixed(1)}%`], ...(typeof contractCount === "number" ? [["계약", `${contractCount}건`] as [string, string]] : [])]} />
+          {open !== "profit" && <FinancePreview rows={[["이익률", `${profitRate.toFixed(1)}%`], ...(typeof contractCount === "number" ? [["계약", `${contractCount}건`] as [string, string]] : [])]} />}
         </button>
-        {open === "profit" && detail}
+        {open === "profit" && pc && detail}
         </div>
 
-        {/* 진행건 칸 — PC 만(A안). 누르면 그 칸 아래에 실무/수납과 같은 진행 막대가 열린다. */}
-        {work && (
-          <FinanceWorkColumn
-            work={work}
-            open={open === "work"}
-            onToggle={() => toggle("work")}
-            style={columnStyle}
-            className={columnClass(open === "work", "focus-visible:ring-slate-500")}
-            amountStyle={amountStyle}
-            amountRef={workAmountRef}
-            detail={detail}
-          />
-        )}
+        {/* 진행건 칸 — PC 만(A안). 누르지 않아도 실무/수납과 같은 진행 막대가 늘 보인다(2026-11-16). */}
+        {work && <FinanceWorkColumn work={work} style={columnStyle} amountStyle={amountStyle} amountRef={workAmountRef} />}
       </div>
+
+      {open === "profit" && !pc && detail}
 
       {open === null && <div id="fin-detail-panel" role="region" hidden />}
     </div>

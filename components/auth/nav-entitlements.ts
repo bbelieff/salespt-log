@@ -27,8 +27,6 @@ export function headerEntitlements(input: { me: MeFacts; trainer: TrainerFacts; 
     roleView,
     isAdmin,
     roleToggleShown,
-    /** 수강생 화면에는 항상 복귀 링크. 두 역할 트레이너 화면은 안전한 토글만 쓴다. */
-    showStudentDashboardLink: roleView === "student" || (trainer?.canStudent === true && !roleToggleShown),
     /** 트레이너 신청 — 트레이너도 관리자도 아닐 때만(신청 정보를 받은 뒤). */
     showTrainerApply: !!trainer && !trainer.canTrainer && !isAdmin,
     trainerApplyPending: trainer?.status === "pending",

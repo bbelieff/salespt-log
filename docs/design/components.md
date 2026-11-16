@@ -1056,7 +1056,7 @@ function getTimeValue(hourId, minuteId) {
 **구조 (한 컴포넌트, 2 sticky 영역)**:
 
 ```text
-TopHeader: 모바일 첫 행 로고 | 대시보드 | 역할 전환, 정보 행 이름 | 대리접속
+TopHeader: 모바일 첫 행 로고 | 역할 전환, 정보 행 이름 | 대리접속
   h-app-header = <768px 6rem, >=768px 3.5rem, sticky top-0 z-50
 PageBanner: 페이지 이모지·제목 | 선택적 부제
   h-12 = 3rem, sticky top-app-header z-40
@@ -1085,17 +1085,17 @@ PageBanner: 페이지 이모지·제목 | 선택적 부제
 
 ### TopHeader (슬림 브랜드 바) ⭐
 
-**구조**: 768px 미만은 `h-app-header` 6rem 두 행. 첫 행은 로고 → 대시보드 → 자격이 있는 본인 역할 토글, 정보 행은 기수·이름 → 조건부 대리접속 표식 → DDayBadge. `2xl`(768px)부터 3.5rem 한 행으로 로고 → 정보 → 액션 순서를 유지한다.
+**구조**: 768px 미만은 `h-app-header` 6rem 두 행. 첫 행은 로고 → 자격이 있는 본인 역할 토글, 정보 행은 기수·이름 → 조건부 대리접속 표식 → DDayBadge. `2xl`(768px)부터 3.5rem 한 행으로 로고 → 정보 → 액션 순서를 유지한다.
 
 | 그룹 | 내용 | 데이터와 동작 |
 |---|---|---|
 | 로고 | `/salespt-logo.png`, `h-5 sm:h-6 w-auto` | 계정 메뉴 열기 버튼, 새소식 점 배지 |
 | 사용자 | 기수·이름·대표님 | `useMe()`의 프로필을 표시. `min-w-0` 정보 영역 안에서 이름은 `min-w-8 truncate`; 연결된 시트가 있으면 원본 시트 새 탭 링크. 프로필 이름이 없으면 트레이너 이름으로 보완 |
-| 액션 | 대시보드 + `RoleViewSwitch` | 수강생 화면 복귀 링크와 트레이너 화면의 최신 capability 조건을 유지하며 목적지는 `/dashboard`. 역할 전환은 실계정의 수강생·트레이너 두 권한이 모두 있을 때만 표시 |
+| 액션 | `RoleViewSwitch` | 역할 전환은 실계정의 수강생·트레이너 두 권한이 모두 있을 때만 표시. 한쪽 역할만 있는 계정은 액션 칸이 빈다(2026-11-16 `← 대시보드` 제거) |
 
-- 대시보드 화면에서도 같은 링크를 유지한다. `/` 또는 `/trainer`로 조건부 치환하거나 비활성 라벨로 바꾸지 않는다.
+- `← 대시보드` 링크는 모든 화면에서 없앴다(2026-11-16 belie 추가 지시 「다른 화면에서도 없애줘」; `showStudentDashboardLink` 판정도 삭제). 대시보드 복귀는 사이드 메뉴·메뉴 서랍의 「대시보드」 항목으로 한다. 역할 토글 조건(`canStudent && canTrainer`)은 그대로다.
 - 로고와 액션은 `shrink-0`. 정보 행의 이름은 `min-w-0 truncate`로 가용 폭에 맞춰 줄이되 표시 폭을 잃지 않아야 한다. 360/390px 긴 이름에서도 이름의 가용 폭과 액션 비겹침을 브라우저로 검증한다.
-- 로고·역할 버튼은 `h-11`(모바일 44px). 대시보드는 기존 메뉴 복귀와 같은 연한 붉은 알약형(`rounded-full border-red-200 bg-red-50 px-3 py-1 text-xs text-red-700`)으로 `← 대시보드`를 표시한다. 투명한 링크 클릭 영역은 `min-h-11`로 유지하고 내부 pill을 수직 중앙에 배치한다. 별도 대시보드 아이콘·큰 사각 박스는 사용하지 않는다. PC에서는 전역 루트 스케일이 적용된다.
+- 로고·역할 버튼은 `h-11`(모바일 44px). PC에서는 전역 루트 스케일이 적용된다.
 - 역할 전환은 기존 미저장 가드와 안전 경로 복원 규칙을 유지한다. 대리접속 표식과 반응형 배치가 권한이나 계정 전환 동작을 바꾸지 않는다.
 - 적층은 `sticky top-0 z-50`; 페이지 배너는 `sticky top-app-header z-40`이다.
 
@@ -1135,7 +1135,7 @@ app/(app)/dashboard/page.tsx
   sticky top-app-content z-30 래퍼
     PageContainer > .surface-hero 띠
       [DashboardProgressBanner | PeriodPicker]  # A안(2026-11-13) PC 한 줄: 날짜·주차|진행바|진행률|D-day ‥ 오른쪽 기간 칩. 폰: 진행 세 줄 / 선 / 칩
-      DashboardFinance > FinanceSummaryBoxes    # 폰 3열 숫자만 · PC 4열(매출·비용·영업이익·진행건 FinanceWorkColumn) + 칸 아래 미리보기 두 줄
+      DashboardFinance > FinanceSummaryBoxes    # 폰 3열 숫자만 · PC 4열(매출·비용·영업이익·진행건 FinanceWorkColumn — 늘 펼침) + 칸 아래 미리보기 두 줄
   PageContainer > 일반 본문
     [생산성 + DashboardWorkStatus] + WeeklyGoalSummary  # ≥1600px 윗줄 반반
     MobileChartCarousel > FunnelChart / WeeklyDualChart / ChannelPerformance  # ≥1600px 아랫줄 3등분 (1024~1599: 2열) · <1024px 옆으로 넘기기
@@ -1193,9 +1193,9 @@ app/(app)/dashboard/page.tsx
 - `periodLabel?` (기본 「전체」), `contractCount?`: 영업이익 상세의 기간·계약건수 부연.
 - `profitDetail?: ReactNode` (2026-10-12 #7): 영업이익 상세에서 기존 줄 아래에 붙는 내용(`ChannelProfitBreakdown`). 없으면 기존 그대로.
 - `work?: WorkColumnData` (A안 2026-11-13, `components/dashboard/FinanceWorkColumn.tsx`): `{ items: WorkStatusItem[] | null; failed; onRetry; onNavigate }`.
-  주면 네 번째 칸 「진행건」(`#fin-col-work`, `hidden pc:flex` — PC 만)을 더하고 행이 `grid-cols-3 pc:grid-cols-4`(네 칸 균등, 칸 차지 없음)가 된다.
-  칸 = 「진행건」 + `N건`(불러오는 중·실패 「—」) + 상태별 건수 두 줄(0건 상태 빼고 막대 순서, 예 「진행 9 · 수납완료 1」/「장기관리 6」, `workPreviewLines`).
-  누르면 다른 칸처럼 그 칸 아래 `#fin-detail-panel` 에 실무/수납과 같은 `WorkStatusBar`(막대·범례·상태별 목록 팝업, `popoverAlign="end"` — 칸 오른쪽 끝에 맞춰 띠 밖으로 넘치지 않음)가 열린다. 실패면 「다시 시도」.
+  주면 네 번째 칸 「진행건」(`[data-finance-work-column]`, `hidden pc:flex` — PC 만)을 더하고 행이 `grid-cols-3 pc:grid-cols-4`(네 칸 균등, 칸 차지 없음)가 된다.
+  칸 = 머리 `#fin-col-work`(「진행건」 + `N건`, 불러오는 중·실패 「—」) + 그 아래 **누르지 않아도 늘 보이는** 실무/수납과 같은 `WorkStatusBar`(막대·범례·상태별 목록 팝업, `popoverAlign="end"` — 칸 오른쪽 끝에 맞춰 띠 밖으로 넘치지 않음). 2026-11-16 belie: 요약 두 줄(`workPreviewLines`)과 눌러 펼치기를 없앴다 — 이 칸은 버튼이 아니고 `#fin-detail-panel` 을 쓰지 않는다.
+  막대의 「전체 진행건 N건」 글자는 칸 머리와 겹쳐 이 칸에서만 숨긴다(`dashboard-action-overview.css`). 불러오는 중은 뼈대 막대, 실패면 「다시 시도」가 바로 보인다. 높이는 막대 + 범례 여섯 개로 정해져 있어 칸 안 스크롤은 두지 않는다(스크롤 상자는 칸 밖으로 뜨는 팝업을 자른다).
 - 2026-10-08 시즌/이월/전체 분리 props·표 삭제 — 기간 선택이 대신한다(ADR-0034).
 
 **DashboardFinance** A안(2026-11-13): props `periodState?`(`useFinancePeriodState()` 반환값)를 주면 칩을 그리지 않고 그 기간으로 계산한다 — 대시보드 페이지가 칩을 진행 줄 오른쪽에 그린다(칩 한 벌). 없으면(시험·합성 화면) 지금처럼 자기 칩. `work?` 는 `FinanceSummaryBoxes` 로 그대로 넘긴다(불러오는 중 뼈대도 PC 네 칸).
@@ -1235,12 +1235,12 @@ app/(app)/dashboard/page.tsx
 **디자인 / 동작**:
 
 - 세 컬럼은 320px 모바일에서도 데스크탑에서도 항상 한 행에 나란히 선다(동일 폭 3등분). A안(2026-11-13): 대시보드 PC 는 「진행건」을 더해 네 칸 균등.
-- 미리보기(A안, PC 만 `hidden pc:flex`, `data-finance-preview`): 큰 숫자 아래 늘 보이는 두 줄 — 매출 = 수임비·수수료, 비용 = DB 비용·추가 비용(못 읽으면 「확인 못 했어요」, 0원으로 대신하지 않음), 영업이익 = 이익률(소수 1자리)·계약 N건. `formatWon` 전체 금액, 잘라 숨기지 않고 좁으면 줄을 바꾼다. 버튼 안이라 눌러도 같은 칸 상세가 열린다. 폰은 지금처럼 숫자만.
+- 미리보기(A안, PC 만 `hidden pc:flex`, `data-finance-preview`): 큰 숫자 아래 늘 보이는 두 줄 — 매출 = 수임비·수수료, 비용 = DB 비용·추가 비용(못 읽으면 「확인 못 했어요」, 0원으로 대신하지 않음), 영업이익 = 이익률(소수 1자리)·계약 N건. `formatWon` 전체 금액, 잘라 숨기지 않고 좁으면 줄을 바꾼다. 버튼 안이라 눌러도 같은 칸 상세가 열린다. 칸을 열면 그 칸의 미리보기는 그리지 않는다(2026-11-16 — 미리보기와 상세가 같은 내용을 두 번 보여 주던 것). 진행건 칸에는 미리보기가 없다. 폰은 지금처럼 숫자만.
   흰색 배경, slate-200 테두리, rounded-xl, ＋/−/＝ 배지를 공유하고, 라벨은 금액 위에 둔다.
 - 금액 색: 매출 slate-900, 비용 red-600, 영업이익은 0 이상 파랑 `#1d4ed8`·음수 보라 `#7c3aed`
   (음수도 비용 빨강과 혼동되지 않게 한다). 영업이익 = 매출 − 비용, 기존 음수 부호 유지.
 - 각 컬럼은 `button`이며 클릭 시 **그 칸 바로 아래, 그 칸 너비 안에서만** 상세 패널(`#fin-detail-panel`)이
-  열린다(2026-11-11 belie — PC 도 균등 세 칸, 매출 2칸 차지 폐지). 대시보드는 기간 칩 왼쪽 제목 글자·직접 설정 미완료 안내를 두지 않는다. 한 번에 하나만 열리고 같은 컬럼을 다시 누르면 닫힌다. `aria-expanded`/
+  열린다(2026-11-11 belie — PC 도 균등 세 칸, 매출 2칸 차지 폐지). **예외(2026-11-16 belie)**: 폰·태블릿(1024px 미만, `matchMedia("(min-width: 1024px)")`)의 영업이익 상세만 칸 묶음 바로 아래에 세 칸 전체 폭으로 편다 — 1/3 폭에서는 채널 표가 잘린다. 매출·비용 상세와 PC 의 영업이익 상세는 그대로 누른 칸 아래. 진행건 칸은 누르는 칸이 아니다(늘 펼침). 대시보드는 기간 칩 왼쪽 제목 글자·직접 설정 미완료 안내를 두지 않는다. 한 번에 하나만 열리고 같은 컬럼을 다시 누르면 닫힌다. `aria-expanded`/
   `aria-controls`와 컬럼별 `focus-visible:ring-2`를 둔다. 상세 패널은 버튼의 형제이므로
   중첩 버튼이 생기지 않는다.
 - 상세 내용: 매출 = 수임비·수수료(·반환) / 비용 = DB 비용 합계 + 추가 비용 행(기존 경비장부 진입점,
@@ -1749,10 +1749,10 @@ button:focus, input:focus, select:focus {
 - 회의록 미리보기의 라벨과 달리 HTML/TSV 클립보드는 제목 없는 14열 데이터 한 행.
 
 ## Trainer recruitment (#956)
-- `RoleViewSwitch`: 최상단 로고 행, 대시보드 바로 옆 수강생/트레이너 44px 세그먼트. 실계정 두 권한 확인, 미저장 가드, 역할별 안전 경로 복원; 대리 접속은 저장하지 않음.
+- `RoleViewSwitch`: 최상단 로고 행 오른쪽 끝 수강생/트레이너 44px 세그먼트(2026-11-16 옆의 `← 대시보드` 제거). 실계정 두 권한 확인, 미저장 가드, 역할별 안전 경로 복원; 대리 접속은 저장하지 않음.
 - `TrainerApplication`: 동일 신청/초대 계정 확인 카드; 신청 취소 확인(AppDialog alertdialog — 「계속 대기」 초점, Esc·바깥 = 계속 대기)·재신청, 별도 초대 수락. 기존 학생 기록 유지.
 - `TrainerInvites`: 관리자 전용 수신 이메일 링크 생성/복사/목록/취소. 링크는 생성 시만 표시, 7일 만료.
-- `TopHeader`: 모바일 첫 행은 로고·대시보드·역할 전환, 정보 행은 기수·이름·대리접속. D-day는 DashboardProgressBanner에만 표시한다. 768px부터 한 행. 이름의 첫 글자는 표시 가능해야 하며 기존 대시보드 진입 조건은 유지한다.
+- `TopHeader`: 모바일 첫 행은 로고·역할 전환(2026-11-16 `← 대시보드` 제거), 정보 행은 기수·이름·대리접속. D-day는 DashboardProgressBanner에만 표시한다. 768px부터 한 행. 이름의 첫 글자는 표시 가능해야 하며 기존 대시보드 진입 조건은 유지한다.
 
 - `TrainerInvitationEntry`: 공개 고정 초대 경로. URL fragment 토큰을 즉시 제거하고 탭 sessionStorage에서 로그인 동안만 유지; OAuth/마지막 페이지 쿠키에 토큰 전달 금지. 잘못된 링크는 가운데 카드 「초대 링크를 열 수 없어요」 + 「처음 화면으로」(/) 버튼(2026-11-10).
 
@@ -1860,6 +1860,7 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 ### DashboardFollowUps STEP별 표 · 2026-10-14 사용자 승인
 
 - **DashboardActionOverview**: PC 왼쪽 진행건→오늘 챙길 일, 오른쪽 생산성→주간목표. 두 열 하단을 stretch/flex로 맞추며 내용이 넘치면 함께 늘어난다. 모바일 실제 교육주차별 순서 유지, 모든 카드 처음부터 표시.
+- **DashboardFollowUpsView** 글자 크기(2026-11-16 belie 「폰트가 더 커야」, `followups-table.css`): 단계 이름 14px(전 PC 12·폰 11), 건수 15px(전 13), 열 제목 12px(전 11), 「예정된 일」·「날짜 확인」 13px(전 11). 제목 「오늘 챙길 일」·전체 건수는 다른 판 제목과 같은 14px 그대로. 폰 열 폭(`minmax(0,1fr) 3.4375rem 2.6875rem 2.6875rem`)은 그대로다.
 - **DashboardFollowUpsView**: 펼친 표는 폰·좁은 창(기준일 열이 숨는 곳)에서 「해야 할 일」 아래 작은 줄로 `MM.DD · 기관/상태`(`.ft-action-sub`)를 보이고, 줄 높이를 줄이려 할 일·「열기」 모양은 34px·누르는 범위는 투명 `::after` 로 44px 유지(2026-11-08). STEP 2(DB관리)/3/4 행(2026-11-07 1.5 행을 STEP 2 로 합침 — 첫 연락·재연락은 kind 로 구분)과 장기누락(7일~)·경과(1~6일)·오늘 열. 정상 0건은 회색 0으로 항상 표시. 데이터 조회·재시도·집계는 기존 DashboardFollowUps 책임.
 - STEP 호버/클릭으로 긴급순 표, 숫자는 해당 구간, 전체 숫자는 전체 미처리. 긴급도/업체·진행건/해야 할 일/기준일·기관/바로가기. 행 상세에 이유와 전체 facts. PC 7행 스크롤 없이 표시, 더 많거나 작은 높이는 팝업 내부 스크롤.
 - 모바일은 기준일·기관을 행 상세로 옮겨 가로 넘침 방지. click/tap/키보드로 조작 가능. 바깥 클릭·Escape·닫기 및 hover 영역 이탈 닫기. 빈 상세는 “지금 처리할 일이 없어요”.

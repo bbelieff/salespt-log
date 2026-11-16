@@ -1,4 +1,4 @@
-/** 공용 헤더: 모든 화면에서 로고·이름·대시보드·역할 전환 한 행. 페이지 배너는 헤더 바로 아래. */
+/** 공용 헤더: 모든 화면에서 로고·이름·역할 전환 한 행. 페이지 배너는 헤더 바로 아래. */
 "use client";
 
 import Link from "next/link";
@@ -75,14 +75,11 @@ export default function TopHeader({
   const inboxUnread = useInbox(ownPush).data?.unread ?? 0;
   const trainer = useTrainerState();
   const pathname = usePathname();
-  // 트레이너 화면의 `← 수강생 대시보드` Link 는 /dashboard 로 직행해서 (app)/layout 의
-  // 트레이너 가드(role=trainer·active·self-view 아님 → /trainer)에 그대로 튕겼다.
-  // 바로 옆 RoleViewSwitch 는 /api/role-view 로 self-view 를 세운 뒤 이동하므로 정상 동작한다.
-  // 수강생 화면에는 항상 복귀 링크를 표시한다. Dual-role 트레이너 화면은 안전한 토글만 사용한다.
-  //  - 일반 수강생(canTrainer=false): 토글이 안 뜨므로 Link 유지(9개 화면의 유일한 복귀 동선).
+  // 머리의 「← 대시보드」 링크는 없다(2026-11-16 belie 「다른 화면에서도 없애줘」) — 대시보드 복귀는 사이드 메뉴·메뉴 서랍의
+  // 「대시보드」 항목으로 한다. 트레이너 화면에서 수강생 화면으로 가는 길은 RoleViewSwitch 하나다: /api/role-view 로
+  // self-view 를 세운 뒤 이동하므로 (app)/layout 의 트레이너 가드에 튕기지 않는다(2026-09-14 사고 — 직행 Link 가 튕겼다).
   //  - roleMode 는 WeeklyGoalPage 한 곳에서만 넘어온다 → RoleViewSwitch 와 **같은** pathname 폴백.
   const nav = headerEntitlements({ me: me.data, trainer: trainer.data, pathname, roleMode });
-  const { roleView, roleToggleShown, showStudentDashboardLink } = nav;
   // PostHog 식별 + 내부 트래픽 태깅 (ADR-0009/0013).
   //  - 관리자 본인 또는 대리접속(impersonating) = 내부 → is_internal super property.
   //  - 대리접속 중에는 대상 학생 PII 로 identify 하지 않음(ADR-0009). 비-대리 관리자는
@@ -193,15 +190,8 @@ export default function TopHeader({
 
 
           </div>
-          {/* 대시보드 바로 옆 역할 전환 */}
+          {/* 역할 전환(두 역할 계정만) — 「← 대시보드」 링크는 2026-11-16 에 없앴다 */}
           <div data-header-actions className="order-3 ml-auto flex h-14 shrink-0 items-center gap-1 whitespace-nowrap">
-            {showStudentDashboardLink && (
-              <Link href="/dashboard" aria-label="수강생 대시보드로 이동" className="inline-flex min-h-11 shrink-0 items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-red focus-visible:ring-offset-2 group">
-                <span className="app-header-pill group-hover:bg-red-100">
-                  <span aria-hidden>←</span><span>대시보드</span>
-                </span>
-              </Link>
-            )}
             <RoleViewSwitch modeHint={roleMode} />
           </div>
         </PageContainer>
