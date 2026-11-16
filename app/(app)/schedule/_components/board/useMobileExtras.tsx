@@ -6,7 +6,7 @@ import { useAllTodos } from "@/query/todos-hooks";
 import { useSaveScheduleNote, useScheduleNotes } from "@/query/schedule-notes-hooks";
 import { isBoardTodo } from "../../_lib/board";
 import { IssuesPanel } from "./SidePanels";
-import MobileDayExtra from "./MobileDayExtra";
+import MobileDayExtra, { DayAddButton } from "./MobileDayExtra";
 import TodoPopover from "./TodoPopover";
 import EventPopover from "./EventPopover";
 
@@ -33,8 +33,9 @@ export function useMobileExtras({ enabled, viewStart, courseWeekFri, toast }: { 
     dayExtra: (date: string) => (
       <MobileDayExtra date={date} todos={byDate.get(date) ?? []} memo={notes.data?.memos[date] ?? ""} memoReady={ready}
         onMemo={(d, text) => save.mutate({ kind: "memo", date: d, text }, { onError: () => toast("메모를 저장하지 못했어요 — 잠시 뒤 다시 적어 주세요.") })}
-        onTodo={setTodo} onCreate={setNewDate} />
+        onTodo={setTodo} />
     ),
+    dayAction: (date: string) => <DayAddButton date={date} onCreate={setNewDate} />,
     sheets: (
       <>
         {todo && <TodoPopover todo={todo} anchor={null} onClose={() => setTodo(null)} onSaved={toast} />}

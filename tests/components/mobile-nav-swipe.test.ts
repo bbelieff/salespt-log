@@ -3,7 +3,7 @@
 import React, { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { claimEdgeTouch, getMobileNavOpen, setMobileNavOpen, swipeBlocked, swipeIntent } from "@/components/desktop/mobile-nav";
+import { claimEdgeTouch, edgeTapTarget, getMobileNavOpen, setMobileNavOpen, swipeBlocked, swipeIntent, swipeSkipped } from "@/components/desktop/mobile-nav";
 
 Object.assign(globalThis, { React, IS_REACT_ACT_ENVIRONMENT: true });
 vi.mock("next/navigation", () => ({ usePathname: () => "/dashboard", useRouter: () => ({ push: vi.fn() }) }));
@@ -40,12 +40,20 @@ describe("swipeBlocked — 입력 칸·손잡이·왼쪽으로 밀린 가로 스
   });
 });
 
-describe("claimEdgeTouch — 왼쪽 끝 밀기는 브라우저 뒤로 가기 대신 서랍이 받는다(2026-11-07)", () => {
-  it("왼쪽 24px 안, 누를 수 있는 것 위가 아니면 true", () => {
-    document.body.innerHTML = '<p id="p"></p><button id="b"><span id="bi"></span></button><a id="a" href="#"></a>';
-    expect(claimEdgeTouch(10, document.getElementById("p"))).toBe(true);
-    expect(claimEdgeTouch(40, document.getElementById("p"))).toBe(false);
-    for (const id of ["b", "bi", "a"]) expect(claimEdgeTouch(10, document.getElementById(id))).toBe(false);
+describe("claimEdgeTouch — 화면 끝 밀기는 브라우저 뒤로·앞으로 가기 대신 앱이 받는다(2026-11-07 · 11-16)", () => {
+  it("왼쪽 24px 안, 그리고 폭을 주면 오른쪽 24px 안에서 true — 버튼 위여도", () => {
+    expect(claimEdgeTouch(10)).toBe(true);
+    expect(claimEdgeTouch(40)).toBe(false);
+    expect(claimEdgeTouch(380, 390)).toBe(true); // 오른쪽 끝 → 앞으로 가기(월 보기로 넘어가던 것) 막음
+    expect(claimEdgeTouch(200, 390)).toBe(false);
+  });
+  it("막은 터치가 제자리 누르기면 그 버튼·링크를 대신 누른다, 밀었으면 누르지 않는다", () => {
+    document.body.innerHTML = '<p id="p"></p><button id="b"><span id="bi"></span></button><input id="i">';
+    expect(edgeTapTarget(document.getElementById("bi"), 2, 3)).toBe(document.getElementById("b"));
+    expect(edgeTapTarget(document.getElementById("bi"), 40, 0)).toBeNull();
+    expect(edgeTapTarget(document.getElementById("p"), 0, 0)).toBeNull();
+    expect(swipeSkipped(document.getElementById("i"))).toBe(true); // 입력 칸은 막지 않는다
+    expect(swipeSkipped(document.getElementById("b"))).toBe(false);
   });
 });
 
@@ -77,5 +85,15 @@ describe("DesktopNav — 문서 어디서든 밀어서 열고 닫기", () => {
     const input = document.createElement("input"); document.body.append(input);
     touch("touchstart", 10, 300, input); touch("touchmove", 120, 300, input);
     expect(getMobileNavOpen()).toBe(false);
+    // 2026-11-16: 오른쪽 끝·버튼 위에서 시작해도 막고, 제자리 누르기는 대신 눌러 준다. 입력 칸은 그대로.
+    expect(touch("touchstart", 10, 300, input).defaultPrevented).toBe(false);
+    expect(touch("touchstart", window.innerWidth - 5, 300).defaultPrevented).toBe(true);
+    touch("touchend", 0, 0);
+    const button = document.createElement("button"); let clicks = 0; button.onclick = () => { clicks += 1; }; document.body.append(button);
+    expect(touch("touchstart", 8, 300, button).defaultPrevented).toBe(true);
+    const end = new Event("touchend", { bubbles: true, cancelable: true });
+    Object.defineProperty(end, "touches", { value: [] }); Object.defineProperty(end, "changedTouches", { value: [{ clientX: 9, clientY: 301 }] });
+    act(() => { button.dispatchEvent(end); });
+    expect(clicks).toBe(1);
   });
 });

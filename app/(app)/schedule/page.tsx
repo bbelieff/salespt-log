@@ -181,7 +181,7 @@ export default function SchedulePage() {
       }}
     >
       <DaySection date={day.date} meetings={day.meetings} todayISO={TODAY_ISO} focusId={focusId}
-        onOpen={(m) => setOpenId(m.id)} extra={mobile.dayExtra(day.date)} />
+        onOpen={(m) => setOpenId(m.id)} extra={mobile.dayExtra(day.date)} action={mobile.dayAction(day.date)} />
     </div>
   );
 
@@ -214,7 +214,6 @@ export default function SchedulePage() {
   return (
     <>
       {deleteConfirm.element}
-      <div className="mx-auto flex w-full justify-end px-4 py-2"><DeletedMeetings /></div>
       {/* 폰·태블릿 페이지 띠 오른쪽 「주 | 월」 — 「월」은 캘린더(월 보기)로, 보이는 주의 날짜를 지닌 채. */}
       <TopHeader pageEmoji="📋" pageTitle="일정·계약" pageNavigation={
         <div className="flex min-w-0 flex-1 items-center gap-1.5 text-sm font-semibold text-slate-700 sm:gap-2">
@@ -251,6 +250,9 @@ export default function SchedulePage() {
       <WeekBody
         firstDays={daysByMeetingDate.slice(0, 3).map((day, j) => renderDay(day, j))}
         lastDays={daysByMeetingDate.slice(3).map((day, j) => renderDay(day, j + 3))} />
+
+      {/* 「삭제한 미팅」은 맨 아래로 — 첫 줄을 통째로 차지하던 것(2026-11-16 belie). */}
+      <div className="flex justify-center px-4 pb-6 pt-1"><DeletedMeetings /></div>
 
       {mobile.sheets}
       {sheetMeeting && (
