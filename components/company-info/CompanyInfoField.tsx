@@ -3,7 +3,8 @@
  * (2026-09-28 company-info-restructure, 500줄 캡).
  *
  * - FieldLabel: 라벨 + (?) 툴팁(HintTooltip) + 화면낭독기용 상시 설명(sr-only). 회색 설명 줄 없음.
- * - 기대출 같은 여러 줄 칸 = textarea 자동높이(줄 수 따라) — 시트에 \n 그대로 저장.
+ * - 기대출·기타메모 같은 여러 줄 칸 = textarea 자동높이 — 줄바꿈 수뿐 아니라 긴 줄이 접혀 늘어난 만큼도 따라 늘어난다
+ *   (2026-11-17 belie, useAutoGrow: 내용 높이에 맞춤 · 칸 너비가 바뀌면 다시 맞춤). 시트에는 줄바꿈 그대로 저장.
  * - 연락처통신사: blur 에만 formatPhone(괄호 통신사 보존).
  * - 주민등록번호: 13자리 전체(ADR-0035, belie 2026-10-23). 입력 중 7번째 숫자에서 하이픈 자동,
  *   13자리 초과분은 버림, blur 에 normalizeRrn 마무리(6자리 미만이면 비움) — 버리거나 비운 이유를
@@ -14,7 +15,7 @@
  */
 "use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { CompanyInfo } from "@/types";
 import { formatPhone } from "@/lib/format/phone";
 import HintTooltip from "@/components/ui/HintTooltip";
@@ -64,6 +65,30 @@ export function FieldLabel({ htmlFor, label, hint, tag }: { htmlFor: string; lab
   );
 }
 
+/**
+ * 여러 줄 칸 높이를 내용에 맞춘다 — 값이 바뀔 때, 그리고 칸 너비가 바뀔 때(창 넓히기·접힌 판 펴기).
+ * rows 는 처음 그릴 때의 바탕값(줄바꿈 수)이고, 긴 줄이 접혀 생긴 줄은 여기서 잰다. 숨겨져 높이가 0 이면 건드리지 않는다.
+ */
+function useAutoGrow(value: string, on: boolean) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!on || !el) return;
+    let width = -1;
+    const fit = () => {
+      el.style.height = "auto";
+      if (el.scrollHeight > 0) el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
+      width = el.clientWidth;
+    };
+    fit();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => { if (el.clientWidth !== width) fit(); });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [value, on]);
+  return ref;
+}
+
 interface Props {
   def: FieldDef;
   value: string;
@@ -83,6 +108,7 @@ export default function CompanyInfoField({ def, value: v, onChange, id, classNam
   const isRrn = k === "주민등록번호";
   const isEmail = k === "이메일";
   const hintId = hintIdOf(id, label, hint);
+  const growRef = useAutoGrow(v, !!multi);
   const normalizeOnBlur = isPhone ? formatPhone : isRrn ? normalizeRrn : isEmail ? tidyContactEmail : null;
   const emailNotice = isEmail && !focused && !looksLikeContactEmail(v);
   const onBlur = normalizeOnBlur
@@ -108,7 +134,8 @@ export default function CompanyInfoField({ def, value: v, onChange, id, classNam
       {multi ? (
         <textarea
           id={id}
-          className={`${inputCls} resize-none leading-5`}
+          ref={growRef}
+          className={`${inputCls} resize-none overflow-hidden leading-5`}
           rows={Math.max(2, v.split("\n").length)}
           aria-describedby={hintId}
           value={v}
