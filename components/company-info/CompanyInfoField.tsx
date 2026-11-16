@@ -6,6 +6,7 @@
  * - 기대출·기타메모 같은 여러 줄 칸 = textarea 자동높이 — 줄바꿈 수뿐 아니라 긴 줄이 접혀 늘어난 만큼도 따라 늘어난다
  *   (2026-11-17 belie, useAutoGrow: 내용 높이에 맞춤 · 칸 너비가 바뀌면 다시 맞춤). 시트에는 줄바꿈 그대로 저장.
  *   칸 아래 손잡이(ResizeGrip)를 위아래로 끌면 높이를 직접 정하고(그때는 칸 안에서 스크롤), 두 번 누르면 최소(두 줄) ↔ 최대(내용 전체).
+ *   정한 높이는 칸 종류마다 이 기기(브라우저)에 기억한다(loadFieldHeight·saveFieldHeight) — 어느 업체·어느 화면에서 열어도 같은 높이.
  * - 연락처통신사: blur 에만 formatPhone(괄호 통신사 보존).
  * - 주민등록번호: 13자리 전체(ADR-0035, belie 2026-10-23). 입력 중 7번째 숫자에서 하이픈 자동,
  *   13자리 초과분은 버림, blur 에 normalizeRrn 마무리(6자리 미만이면 비움) — 버리거나 비운 이유를
@@ -101,6 +102,21 @@ export function gripMinOf(el: HTMLElement | null): number {
 /** 두 번 누르기: 지금 최소면 최대(null = 내용 전체, 자동 높이)로, 아니면 최소로. */
 export const toggleGrip = (manual: number | null, min: number): number | null => (manual !== null && manual <= min ? null : min);
 
+/** 손으로 정한 높이를 칸 종류(예: 기대출개인)마다 이 기기에 기억한다. 화면 편의 값이라 서버에는 보내지 않는다. */
+const HEIGHT_KEY = "ci-field-height:";
+export function loadFieldHeight(k: string): number | null {
+  try {
+    const n = Number(window.localStorage.getItem(HEIGHT_KEY + k));
+    return n > 0 ? Math.min(GRIP_MAX, Math.round(n)) : null;
+  } catch { return null; } // 저장소를 못 쓰는 브라우저(사생활 보호 창 등) — 자동 높이로 둔다
+}
+export function saveFieldHeight(k: string, h: number | null): void {
+  try {
+    if (h === null) window.localStorage.removeItem(HEIGHT_KEY + k);
+    else window.localStorage.setItem(HEIGHT_KEY + k, String(h));
+  } catch { /* 기억만 못 할 뿐 조절은 그대로 된다 */ }
+}
+
 /**
  * 여러 줄 칸 아래 테두리 손잡이 — 위아래로 끌어 높이를 늘리고 줄인다. 두 번 누르면 최소 ↔ 최대.
  * role=separator 라 폰 사이드 메뉴 밀기(mobile-nav SWIPE_SKIP)와 겹치지 않는다. 키보드: ↑↓ 20px, Enter = 두 번 누르기.
@@ -147,8 +163,11 @@ export default function CompanyInfoField({ def, value: v, onChange, id, classNam
   const isRrn = k === "주민등록번호";
   const isEmail = k === "이메일";
   const hintId = hintIdOf(id, label, hint);
-  // 손으로 정한 높이(px). null = 내용에 맞춰 자동(최대). 화면을 떠나면 잊는다(저장하지 않음).
+  // 손으로 정한 높이(px). null = 내용에 맞춰 자동(최대). 칸 종류마다 이 기기에 기억한다.
   const [manual, setManual] = useState<number | null>(null);
+  // 기억한 높이는 그린 뒤에 읽는다(서버가 그린 모양과 어긋나지 않게) — 화면에 보이기 전이라 깜빡이지 않는다.
+  useLayoutEffect(() => { if (multi) setManual(loadFieldHeight(k)); }, [k, multi]);
+  const setHeight = (h: number | null) => { setManual(h); saveFieldHeight(k, h); };
   const growRef = useAutoGrow(v, !!multi && manual === null);
   const normalizeOnBlur = isPhone ? formatPhone : isRrn ? normalizeRrn : isEmail ? tidyContactEmail : null;
   const emailNotice = isEmail && !focused && !looksLikeContactEmail(v);
@@ -178,14 +197,14 @@ export default function CompanyInfoField({ def, value: v, onChange, id, classNam
           id={id}
           ref={growRef}
           className={`${inputCls} resize-none leading-5 ${manual === null ? "overflow-hidden" : "overflow-y-auto"}`}
-          style={manual === null ? undefined : { height: manual }}
+          style={manual === null ? undefined : { height: Math.max(manual, gripMinOf(growRef.current)) }}
           rows={Math.max(2, v.split("\n").length)}
           aria-describedby={hintId}
           value={v}
           onChange={(e) => onChange(k, e.target.value)}
         />
         <ResizeGrip label={label} current={() => growRef.current?.offsetHeight ?? gripMinOf(growRef.current)} min={() => gripMinOf(growRef.current)}
-          onResize={setManual} onToggle={() => setManual((m) => toggleGrip(m, gripMinOf(growRef.current)))} />
+          onResize={setHeight} onToggle={() => setHeight(toggleGrip(manual, gripMinOf(growRef.current)))} />
         </>
       ) : (
         <input
