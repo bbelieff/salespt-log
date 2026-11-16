@@ -1,7 +1,8 @@
 import {readFileSync} from 'node:fs';
 import {describe,expect,it} from 'vitest';
 
-/** Reviewed legacy source positions, not dynamic render counts. Two conditional pairs collapse. */
+/** Reviewed legacy source positions, not dynamic render counts. Two conditional pairs collapse.
+ *  2026-11-15: 일정·계약 미팅 카드(펼침)가 아래 시트로 바뀌어 그 한 자리가 목록에서 빠졌다(46→45, 44→43). */
 const inventory: Array<[string,number,number]> = [
  ['app/(app)/calendar/_components/GcalConnectCard.tsx',1,1],
  ['app/(app)/contact/_components/MeetingSlotItem.tsx',1,1],
@@ -18,7 +19,6 @@ const inventory: Array<[string,number,number]> = [
  ['app/(app)/payment/_components/InstitutionWorkList.tsx',1,1],
  ['app/(app)/payment/_components/TerminationArchive.tsx',1,1],
  ['app/(app)/payment/_components/PaymentSlotForm.tsx',1,1],
- ['app/(app)/schedule/_components/MeetingResultCard.tsx',1,1],
  ['components/CompanyInfoEditor.tsx',1,0],
  ['components/auth/TrainerInvites.tsx',2,1],
  ['components/auth/CollapsibleSection.tsx',2,1],
@@ -43,9 +43,9 @@ describe('approved disclosure migration boundary',()=>{
   expect(source).toContain('aria-expanded={rawOpen} onClick={()=>setRawOpen(!rawOpen)}');
   expect(source).toContain('<DisclosureChevron open={rawOpen} />');
  });
- it('maps exactly 46 legacy positions to 44 shared indicators without forcing alternate pairs',()=>{
-  expect(inventory.reduce((sum,[,before])=>sum+before,0)).toBe(46);
-  expect(inventory.reduce((sum,[,,after])=>sum+after,0)).toBe(44);
+ it('maps exactly 45 legacy positions to 43 shared indicators without forcing alternate pairs',()=>{
+  expect(inventory.reduce((sum,[,before])=>sum+before,0)).toBe(45);
+  expect(inventory.reduce((sum,[,,after])=>sum+after,0)).toBe(43);
   for(const [file,,after] of inventory){
    const source=readFileSync(file,'utf8');
    expect((source.match(/<DisclosureChevron(?:\s|\/|>)/g)??[]).length,file).toBe(after);

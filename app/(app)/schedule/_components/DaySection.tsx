@@ -1,57 +1,57 @@
 /**
- * DaySection — 1일 박스 (요일/날짜 헤더 + 그 날의 미팅 카드 리스트).
+ * DaySection — 1일 박스 (요일/날짜 헤더 + 그 날의 미팅 줄 목록).
  * 정본: docs/design/prototypes/schedule-weekly.html `.day-section`
+ * 미팅 줄을 누르면 카드가 펼쳐지는 대신 아래에서 미팅 창이 올라온다(2026-11-15 — 주간 보드·캘린더와 같은 창).
  */
 "use client";
 
 import type { ReactNode } from "react";
 import type { Meeting } from "@/types";
+import CarryoverBadge from "@/components/CarryoverBadge";
+import { formatWon } from "@/lib/format/money";
+import { useFocusScroll } from "@/lib/hooks/useFocusScroll";
+import { CHANNEL_BADGE } from "../_lib/badges";
+import { CARD_ICON, ROW_CLS, TIME_TEXT_CLS, meetingStateToCardState } from "../_lib/state-map";
 import { dayLabelKO, fmtMD, parseISO } from "../_lib/week";
-import MeetingResultCard from "./MeetingResultCard";
 
 interface Props {
   date: string; // YYYY-MM-DD
   meetings: Meeting[];
   todayISO: string;
-  pendingId: string | null;
-  /** 캘린더에서 넘어온 포커스 대상 미팅 id — 스크롤+하이라이트. */
+  /** 다른 화면에서 넘어온 포커스 대상 미팅 id — 스크롤+하이라이트. */
   focusId?: string | null;
-  onPatch: (id: string, partial: Partial<Omit<Meeting, "id">>) => void;
-  onReschedule: (
-    meeting: Meeting,
-    newDate: string,
-    newTime: string,
-    reason: string,
-  ) => void;
-  /** 미팅 결과 되돌리기 (2026-05-17 [2a]). */
-  onRevert?: (id: string) => void;
-  /** 추가 미팅 (2026-05-17 [2b]). */
-  onAddMeeting?: (meeting: Meeting, newDate: string, newTime: string) => void;
-  /** 일정 삭제 (2026-05-19) — cascade. */
-  onDelete?: (meeting: Meeting) => void;
-  /** 자식 미팅을 가진 원본 미팅 id 셋 (2026-05-19) — 케이스 종료 표시용. */
-  followUpParentIds?: Set<string>;
-  /** 케이스 종료 되살리기 (2026-05-19). */
-  onReviveCase?: (meeting: Meeting) => void;
+  /** 미팅 줄을 누르면 — 페이지가 아래에서 올라오는 미팅 창을 연다(주간 보드·캘린더와 같은 창). */
+  onOpen: (meeting: Meeting) => void;
   /** 폰·태블릿: 미팅 줄 아래 메모·실무 투두·일반 일정(주간 보드 2026-11-11). */
   extra?: ReactNode;
 }
 
-export default function DaySection({
-  date,
-  meetings,
-  todayISO,
-  pendingId,
-  focusId,
-  onPatch,
-  onReschedule,
-  onRevert,
-  onAddMeeting,
-  onDelete,
-  followUpParentIds,
-  onReviveCase,
-  extra,
-}: Props) {
+/** 미팅 한 줄 — 상태 아이콘·시간·채널·업체명·장소(·수임비). 결과 입력·고치기는 누르면 뜨는 창에서. */
+function MeetingRow({ meeting, focus, onOpen }: { meeting: Meeting; focus: boolean; onOpen: () => void }) {
+  const state = meetingStateToCardState(meeting.상태);
+  const { ref, ring } = useFocusScroll<HTMLDivElement>(focus);
+  const gone = state === "canceled" ? "line-through text-slate-400" : "";
+  return (
+    <div ref={ref} className={`scroll-mt-[280px] border-b border-slate-100 last:border-b-0 ${ROW_CLS[state]} ${ring ? "animate-pulse ring-2 ring-inset ring-blue-400" : ""}`}>
+      <button type="button" onClick={onOpen} aria-haspopup="dialog" data-first-steps="meeting-card-toggle"
+        className="flex w-full items-center gap-2 px-1 py-3 text-left transition-colors active:bg-black/5">
+        <CarryoverBadge 구분={meeting.구분} />
+        <span className="shrink-0 text-base leading-none">{CARD_ICON[state]}</span>
+        <span className={`shrink-0 text-sm font-bold ${gone || TIME_TEXT_CLS[state]}`}>{meeting.미팅시간}</span>
+        <span className={`shrink-0 ${CHANNEL_BADGE[meeting.channel]}`}>{meeting.channel}</span>
+        {/* 업체명 먼저 — 좁은 화면(폴드 커버)에서는 장소가 아랫줄로(2026-11-07). */}
+        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2">
+          <span className={`line-clamp-2 min-w-0 max-w-full break-keep text-sm font-semibold ${gone || "text-slate-900"}`}>{meeting.업체명}</span>
+          {meeting.장소 && <span className={`ml-auto min-w-0 max-w-full truncate text-xs ${gone || "text-slate-500"}`}>{meeting.장소}</span>}
+        </span>
+        {state === "contract" && meeting.수임비 > 0 && <span className="shrink-0 text-xs font-bold tabular-nums text-green-700">{formatWon(meeting.수임비)}</span>}
+        <svg aria-hidden="true" viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-slate-400" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+      </button>
+    </div>
+  );
+}
+
+export default function DaySection({ date, meetings, todayISO, focusId, onOpen, extra }: Props) {
   const d = parseISO(date);
   const dow = d.getDay();
   const isWeekend = dow === 0 || dow === 6;
@@ -102,23 +102,7 @@ export default function DaySection({
         </div>
       ) : (
         <div>
-        {meetings.map((m) => (
-          <MeetingResultCard
-            key={m.id}
-            meeting={m}
-            pending={pendingId === m.id}
-            focus={focusId != null && focusId === m.id}
-            onPatch={(partial) => onPatch(m.id, partial)}
-            onReschedule={(d2, t, r) => onReschedule(m, d2, t, r)}
-            onRevert={onRevert ? () => onRevert(m.id) : undefined}
-            onAddMeeting={
-              onAddMeeting ? (d2, t2) => onAddMeeting(m, d2, t2) : undefined
-            }
-            onDelete={onDelete ? () => onDelete(m) : undefined}
-            hasFollowUp={followUpParentIds?.has(m.id) ?? false}
-            onReviveCase={onReviveCase ? () => onReviveCase(m) : undefined}
-          />
-        ))}
+        {meetings.map((m) => <MeetingRow key={m.id} meeting={m} focus={focusId != null && focusId === m.id} onOpen={() => onOpen(m)} />)}
         </div>
       )}
       {extra}

@@ -60,7 +60,7 @@ const TOURS: Record<FirstStepTour, { offer: string; label: string; steps: SpotSt
     label: "첫 미팅 결과 기록 안내",
     steps: [
       { target: "[data-first-steps='meeting-card-toggle']", title: "끝난 미팅을 누르세요", body: "", advance: "click", skipIf: () => !!visibleEl("[data-first-steps='meeting-actions']") },
-      { target: "[data-first-steps='meeting-actions']", title: "결과를 고르세요", body: "계약했으면 「💵 계약」, 아니면 「완료」.", advance: "click" },
+      { target: "[data-first-steps='meeting-actions']", title: "결과를 고르세요", body: "계약했으면 「계약」, 아니면 「완료」.", advance: "click" },
     ],
     final: { title: "첫 미팅 결과 기록 끝", body: "", href: "/payment", hrefLabel: "실무/수납 보기" },
   },

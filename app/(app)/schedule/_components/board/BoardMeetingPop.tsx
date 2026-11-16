@@ -21,19 +21,27 @@ import BoardCompanyRoute from "./BoardCompanyRoute";
 
 type Act = "con" | "done" | "chg" | "can";
 const ACTS: [Act, string][] = [["con", "계약"], ["done", "완료"], ["chg", "변경"], ["can", "취소"]];
+/** 사유 빠른 선택 — 누르면 「업체명, 사유」로 채운다(옛 미팅 카드 폼과 같은 낱말·형식). 아래에서 올라오는 창에서만 보인다(week-board.css). */
+const PRESETS: Record<Exclude<Act, "con">, string[]> = {
+  done: ["결정권 X", "예산 부족", "타사 비교", "재방문 요청", "긍정적, 검토중"],
+  chg: ["사장님 사유", "내 사유", "긴급일정", "더 좋은 시간 협의"],
+  can: ["노쇼", "사장님 사유", "내 사유", "일정 충돌", "기타"],
+};
 const DONE_WORD = { 계약: "계약으로 종료", 완료: "완료로 종료", 변경: "일정 변경됨", 취소: "취소로 종료" } as const;
 const TIMES = Array.from({ length: 60 }, (_, i) => `${String(7 + Math.floor(i / 4)).padStart(2, "0")}:${String((i % 4) * 15).padStart(2, "0")}`);
 const dateKO = (iso: string) => `${iso} (${dayLabelKO(parseISO(iso))})`;
 
-export default function BoardMeetingPop({ meeting: m, pending, onPatch, onReschedule, onRevert, onAddMeeting, onDelete, hasFollowUp, onReviveCase }: {
+export default function BoardMeetingPop({ meeting: m, pending, onPatch, onReschedule, onRevert, onAddMeeting, onDelete, hasFollowUp, onReviveCase, initialAct }: {
   meeting: Meeting; pending: boolean;
+  /** 예약 미팅을 열 때 미리 골라 둘 결과(「날짜·시간 고치기」로 들어오면 변경). */
+  initialAct?: Act;
   onPatch: (partial: Partial<Omit<Meeting, "id">>, opts?: { quiet?: boolean }) => Promise<void> | void;
   onReschedule: (newDate: string, newTime: string, reason: string) => void;
   onRevert: () => void; onAddMeeting: (newDate: string, newTime: string) => void; onDelete: () => void;
   hasFollowUp: boolean; onReviveCase: () => void;
 }) {
   const st = m.상태;
-  const [act, setAct] = useState<Act | null>(null);
+  const [act, setAct] = useState<Act | null>(st === "예약" ? initialAct ?? null : null);
   const [edit, setEdit] = useState(false); // 계약 결과 고치기
   const [basic, setBasic] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -85,6 +93,11 @@ export default function BoardMeetingPop({ meeting: m, pending, onPatch, onResche
     setCiDraft(next); setCiEdit(false); setCiTouched(false);
     onPatch({ 업체정보: next });
   };
+  const presets = act && act !== "con" && (
+    <div className="wb-presets" role="group" aria-label="사유 빠른 선택">
+      {PRESETS[act].map((p) => <button key={p} type="button" className="hit-44 " onClick={() => setReason(`${m.업체명}, ${p}`)}>{p}</button>)}
+    </div>
+  );
   const pick = (a: Act) => { setWarn(""); setReason(""); setAct((cur) => (cur === a ? null : a)); };
   const choosing = st === "예약" || (st === "계약" && edit);
   const tone = st === "계약" ? "con" : st === "완료" ? "done" : st === "변경" ? "chg" : "can";
@@ -141,7 +154,7 @@ export default function BoardMeetingPop({ meeting: m, pending, onPatch, onResche
 
       {choosing && (
         <>
-          <div className="wb-acts" role="group" aria-label="결과 선택">
+          <div className="wb-acts" role="group" aria-label="결과 선택" data-first-steps="meeting-actions">
             {ACTS.map(([k, l]) => (
               <button key={k} type="button" className={`wb-act wb-st-${k}`} aria-pressed={act === k} disabled={st === "계약" && k === "chg"} onClick={() => pick(k)}>{l}</button>
             ))}
@@ -157,6 +170,7 @@ export default function BoardMeetingPop({ meeting: m, pending, onPatch, onResche
                   <label>메모<textarea className="wb-in" value={terms} onChange={(e) => setTerms(e.target.value)} placeholder="계약 조건·특이사항" /></label>
                 </>
               )}
+              {act === "done" && presets}
               {act === "done" && (
                 <label>미팅 결과<textarea className="wb-in" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="무엇을 이야기했고, 왜 계약이 안 됐나요?" /></label>
               )}
@@ -170,9 +184,11 @@ export default function BoardMeetingPop({ meeting: m, pending, onPatch, onResche
                       </select>
                     </label>
                   </div>
+                  {presets}
                   <label>변경 사유<input className="wb-in" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="예: 대표 일정 변경" /></label>
                 </>
               )}
+              {act === "can" && presets}
               {act === "can" && (
                 <label>취소 사유<input className="wb-in" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="예: 노쇼, 대표 거절" /></label>
               )}
