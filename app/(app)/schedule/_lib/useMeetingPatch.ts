@@ -6,7 +6,7 @@
  */
 import type { Meeting } from "@/types";
 import { usePatchMeeting } from "@/query/contact-hooks";
-import { useAddContractPayment, useSyncContractFee } from "@/query/contract-payment-hooks";
+import { useAddContractPayment, useEditContractLinkedFields, useSyncContractFee } from "@/query/contract-payment-hooks";
 import { decideContractFanout } from "./contract-fanout";
 import type { useManualLinkPrompt } from "./use-manual-link-prompt";
 
@@ -20,6 +20,7 @@ export function useMeetingPatch({ weekStart, findMeeting, setPendingId, showToas
   const patchMeeting = usePatchMeeting();
   const addContractPayment = useAddContractPayment();
   const syncContractFee = useSyncContractFee();
+  const editLinked = useEditContractLinkedFields();
 
   const handlePatch = async (
     id: string,
@@ -36,6 +37,16 @@ export function useMeetingPatch({ weekStart, findMeeting, setPendingId, showToas
       // (예약→계약 전환에만 새 row 생성, 계약→계약 수정 시는 skip)
       const prevMeeting = findMeeting(id);
       const wasAlreadyContract = prevMeeting?.상태 === "계약";
+
+      // 계약 미팅의 업체명만 고칠 때 — 장부(02)·업체정보(06)의 이름도 같이 옮긴다(실무/수납에서 고칠 때와 같은 경로).
+      // 미팅만 바꾸면 장부에 옛 이름이 남아 같은 계약이 두 이름으로 갈린다.
+      const newName = partial.상태 === undefined ? partial.업체명?.trim() : undefined;
+      let renameFailed: string[] = [];
+      if (wasAlreadyContract && prevMeeting && newName && newName !== prevMeeting.업체명) {
+        renameFailed = (await editLinked.mutateAsync({
+          meetingId: id, old: { 계약일: prevMeeting.미팅날짜, 업체명: prevMeeting.업체명 }, next: { 업체명: newName },
+        })).failures;
+      }
 
       await patchMeeting.mutateAsync({
         date: "", // 일정·계약 탭에선 day-key 무관
@@ -95,6 +106,8 @@ export function useMeetingPatch({ weekStart, findMeeting, setPendingId, showToas
             `⚠ 미팅은 저장됐으나 계약수납 sync 실패: ${(e as Error).message}`,
           );
         }
+      } else if (renameFailed.length) {
+        say(`⚠ 미팅 이름은 바꿨지만 일부는 못 바꿨어요: ${renameFailed.join(", ")} — 실무/수납에서 업체명을 확인해 주세요.`);
       } else {
         say("✓ 저장 완료");
       }

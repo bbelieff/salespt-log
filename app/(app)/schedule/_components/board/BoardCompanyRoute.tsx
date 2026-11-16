@@ -1,12 +1,14 @@
 "use client";
 /**
  * 주간 보드 미팅 창의 「업체정보 | 길찾기」 줄 — 시안 v44·v45.
- * 업체정보: 펼치면 대표·업종·소재지·직원·연매출 요약, 「고치기」로 기존 업체정보 입력칸(onEdit)을 연다.
+ * 업체정보: 펼치면 업체정보 「기본 보기」와 같은 항목([대표자]·[사업자])을 목록으로 보여 준다. 「고치기」(onEdit)를 누르면
+ * 목록은 접히고 그 자리에 입력칸만 남는다 — 같은 내용이 위아래로 두 번 보이지 않게(2026-11-16 belie).
  * 길찾기: 저장한 지도 앱이 있으면 바로 열고 고르는 칸도 펼친다. 주소는 믿을 만한 순서의 후보(routeCandidates)에서
  * 고르고, 애매하면 직접 적는다(v45) — 적은 주소는 이 기기에 미팅별로 기억하고, 원하면 업체정보 소재지로 저장한다.
  */
 import { useState } from "react";
 import type { CompanyInfo } from "@/types";
+import { SALES_YEAR_KEYS, resolveBaseYear, salesYearTag } from "@/util/company-sales";
 import { MAP_APPS, isVagueAddress, routeCandidates, type MapAppId, type RouteSource } from "@/util/map-links";
 import { launch, readApp, saveApp } from "../MapRouteButton";
 
@@ -47,14 +49,20 @@ export default function BoardCompanyRoute({ meetingId, place, info, editing, onE
     : sel.source === "place" ? "미팅 장소로 찾아요"
     : place.trim() && place.trim() !== query ? `업체정보 소재지로 찾아요 (장소 「${place.trim()}」는 주소가 아님)` : "업체정보 소재지로 찾아요";
 
-  const rows: [string, string][] = [
-    ["대표", info?.대표자이름 ?? ""],
-    ["업종", info?.업종주생산품목 ?? ""],
-    ["소재지", info?.소재지 ?? ""],
-    ["직원", info?.사대보험직원 ? `${info.사대보험직원}명`.replace(/명명$/, "명") : ""],
-    ["연매출", info?.금년도매출 || info?.과년도매출 || ""],
+  // 업체정보 「기본 보기」(components/company-info-defs.ts 의 기본_대표자_ITEMS·기본_사업자_ITEMS)와 같은 항목·순서.
+  const base = resolveBaseYear(info?.매출기준연도, new Date());
+  const sales = SALES_YEAR_KEYS.map((k, i) => [salesYearTag(i, base), (info?.[k] ?? "").trim()] as const).filter(([, v]) => v).map(([t, v]) => `${t} ${v}`).join(" · ");
+  const groups: [string, [string, string][]][] = [
+    ["대표자", [["이름", info?.대표자이름 ?? ""], ["신용점수", info?.신용점수 ?? ""], ["기대출 개인", info?.기대출개인 ?? ""]]],
+    ["사업자", [
+      ["개업일", info?.개업일 ?? ""],
+      ["사업자 구분", [info?.사업자구분, info?.과세유형].map((v) => (v ?? "").trim()).filter(Boolean).join(" · ")],
+      ["업종", info?.업종주생산품목 ?? ""], ["아이템", info?.주생산품목 ?? ""], ["연매출", sales],
+      ["사업자 대출", info?.기대출사업자 ?? ""], ["4대보험 직원", info?.사대보험직원 ?? ""], ["특허 및 인증", info?.특허및인증 ?? ""],
+      ["소재지", info?.소재지 ?? ""], ["기타메모", info?.업체기타메모 ?? ""],
+    ]],
   ];
-  const hasInfo = rows.some(([, v]) => v.trim());
+  const hasInfo = groups.some(([, rows]) => rows.some(([, v]) => v.trim()));
 
   const pick = (id: MapAppId) => {
     if (keep) { saveApp(id); setApp(id); } else { saveApp(null); setApp(null); }
@@ -74,7 +82,7 @@ export default function BoardCompanyRoute({ meetingId, place, info, editing, onE
   return (
     <div>
       <div className="wb-qa" role="group" aria-label="업체">
-        <button type="button" aria-expanded={openBox === "info"} aria-controls="wb-qinfo" onClick={() => setOpenBox((b) => (b === "info" ? null : "info"))}>
+        <button type="button" aria-expanded={openBox === "info" || editing} aria-controls="wb-qinfo" onClick={() => { if (editing) { onEdit(); setOpenBox("info"); } else setOpenBox((b) => (b === "info" ? null : "info")); }}>
           <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M14 9h1M9 13h1M14 13h1M10 21v-4h4v4" /></svg>
           업체정보<Chev />
         </button>
@@ -84,18 +92,21 @@ export default function BoardCompanyRoute({ meetingId, place, info, editing, onE
         </button>
       </div>
 
-      {openBox === "info" && (
+      {openBox === "info" && !editing && (
         <div className="wb-qbox" id="wb-qinfo">
-          {hasInfo ? (
-            <dl className="wb-qds">
-              {rows.map(([k, v]) => (
-                <div key={k} className="contents"><dt>{k}</dt><dd>{v.trim() || <span className="wb-qnone">비어 있음</span>}</dd></div>
-              ))}
-            </dl>
-          ) : <p className="wb-qempty">아직 적은 업체정보가 없어요</p>}
+          {hasInfo ? groups.map(([g, rows]) => (
+            <section key={g} className="wb-qgrp" aria-label={g}>
+              <h4>{g}</h4>
+              <dl className="wb-qds">
+                {rows.map(([k, v]) => (
+                  <div key={k} className="contents"><dt>{k}</dt><dd className="whitespace-pre-wrap">{v.trim() || <span className="wb-qnone">–</span>}</dd></div>
+                ))}
+              </dl>
+            </section>
+          )) : <p className="wb-qempty">아직 적은 업체정보가 없어요</p>}
           <div className="wb-qfoot">
-            <span>{hasInfo ? "미팅 카드의 업체정보와 같은 값" : "대표·업종·소재지·매출"}</span>
-            <button type="button" aria-expanded={editing} onClick={onEdit}>{editing ? "입력칸 닫기" : hasInfo ? "고치기" : "업체정보 적기"}</button>
+            <span>{hasInfo ? "업체정보 기본 보기와 같은 항목" : "대표자·사업자 기본 항목"}</span>
+            <button type="button" onClick={onEdit}>{hasInfo ? "고치기" : "업체정보 적기"}</button>
           </div>
         </div>
       )}

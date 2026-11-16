@@ -70,6 +70,8 @@ interface Props {
   /** PC 실무/수납의 다른 1레벨 섹션과 같은 헤더 규격. */
   desktopHeading?: boolean;
   splitInline?: boolean;
+  /** 좁은 창(주간 보드 미팅 창) 안 — 화면이 넓어도 [대표자]·[사업자] 묶음을 좌우로 나누지 않고 위아래 1열로. */
+  stacked?: boolean;
   /** 있으면 「계정 보관함」을 보여 준다 — 미팅 id 또는 계약일+업체명(아직 저장 안 된 미팅은 없음). */
   vaultTarget?: VaultTarget;
   /** 처음 여는 보기 — 계약 전 화면(컨택·일정계약)은 basic, 계약 후(실무/수납)는 extended (belie 2026-10-09). */
@@ -79,7 +81,7 @@ interface Props {
 }
 
 export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName, identityKey, onChange,
-  hideSave, defaultOpen, compactMobile = false, desktopHeading, splitInline = false, vaultTarget, defaultLayout = "basic", grantMatchCount,
+  hideSave, defaultOpen, compactMobile = false, desktopHeading, splitInline = false, stacked = false, vaultTarget, defaultLayout = "basic", grantMatchCount,
 }: Props) {
   const portalTarget = usePortalTarget(); // 열린 최상단 층 창 안이면 그 창 안에 그린다
   const [open, setOpen] = useState(defaultOpen ?? (hideSave === true));
@@ -362,7 +364,10 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
   // PC 상세에서만 너비 비율을 따른다. 편집 팝업은 원래 반응형 배치를 유지한다.
   // 순서 = [대표자] → [기업정보] → [재무](두 그룹 아래 전폭 — 모든 단 너비 걸침).
   // 기업정보의 커스텀 저장 키는 "업체"(기존 데이터 호환).
-  const body = (inline: boolean, where: "panel" | "modal") => (
+  const body = (inline: boolean, where: "panel" | "modal") => {
+    const one = stacked && where === "panel";
+    const cols = desktopHeading ? inline ? "grid grid-cols-2 gap-3" : "grid grid-cols-1 gap-3" : one ? "grid grid-cols-1 gap-3" : "grid grid-cols-1 gap-3 2xl:grid-cols-2 2xl:gap-4";
+    return (
     <>
     <div data-company-info-views className="mb-2 flex flex-wrap items-center justify-between gap-2">
       {/* 공고필터는 보기 범위 토글 바로 옆에 붙인다(가운데 따로 떠 보였다, 2026-11-05 belie). */}
@@ -376,25 +381,26 @@ export default function CompanyInfoEditor({ value, onSave, busy, txtCompanyName,
     {grantOpen && !(where === "modal" && script) && <div className="mb-2"><GrantFilterPanel draft={draft} id={`${uid}-${where}-grant`} onPatch={patch} onFill={fillField} /></div>}
     {where === "modal" && script ? <ContactScriptPanel /> : basic ? (
       <div className="space-y-2">
-        <div className={desktopHeading ? inline ? "grid grid-cols-2 gap-3" : "grid grid-cols-1 gap-3" : "grid grid-cols-1 gap-3 2xl:grid-cols-2 2xl:gap-4"}>
+        <div className={cols}>
           {group("대표자", null, 기본_대표자_ITEMS, inline, `${where}-basic`, true)}
           {group("사업자", null, 기본_사업자_ITEMS, inline, `${where}-basic`, true)}
         </div>
         <HiddenFilledNotice draft={draft} onOpen={() => setLayout("extended")} />
       </div>
     ) : (
-    <div className={desktopHeading ? inline ? "grid grid-cols-2 gap-3" : "grid grid-cols-1 gap-3" : "grid grid-cols-1 gap-3 2xl:grid-cols-2 2xl:gap-4"}>
+    <div className={cols}>
       {group("대표자", "대표자", 대표자_ITEMS, inline, where)}
       {group("기업정보", "업체", 기업정보_ITEMS, inline, where)}
       {/* PC 상세 2단(inline)에서 [재무] 는 두 단 전폭이라 내부도 2열(짧은 칸 짝) — 1열이면 13칸이
           전폭으로 길게 늘어진다. 그 외는 대표자/기업정보와 같은 규격. */}
-      <div className={desktopHeading ? inline ? "col-span-2 min-w-0" : "min-w-0" : "min-w-0 2xl:col-span-2"}>
+      <div className={desktopHeading ? inline ? "col-span-2 min-w-0" : "min-w-0" : one ? "min-w-0" : "min-w-0 2xl:col-span-2"}>
         {group("재무", null, 재무_ITEMS, inline && !desktopHeading, where)}
       </div>
     </div>
     )}
     </>
-  );
+    );
+  };
 
   const [fontStep, setFontStep] = useFontStep("company-info");
   const fontControl = <FontScaleControl step={fontStep} onChange={setFontStep} label="업체정보" />;
