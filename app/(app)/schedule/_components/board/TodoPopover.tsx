@@ -71,7 +71,7 @@ export default function TodoPopover({ todo, anchor, onClose, onSaved, onBack }: 
           <legend className="px-1 text-xs font-bold text-slate-600">다음 할 일 <span className="font-medium text-slate-400">· 같은 업체{todo.slot ? "·진행건" : ""}으로 이어서</span></legend>
           <input value={nextTitle} maxLength={100} onChange={(e) => setNextTitle(e.target.value)} placeholder="비워 두면 만들지 않아요" aria-label="다음 할 일" className={INPUT} />
           <div className="flex flex-wrap items-center gap-1.5">
-            <DateInputCustom ariaLabel="다음 할 일 날짜" value={nextDate} onChange={setNextDate} compact className="h-10 !w-36" />
+            <DateInputCustom ariaLabel="다음 할 일 날짜" value={nextDate} onChange={setNextDate} compact className="h-10 !w-auto shrink-0" />
             <TimeSelectPair value={nextTime} onChange={setNextTime} hourMin={7} hourMax={22} ariaLabel="다음 할 일 시각" />
           </div>
         </fieldset>
