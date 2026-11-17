@@ -90,6 +90,11 @@ describe("할 일 바로 추가 — 시각 고르기(2026-11-11 belie 「안 그
     expect(src).toContain('<TimeSelectPair value={time} onChange={setTime} ariaLabel="기록 시각"/>');
     expect(src).toContain("예정시각: time || QUICK_HHMM");
   });
+  it("시각 칸도 내용 길이에 맞춘다 — 고정 너비로 옆에 빈 틈을 남기지 않는다", () => {
+    const line = src.split("\n").find((l) => l.includes('ariaLabel="기록 시각"'))!;
+    expect(line).toContain('<div className="flex shrink-0 ');
+    expect(line).not.toMatch(/[" ]w-(\d|\[)/);
+  });
   it("시각 두 칸을 고르면 바로 저장에 선택한 값이 들어간다", async () => {
     const node = render();
     for (const [label, value] of [["기록 시각 시", "14"], ["기록 시각 분", "30"]] as const) {
