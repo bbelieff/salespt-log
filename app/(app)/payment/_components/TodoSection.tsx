@@ -122,7 +122,7 @@ export default function TodoSection({ contractRef, institutionRef, draftInstitut
         <input ref={titleRef} aria-label="기록 제목" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={effective ? (kind === "todo" ? "할 일" : "한 일") : "진행기관 먼저 입력"} disabled={!effective} autoComplete="off" enterKeyHint="done" className="h-9 min-w-0 flex-1 rounded-md border border-slate-300 bg-white px-2 text-xs focus:border-blue-500 focus:outline-none disabled:bg-slate-100"/>
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <DateInputCustom ariaLabel="기록 날짜" value={date} onChange={(v) => { setDate(v); setDateTouched(true); }} compact className="h-9 !w-[9.5rem] shrink-0"/>
+          <DateInputCustom ariaLabel="기록 날짜" value={date} onChange={(v) => { setDate(v); setDateTouched(true); }} compact className="h-9 !w-auto shrink-0"/>
           <div className="flex w-[8.5rem] shrink-0 [&>.time-select-wrapper]:h-9 [&>.time-select-wrapper]:py-0 [&_select]:h-full"><TimeSelectPair value={time} onChange={setTime} ariaLabel="기록 시각"/></div>
           <button type="submit" disabled={!canAdd} className="h-9 shrink-0 whitespace-nowrap rounded-md bg-slate-900 px-3 text-xs font-bold text-white disabled:opacity-40">{create.isPending ? "저장중.." : "추가"}</button>
           <button type="button" onClick={openDetail} disabled={!effective} title="종류·장소·상세 내용까지 적기" className="h-9 shrink-0 whitespace-nowrap rounded-md border border-slate-300 bg-white px-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-40">자세히</button>

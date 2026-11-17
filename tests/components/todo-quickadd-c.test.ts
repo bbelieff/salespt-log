@@ -100,8 +100,10 @@ describe("할 일 바로 추가 — 시각 고르기(2026-11-11 belie 「안 그
     await pressEnter(input("기록 제목"));
     expect(mocks.create.mock.calls[0]?.[0]).toMatchObject({ 예정시각: "14:30" });
   });
-  it("날짜 칸은 요일까지 보이게 넓다(9.5rem)", () => {
-    expect(src).toContain("!w-[9.5rem]");
-    expect(src).not.toContain("!w-32");
+  it("날짜 칸은 글자 길이에 맞춘다 — 글자를 키워도 요일이 잘리지 않게(고정 너비 금지)", () => {
+    const line = src.split("\n").find((l) => l.includes('ariaLabel="기록 날짜"'))!;
+    expect(line).toContain("!w-auto");
+    expect(line).toContain("shrink-0");
+    expect(line).not.toMatch(/!w-(\d|\[)/);
   });
 });
