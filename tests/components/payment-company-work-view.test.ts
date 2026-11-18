@@ -51,6 +51,26 @@ describe("업체 보기 진행건 목록", () => {
     ]);
   });
 
+  it("진행건이 여럿이면 대표(D-day)는 가장 임박한 미완료 Todo — 다른 진행건의 History·기록 없음에 가려지지 않는다 (belie 2026-11-18)", () => {
+    const rows = [
+      contract(3, "한일과할일", "2026-09-04", [slot({ 진행기관: "신보" }), slot({ 진행기관: "소진공" })]),
+      contract(4, "할일둘", "2026-09-04", [slot({ 진행기관: "신보" }), slot({ 진행기관: "소진공" })]),
+      contract(5, "빈진행과할일", "2026-09-04", [slot({ 진행기관: "신보" }), slot({ 진행기관: "소진공" })]),
+      contract(6, "한일만둘", "2026-09-04", [slot({ 진행기관: "신보" }), slot({ 진행기관: "소진공" })]),
+    ];
+    const at = (company: string, inst: string, date: string, kind: "todo" | "history") => ({ ...todo(company, date, kind), institutionRef: inst });
+    const records = [
+      at("한일과할일", "신보", "2026-09-01", "history"), at("한일과할일", "소진공", "2026-10-04", "todo"),
+      at("할일둘", "신보", "2026-10-10", "todo"), at("할일둘", "소진공", "2026-09-30", "todo"),
+      at("빈진행과할일", "소진공", "2026-10-02", "todo"),
+      at("한일만둘", "신보", "2026-09-20", "history"), at("한일만둘", "소진공", "2026-09-10", "history"),
+    ];
+    const items = buildCompanyWorkItems(rows, buildInstitutionWorkItems(rows, "", records, "2026-09-28"), "2026-09-28");
+    expect(items.map(({ cp, work }) => [cp.업체명, work.slot, work.activityLabel])).toEqual([
+      ["한일과할일", 2, "D-06"], ["할일둘", 2, "D-02"], ["빈진행과할일", 2, "D-04"], ["한일만둘", 2, "H+18"],
+    ]);
+  });
+
   it("등록 빠른순·늦은순은 계약일로 정렬(업체당 한 항목)", () => {
     const rows = [
       contract(3, "늦게등록", "2026-09-10", [slot({ 진행기관: "신보" }), slot({ 진행기관: "소진공" })]),
@@ -62,11 +82,11 @@ describe("업체 보기 진행건 목록", () => {
   });
 });
 
-it("representative across multiple works follows the same D-day order", () => {
+it("representative across multiple works = most imminent open Todo, even over another work's History (2026-11-18)", () => {
   const rows = [contract(3, "합성", "2026-09-04", [slot({ 진행기관: "신보" }), slot({ 진행기관: "소진공" })])];
   const records = [todo("합성", "2026-10-11", "todo"), { ...todo("합성", "2026-10-08", "history"), institutionRef: "소진공" }];
   const works = buildInstitutionWorkItems(rows, "", records, "2026-10-10");
-  expect(buildCompanyWorkItems(rows, works, "2026-10-10")[0]?.work.slot).toBe(2);
+  expect(buildCompanyWorkItems(rows, works, "2026-10-10")[0]?.work.slot).toBe(1);
   records.push({ ...todo("합성", "2026-10-01", "todo"), institutionRef: "신보" });
   expect(buildCompanyWorkItems(rows, buildInstitutionWorkItems(rows, "", records, "2026-10-10"), "2026-10-10")[0]?.work.slot).toBe(1);
 });

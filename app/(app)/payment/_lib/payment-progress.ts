@@ -74,3 +74,15 @@ export function compareWorkActivity(a?: ActivitySortValue, b?: ActivitySortValue
   const category = rank(a) - rank(b);
   return category || (rank(a) === 0 ? 0 : a.activityDate.localeCompare(b.activityDate));
 }
+
+/**
+ * 업체 카드의 대표 진행건(D-day 배지) 고르기 — 진행건이 여럿이면 미완료 Todo 가 있는 쪽, 그중 날짜가 가장 이른(임박한) 쪽
+ * (2026-11-18 belie 「더 임박한 건으로」 — 전에는 다른 진행건의 History 가 앞으로 올 Todo 를 가렸다).
+ * Todo 가 하나도 없으면 목록 정렬과 같은 순서(미지정 → 오래된 History).
+ */
+export function compareRepresentativeActivity(a?: ActivitySortValue, b?: ActivitySortValue, todayISO = activityTodayISO()): number {
+  const due = (v?: ActivitySortValue) => (v?.activityKind === "todo" && v.activityDate ? v.activityDate : "");
+  const [x, y] = [due(a), due(b)];
+  if (x || y) return !x ? 1 : !y ? -1 : x.localeCompare(y);
+  return compareWorkActivity(a, b, todayISO);
+}

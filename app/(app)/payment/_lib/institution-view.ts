@@ -1,6 +1,6 @@
 import { contractRef } from "@/util/contract-ref";
 import { isTerminatedContract, type ContractPayment, type PaymentSlot, type Todo } from "@/types";
-import { activityTodayISO, compareWorkActivity, progressPct } from "./payment-progress";
+import { activityTodayISO, compareRepresentativeActivity, compareWorkActivity, progressPct } from "./payment-progress";
 import { buildSlotActivityIndex, slotHasData } from "@/lib/analytics/payment-work-status";
 import { todoSlotOf } from "@/lib/analytics/todo-slot";
 import { normalizeContractRef } from "@/util/contract-ref";
@@ -29,12 +29,12 @@ export function companyActivityKey(cp: Pick<ContractPayment, "row" | "계약일"
   return cp.row != null ? `row:${cp.row}` : `contract:${contractRef(cp.계약일, cp.업체명)}`;
 }
 
-/** 회사 대표도 목록과 같은 활동 우선순위를 적용한다. */
+/** 회사 대표 = 가장 임박한 미완료 Todo, 없으면 목록과 같은 활동 우선순위. */
 export function buildCompanyActivities(items: InstitutionWorkItem[], todayISO = activityTodayISO()): Map<string, WorkActivitySummary> {
   const byCompany = new Map<string, WorkActivitySummary>();
   for (const item of items) {
     const current = byCompany.get(item.contractKey);
-    if (!current || compareWorkActivity(item, current, todayISO) < 0) byCompany.set(item.contractKey, item);
+    if (!current || compareRepresentativeActivity(item, current, todayISO) < 0) byCompany.set(item.contractKey, item);
   }
   return byCompany;
 }

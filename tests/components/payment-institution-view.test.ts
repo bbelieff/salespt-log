@@ -128,11 +128,11 @@ describe("진행기관 보기의 계약→진행건 투영", () => {
     expect(buildInstitutionWorkItems(rows, "", records, "2026-10-10")[0]?.activityLabel).toBe("D-02");
     expect(buildInstitutionWorkItems(rows, "", records.slice(1), "2026-10-10")[0]?.activityLabel).toBe("H+02");
   });
-  it("company representative shares priority and institution ties preserve stored order", () => {
+  it("company representative = most imminent open Todo (over another slot's History); institution ties preserve stored order", () => {
     const rows = [contract(3, "합성", [slot({ 진행기관: "신보" }), slot({ 진행기관: "소진공" })])];
     const records = [todo("합성", "신보", "2026-10-11"), todo("합성", "소진공", "2026-10-08", { 기록종류: "history" })];
     const items = buildInstitutionWorkItems(rows, "", records, "2026-10-10");
-    expect(buildCompanyActivities(items, "2026-10-10").get(companyActivityKey(rows[0]!))?.activityKind).toBe("history");
+    expect(buildCompanyActivities(items, "2026-10-10").get(companyActivityKey(rows[0]!))?.activityLabel).toBe("D-01");
     const tied = [ {...items[0]!, company: "Z", product: "Z"}, {...items[0]!, company: "A", product: "A"} ];
     expect(groupInstitutionWorkItems(tied, "", "activity", "2026-10-10")[0]?.items.map(x => x.company)).toEqual(["Z", "A"]);
   });
