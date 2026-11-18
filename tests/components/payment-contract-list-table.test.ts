@@ -63,11 +63,10 @@ describe("ContractListTable 1뎁스 카드", () => {
     const items = itemsFor([cp({ 수납2: slot({ 진행기관: "소진공" }) })]);
     items[0]!.work = { ...items[0]!.work, activityKind: "todo", activityDate: "2026-09-28", activityLabel: "D-00" };
     const node = renderList({ items, selectedKey: "row:3", onSelect: vi.fn(), activityState: "ready" });
-    // 종류(Todo)와 D-day 는 따로 떼어진 칩 — D-00(오늘)은 다가오는 일정이라 노랑.
+    // 칩 하나(종류 글자 칩 없음, 2026-11-18) — D-00(오늘)은 다가오는 일정이라 노랑.
     const badge = node.querySelector('[aria-label="미완료 Todo D-00"]')!;
-    const chips = [...badge.querySelectorAll("span")].map((el) => [el.textContent, el.className]);
-    expect(chips.map(([t]) => t)).toEqual(["Todo", "D-00"]);
-    expect(chips[1]![1]).toContain("bg-yellow-100");
+    expect(badge.textContent).toBe("D-00");
+    expect(badge.className).toContain("bg-yellow-100");
     expect(node.querySelector('[aria-label="미완료 Todo D-00"]')).not.toBeNull();
     expect(node.querySelectorAll('[role="option"]')).toHaveLength(1);
     const card = node.querySelector('[data-work-key="row:3"]')!;
@@ -175,21 +174,20 @@ describe("D-day 배지 색 (belie 2026-09-28)", () => {
     const node = document.createElement("div"); document.body.append(node);
     const root = createRoot(node);
     act(() => root.render(h(WorkActivityBadge, { activity: { activityKind: "history", activityDate: "2026-09-20", activityLabel: "H+08" }, state: "ready" })));
-    const chips = [...node.querySelectorAll('[aria-label="최근 History H+08"] span')];
-    expect(chips.map((el) => el.textContent)).toEqual(["History", "H+08"]);
-    expect(chips[1]!.className).toContain("bg-slate-100");
+    const badge = node.querySelector('[aria-label="최근 History H+08"]')!;
+    expect(badge.textContent).toBe("H+08");
+    expect(badge.className).toContain("bg-slate-100");
     act(() => root.unmount()); node.remove();
   });
-  it("종류 칩은 border 없이 ring 으로 — D-day 칩과 높이가 같고 폭을 덜 먹는다", () => {
+  it("칩은 하나 — 「History/Todo」 글자 칩 없이 H+NN·D-NN 만, 풀어 쓴 설명은 title 로 (2026-11-18 belie 「정보 과다」)", () => {
     const node = document.createElement("div"); document.body.append(node);
     const root = createRoot(node);
     act(() => root.render(h(WorkActivityBadge, { activity: { activityKind: "todo", activityDate: "2026-09-30", activityLabel: "D-02" }, state: "ready" })));
     const badge = node.querySelector('[aria-label="미완료 Todo D-02"]')!;
-    const [kind, dday] = [...badge.querySelectorAll("span")];
-    expect(kind!.className.split(" ").some((c) => c === "border" || c.startsWith("border-"))).toBe(false);
-    expect(kind!.className).toContain("ring-inset");
-    for (const chip of [kind!, dday!]) { expect(chip.className).toContain("py-0.5"); expect(chip.className).toContain("text-px-11"); }
-    expect(badge.className).toContain("gap-0.5");
+    expect(badge.textContent).toBe("D-02");
+    expect(badge.querySelectorAll("span")).toHaveLength(0);
+    expect(badge.getAttribute("title")).toBe("미완료 Todo D-02");
+    expect(badge.className).toContain("bg-yellow-100");
     act(() => root.unmount()); node.remove();
   });
 });
