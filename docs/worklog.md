@@ -1,3 +1,7 @@
+## 2026-11-21 · 구글 캘린더에 직접 넣은 일정 → 경영일지 일반 일정
+- feat/gcal-import-general. belie 「구글캘린더에서 일정 입력하면 경영일지에 기록되는 건 막아놨었는데 이제 풀어줘」. 실측: 막아 둔 스위치가 아니라 2026-07 설계가 앱→구글 단방향(google-calendar-sync §0) → 반대 방향을 새로 만듦. belie 선택 = 「일반 일정으로 저장」(통계 비집계).
+- 화면 열 때 읽기(1분 제한), 앱이 올린 일정 제외, 구글 수정·취소 따라감, 가져온 일정은 구글로 다시 안 올림(Todo.gcalSource, DB 전용). [plan](plans/active/gcal-import-general.md). 되돌리기 = squash revert.
+
 ## 2026-10-28 · 문서 자동입력에 PaddleOCR 추가 (tesseract 유지 + 칸별 합치기)
 - feat/document-ocr-paddle. belie 「PaddleOCR 도입 고려, 지금 잘 읽는 부분은 살리고 붙여라」. 합성 서류 실측: tesseract 한글 오독 다수, 공식 PaddleOCR(PP-OCRv5 한국어, 브라우저 wasm) 거의 정확. → PDF 텍스트층·tesseract·파서 그대로 두고, 사진·스캔만 Paddle 로 한 번 더 읽어 칸마다 합침(`merge.ts`). 워커로 돌려 화면 안 멈춤, 실패 시 지금과 동일.
 - 에셋: 공식 SDK+ort wasm 을 esbuild 워커 1파일로, 모델 2개는 공식 주소 sha256 고정(벤더의 유일한 네트워크 예외, 실패 시 경고 후 tesseract 만). 첫 사용 기기 +42MB 1회. 계획: [document-ocr-paddle](plans/completed/document-ocr-paddle.md). 되돌리기 = squash revert.

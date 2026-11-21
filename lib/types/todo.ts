@@ -47,5 +47,8 @@ export const Todo = z.object({
   result: z.string().nullish().transform((v) => v ?? ""),
   /** 「+ 다음」으로 이어 만든 할 일이면 원래 기록의 id — S 컬럼(2026-10-23). 빈값 = 연결 없음. 화면에는 표시 안 함. */
   prevId: z.string().nullish().transform((v) => v ?? ""),
+  /** 구글 캘린더에서 가져온 일반 일정이면 그 구글 일정 id·마지막 수정시각(2026-11-21 gcal-import).
+   *  DB 정본에만 저장(시트 열 없음). 있으면 이 일정은 구글이 원본 — 앱이 구글로 다시 올리지 않는다. */
+  gcalSource: z.object({ eventId: z.string().min(1), updated: z.string() }).optional(),
 });
 export type Todo = z.infer<typeof Todo>;

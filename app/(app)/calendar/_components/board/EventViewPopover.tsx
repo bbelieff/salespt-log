@@ -22,12 +22,12 @@ export default function EventViewPopover({ todo: t, anchor, onClose, onSaved, on
     <BoardPopover glass anchor={anchor} onClose={onClose} onBack={onBack} label={`${t.제목} 일정`} title={<>
       <h3 className="wb-pop-h">{t.제목}</h3>
       <p className="wb-pop-meta">{d.getMonth() + 1}/{d.getDate()} ({dayLabelKO(d)}) {t.예정시각 || "종일"}{t.업체명 ? ` · ${t.업체명}` : ""}</p>
-      <div className="wb-pmeta"><span><i className="bg-teal-600" />일반 일정 · 점수에 안 들어가요</span></div>
+      <div className="wb-pmeta"><span><i className="bg-teal-600" />{t.gcalSource ? "구글 캘린더에서 가져온 일정" : "일반 일정"} · 점수에 안 들어가요</span></div>
     </>}>
       {t.상세 && <p className="wb-dsum whitespace-pre-wrap break-words text-px-13 text-slate-700">{t.상세}</p>}
       {asking ? (
         <div className="wb-form">
-          <p className="text-px-13 leading-relaxed text-slate-700">이 일정을 지울까요? 구글 캘린더에 담아 둔 일정도 함께 사라져요.</p>
+          <p className="text-px-13 leading-relaxed text-slate-700">{t.gcalSource ? "경영일지에서만 지워요. 구글 캘린더의 일정은 그대로 남고, 다시 가져오지 않아요." : "이 일정을 지울까요? 구글 캘린더에 담아 둔 일정도 함께 사라져요."}</p>
           {failed && <p role="alert" className="wb-warn">지우지 못했어요. 잠시 후 다시 시도해 주세요.</p>}
           <div className="wb-row2">
             <button type="button" autoFocus disabled={remove.isPending} onClick={() => setAsking(false)} className="h-[38px] rounded-[11px] border border-slate-300 bg-white text-px-13 font-bold text-slate-700 disabled:opacity-50">취소</button>

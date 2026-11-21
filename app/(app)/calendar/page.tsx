@@ -16,6 +16,7 @@ import PhoneMonth from "./_components/phone/PhoneMonth";
 import ViewSwitch from "../schedule/_components/board/ViewSwitch";
 import { useBoardView } from "../schedule/_lib/useBoardView";
 import { fmtYM, fmtYMD, shiftMonth } from "./_lib/month";
+import { useGcalImportOnMount } from "@/query/gcal-import-hooks";
 
 const TODAY_ISO = fmtYMD(new Date());
 const TODAY_YYYYMM = fmtYM(new Date());
@@ -27,6 +28,7 @@ export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState<string>(TODAY_ISO);
   // 한 달 보드는 주간 보드와 같은 1280px 부터. 요일 순서도 같은 설정.
   const { order, setOrder, isBoard, ready } = useBoardView(TODAY_ISO);
+  useGcalImportOnMount(); // 구글에서 직접 넣은 일정 → 일반 일정(gcal-import)
   // 주간 보드의 「월」·알림 링크가 ?date= 로 넘어오면 그 달·그 날로 맞춘다. window 직접 파싱(Suspense 회피).
   useEffect(() => {
     const d = new URLSearchParams(window.location.search).get("date");

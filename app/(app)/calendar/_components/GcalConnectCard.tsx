@@ -170,6 +170,7 @@ export default function GcalConnectCard({ collapsed = false }: { collapsed?: boo
               </button>
               <button type="button" disabled={busy || state.impersonated} onClick={disconnect} className="shrink-0 px-1 text-xs text-neutral-400 underline disabled:opacity-50">연결 해제</button>
             </div>
+            <p className="mt-2 text-xs text-neutral-500">구글 캘린더에 직접 넣은 일정은 캘린더를 열 때 일반 일정으로 들어와요(점수에는 안 들어가요)</p>
             {state.impersonated && <p className="mt-2 text-xs text-neutral-400">{SELF_ONLY_MSG}</p>}
           </>
         )}
