@@ -74,6 +74,7 @@ export function meetingToInput(m: Meeting): GcalEventInput | null {
 export function todoToInput(t: Todo): GcalEventInput | null {
   if (!t.예정일자) return null; // 예정일 없으면 대상 아님
   if (!t.showOnCalendar) return null; // 앱 캘린더 숨김이면 구글도 제외
+  if (t.gcalSource) return null; // 구글에서 가져온 일정 — 원본이 이미 구글에 있다(다시 올리면 중복·시간 잘림)
   const base = {
     summary: t.제목,
     location: t.장소 || undefined,

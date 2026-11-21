@@ -122,3 +122,61 @@ export async function deleteEvent(
     throw e;
   }
 }
+
+/** 구글에서 읽어 온 일정 1건(gcal-import). 앱이 쓰는 필드만 추린다. */
+export interface GcalRemoteEvent {
+  id: string;
+  /** "confirmed" | "tentative" | "cancelled" */
+  status: string;
+  /** 마지막 수정시각(ISO) — 바뀌었는지 판단용. */
+  updated: string;
+  summary: string;
+  location: string;
+  description: string;
+  /** 종일 = "YYYY-MM-DD" · 시각 = ISO dateTime(오프셋 포함). */
+  start: { date?: string; dateTime?: string };
+  /** 앱이 올린 일정이면 그 앱 행 id(extendedProperties.private.salesptId). */
+  salesptId: string;
+}
+
+/**
+ * 기간 안의 일정 목록(반복 일정은 하루하루 펼침, 취소된 것 포함). 최대 4쪽 × 250건.
+ * 읽기 권한(calendar.readonly)은 연결할 때 이미 받는다(gcal-oauth SCOPES).
+ */
+export async function listEventsInRange(
+  refreshToken: string,
+  calendarId: string,
+  timeMin: string,
+  timeMax: string,
+): Promise<GcalRemoteEvent[]> {
+  const cal = calendarClient(refreshToken);
+  const out: GcalRemoteEvent[] = [];
+  let pageToken: string | undefined;
+  for (let page = 0; page < 4; page++) {
+    const res = await cal.events.list({
+      calendarId,
+      timeMin,
+      timeMax,
+      singleEvents: true,
+      showDeleted: true,
+      maxResults: 250,
+      pageToken,
+    });
+    for (const e of res.data.items ?? []) {
+      if (!e.id) continue;
+      out.push({
+        id: e.id,
+        status: e.status ?? "confirmed",
+        updated: e.updated ?? "",
+        summary: e.summary ?? "",
+        location: e.location ?? "",
+        description: e.description ?? "",
+        start: { date: e.start?.date ?? undefined, dateTime: e.start?.dateTime ?? undefined },
+        salesptId: e.extendedProperties?.private?.salesptId ?? "",
+      });
+    }
+    pageToken = res.data.nextPageToken ?? undefined;
+    if (!pageToken) break;
+  }
+  return out;
+}

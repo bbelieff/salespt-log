@@ -20,6 +20,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Meeting } from "@/types";
 import { useWeekMeetings } from "@/query/contact-hooks";
+import { useGcalImportOnMount } from "@/query/gcal-import-hooks";
 import { useManualLinkPrompt } from "./_lib/use-manual-link-prompt";
 import { useSwipe } from "@/lib/hooks/useSwipe";
 import { useGuardedNav } from "@/components/DirtyGuard";
@@ -53,6 +54,7 @@ export default function SchedulePage() {
   // 보이는 7일: 금~목은 수강 주(weekStart) 그대로, 월~일은 그 안의 월요일부터. PC(1280px+)는 주간 보드.
   const { order, setOrder, viewStart, isBoard, ready } = useBoardView(weekStart);
   const weekQuery = useWeekMeetings(viewStart);
+  useGcalImportOnMount(); // 구글에서 직접 넣은 일정 → 일반 일정(gcal-import)
   const manualLink = useManualLinkPrompt(); // 같은 이름 「영업기록 없이 추가」 업체 → 연결 제안
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [toast, setToast] = useState("");
