@@ -1,3 +1,6 @@
+## 2026-11-22 · 계약 업체명 「(변경)」 떼기 + 실무/수납 업체명 바로 고치기
+- fix/contract-name-reschedule-mark. belie 「일정 변경된 업체와 계약하면 실무수납 업체명에 (변경)까지 따라옴, 실제 업체명으로 + 실무수납에서 자유롭게 변경」. 원인 = 일정 변경 카드 구분용 접두가 계약 장부로 그대로 복사. 계약 시 떼고(화면+서버, 미팅 이름도 정리), PC 상세 제목에 ✎·[「(변경)」 떼기]. 옛 운영 데이터 일괄 수정은 안 함(각자 버튼). [plan](plans/active/contract-name-reschedule-mark.md).
+
 ## 2026-11-21 · 구글 캘린더에 직접 넣은 일정 → 경영일지 일반 일정
 - feat/gcal-import-general. belie 「구글캘린더에서 일정 입력하면 경영일지에 기록되는 건 막아놨었는데 이제 풀어줘」. 실측: 막아 둔 스위치가 아니라 2026-07 설계가 앱→구글 단방향(google-calendar-sync §0) → 반대 방향을 새로 만듦. belie 선택 = 「일반 일정으로 저장」(통계 비집계).
 - 화면 열 때 읽기(1분 제한), 앱이 올린 일정 제외, 구글 수정·취소 따라감, 가져온 일정은 구글로 다시 안 올림(Todo.gcalSource, DB 전용). [plan](plans/active/gcal-import-general.md). 되돌리기 = squash revert.

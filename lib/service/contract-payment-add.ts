@@ -11,7 +11,8 @@ import {
 } from "@/repo/contract-payment";
 import type { ContractPayment } from "@/types";
 import { manualContractLink } from "@/util/contract-link";
-import { findMeetingsByDateRecord } from "./meetings-write";
+import { findMeetingsByDateRecord, patchMeetingRecord } from "./meetings-write";
+import { stripRescheduleMark } from "@/util/reschedule-mark";
 import { upsertCompanyInfoArchive } from "@/repo/company-info-archive";
 import { resolveCtx, resolveSheetWithSyncDb } from "./contract-payment";
 
@@ -27,12 +28,26 @@ export async function addFromContract(
   // 출발 미팅 lookup — 이월 깃발 상속(§3) + 06 스냅샷 양쪽에 사용.
   // R3-2: 파일럿은 DB — 시트 미러 lag 로 방금 계약된 미팅을 못 찾아 AK 링크·이월 깃발이
   // 빠지는 split-brain 방지(읽기 동반 전환 원칙).
+  // 「(변경)」 표시는 장부에 넣지 않는다 — 실제 업체명으로 접수(2026-11-22 belie). 미팅은 표시가 붙은
+  // 이름이어도 찾을 수 있게 양쪽 다 떼고 비교한다(같은 날 정확히 같은 이름이 있으면 그쪽 우선).
+  const 업체명 = stripRescheduleMark(data.업체명);
   let m;
   try {
     const meetings = await findMeetingsByDateRecord(ctx, data.계약일, "meeting");
-    m = meetings.find((x) => x.업체명.trim() === data.업체명.trim());
+    m =
+      meetings.find((x) => x.업체명.trim() === data.업체명.trim()) ??
+      meetings.find((x) => stripRescheduleMark(x.업체명) === 업체명);
   } catch {
     m = undefined;
+  }
+  // 계약한 미팅 이름에서도 표시를 뗀다 — 장부·업체정보·미팅이 같은 이름이어야 이름으로 맞추는 곳
+  // (수임료 맞추기·업체정보 읽기 등)이 어긋나지 않는다. 실패해도 계약은 진행(연결 미팅 id 로 이어짐).
+  if (m && m.업체명.trim() !== 업체명) {
+    try {
+      await patchMeetingRecord(ctx, m.id, { 업체명 });
+    } catch (e) {
+      console.warn("[contract-payment] 미팅 이름 정리 실패(계약은 진행):", e instanceof Error ? e.message : e);
+    }
   }
   // 이월 미팅에서 생긴 계약 = 02 행도 "이월"(집계 제외, 출발 미팅 깃발 상속).
   const carryover =
@@ -42,7 +57,7 @@ export async function addFromContract(
   // 새 행을 또 append 하지 않도록 (계약일+업체명) 으로 기존 행을 먼저 찾는다.
   const result = await appendFromContract(
     spreadsheetId,
-    { ...data, meetingId: m?.id },
+    { ...data, 업체명, meetingId: m?.id },
     carryover,
     undefined,
     true,
@@ -56,7 +71,7 @@ export async function addFromContract(
   try {
     await upsertCompanyInfoArchive(
       spreadsheetId,
-      { 업체명: data.업체명, 계약일: data.계약일, 업체정보: m?.업체정보 },
+      { 업체명, 계약일: data.계약일, 업체정보: m?.업체정보 },
       { syncDb },
     );
   } catch (e) {
