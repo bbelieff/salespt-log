@@ -27,26 +27,64 @@
 .tlog-doc .tlog-h1 { margin-top:14px; font-size:calc(18 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:800; color:var(--ui-text); }
 .tlog-doc .tlog-h2 { margin-top:12px; font-size:calc(16 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:700; color:var(--ui-text); }
 .tlog-doc .tlog-h3 { margin-top:8px; font-size:calc(15 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:700; color:var(--ui-slate-800); }
+.tlog-doc .tlog-h4 { margin-top:6px; font-size:calc(14 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:700; color:var(--ui-slate-800); }
 .tlog-doc > :first-child { margin-top:0; }
 .tlog-doc ul, .tlog-doc ol { display:flex; flex-direction:column; gap:2px; padding-left:20px; }
 .tlog-doc ul { list-style:disc; }
 .tlog-doc ul ul { list-style:circle; }
 .tlog-doc ol { list-style:decimal; }
 .tlog-doc a { color:var(--ui-accent-strong); text-decoration:underline; text-underline-offset:3px; }
-.tlog-doc mark { background:var(--ui-amber-100); color:inherit; border-radius:3px; padding:0 2px; }
+.tlog-doc mark { color:inherit; border-radius:3px; padding:1px 2px; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
+/* 노션 색 9종 — 글자색(.tlog-c-*)·배경색(.tlog-bg-*). 블록에 붙으면 블록 전체, 글자 조각에 붙으면 그 조각만. */
+.tlog-doc .tlog-c-gray { color:var(--ui-notion-gray-text); } .tlog-doc .tlog-bg-gray { background:var(--ui-notion-gray-bg); }
+.tlog-doc .tlog-c-brown { color:var(--ui-notion-brown-text); } .tlog-doc .tlog-bg-brown { background:var(--ui-notion-brown-bg); }
+.tlog-doc .tlog-c-orange { color:var(--ui-notion-orange-text); } .tlog-doc .tlog-bg-orange { background:var(--ui-notion-orange-bg); }
+.tlog-doc .tlog-c-yellow { color:var(--ui-notion-yellow-text); } .tlog-doc .tlog-bg-yellow { background:var(--ui-notion-yellow-bg); }
+.tlog-doc .tlog-c-green { color:var(--ui-notion-green-text); } .tlog-doc .tlog-bg-green { background:var(--ui-notion-green-bg); }
+.tlog-doc .tlog-c-blue { color:var(--ui-notion-blue-text); } .tlog-doc .tlog-bg-blue { background:var(--ui-notion-blue-bg); }
+.tlog-doc .tlog-c-purple { color:var(--ui-notion-purple-text); } .tlog-doc .tlog-bg-purple { background:var(--ui-notion-purple-bg); }
+.tlog-doc .tlog-c-pink { color:var(--ui-notion-pink-text); } .tlog-doc .tlog-bg-pink { background:var(--ui-notion-pink-bg); }
+.tlog-doc .tlog-c-red { color:var(--ui-notion-red-text); } .tlog-doc .tlog-bg-red { background:var(--ui-notion-red-bg); }
+.tlog-doc :is(p,h3,h4,h5,h6,li,blockquote,.tlog-todo,.tlog-toggle)[class*="tlog-bg-"] { padding:2px 6px; border-radius:6px; }
+.tlog-doc [class*="tlog-c-"] > summary { color:inherit; }
+.tlog-mention { color:var(--ui-text-muted); }
+.tlog-doc ul ul ul { list-style:square; }
+.tlog-doc ol ol { list-style:lower-alpha; }
+.tlog-doc ol ol ol { list-style:lower-roman; }
+.tlog-doc ::selection { background:color-mix(in srgb, var(--ui-accent) 22%, transparent); }
 .tlog-doc code { padding:1px 4px; border-radius:4px; background:var(--ui-surface-muted); font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1)); }
+.tlog-code { display:flex; flex-direction:column; }
+.tlog-code > figcaption { align-self:flex-start; margin:0; padding:2px 8px; border-radius:6px 6px 0 0; background:var(--ui-surface-muted); color:var(--ui-text-muted); font-weight:600; }
+.tlog-code > figcaption + pre { border-top-left-radius:0; }
 .tlog-doc pre { padding:10px 12px; border-radius:10px; background:var(--ui-surface-subtle); overflow-x:auto; font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1)); }
 .tlog-doc pre code { padding:0; background:none; }
 .tlog-doc hr { margin:8px 0; border:0; border-top:1px solid var(--ui-border); }
 .tlog-doc blockquote { padding-left:12px; border-left:3px solid var(--ui-border-strong); color:var(--ui-text-muted); }
-.tlog-callout { padding:10px 12px; border-radius:10px; background:var(--ui-surface-subtle); }
+.tlog-callout { display:flex; gap:10px; align-items:flex-start; padding:12px 14px; border-radius:10px; }
+.tlog-callout:not([class*="tlog-bg-"]) { background:var(--ui-notion-gray-bg); }
+.tlog-callout[class*="tlog-c-"]:not([class*="tlog-bg-"]) { background:none; box-shadow:inset 0 0 0 1px var(--ui-border); }
+.tlog-callout-icon { flex:none; width:1.4em; height:1.4em; line-height:1.4; text-align:center; font-size:calc(16 * var(--app-px, 1px) * var(--font-scale, 1)); object-fit:contain; }
+.tlog-callout-body { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
 .tlog-todo { display:flex; gap:8px; align-items:flex-start; }
 .tlog-todo input { margin-top:5px; accent-color:var(--ui-accent); }
+.tlog-done .tlog-todo-text { color:var(--ui-text-subtle); text-decoration:line-through; }
+.tlog-doc .tlog-toggle > summary[class^="tlog-h"] { margin-top:0; }
 .tlog-toggle summary { cursor:pointer; font-weight:600; color:var(--ui-text); padding:2px 0; }
 .tlog-toggle > :not(summary) { margin-left:16px; }
 .tlog-toggle[open] > summary { margin-bottom:4px; }
 .tlog-table { overflow-x:auto; }
 .tlog-table table { border-collapse:collapse; font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1)); }
-.tlog-table td { border:1px solid var(--ui-border); padding:6px 8px; vertical-align:top; min-width:72px; }
+.tlog-table :is(td,th) { border:1px solid var(--ui-border); padding:6px 8px; vertical-align:top; min-width:72px; text-align:left; }
+.tlog-table th { background:var(--ui-notion-gray-bg); font-weight:700; color:var(--ui-text); }
 .tlog-doc figure img { max-width:100%; height:auto; border-radius:10px; }
 .tlog-doc figcaption { color:var(--ui-text-subtle); font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1)); margin-top:4px; }
+.tlog-attach { display:inline-flex; align-items:center; gap:4px; }
+.tlog-doc a.tlog-bookmark { display:flex; flex-direction:column; gap:2px; padding:10px 12px; border:1px solid var(--ui-border); border-radius:10px; text-decoration:none; color:var(--ui-text); transition:background-color .15s ease-out; }
+.tlog-doc a.tlog-bookmark:hover { background:var(--ui-surface-subtle); }
+.tlog-bookmark-title { font-weight:600; }
+.tlog-bookmark-url { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ui-text-subtle); font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1)); }
+/* 노션 단 나눔 — 넓으면 나란히, 좁으면(카드 폭 520px 미만) 위아래로 */
+.tlog-doc { container-type:inline-size; }
+.tlog-columns { display:flex; flex-direction:column; gap:6px 20px; }
+.tlog-column { flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:6px; }
+@container (min-width: 520px) { .tlog-columns { flex-direction:row; } }

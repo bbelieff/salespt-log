@@ -13,6 +13,7 @@ const items: TrainingLogItem[] = Array.from({ length: 7 }, (_, i) => ({
   title: i === 0 ? "가상일 대표님 7주차 트레이닝 일지 — 제목이 아주 길어서 한 줄을 넘어가는 경우를 확인하는 가상 제목" : `가상일 대표님 ${7 - i}주차 트레이닝 일지`,
   week: 7 - i, createdTime: "2026-10-01T00:00:00Z",
 }));
+const COLORS = ["gray", "brown", "orange", "yellow", "green", "blue", "purple", "pink", "red"] as const;
 const t = (text: string, extra = {}) => [{ text, ...extra }];
 const blocks: LogBlock[] = [
   { type: "toggle", text: t("지난주 트레이닝 복습"), children: [
@@ -22,7 +23,7 @@ const blocks: LogBlock[] = [
     { type: "ul", text: t("과제 시트 열기", { href: "https://example.com" }) },
   ] },
   { type: "h2", text: t("🧪 공문테스트") },
-  { type: "p", text: [{ text: "소진공 업력 90일, 제조·건설 " }, { text: "10인 미만", highlight: true, bold: true }, { text: " 그외 업종 5인 미만" }] },
+  { type: "p", text: [{ text: "소진공 업력 90일, 제조·건설 " }, { text: "10인 미만", bg: "yellow", bold: true }, { text: " 그외 업종 5인 미만" }] },
   { type: "ul", text: t("혁신성장촉진자금", { bold: true }), children: [
     { type: "ul", text: t("혁신형: 수출, 2년 연속 매출 신장 10%") },
     { type: "ul", text: t("일반형: 스마트장비·자동화 설비") },
@@ -36,6 +37,30 @@ const blocks: LogBlock[] = [
   { type: "table", text: [], rows: [[t("시간"), t("1set"), t("2set"), t("3set")], [t("10시"), t(""), t("가상일 → 가상트, 가상이"), t("")], [t("11시30분"), t("가상삼"), t("가상사"), t("가상오")]] },
   { type: "file", text: t("진행기관_포함_상담일지.zip"), url: "https://example.com/file.zip" },
   { type: "quote", text: t("더 나은 한주를 위해") },
+  { type: "h1", text: t("🎨 노션 색·효과") },
+  { type: "p", text: COLORS.flatMap((c) => [{ text: `${c} 글자`, color: c }, { text: " " }]) },
+  { type: "p", text: COLORS.flatMap((c) => [{ text: `${c} 형광펜`, bg: c }, { text: " " }]) },
+  { type: "p", text: [{ text: "빨간 글자에 노란 형광펜을 함께 쓴 아주 긴 문장이 줄을 넘어갈 때도 배경이 줄마다 이어져 보이는지 확인하는 가상 문장입니다", color: "red", bg: "yellow", bold: true }, { text: " · " }, { text: "@2026-11-22", mention: true }] },
+  { type: "h2", text: t("파란 제목"), color: "blue" },
+  { type: "p", text: t("초록 배경 문단 — 블록 전체에 색을 준 경우"), bg: "green" },
+  { type: "ul", text: t("분홍 배경 목록 항목"), bg: "pink" }, { type: "ul", text: t("주황 글자 목록 항목"), color: "orange" },
+  { type: "callout", text: t("💡 아이콘이 있는 기본 콜아웃"), icon: "💡", children: [{ type: "ul", text: t("콜아웃 안 목록") }] },
+  { type: "callout", text: t("파란 배경 콜아웃 — 상호가 아주 긴 주식회사가상의매우긴상호명테스트컴퍼니홀딩스코리아"), icon: "📌", bg: "blue" },
+  { type: "callout", text: t("빨간 글자 콜아웃(배경 없음)"), icon: "⚠️", color: "red" },
+  { type: "callout", text: t("아이콘 없는 노란 콜아웃"), bg: "yellow" },
+  { type: "toggle", text: t("제목 크기 토글(보라)"), level: 2, color: "purple", children: [{ type: "p", text: t("접힌 내용") }] },
+  { type: "h3", text: t("제목 3단") }, { type: "h4", text: t("제목 4단") },
+  { type: "columns", text: [], children: [
+    { type: "column", text: [], ratio: 0.35, children: [{ type: "h3", text: t("왼쪽 단") }, { type: "p", text: t("좁은 단 내용") }] },
+    { type: "column", text: [], ratio: 0.65, children: [{ type: "h3", text: t("오른쪽 단") }, { type: "ul", text: t("넓은 단 목록 하나") }, { type: "ul", text: t("넓은 단 목록 둘") }] },
+  ] },
+  { type: "table", text: [], headRow: true, headCol: true, rows: [[t("구분"), t("1주"), t("2주")], [t("콜"), t("120"), [{ text: "1,234,567,890", color: "red" }]], [t("미팅"), t(""), [{ text: "3", bg: "green" }]]] },
+  { type: "code", text: t(["const a = 1;", "console.log(a);"].join(String.fromCharCode(10))), lang: "javascript" },
+  { type: "code", text: t("E = mc^2") },
+  { type: "link", text: t("가상 북마크 제목"), url: "https://example.com/a/very/long/path/that/keeps/going/and/going/for/the/overflow/check" },
+  { type: "link", text: [], url: "https://example.com" },
+  { type: "ol", text: t("번호 1단"), children: [{ type: "ol", text: t("번호 2단"), children: [{ type: "ol", text: t("번호 3단") }] }] },
+  { type: "ul", text: t("점 1단"), children: [{ type: "ul", text: t("점 2단"), children: [{ type: "ul", text: t("점 3단") }] }] },
 ];
 
 window.fetch = (async (input: RequestInfo | URL) => {

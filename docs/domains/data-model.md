@@ -851,7 +851,7 @@ DB_SHEET_MEETING_STAGE와 DB_SHEET_MEETING_DELETED를 서비스·저장소에서
 
 ## 트레이닝일지 (2026-10-30, `lib/types/training-log.ts`)
 
-- `TrainingLogItem`: 노션 기수 「[○○N기] 트레이닝 일지」 DB 의 내 행 한 줄(id·title·week(제목의 N주차, 없으면 null)·createdTime). `TrainingLogDetail` = Item + `blocks: LogBlock[]`(노션 블록을 화면용으로 줄인 모양, `LogText` 글자 조각). `TrainingLogList` = `{status, items}` — status `ok`·`not_configured`(NOTION_TOKEN 없음)·`no_cohort`·`no_database`·`unavailable`. 저장 없음(노션 읽기 전용, 서버 5분 캐시). 소유 판정 = 레지스트리 기수·이름(서버), 계획 `docs/plans/completed/training-log-own-only.md`.
+- `TrainingLogItem`: 노션 기수 「[○○N기] 트레이닝 일지」 DB 의 내 행 한 줄(id·title·week(제목의 N주차, 없으면 null)·createdTime). `TrainingLogDetail` = Item + `blocks: LogBlock[]`(노션 블록을 화면용으로 줄인 모양, `LogText` 글자 조각 — 굵게·기울임·취소선·밑줄·코드·링크 + 노션 색 `color`/`bg`(`LogColor` 9종)·`mention`. 블록도 `color`/`bg`, 콜아웃 `icon`/`iconUrl`, 제목 토글 `level`, 코드 `lang`, 표 `headRow`/`headCol`, 단 나눔 `columns`→`column`(`ratio`)을 가진다). `TrainingLogList` = `{status, items}` — status `ok`·`not_configured`(NOTION_TOKEN 없음)·`no_cohort`·`no_database`·`unavailable`. 저장 없음(노션 읽기 전용, 서버 5분 캐시). 소유 판정 = 레지스트리 기수·이름(서버), 계획 `docs/plans/completed/training-log-own-only.md`.
 
 ## 간편인증 서류 조회 (2026-11-09, `lib/types/simple-auth.ts` · migration 0018)
 - `SimpleAuthDocKey` = biz 사업자등록증명 · vat 부가세 과세표준증명 · fs 표준재무제표증명 · tax 국세 납세증명 · localTax 지방세 납세증명(정부24) · ins 4대보험 가입자명부(공동인증서 전용) · income 소득금액증명(간편인증 전용) · closed 폐업사실증명(홈택스, 폐업 사업장만 · 간편인증 토스 제외). 목록·CODEF 경로는 `lib/config/simple-auth.ts`.

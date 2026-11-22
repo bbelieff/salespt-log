@@ -2,7 +2,7 @@
  * Layer: service — 노션 응답 → 트레이닝일지 화면 모델 (순수 함수, 네트워크 없음).
  * 소유 판정·제목·블록 변환을 여기 모아 합성 데이터로 시험한다.
  */
-import type { LogBlock, LogBlockType, LogText, TrainingLogItem } from "@/types/training-log";
+import { LOG_COLORS, type LogBlock, type LogBlockType, type LogColor, type LogText, type TrainingLogItem } from "@/types/training-log";
 import { nameMatchCandidates } from "@/repo/name-match";
 
 type Json = Record<string, unknown>;
@@ -56,10 +56,16 @@ export function sortLogs(items: TrainingLogItem[]): TrainingLogItem[] {
   return [...items].sort((a, b) => (b.week ?? -1) - (a.week ?? -1) || b.createdTime.localeCompare(a.createdTime));
 }
 
+/** 노션 색 이름("red"·"red_background"·"default") → 글자색/배경색. 모르는 색은 버린다. */
+function tone(raw: unknown): { color?: LogColor; bg?: LogColor } {
+  const [name, kind] = String(raw ?? "").split("_");
+  if (!(LOG_COLORS as readonly string[]).includes(name ?? "")) return {};
+  return kind === "background" ? { bg: name as LogColor } : { color: name as LogColor };
+}
+
 export function toText(rich: unknown): LogText[] {
   return arr(rich).map((t) => {
     const a = obj(t.annotations);
-    const color = String(a.color ?? "default");
     const out: LogText = { text: String(t.plain_text ?? "") };
     const href = t.href ?? obj(obj(t.text).link).url;
     if (typeof href === "string" && /^https?:\/\//.test(href)) out.href = href;
@@ -68,14 +74,14 @@ export function toText(rich: unknown): LogText[] {
     if (a.strikethrough) out.strike = true;
     if (a.underline) out.underline = true;
     if (a.code) out.code = true;
-    if (color.endsWith("_background")) out.highlight = true;
-    return out;
+    if (t.type === "mention" || t.type === "equation") out.mention = true;
+    return Object.assign(out, tone(a.color));
   });
 }
 
 // heading_4 는 노션이 2026년에 더한 제목 4단계 — 빠뜨리면 그 아래 내용까지 통째로 사라진다(김태진 6주차, 2026-11-16).
 const SIMPLE: Record<string, LogBlockType> = {
-  paragraph: "p", heading_1: "h1", heading_2: "h2", heading_3: "h3", heading_4: "h3",
+  paragraph: "p", heading_1: "h1", heading_2: "h2", heading_3: "h3", heading_4: "h4",
   bulleted_list_item: "ul", numbered_list_item: "ol", to_do: "todo", toggle: "toggle",
   quote: "quote", callout: "callout", code: "code",
 };
@@ -107,8 +113,22 @@ export function toLogBlock(block: Json): LogBlock | null {
     const url = String(body.url ?? "");
     return /^https?:\/\//.test(url) ? { type: "link", text: toText(body.caption), url } : null;
   }
-  if (type === "table") return { type: "table", text: [], rows: [] };
-  if (type === "column_list" || type === "column" || type === "synced_block") return { type: "p", text: [] };
+  if (type === "table") {
+    const out: LogBlock = { type: "table", text: [], rows: [] };
+    if (body.has_column_header === true) out.headRow = true;
+    if (body.has_row_header === true) out.headCol = true;
+    return out;
+  }
+  if (type === "column_list") return { type: "columns", text: [] };
+  if (type === "column") {
+    const ratio = Number(body.width_ratio);
+    return ratio > 0 && ratio <= 1 ? { type: "column", text: [], ratio } : { type: "column", text: [] };
+  }
+  if (type === "synced_block") return { type: "p", text: [] };
+  if (type === "equation") {
+    const expr = String(body.expression ?? "").trim();
+    return expr ? { type: "code", text: [{ text: expr }] } : null;
+  }
   const mapped = SIMPLE[type];
   if (!mapped) {
     // 일지 안에 만든 하위 페이지는 제목을 글자로 남기고 그 내용을 아래에 펼친다.
@@ -116,8 +136,21 @@ export function toLogBlock(block: Json): LogBlock | null {
     return text.length || block.has_children === true ? { type: "p", text } : null;
   }
   const toggleHeading = mapped.startsWith("h") && body.is_toggleable === true;
-  const out: LogBlock = { type: toggleHeading ? "toggle" : mapped, text: toText(body.rich_text) };
+  const out: LogBlock = { type: toggleHeading ? "toggle" : mapped, text: toText(body.rich_text), ...tone(body.color) };
+  if (toggleHeading) out.level = Number(mapped.slice(1)) as 1 | 2 | 3 | 4;
   if (mapped === "todo") out.checked = body.checked === true;
+  if (mapped === "code") {
+    const lang = String(body.language ?? "").trim();
+    if (lang && lang !== "plain text") out.lang = lang;
+  }
+  if (mapped === "callout") {
+    const icon = obj(body.icon);
+    if (icon.type === "emoji" && typeof icon.emoji === "string") out.icon = icon.emoji;
+    else {
+      const url = obj(icon.external).url ?? obj(icon.file).url ?? obj(icon.custom_emoji).url;
+      if (typeof url === "string" && /^https?:\/\//.test(url)) out.iconUrl = url;
+    }
+  }
   return out;
 }
 
