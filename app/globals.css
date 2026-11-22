@@ -871,15 +871,24 @@ body {
     background: rgb(255 255 255 / 92%);
     border-bottom: 1px solid rgb(15 23 42 / 9%);
   }
+  /* 머리줄 한 줄 정리(2026-11-22 belie): 로고·이름은 사이드탭 맨 위(SideIdentity), 본문 위는 배너 한 줄.
+     머리 줄을 숨기고 그 높이 변수를 0으로 — 배너·아래 sticky 들이 그만큼 위로 붙는다.
+     역할 전환은 배너 오른쪽(.banner-role), 사이드탭을 접으면 이름이 배너 탭 이름 앞으로(.banner-identity). */
+  .desktop-shell { --app-header-height: 0px; }
+  .desktop-shell .desktop-glass-header { display: none; }
+  .desktop-shell .page-banner .banner-role { display: flex; margin-left: auto; }
+  .desktop-shell:has(.desktop-nav[data-collapsed="true"]) .page-banner .banner-identity { display: flex; animation: banner-identity-in 180ms ease; }
   /* Weekly-goals content gutter — let the quiet backdrop show between cards. */
   .desktop-shell .weeklygoal-main {
     background: transparent;
   }
 }
+@keyframes banner-identity-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
   .desktop-shell .desktop-nav {
     transition: none;
   }
+  .desktop-shell .page-banner .banner-identity { animation: none; }
 }
 @supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   @media (min-width: 1024px) {

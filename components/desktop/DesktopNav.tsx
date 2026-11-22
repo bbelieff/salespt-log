@@ -23,6 +23,7 @@ import { useGuardedRouter } from "@/components/DirtyGuard";
 import { SALESPT_CAFE_URL, WORK_MANUAL_URL } from "@/config/links";
 import { useMe } from "@/query/me-hook";
 import StepBadge, { type StepId } from "@/components/ui/StepBadge";
+import SideIdentity from "./SideIdentity";
 import { MOBILE_NAV_ID, claimEdgeTouch, edgeTapTarget, getMobileNavOpen, setMobileNavOpen, swipeBlocked, swipeIntent, swipeSkipped, useMobileNavOpen, viewportWidth } from "./mobile-nav";
 
 /** 단계 번호 배지 — 단계색 연한 배경 + 진한 글자 (표준 팔레트). */
@@ -274,12 +275,15 @@ export default function DesktopNav() {
       data-open={open}
       className={`desktop-nav fixed inset-y-0 left-0 z-[61] flex h-dvh w-72 max-w-[85vw] shrink-0 flex-col border-r border-slate-200 bg-white shadow-xl duration-200 ease-out motion-reduce:transition-none pc:sticky pc:top-0 pc:z-auto pc:max-w-none pc:translate-x-0 pc:shadow-none pc:visible ${open ? "translate-x-0 transition-transform" : "invisible -translate-x-full transition-[transform,visibility]"}`}
     >
-      {/* 로고는 메인 TopHeader에만 표시한다. */}
-      <div className={`flex h-16 shrink-0 items-center border-b border-slate-100 ${compact ? "justify-center px-1" : "gap-2 px-4"}`}>
-        {!compact && <span className="truncate text-sm font-black text-slate-900">경영일지</span>}
-        <button type="button" onClick={toggleCollapsed} aria-label={compact ? "사이드탭 펼치기" : "사이드탭 축소하기"} title={compact ? "펼치기" : "축소하기"} className={`hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500 pc:flex ${compact ? "" : "ml-auto"}`}>
-          {compact ? <PanelLeftOpen className="h-4 w-4" aria-hidden="true" /> : <PanelLeftClose className="h-4 w-4" aria-hidden="true" />}
-        </button>
+      {/* 맨 위: 폰 서랍 = 「경영일지」 + 닫기 / PC = 로고·이름(SideIdentity) + 축소 단추. 높이는 본문 배너(h-12)와 맞춘다(2026-11-22). */}
+      <div className={`flex h-16 shrink-0 items-center border-b border-slate-100 pc:h-12 ${compact ? "justify-center px-1" : "gap-2 px-4 pc:px-2.5"}`}>
+        {!compact && <span className="truncate text-sm font-black text-slate-900 pc:hidden">경영일지</span>}
+        <SideIdentity compact={compact} />
+        {!compact && (
+          <button type="button" onClick={toggleCollapsed} aria-label="사이드탭 축소하기" title="축소하기" className="ml-auto hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500 pc:flex">
+            <PanelLeftClose className="h-4 w-4" aria-hidden="true" />
+          </button>
+        )}
         <button ref={closeRef} type="button" onClick={() => setMobileNavOpen(false)} aria-label="메뉴 닫기" className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500 pc:hidden">
           <X className="h-5 w-5" aria-hidden="true" />
         </button>
@@ -287,6 +291,12 @@ export default function DesktopNav() {
 
       {/* 메뉴 */}
       <div className={`min-h-0 flex-1 overflow-y-auto ${compact ? "p-2" : "p-3"}`}>
+        {/* 접힘: 맨 위 칸은 앱 아이콘 자리라 펼치기 단추를 메뉴 첫 줄로 내린다. */}
+        {compact && (
+          <button type="button" onClick={toggleCollapsed} aria-label="사이드탭 펼치기" title="펼치기" className="mx-auto mb-1 hidden h-11 w-11 items-center justify-center rounded-lg text-slate-600 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500 pc:flex">
+            <PanelLeftOpen className="h-5 w-5" aria-hidden="true" />
+          </button>
+        )}
         <SideLink
           href={"/dashboard" as Route}
           active={pathname.startsWith("/dashboard")}
