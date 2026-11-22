@@ -34,7 +34,7 @@
 | 항목 | 상태 | 근거 |
 |---|---|---|
 | 서비스워커·웹푸시·예약 발송 | 0건 | `git grep` serviceWorker/push/cron 결과 없음 |
-| PWA | `app/manifest.ts` 만(display standalone, 아이콘은 `app/icon.tsx`·`app/apple-icon.tsx`) | `app/manifest.ts:14` |
+| PWA | `app/manifest.ts` 만(display standalone, 아이콘은 `app/icon.svg`·`app/apple-icon.png`) | `app/manifest.ts:14` |
 | 「오늘 챙길 일」 계산 | **순수 함수** `summarizeFollowUps(src, today)` — 화면(클라이언트)에서만 호출 | `lib/analytics/dashboard-follow-ups.ts:162`, `components/dashboard/DashboardFollowUps.tsx:21` |
 | 재료 4종 서버 로더 | 모두 이메일만 받으면 서버에서 읽을 수 있음 | `loadContractPayments(email)` · `listAllTodos(email)` · `loadFollowUpMeetings(email, through)` · `loadDbSheet(resolveDbSheetContext(email))` (각 `app/api/*/route.ts`) |
 | 앱 밖 통로 | 구글캘린더 단방향 동기화(연결자만, 알림 미지정) | `lib/service/gcal-sync.ts`, ADR-0028 |
