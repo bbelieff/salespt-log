@@ -1,3 +1,6 @@
+## 2026-11-22 · DB관리 화면 사이드탭을 다른 단계와 같게
+- fix/db-sheet-side-consistency. belie 「DB관리 탭은 사이드바가 STEP 1,3,4 랑 다른 폼」. 원인 = db-sheet.css 의 STEP 1.5 시절 사이드탭 덮어쓰기(머리 칸 60px·STEP 줄 간격·글자 칸 58px). 삭제 + 화면 전용 CSS 가 .desktop-nav 를 못 건드리게 구조 시험 추가. [plan](plans/active/db-sheet-side-consistency.md).
+
 ## 2026-11-22 · 앱 아이콘·파비콘 r4-06 반반 타일로 교체
 - feat/app-icon-split-tile. belie 확정 r4-06 반반 타일(처음 r4-03 → 「06번이 더 좋다」로 변경, 더 둥근 판·큰 $). 탭=그림자 없는 둥근 판 SVG, iOS·안드로이드=그림자 있는 PNG, PC 사이드탭 접힘 아이콘도 같은 마크. 옛 글꼴 $ 코드(icon.tsx·apple-icon.tsx) 삭제. [plan](plans/active/app-icon-split-tile.md).
 
