@@ -1,3 +1,5 @@
+## 2026-11-22 · 실무/수납 로드맵 메모 칸이 내용만큼 늘어남
+- feat/roadmap-memo-autogrow. belie 「로드맵메모는 적힌 내용만큼 다 보이게」. 업체정보 칸의 useAutoGrow 를 lib/hooks 로 꺼내 공용화 후 적용. [plan](plans/active/roadmap-memo-autogrow.md).
 ## 2026-11-22 · DB관리 화면 사이드탭을 다른 단계와 같게
 - fix/db-sheet-side-consistency. belie 「DB관리 탭은 사이드바가 STEP 1,3,4 랑 다른 폼」. 원인 = db-sheet.css 의 STEP 1.5 시절 사이드탭 덮어쓰기(머리 칸 60px·STEP 줄 간격·글자 칸 58px). 삭제 + 화면 전용 CSS 가 .desktop-nav 를 못 건드리게 구조 시험 추가. [plan](plans/active/db-sheet-side-consistency.md).
 
