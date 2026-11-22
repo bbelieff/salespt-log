@@ -1,3 +1,6 @@
+## 2026-11-22 · 실무/수납 로드맵 메모 칸이 내용만큼 늘어남
+- feat/roadmap-memo-autogrow. belie 「로드맵메모는 적힌 내용만큼 다 보이게」. 업체정보 칸의 useAutoGrow 를 lib/hooks 로 꺼내 공용화 후 적용. [plan](plans/active/roadmap-memo-autogrow.md).
+
 ## 2026-11-22 · 앱 아이콘·파비콘 r4-06 반반 타일로 교체
 - feat/app-icon-split-tile. belie 확정 r4-06 반반 타일(처음 r4-03 → 「06번이 더 좋다」로 변경, 더 둥근 판·큰 $). 탭=그림자 없는 둥근 판 SVG, iOS·안드로이드=그림자 있는 PNG, PC 사이드탭 접힘 아이콘도 같은 마크. 옛 글꼴 $ 코드(icon.tsx·apple-icon.tsx) 삭제. [plan](plans/active/app-icon-split-tile.md).
 
