@@ -21,6 +21,7 @@ import { hasRealSheet } from "@/util/tenant-key"; // ADR-0038: 시트 없는 수
 import PageContainer from "./PageContainer";
 import { PanelLeftOpen } from "lucide-react";
 import { MOBILE_NAV_ID, setMobileNavOpen, useMobileNavOpen } from "./desktop/mobile-nav";
+import { ACCOUNT_MENU_EVENT, setHeaderIdentity } from "./desktop/header-identity";
 import { identifyUser, resetUser, markInternal, clearInternal } from "@/analytics";
 import {
   ANNOUNCEMENTS_SEEN_EVENT,
@@ -120,7 +121,8 @@ export default function TopHeader({
   const [popupPosition, setPopupPosition] = useState({ left: 8, top: 56 });
   const positionPopup = () => {
     const rect = logoRef.current?.getBoundingClientRect();
-    if (!rect) return;
+    // PC 학생 화면은 머리 줄이 숨어 있다(로고는 사이드탭) — 사이드탭이 정해 준 자리를 그대로 둔다.
+    if (!rect || rect.width === 0) return;
     const width = Math.min(16 * parseFloat(getComputedStyle(document.documentElement).fontSize), window.innerWidth - 16);
     setPopupPosition({ left: Math.max(8, Math.min(rect.left, window.innerWidth - width - 8)), top: rect.bottom + 4 });
   };
@@ -172,6 +174,21 @@ export default function TopHeader({
     return () => window.removeEventListener(BADGES_SEEN_EVENT, recompute);
   }, [badgeList, badgeOwner]);
   const navOpen = useMobileNavOpen();
+  // PC 학생 화면(.desktop-shell)은 로고·이름을 사이드탭 맨 위에 보인다(2026-11-22 belie) — 같은 값을 사이드탭에 넘긴다.
+  const dotLabel = hasNews ? "새소식 있음" : hasNewBadge ? "새 배지 있음" : inboxUnread > 0 ? "새 하루요약 있음" : null;
+  const sheetHref = !sessionIdentity && me.data?.spreadsheetId && hasRealSheet(me.data.spreadsheetId) ? `https://docs.google.com/spreadsheets/d/${me.data.spreadsheetId}/edit` : null;
+  const shownName = trainer.data?.name && display === "—" ? trainer.data.name : display;
+  useEffect(() => { setHeaderIdentity({ display: shownName, sheetHref, dotLabel }); }, [shownName, sheetHref, dotLabel]);
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const d = (e as CustomEvent<{ left: number; bottom: number }>).detail;
+      const width = Math.min(16 * parseFloat(getComputedStyle(document.documentElement).fontSize), window.innerWidth - 16);
+      setPopupPosition({ left: Math.max(8, Math.min(d.left, window.innerWidth - width - 8)), top: d.bottom + 4 });
+      setPopupOpen(true);
+    };
+    window.addEventListener(ACCOUNT_MENU_EVENT, onOpen);
+    return () => window.removeEventListener(ACCOUNT_MENU_EVENT, onOpen);
+  }, []);
   const badgeCount = badgeList ? badgeList.filter(b => b.earned).length : null;
 
   return (
@@ -181,7 +198,7 @@ export default function TopHeader({
           <button ref={logoRef} type="button" onClick={()=>{ positionPopup(); setPopupOpen(v=>!v); }} className="order-1 flex h-14 shrink-0 items-center" aria-label="계정 메뉴 열기" aria-expanded={popupOpen}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/salespt-logo.png" alt="세일즈PT" className="h-5 w-auto sm:h-6" />
-            {(hasNews || hasNewBadge || inboxUnread > 0) && <span className="h-2 w-2 rounded-full bg-brand-red" aria-label={hasNews ? "새소식 있음" : hasNewBadge ? "새 배지 있음" : "새 하루요약 있음"} />}
+            {dotLabel && <span className="h-2 w-2 rounded-full bg-brand-red" aria-label={dotLabel} />}
           </button>
           {/* 남은 폭은 이름에 배분하고 긴 이름만 말줄임 */}
           <div data-header-info className="order-2 flex h-14 min-w-0 flex-1 items-center">
@@ -410,6 +427,12 @@ export default function TopHeader({
             <PanelLeftOpen className="h-5 w-5" aria-hidden="true" />
           </button>
           <div className="app-banner-bar h-5 w-1 shrink-0 rounded-sm bg-slate-500" />
+          {/* PC 학생 화면에서 사이드탭을 접었을 때만 보인다(globals.css .banner-identity) — 이름이 사이드탭에서 이리로 온다. */}
+          <span className="banner-identity hidden min-w-0 items-center gap-1.5 text-sm font-black text-slate-900">
+            <span className="truncate">{shownName}</span>
+            {dotLabel && <span className="h-2 w-2 shrink-0 rounded-full bg-brand-red" aria-label={dotLabel} />}
+            <span aria-hidden="true" className="font-medium text-slate-400">›</span>
+          </span>
           <h1 className={pageNavigation ? "sr-only" : "flex min-w-0 items-center gap-1.5 text-sm font-semibold text-slate-700 sm:gap-2"}>
             <span className="shrink-0 text-base leading-none">{pageEmoji}</span>
             <span className="truncate">{pageTitle}</span>
@@ -428,6 +451,8 @@ export default function TopHeader({
               {pageAction.label}
             </Link>
           )}
+          {/* PC 학생 화면은 머리 줄이 숨으므로 역할 전환을 배너 오른쪽에 둔다(globals.css .banner-role). */}
+          <div className="banner-role hidden shrink-0 items-center"><RoleViewSwitch modeHint={roleMode} /></div>
         </PageContainer>
       </div>
     </>
