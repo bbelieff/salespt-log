@@ -1,10 +1,13 @@
+## 2026-11-22 · 앱 아이콘을 루비 $(j4-02)로 교체
+- feat/app-icon-ruby. belie 루비 시안 4차 중 「02로 가자」 = j4-02 겹겹 입체 빨강 그림자(2차 면 그대로 + 십자 반짝임을 각진 빛 면으로). 파일 자리는 반반 타일 때와 같음. [plan](plans/active/app-icon-ruby.md).
+
 ## 2026-11-22 · 실무/수납 로드맵 메모 칸이 내용만큼 늘어남
 - feat/roadmap-memo-autogrow. belie 「로드맵메모는 적힌 내용만큼 다 보이게」. 업체정보 칸의 useAutoGrow 를 lib/hooks 로 꺼내 공용화 후 적용. [plan](plans/active/roadmap-memo-autogrow.md).
 ## 2026-11-22 · DB관리 화면 사이드탭을 다른 단계와 같게
 - fix/db-sheet-side-consistency. belie 「DB관리 탭은 사이드바가 STEP 1,3,4 랑 다른 폼」. 원인 = db-sheet.css 의 STEP 1.5 시절 사이드탭 덮어쓰기(머리 칸 60px·STEP 줄 간격·글자 칸 58px). 삭제 + 화면 전용 CSS 가 .desktop-nav 를 못 건드리게 구조 시험 추가. [plan](plans/active/db-sheet-side-consistency.md).
 
 ## 2026-11-22 · 앱 아이콘·파비콘 r4-06 반반 타일로 교체
-- feat/app-icon-split-tile. belie 확정 r4-06 반반 타일(처음 r4-03 → 「06번이 더 좋다」로 변경, 더 둥근 판·큰 $). 탭=그림자 없는 둥근 판 SVG, iOS·안드로이드=그림자 있는 PNG, PC 사이드탭 접힘 아이콘도 같은 마크. 옛 글꼴 $ 코드(icon.tsx·apple-icon.tsx) 삭제. [plan](plans/active/app-icon-split-tile.md).
+- feat/app-icon-split-tile. belie 확정 r4-06 반반 타일(처음 r4-03 → 「06번이 더 좋다」로 변경, 더 둥근 판·큰 $). 탭=그림자 없는 둥근 판 SVG, iOS·안드로이드=그림자 있는 PNG, PC 사이드탭 접힘 아이콘도 같은 마크. 옛 글꼴 $ 코드(icon.tsx·apple-icon.tsx) 삭제. [plan](plans/completed/app-icon-split-tile.md).
 
 ## 2026-11-22 · PC 머리줄 한 줄 — 로고·이름을 사이드탭 맨 위로
 - feat/pc-header-one-row. belie 확정(목업 2판): 로고는 늘 사이드탭, 이름은 사이드탭 열림=로고 옆 / 닫힘=배너 탭 이름 앞. PC 학생 화면 머리 줄 숨김(--app-header-height 0), 계정 메뉴·역할 전환 위치 이동. 폰·관리자·트레이너 그대로. [plan](plans/active/pc-header-one-row.md). 앱 아이콘 새 시안은 별도(3차 후보 비교 중).

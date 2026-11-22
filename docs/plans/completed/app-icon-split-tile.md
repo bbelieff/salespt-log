@@ -3,7 +3,7 @@
 > - **누가 읽나요**: 개발자/PM
 > - **어떤 기능·작업과 연결?**: `app/icon.svg`, `app/apple-icon.png`, `public/icons/*`, `components/desktop/SideIdentity.tsx`
 > - **읽고 나면 알 수 있는 것**: 어떤 파일이 어떤 자리에 쓰이는지, 어떻게 다시 만드는지, 되돌리는 법
-> - **관련 문서**: [favicon (완료)](../completed/favicon.md), [PC 머리줄 한 줄](pc-header-one-row.md)
+> - **관련 문서**: [favicon (완료)](favicon.md), [PC 머리줄 한 줄](../active/pc-header-one-row.md)
 
 # 앱 아이콘 r4-06 반반 타일
 
