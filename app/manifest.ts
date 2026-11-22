@@ -5,7 +5,7 @@
  *
  * 모바일에서 즐겨찾기 → 홈 추가 시:
  *   - 이름: "세일즈PT 경영일지"
- *   - 아이콘: app/icon.tsx + app/apple-icon.tsx
+ *   - 아이콘: app/icon.svg + app/apple-icon.png (r4-06 반반 타일)
  *   - 시작 URL: /
  *   - display: standalone (네이티브 앱처럼 보임)
  */

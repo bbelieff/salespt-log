@@ -20,7 +20,7 @@ export default function SideIdentity({ compact }: { compact: boolean }) {
       <button ref={btnRef} type="button" onClick={open} aria-label="계정 메뉴 열기" title="계정 메뉴" className="relative flex shrink-0 items-center rounded-lg p-1 hover:bg-slate-100 focus-visible:outline-2 focus-visible:outline-blue-500">
         {compact ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src="/icon" alt="세일즈PT" className="h-7 w-7 rounded-lg" />
+          <img src="/icons/mark.svg" alt="세일즈PT" className="h-7 w-7 rounded-lg" />
         ) : (
           // eslint-disable-next-line @next/next/no-img-element
           <img src="/salespt-logo.png" alt="세일즈PT" className="h-4 w-auto" />

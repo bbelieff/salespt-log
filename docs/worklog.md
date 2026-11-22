@@ -1,3 +1,6 @@
+## 2026-11-22 · 앱 아이콘·파비콘 r4-06 반반 타일로 교체
+- feat/app-icon-split-tile. belie 확정 r4-06 반반 타일(처음 r4-03 → 「06번이 더 좋다」로 변경, 더 둥근 판·큰 $). 탭=그림자 없는 둥근 판 SVG, iOS·안드로이드=그림자 있는 PNG, PC 사이드탭 접힘 아이콘도 같은 마크. 옛 글꼴 $ 코드(icon.tsx·apple-icon.tsx) 삭제. [plan](plans/active/app-icon-split-tile.md).
+
 ## 2026-11-22 · PC 머리줄 한 줄 — 로고·이름을 사이드탭 맨 위로
 - feat/pc-header-one-row. belie 확정(목업 2판): 로고는 늘 사이드탭, 이름은 사이드탭 열림=로고 옆 / 닫힘=배너 탭 이름 앞. PC 학생 화면 머리 줄 숨김(--app-header-height 0), 계정 메뉴·역할 전환 위치 이동. 폰·관리자·트레이너 그대로. [plan](plans/active/pc-header-one-row.md). 앱 아이콘 새 시안은 별도(3차 후보 비교 중).
 
