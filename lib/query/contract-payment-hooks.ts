@@ -46,6 +46,7 @@ interface ListResponse {
 function invalidateContractLinked(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: ["todos"] });
   qc.invalidateQueries({ queryKey: ["month"] });
+  qc.invalidateQueries({ queryKey: ["week"] }); // 업체명을 고치면 연결 미팅 이름도 바뀐다
   qc.invalidateQueries({ queryKey: ["meeting-follow-ups"] });
 }
 
@@ -79,6 +80,9 @@ export function useAddContractPayment() {
     onSuccess: () => {
       track(EVENTS.CONTRACT_PAYMENT_ADDED);
       qc.invalidateQueries({ queryKey: cpKey() });
+      // 서버가 계약 미팅 이름의 「(변경)」 표시를 뗄 수 있다 — 일정 화면도 새로 읽는다.
+      qc.invalidateQueries({ queryKey: ["week"] });
+      qc.invalidateQueries({ queryKey: ["month"] });
     },
   });
 }
@@ -95,6 +99,9 @@ export function useAddPriorContract() {
     onSuccess: () => {
       track(EVENTS.CONTRACT_PAYMENT_ADDED);
       qc.invalidateQueries({ queryKey: cpKey() });
+      // 서버가 계약 미팅 이름의 「(변경)」 표시를 뗄 수 있다 — 일정 화면도 새로 읽는다.
+      qc.invalidateQueries({ queryKey: ["week"] });
+      qc.invalidateQueries({ queryKey: ["month"] });
     },
   });
 }

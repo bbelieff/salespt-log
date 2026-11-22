@@ -38,6 +38,11 @@ describe("decideContractFanout", () => {
     });
   });
 
+  it("일정 변경 표시 「(변경)」은 떼고 장부에 넣는다(2026-11-22 belie)", () => {
+    const d = decideContractFanout({ 상태: "계약" }, meeting({ 업체명: "(변경) 케이탑전기진단" }));
+    expect(d).toMatchObject({ kind: "run", payload: { 업체명: "케이탑전기진단" } });
+  });
+
   it("★이미 계약이던 카드도 태운다 — 재저장이 곧 복구 경로다", () => {
     // 옛 코드는 `!wasAlreadyContract` 로 걸러서, 한 번 빠지면 다시 저장해도 영영 안 채워졌다.
     // 판정에 '이전 상태'가 아예 들어오지 않는다는 것 자체가 그 회귀를 막는다.

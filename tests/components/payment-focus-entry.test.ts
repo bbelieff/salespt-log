@@ -17,6 +17,7 @@ vi.mock("@/components/TopHeader",()=>({default:()=>null}));
 vi.mock("@/app/(app)/payment/_components/ContractRow",()=>({default:(p:{cp:ContractPayment;focusedSlot?:number|null;focusTodoId?:string|null})=>h("div",{"data-detail-row":p.cp.row,"data-slot":p.focusedSlot??"none","data-todo":p.focusTodoId??"none"},p.cp.업체명)}));
 vi.mock("@/app/(app)/payment/_components/ContractListTable",()=>({default:(p:{items:Array<{key:string;cp:ContractPayment}>;onSelect:(i:unknown)=>void;renderDetail?:(i:unknown)=>React.ReactNode})=>h("div",null,p.items.map(i=>h("div",{key:i.key},h("button",{"data-select-row":i.cp.row,onClick:()=>p.onSelect(i)},i.cp.업체명),p.renderDetail?.(i))))}));
 vi.mock("@/app/(app)/payment/_components/InstitutionWorkList",()=>({default:()=>null}));
+vi.mock("@/app/(app)/payment/_components/CompanyNameEdit",()=>({default:()=>null}));
 vi.mock("@/app/(app)/payment/_components/PaymentSelectionBridge",()=>({default:React.forwardRef(function Bridge(){return null;}),syncPaymentSelectionBridge:()=>{},watchDevicePixelRatio:()=>()=>{}}));
 vi.mock("@/app/(app)/payment/_components/PaymentPerformanceSummary",()=>({default:()=>null}));
 vi.mock("@/app/(app)/payment/_components/TerminationModal",()=>({default:()=>null}));

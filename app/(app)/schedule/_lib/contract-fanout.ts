@@ -21,6 +21,7 @@
  * (계약일+업체명) 순으로 기존 행을 먼저 찾아 **그 행을 갱신**한다(BBE-53). 새 행을 만들지
  * 않으므로 매출 이중계상(#558)이 나지 않는다.
  */
+import { stripRescheduleMark } from "@/util/reschedule-mark";
 
 /** 판정에 필요한 미팅 최소 형태 — 화면 타입(Meeting)에 의존하지 않는다. */
 export interface FanoutSource {
@@ -53,7 +54,8 @@ export function decideContractFanout(
 ): FanoutDecision {
   if (partial.상태 !== "계약") return { kind: "skip" };
   if (!prevMeeting) return { kind: "blocked" };
-  const 업체명 = (prevMeeting.업체명 ?? "").trim();
+  // 「(변경)」은 일정 변경 카드 표시일 뿐 — 장부에는 실제 업체명으로(2026-11-22 belie).
+  const 업체명 = stripRescheduleMark(prevMeeting.업체명 ?? "");
   const 계약일 = (prevMeeting.미팅날짜 ?? "").trim();
   // 업체명·계약일이 비면 장부의 자연키(계약일+업체명)가 성립하지 않는다 —
   // 그대로 보내면 빈 키 행이 생겨 나중 재시도가 엉뚱한 행을 덮어쓴다.
