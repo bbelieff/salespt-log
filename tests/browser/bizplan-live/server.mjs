@@ -15,7 +15,8 @@ const nav = `import React,{useSyncExternalStore} from 'react';const subscribe=f=
 const mocks = { "next-auth/react": `export const signOut=()=>{};export const useSession=()=>({data:null});` };
 const ctx = await context({
   entryPoints: ["tests/browser/bizplan-live/App.tsx"], bundle: true, outfile: join(dir, "app.js"), platform: "browser", jsx: "automatic", logLevel: "warning",
-  external: ["tesseract.js", "pdfjs-dist/*"], define: { "process.env": "{}", "process.env.NODE_ENV": '"development"' },
+  // 서류 읽기(tesseract·pdfjs)도 함께 묶는다 — 「서류에서 숫자 읽기」를 목업에서 실제로 돌려 본다.
+  define: { "process.env": "{}", "process.env.NODE_ENV": '"development"' },
   plugins: [{ name: "mock", setup(b) {
     b.onResolve({ filter: /.*/ }, a => {
       if (mocks[a.path]) return { path: a.path, namespace: "mock" };
@@ -62,6 +63,11 @@ createServer((req, res) => {
   res.setHeader("Content-Type", path.endsWith(".js") ? "text/javascript;charset=utf-8" : path.endsWith(".css") ? "text/css;charset=utf-8" : path.endsWith(".woff2") ? "font/woff2" : "text/html;charset=utf-8");
   if (path === "/font.css") return res.end(fontCss);
   if (file) return res.end(existsSync(file) ? readFileSync(file) : "");
+  // 서류 읽기(OCR) 에셋과 합성 서류(FIXTURE_DIR) — 「서류에서 숫자 읽기」 확인용.
+  const MIME = { js: "text/javascript", mjs: "text/javascript", wasm: "application/wasm", json: "application/json", png: "image/png", pdf: "application/pdf" };
+  const extra = path.startsWith("/document-ocr/") ? resolve("public" + decodeURIComponent(path))
+    : path.startsWith("/fixture/") && process.env.FIXTURE_DIR ? join(process.env.FIXTURE_DIR, decodeURIComponent(path.slice(9))) : null;
+  if (extra && existsSync(extra)) { res.setHeader("Content-Type", MIME[extra.split(".").pop()] ?? "application/octet-stream"); return res.end(readFileSync(extra)); }
   const pub = resolve("public" + decodeURIComponent(path));
   if (pub.startsWith(resolve("public")) && /\.(png|svg|webp|jpg|ico)$/.test(pub) && existsSync(pub)) {
     res.setHeader("Content-Type", { png: "image/png", svg: "image/svg+xml", webp: "image/webp", jpg: "image/jpeg", ico: "image/x-icon" }[pub.split(".").pop()]);

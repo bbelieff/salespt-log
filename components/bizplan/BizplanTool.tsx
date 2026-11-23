@@ -1,7 +1,7 @@
 "use client";
 /**
  * 업무도구 — 사업계획서 작성도구 본문(docs/plans/active/bizplan-tool.md, ADR-0039, belie 2026-11-22 기획 승인).
- * 1단계 = ① 내 구독: 자료 올리기 → 팩트시트 → 자료 꾸러미(ZIP) + 시작 프롬프트.
+ * 1단계 = ① 내 구독: 자료 올리기 → (서류에서 숫자 읽기) → 팩트시트 → 자료 꾸러미(ZIP) + 시작 프롬프트.
  *
  * - 고객 파일은 브라우저 안에서만 묶는다(서버 저장 없음). 공식 빌더·양식만 /api/bizplan/kit 에서 받는다.
  * - 글자 입력(팩트시트)은 이 브라우저에 임시저장해서 새로고침해도 남는다. 파일은 남지 않는다.
@@ -13,6 +13,8 @@ import { bizplanMissing, emptyBizplanDraft, normalizeBizplanDraft, type BizplanD
 import BizplanFiles from "./BizplanFiles";
 import BizplanFactsForm from "./BizplanFactsForm";
 import BizplanKitPanel from "./BizplanKitPanel";
+import BizplanOcr from "./BizplanOcr";
+import { applySuggestions, type BizplanSuggestion } from "@/lib/document-ocr/bizplan-map";
 import {
   PACK_MAX_BYTES,
   buildPack,
@@ -91,6 +93,11 @@ export default function BizplanTool() {
   const addFiles = useCallback((key: BizplanSlotKey, list: File[]) => setFiles((f) => ({ ...f, [key]: [...f[key], ...list] })), []);
   const removeFile = useCallback((key: BizplanSlotKey, index: number) => setFiles((f) => ({ ...f, [key]: f[key].filter((_, i) => i !== index) })), []);
 
+  const applyOcr = useCallback((chosen: BizplanSuggestion[]) => {
+    setDraft((d) => applySuggestions(d, chosen));
+    setToast({ text: chosen.length ? `${chosen.length}칸을 채웠어요. 숫자를 한 번 더 확인해 주세요.` : "채운 칸이 없어요.", error: false });
+  }, []);
+
   const refs = useMemo(() => fileRefs(files), [files]);
   const missing = useMemo(() => bizplanMissing(draft, refs, !!kit?.builder), [draft, refs, kit]);
   const bytes = totalBytes(files);
@@ -146,6 +153,7 @@ export default function BizplanTool() {
       <div className="flex flex-col gap-4 pc:flex-row pc:items-start">
         <div className="flex min-w-0 flex-1 flex-col gap-4">
           <BizplanFiles files={files} kit={kit} onAdd={addFiles} onRemove={removeFile} />
+          <BizplanOcr files={files} draft={draft} onApply={applyOcr} />
           <BizplanFactsForm draft={draft} onPatch={patch} />
         </div>
         <div className="pc:sticky pc:top-4 pc:w-96 pc:shrink-0">
