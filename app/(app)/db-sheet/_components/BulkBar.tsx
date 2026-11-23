@@ -1,6 +1,7 @@
 "use client";
 /**
  * 여러 줄 작업 줄(2026-10-23 belie) — 체크한 줄에 유입 반영·유입 미반영·공급처 바꾸기·삭제.
+ * 체크한 줄이 하나라도 있어야 나타난다(2026-11-22 belie).
  * 삭제는 바로 휴지통으로(2026-10-26 belie) — 아래 TrashNoticeBar 에서 휴지통을 열어 되돌린다.
  */
 import {type BulkOutcome,type PendingDelete} from './db-sheet-store';
@@ -15,8 +16,10 @@ export function bulkOutcomeText(action:string,out:BulkOutcome):string{
 
 export function BulkBar({count,busy,message,onInflow,onSupplier,onDelete,onClear}:{count:number;busy:boolean;message:string;onInflow:(inflow:boolean)=>void;onSupplier:()=>void;onDelete:()=>void;onClear:()=>void}){
  const off=!count||busy;
+ // 체크한 줄이 없으면 줄 자체를 감춘다(2026-11-22 belie). 처리 중·결과 문구가 있을 때만 남긴다.
+ if(!count&&!busy&&!message)return null;
  return <div className="sheet-bulk-bar" data-on={count>0||undefined} role="toolbar" aria-label="선택한 줄 한꺼번에 바꾸기">
-  <span className="sheet-bulk-count" aria-live="polite">{count?<><b>{count}</b>줄 선택됨</>:'줄 앞 칸을 체크하면 한꺼번에 바꿀 수 있어요'}</span>
+  <span className="sheet-bulk-count" aria-live="polite">{count>0&&<><b>{count}</b>줄 선택됨</>}</span>
   {count>0&&<button type="button" className="sheet-text-btn" disabled={busy} onClick={onClear}>선택 해제</button>}
   <span className="sheet-bulk-actions">
    <button type="button" className="sheet-btn" disabled={off} onClick={()=>onInflow(true)}>유입 반영</button>

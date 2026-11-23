@@ -99,11 +99,14 @@ it('selects rows by checkbox without opening DB정보 and selects all visible ro
  expect(host.querySelector('tr[data-selected]')).not.toBeNull();
  view({selected:new Set(['a','b'])});expect(all.checked).toBe(true);
 });
-it('renders the bulk bar above the table and disables actions until something is selected',()=>{
+it('shows the bulk bar only once a row is checked (2026-11-22), or while a result message remains',()=>{
  const onInflow=vi.fn(),onDelete=vi.fn(),onClear=vi.fn(),onSupplier=vi.fn();
  const bar=(count:number)=>createElement(BulkBar,{count,busy:false,message:'',onInflow,onSupplier,onDelete,onClear});
  renderGrid({bulkBar:bar(0)});
  const btn=(t:string)=>[...host.querySelectorAll<HTMLButtonElement>('.sheet-bulk-bar button')].find(x=>x.textContent===t);
+ expect(host.querySelector('.sheet-bulk-bar')).toBeNull();
+ renderGrid({bulkBar:createElement(BulkBar,{count:0,busy:false,message:'1건은 바꾸지 못했어요',onInflow,onSupplier,onDelete,onClear})});
+ expect(host.querySelector('.sheet-bulk-bar')!.textContent).toContain('1건은 바꾸지 못했어요');
  expect(btn('유입 반영')!.disabled).toBe(true);expect(btn('삭제')!.disabled).toBe(true);
  renderGrid({bulkBar:bar(2)});
  expect(host.querySelector('.sheet-bulk-bar')!.textContent).toContain('2줄 선택됨');
