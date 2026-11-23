@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://salesptlog.online"),
   title: "세일즈PT 경영일지",
   description: "수강생을 위한 직관적인 영업 현황 기록 · 대시보드",
-  // 아이콘은 Next.js 가 app/icon.svg, app/apple-icon.png 에서 자동 등록 (j4-02 루비 $).
+  // 아이콘은 Next.js 가 app/icon.svg(탭 = r4-06 반반 타일), app/apple-icon.png(홈 화면 = j4-02 루비 $) 에서 자동 등록.
   // OG 이미지는 app/opengraph-image.tsx 에서 자동 등록 (카톡·페북·트위터 썸네일).
   // manifest 도 app/manifest.ts 에서 자동 주입.
   openGraph: {
