@@ -1,0 +1,2 @@
+## 2026-11-22 · 트레이닝일지가 노션 색·효과를 그대로 보여 줌
+- feat/training-log-notion-visuals. belie 「노션에서 지원하는 시각적 효과를 다 가져와줘」. 담당 파일: `lib/types/training-log.ts`·`lib/service/training-log-blocks.ts`·`components/training-log/*`·`app/globals.css`(노션 색 토큰 18개). 글자색·배경색 9종, 블록 색, 콜아웃 아이콘, 단 나눔, 표 머리줄, 코드 언어, 제목 4단, 목록 3단 기호, 북마크 카드. 검증: 서비스 시험 9건, 합성 화면 PC·모바일. 미완료: 병합·배포, 실제 노션 일지 화면 확인(수강생 계정). [plan](../plans/completed/training-log-notion-visuals.md)

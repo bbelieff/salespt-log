@@ -164,6 +164,16 @@
   --ui-violet-50: #f5f3ff; --ui-violet-100: #ede9fe; --ui-violet-400: #a78bfa; --ui-violet-600: #7c3aed; --ui-violet-700: #6d28d9;
   --ui-purple-50: #faf5ff; --ui-purple-300: #d8b4fe; --ui-purple-500: #a855f7; --ui-purple-600: #9333ea; --ui-purple-700: #7e22ce;
   --ui-pink-500: #ec4899;
+  /* 노션 색 9종(트레이닝일지 본문) — 글자색은 흰 바탕 4.5:1 이상으로 노션 값보다 조금 짙게 */
+  --ui-notion-gray-text: #6b6a66; --ui-notion-gray-bg: #f1f1ef;
+  --ui-notion-brown-text: #8a5a44; --ui-notion-brown-bg: #f4eeee;
+  --ui-notion-orange-text: #b35a05; --ui-notion-orange-bg: #fbecdd;
+  --ui-notion-yellow-text: #8f6410; --ui-notion-yellow-bg: #fbf3db;
+  --ui-notion-green-text: #37704f; --ui-notion-green-bg: #edf3ec;
+  --ui-notion-blue-text: #2a6f97; --ui-notion-blue-bg: #e7f3f8;
+  --ui-notion-purple-text: #7d54a0; --ui-notion-purple-bg: #f4f0f7;
+  --ui-notion-pink-text: #a93f78; --ui-notion-pink-bg: #f9eef3;
+  --ui-notion-red-text: #c13a35; --ui-notion-red-bg: #fdebec;
   /* 폰·태블릿 글자 하한(px 수, 단위 없음). 12px 보다 작은 글자는
      calc(max(N, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1)) — PC 는 0 이라 원래 크기. */
   --ui-fs-floor: 0;

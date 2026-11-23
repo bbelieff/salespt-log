@@ -452,6 +452,21 @@ transition: transform 0.2s;  /* hover/tap 효과 */
 - 대비 정리(2026-11-10): 흰 바탕 보조 글자 slate-400 → slate-500, 흰 글자 파란 버튼 blue-500 → blue-600(누름 blue-700), 오늘 활동 초록 버튼 emerald-600 → emerald-700.
 - DB관리시트 표 열 너비 손잡이는 터치 화면(`@media (hover: none)`)에서 늘 보이는 가는 세로줄.
 
+### 노션 색 9종 (2026-11-22 feat/training-log-notion-visuals)
+트레이닝일지 본문이 노션의 글자색·배경색을 그대로 보여 주려고 더한 변수. 배경색은 노션 밝은 화면 값, 글자색은 흰 바탕 대비 4.5:1 을 넘도록 노션 값보다 조금 짙다. 일지 본문(`training-log.css`) 밖에서는 쓰지 않는다.
+
+| 색 | 글자 `--ui-notion-*-text` | 배경 `--ui-notion-*-bg` |
+|---|---|---|
+| gray | #6b6a66 | #f1f1ef |
+| brown | #8a5a44 | #f4eeee |
+| orange | #b35a05 | #fbecdd |
+| yellow | #8f6410 | #fbf3db |
+| green | #37704f | #edf3ec |
+| blue | #2a6f97 | #e7f3f8 |
+| purple | #7d54a0 | #f4f0f7 |
+| pink | #a93f78 | #f9eef3 |
+| red | #c13a35 | #fdebec |
+
 ## 데스크탑 글래스 (scoped, 2026-09-25)
 
 승인 목업값 그대로 — 새 토큰 발명 없음. 전부 `globals.css` 「Desktop glass shell」

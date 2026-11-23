@@ -1989,4 +1989,4 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 |---|---|
 | **TrainingLogList** | `/training-log` 내 일지 목록(주차 배지·제목, 최신 위). 상태별 빈 안내(연결 전·수강생 아님·기수 DB 없음·불러오기 실패). 비서 사서함과 같은 카드 언어(`training-log.css`). |
 | **TrainingLogView** | `/training-log/[id]` 한 편. 「내 일지 목록」 돌아가기 + 주차·제목 + 본문 카드. 404 면 「이 일지는 볼 수 없어요」. 노션으로 가는 링크는 두지 않는다. |
-| **LogBlocks** | 서버가 줄인 노션 블록(`LogBlock`) 그리기: 제목 3단·목록(이어진 항목 묶음)·체크·토글(details)·인용·콜아웃·구분선·표·이미지·첨부·링크. 형광펜은 `<mark>`. |
+| **LogBlocks** | 서버가 줄인 노션 블록(`LogBlock`) 그리기: 제목 4단·목록(이어진 항목 묶음, 3단까지 기호 구분)·체크(완료는 취소선)·토글(details, 제목 토글은 제목 크기)·인용·콜아웃(아이콘·색)·구분선·표(머리줄·머리칸)·코드(언어 이름표)·이미지·첨부·북마크 카드·단 나눔(카드 폭 520px 이상에서 나란히). **노션 색 9종**(gray·brown·orange·yellow·green·blue·purple·pink·red)을 글자색 `tlog-c-*`·배경색 `tlog-bg-*` 로 조각과 블록 양쪽에 그린다(값은 `--ui-notion-*` 토큰). 형광펜은 `<mark class="tlog-bg-*">`. |
