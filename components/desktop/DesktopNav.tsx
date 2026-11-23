@@ -17,7 +17,7 @@ import { usePathname } from "next/navigation";
 import type { Route } from "next";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
-import { BookOpen, CalendarDays, FolderOpen, LayoutDashboard, MessagesSquare, Newspaper, NotebookPen, PanelLeftClose, PanelLeftOpen, Shield, ShieldCheck, Target, X } from "lucide-react";
+import { BookOpen, CalendarDays, FileStack, FolderOpen, LayoutDashboard, MessagesSquare, Newspaper, NotebookPen, PanelLeftClose, PanelLeftOpen, Shield, ShieldCheck, Target, X } from "lucide-react";
 import { NAV_STEPS } from "@/components/TabBar";
 import { useGuardedRouter } from "@/components/DirtyGuard";
 import { SALESPT_CAFE_URL, WORK_MANUAL_URL } from "@/config/links";
@@ -127,6 +127,7 @@ function WorkTools({ pathname, compact }: { pathname: string; compact: boolean }
   const newsActive = pathname.startsWith("/payment/news");
   const logActive = pathname.startsWith("/training-log");
   const authDocActive = pathname.startsWith("/work-tools/simple-auth");
+  const bizplanActive = pathname.startsWith("/work-tools/business-plan");
   return (
     <section aria-label="업무도구" className={`mt-4 rounded-xl border border-slate-200/80 bg-slate-200/65 shadow-inner shadow-white/70 ${compact ? "p-1" : "p-2"}`}>
       {!compact && <p className="px-2 pb-1 text-xs font-bold text-slate-600">업무도구</p>}
@@ -167,6 +168,11 @@ function WorkTools({ pathname, compact }: { pathname: string; compact: boolean }
       <SideLink sub compact={compact} href={"/work-tools/simple-auth" as Route} active={authDocActive} label="간편인증 서류 조회">
         <ShieldCheck className="h-4 w-4 shrink-0" aria-hidden="true" />
         {!compact && "간편인증 서류 조회"}
+      </SideLink>
+      {/* 사업계획서 작성도구 — 고객사 자료로 사업계획서 꾸러미를 만든다(2026-11-23 belie, ADR-0039). */}
+      <SideLink sub compact={compact} href={"/work-tools/business-plan" as Route} active={bizplanActive} label="사업계획서 작성도구">
+        <FileStack className="h-4 w-4 shrink-0" aria-hidden="true" />
+        {!compact && "사업계획서 작성도구"}
       </SideLink>
       <a
         href={WORK_MANUAL_URL}

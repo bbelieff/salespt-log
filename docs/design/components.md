@@ -1983,6 +1983,18 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 | **DocBox** | 업체 줄 밑 서류함: DB 연결(후보 고르기·「DB 등록」/「새 DB로 등록」·「등록 안 함」·바꾸기) · 서류별 요약·발급일·「원문」 PDF(「사업자명 서류이름.pdf」, 재무제표는 연도별) · 「업체정보에 반영」(CompanyDocDiffTable 재사용, 미팅 연결 DB 는 안내만). |
 | **AuthMethodIcon** | 인증 수단 아이콘 — 각 사 공식 앱 아이콘(`public/auth-methods/*.png` 96px, App Store·Galaxy Store 공식 아이콘), 공동인증서만 중립 마크. 목록용 `MethodBadge`(회사색 띠 + 시각). |
 
+## 사업계획서 작성도구 (2026-11-23, `components/bizplan/`)
+
+`/work-tools/business-plan`(업무도구 사이드 행). ADR-0039 · [plan](../plans/active/bizplan-tool.md). PC = 왼쪽 입력 + 오른쪽 `pc:w-96` 패널(`pc:sticky`), 좁으면 위아래. 고객 파일은 브라우저 안에서만 묶는다.
+
+| 컴포넌트 | 설명 |
+|---|---|
+| **BizplanTool** | 화면 본문. 팩트시트 글자는 이 브라우저에 0.4초 뒤 임시저장(`salespt.bizplan.draft.v1`), 파일은 화면에만. 공식 빌더 정보(`/api/bizplan/kit`) 읽기, 꾸러미 받기·프롬프트 복사·양식 받기, 「새로 시작」(확인 후 전부 비움), 아래 토스트(실패 빨강 8초). |
+| **BizplanFiles** | 「1. 자료 올리기」 — 필수 6칸 + 추가 자료(여러 파일, 칸별 목록·빼기). 빈 필수 칸은 점선 회색, 맨 아래 빌더 줄(공식 판 자동 포함 / 준비 중이면 amber 점선). |
+| **BizplanFactsForm** | 「2. 팩트시트」 — 회사 7칸, 재무 3개년 + 부가세 과세표준 표(백만원, 매출·과세표준 ▲초록 ▼빨강 증감), 매출처·매입처 TOP3, 신청 자금, 매출 흐름 선택, 주안점. |
+| **BizplanKitPanel** | 「3. 어떻게 만들까요?」 — 방식 카드 ①(선택됨)·②·③(준비 중), 빠진 것 목록(필수 있으면 amber, 막지 않음), 「자료 꾸러미 받기 (ZIP)」(300MB 넘으면 잠김)·「시작 프롬프트 복사」, Claude·ChatGPT 사용법 탭, 공식 빌더 판·인터뷰지 양식·관리자 폴더 링크. |
+| **pack-client** | 꾸러미 만들기(공식 파일 받아 `zip-store` 로 묶기)·파일 저장·양식 받기. 화면이 쓰는 타입(`KitInfo`·`SlotFiles`). |
+
 ## 트레이닝일지 (2026-10-30)
 
 | 컴포넌트 | 설명 |
