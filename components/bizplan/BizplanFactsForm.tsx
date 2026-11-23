@@ -44,7 +44,7 @@ function YearTable({ years, onChange }: { years: BizplanYear[]; onChange: (years
   const cols = [...BIZPLAN_YEAR_COLUMNS, "과세표준"] as const;
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-max border-separate border-spacing-1 text-sm pc:min-w-0 pc:table-fixed">
+      <table className="w-full min-w-max border-separate border-spacing-1 text-sm wide:min-w-0 wide:table-fixed">
         <caption className="sr-only">재무 3개년과 부가세 과세표준, 단위 백만원</caption>
         <thead>
           <tr className="text-xs text-slate-500">
@@ -63,7 +63,7 @@ function YearTable({ years, onChange }: { years: BizplanYear[]; onChange: (years
               {cols.map((c) => {
                 const g = i > 0 && (c === "매출액" || c === "과세표준") ? growthLabel(years[i - 1]![c], y[c]) : "";
                 return (
-                  <td key={c} className="align-top">
+                  <td key={c} className="w-24 align-top wide:w-auto">
                     <input aria-label={`${y.year}년 ${c}`} value={y[c]} onChange={(e) => set(i, c, e.target.value)} inputMode="decimal" className={CELL} />
                     {g && g !== "-" && <p className={`mt-0.5 text-right text-xs font-semibold ${growthTone(g)}`}>{g}</p>}
                   </td>
@@ -102,7 +102,7 @@ export default function BizplanFactsForm({ draft, onPatch }: { draft: BizplanDra
   return (
     <section aria-labelledby="bizplan-facts-title" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <h2 id="bizplan-facts-title" className="text-base font-bold text-slate-900">2. 팩트시트 — 숫자 확인</h2>
-      <p className="mt-1 text-sm text-slate-600">서류의 숫자를 옮겨 적어 주세요. 모르는 칸은 비워 두면 AI 가 만들기 전에 물어봐요. 금액은 백만원 단위예요.</p>
+      <p className="mt-1 text-sm text-slate-600">위 「서류에서 숫자 읽기」로 채우거나 직접 적어 주세요. 모르는 칸은 비워 두면 AI 가 만들기 전에 물어봐요. 금액은 백만원 단위예요.</p>
 
       <div className="mt-4 grid grid-cols-1 gap-3 2xl:grid-cols-2">
         <Field label="업체명" value={draft.company} onChange={(v) => onPatch({ company: v })} placeholder="(주)한빛정밀" />
