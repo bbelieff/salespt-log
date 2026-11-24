@@ -108,7 +108,7 @@ export default function BizplanTool() {
     try {
       const pack = await buildPack(draft, files, kit);
       saveBytes(pack.name, pack.bytes);
-      setToast({ text: "꾸러미를 받았어요. 압축을 풀고 시작 프롬프트부터 붙여 넣으세요.", error: false });
+      setToast({ text: "꾸러미를 받았어요. 압축을 풀고 아래 순서대로 해 주세요.", error: false });
     } catch (e) {
       setToast({ text: e instanceof Error ? e.message : "꾸러미를 만들지 못했어요.", error: true });
     } finally {
@@ -119,9 +119,9 @@ export default function BizplanTool() {
   async function copyPrompt() {
     try {
       await navigator.clipboard.writeText(startPromptFor(draft, kit));
-      setToast({ text: "시작 프롬프트를 복사했어요.", error: false });
+      setToast({ text: "지시문을 복사했어요. 대화창에 붙여 넣어 보내세요.", error: false });
     } catch {
-      setToast({ text: "복사하지 못했어요. 꾸러미 안의 00_시작프롬프트.txt 를 열어 복사해 주세요.", error: true });
+      setToast({ text: "복사하지 못했어요. 꾸러미 안의 00_AI지시_먼저읽기.txt 를 열어 복사해 주세요.", error: true });
     }
   }
 

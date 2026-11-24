@@ -54,7 +54,7 @@ describe("bizplan-pack", () => {
     const m = bizplanMissing(emptyBizplanDraft(2026), [], false);
     const must = m.filter((x) => x.level === "필수").map((x) => x.text);
     expect(must).toContain("공식 빌더가 아직 준비되지 않았어요 — 내 빌더 파일을 직접 함께 올려 주세요.");
-    expect(must).toContain("사업자등록증 파일이 없어요.");
+    expect(m.some((x) => x.text.includes("파일이 없어요"))).toBe(false); // 서류는 대화창에 직접 넣어도 된다
     expect(must).toContain("2025년 매출액이 비어 있어요.");
     expect(m.some((x) => x.text.startsWith("추가 자료"))).toBe(false);
   });
@@ -77,6 +77,8 @@ describe("bizplan-pack", () => {
     expect(p).toContain("「01_빌더_v4.8.md」 대로 (주)한빛정밀 사업계획서");
     expect(p).toContain("「현장클리닉_양식.docx」 양식");
     expect(p).toContain("먼저 묻고 멈춰");
+    expect(p).toContain("「실행」이라고만 보내도");
+    expect(p).toContain("사업자등록증·표준재무제표 (3개년)");
     expect(p).toContain("이번 주안점: 수출 실적 강조");
     const none = buildStartPrompt(emptyBizplanDraft(2026), { builder: null, clinic: null, interview: null });
     expect(none).toContain("함께 올린 빌더 md 대로 [업체명]");
