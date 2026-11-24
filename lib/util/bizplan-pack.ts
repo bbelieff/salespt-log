@@ -54,6 +54,16 @@ export type BizplanDraft = {
   focus: string;
 };
 
+/** 팩트시트를 하나도 안 채웠는가 — 그러면 꾸러미에 팩트시트를 넣지 않고 AI 가 서류에서 직접 읽는다. */
+export function isBlankDraft(d: BizplanDraft): boolean {
+  const vals = [
+    d.company, d.ceo, d.bizNo, d.industry, d.founded, d.address, d.employees, d.story, d.fundAgency, d.fundAmount, d.fundUse, d.focus,
+    ...d.years.flatMap(({ year: _y, ...v }) => Object.values(v)),
+    ...[...d.sales, ...d.purchases].flatMap((p) => [p.name, p.item, p.amount]),
+  ];
+  return vals.every((v) => !String(v ?? "").trim());
+}
+
 /** 올린 파일 목록(이름·칸) — 팩트시트 「올린 자료」와 빠진 칸 판단에 쓴다. */
 export type BizplanFileRef = { slot: BizplanSlotKey; name: string };
 
@@ -195,7 +205,8 @@ export type BizplanKitNames = { builder: string | null; clinic: string | null; i
 
 /** 00_AI지시_먼저읽기.txt — 꾸러미 파일을 모두 올리고 「실행」만 보내면 AI 가 이 지시대로 시작한다(붙여 넣어도 된다). */
 export function buildStartPrompt(draft: BizplanDraft, kit: BizplanKitNames): string {
-  const company = draft.company.trim() || "[업체명]";
+  const blank = isBlankDraft(draft);
+  const company = draft.company.trim() || (blank ? "이 회사" : "[업체명]");
   const builder = kit.builder ? `「${kit.builder}」` : "함께 올린 빌더 md";
   const outputs = [
     "① 사업계획서 PPT(.pptx)",
@@ -209,10 +220,12 @@ export function buildStartPrompt(draft: BizplanDraft, kit: BizplanKitNames): str
     "",
     `첨부한 ${builder} 대로 ${company} 사업계획서를 만들어줘.${draft.story ? ` 상황: ${draft.story}` : ""}`,
     "",
-    "- 회사 정보와 숫자는 「02_팩트시트.md」를 먼저 보고, 원본 서류(대화에 함께 올린 다른 파일)로 확인해.",
+    blank
+      ? "- 회사 정보와 숫자는 올린 서류에서 직접 읽어. 만들기 전에 읽은 핵심 숫자(연도별 매출·영업이익·부가세 과세표준, 매출처·매입처 TOP3)를 표로 먼저 보여 주고 나에게 확인받아."
+      : "- 회사 정보와 숫자는 「02_팩트시트.md」를 먼저 보고, 원본 서류(대화에 함께 올린 다른 파일)로 확인해.",
     `- 만들 파일 3가지: ${outputs.join(" / ")}.`,
     `- 필요한 서류(${BIZPLAN_SLOTS.filter((x) => x.required).map((x) => x.label).join("·")})는 이 대화에 올린 파일 전부에서 찾아. 없는 서류는 목록으로 알려 줘.`,
-    "- 팩트시트 9번 「빠진 자료·정보」와 빌더 STEP 4 의 추가 인터뷰 질문은 만들기 전에 나에게 먼저 묻고 멈춰. 내가 답하거나 「이대로 진행」이라고 하면 이어서 만들어.",
+    (blank ? "- 빠진 서류·정보" : "- 팩트시트 9번 「빠진 자료·정보」") + "와 빌더 STEP 4 의 추가 인터뷰 질문은 만들기 전에 나에게 먼저 묻고 멈춰. 내가 답하거나 「이대로 진행」이라고 하면 이어서 만들어.",
   ];
   if (draft.focus.trim()) L.push(`- 이번 주안점: ${draft.focus.trim().replace(/\n+/g, " ")}`);
   L.push("- 끝나면 빌더 §12 형식으로 결과와 남은 질문을 알려 줘.");

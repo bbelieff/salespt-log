@@ -3,6 +3,7 @@ import {
   bizplanMissing,
   buildFactsheet,
   buildStartPrompt,
+  isBlankDraft,
   emptyBizplanDraft,
   growthLabel,
   normalizeBizplanDraft,
@@ -81,7 +82,16 @@ describe("bizplan-pack", () => {
     expect(p).toContain("사업자등록증·표준재무제표 (3개년)");
     expect(p).toContain("이번 주안점: 수출 실적 강조");
     const none = buildStartPrompt(emptyBizplanDraft(2026), { builder: null, clinic: null, interview: null });
-    expect(none).toContain("함께 올린 빌더 md 대로 [업체명]");
+    expect(none).toContain("함께 올린 빌더 md 대로 이 회사");
+    expect(none).toContain("올린 서류에서 직접 읽어");
+    expect(none).not.toContain("02_팩트시트");
+    expect(p).toContain("02_팩트시트.md");
+  });
+
+  it("팩트시트를 하나도 안 채웠는지 안다(연도 숫자는 빼고 본다)", () => {
+    expect(isBlankDraft(emptyBizplanDraft(2026))).toBe(true);
+    expect(isBlankDraft({ ...emptyBizplanDraft(2026), company: "가" })).toBe(false);
+    expect(isBlankDraft(filled())).toBe(false);
   });
 
   it("옛 저장본·이상한 값은 빈칸으로 맞춘다", () => {

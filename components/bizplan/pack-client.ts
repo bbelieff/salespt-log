@@ -7,6 +7,7 @@ import {
   bizplanMissing,
   buildChecklist,
   buildFactsheet,
+  isBlankDraft,
   buildStartPrompt,
   packFileStem,
   type BizplanDraft,
@@ -75,7 +76,8 @@ export async function buildPack(draft: BizplanDraft, files: SlotFiles, kit: KitI
   const raw: { name: string; data: Uint8Array }[] = [];
   raw.push({ name: START_FILE, data: enc.encode(startPromptFor(draft, kit)) });
   if (kit?.builder) raw.push({ name: `01_빌더_${kit.builder.name}`, data: await fetchKit("builder") });
-  raw.push({ name: "02_팩트시트.md", data: enc.encode(buildFactsheet(draft, refs, missing, stamp.label)) });
+  // 팩트시트를 안 채웠으면 넣지 않는다 — AI 가 서류에서 직접 읽고 숫자를 먼저 확인받는다.
+  if (!isBlankDraft(draft)) raw.push({ name: "02_팩트시트.md", data: enc.encode(buildFactsheet(draft, refs, missing, stamp.label)) });
   for (const s of BIZPLAN_SLOTS) {
     for (const f of files[s.key]) raw.push({ name: `03_원본_${s.folder}_${f.name}`, data: new Uint8Array(await f.arrayBuffer()) });
   }

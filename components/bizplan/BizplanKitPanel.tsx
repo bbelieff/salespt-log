@@ -39,26 +39,12 @@ const GUIDE: Record<Llm, Step[]> = {
   ],
 };
 
-function ModeCard({ n, title, desc, active, note }: { n: string; title: string; desc: string; active: boolean; note: string }) {
-  return (
-    <div
-      aria-current={active ? "true" : undefined}
-      className={`rounded-lg border px-3 py-2.5 ${active ? "border-blue-500 bg-blue-50 ring-1 ring-blue-500" : "border-slate-200 bg-slate-50 opacity-70"}`}
-    >
-      <p className="flex items-center gap-2 text-sm font-bold text-slate-900">
-        <span className={`grid h-5 w-5 place-items-center rounded-full text-xs ${active ? "bg-blue-700 text-white" : "bg-slate-300 text-slate-700"}`}>{n}</span>
-        {title}
-        <span className={`ml-auto text-xs font-semibold ${active ? "text-blue-700" : "text-slate-500"}`}>{note}</span>
-      </p>
-      <p className="mt-0.5 text-xs text-slate-600">{desc}</p>
-    </div>
-  );
-}
-
-export default function BizplanKitPanel({ kit, kitError, missing, fileCount, sizeText, overLimit, busy, onDownload, onCopy, onTemplate }: {
+export default function BizplanKitPanel({ kit, kitError, missing, showMissing, fileCount, sizeText, overLimit, busy, onDownload, onCopy, onTemplate }: {
   kit: KitInfo | null;
   kitError: string;
   missing: BizplanMissing[];
+  /** 팩트시트를 하나라도 채웠을 때만 빠진 것 목록을 보인다(안 채우면 AI 가 서류에서 직접 읽는다). */
+  showMissing: boolean;
   fileCount: number;
   sizeText: string;
   overLimit: boolean;
@@ -83,14 +69,14 @@ export default function BizplanKitPanel({ kit, kitError, missing, fileCount, siz
   return (
     <section aria-labelledby="bizplan-make-title" className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
       <div>
-        <h2 id="bizplan-make-title" className="text-base font-bold text-slate-900">3. 어떻게 만들까요?</h2>
-        <div className="mt-2 flex flex-col gap-2">
-          <ModeCard n="①" title="내 구독으로 만들기" desc="자료 꾸러미를 받아 내 클로드·ChatGPT 대화창에서 직접 만들어요." active note="추가 비용 0원" />
-          <ModeCard n="②" title="내 API 키로 자동 만들기" desc="키를 한 번 연결해 두면 경영일지가 끝까지 만들어요." active={false} note="준비 중" />
-          <ModeCard n="③" title="실비 결제로 만들기" desc="키 없이 만들고, 끝나면 쓴 만큼만 카드로 결제해요." active={false} note="준비 중" />
-        </div>
+        <h2 id="bizplan-make-title" className="text-base font-bold text-slate-900">사업계획서 만들기</h2>
+        <p className="mt-0.5 text-sm text-slate-600">
+          내 클로드·ChatGPT 구독으로 만들어요. <span className="whitespace-nowrap font-semibold text-blue-700">추가 비용 0원</span>
+        </p>
+        <p className="mt-0.5 text-xs text-slate-500">API 키로 자동 만들기 · 실비 결제로 만들기는 준비 중이에요.</p>
       </div>
 
+      {showMissing && (
       <div className={`rounded-lg px-3 py-2.5 text-sm ${must ? "bg-amber-50 text-amber-900" : missing.length ? "bg-slate-50 text-slate-700" : "bg-emerald-50 text-emerald-800"}`}>
         <p className="font-semibold">
           {missing.length === 0 ? "빠진 것 없이 준비됐어요" : `빠진 것 ${missing.length}개 (필수 ${must}개)`}
@@ -109,6 +95,7 @@ export default function BizplanKitPanel({ kit, kitError, missing, fileCount, siz
           </>
         )}
       </div>
+      )}
 
       <div className="flex flex-col gap-2">
         <button
@@ -121,7 +108,7 @@ export default function BizplanKitPanel({ kit, kitError, missing, fileCount, siz
           {busy ? "꾸러미 만드는 중…" : "자료 꾸러미 받기 (ZIP)"}
         </button>
         <p className={`text-center text-xs ${overLimit ? "font-semibold text-red-600" : "text-slate-500"}`}>
-          {overLimit ? `파일이 너무 커요 (${sizeText}) — 300MB 이하로 줄여 주세요.` : fileCount ? `여기 올린 서류 ${fileCount}개도 함께 담아요 · ${sizeText}` : "빌더·팩트시트·지시문을 담아요. 서류는 대화창에 직접 넣으면 돼요."}
+          {overLimit ? `파일이 너무 커요 (${sizeText}) — 300MB 이하로 줄여 주세요.` : fileCount ? `여기 올린 서류 ${fileCount}개도 함께 담아요 · ${sizeText}` : "빌더와 AI 지시문을 담아요. 서류는 대화창에 직접 넣으면 돼요."}
         </p>
       </div>
 
