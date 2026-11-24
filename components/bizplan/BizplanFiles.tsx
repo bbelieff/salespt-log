@@ -80,8 +80,9 @@ export default function BizplanFiles({ files, kit, onAdd, onRemove }: {
 }) {
   return (
     <section aria-labelledby="bizplan-files-title" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <h2 id="bizplan-files-title" className="text-base font-bold text-slate-900">1. 자료 올리기</h2>
-      <p className="mt-1 text-sm text-slate-600">올린 파일은 이 화면 안에서만 쓰고 경영일지 서버에 저장하지 않아요. 화면을 닫으면 다시 올려야 해요.</p>
+      <h2 id="bizplan-files-title" className="text-base font-bold text-slate-900">서류 올리기</h2>
+      <p className="mt-1 text-sm text-slate-600">안 올려도 돼요. 여기 올리면 숫자를 자동으로 읽어 팩트시트를 채워 드리고, 꾸러미에도 함께 담아 드려요.</p>
+      <p className="mt-0.5 text-xs text-slate-500">올린 파일은 이 화면 안에서만 쓰고 경영일지 서버에 저장하지 않아요.</p>
       <ul className="mt-3 flex flex-col gap-2">
         {BIZPLAN_SLOTS.map((s) => (
           <Slot key={s.key} slot={s} files={files[s.key]} onAdd={onAdd} onRemove={onRemove} />

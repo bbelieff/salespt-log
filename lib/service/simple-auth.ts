@@ -27,6 +27,7 @@ import { findUserByEmail } from "@/repo/users";
 import { executeDbSheet, loadDbSheet, resolveDbSheetContext } from "./db-sheet";
 import { reportSimpleAuthActive, simpleAuthDraining } from "@/repo/deploy-drain";
 import { PARSERS, asList, originalPdf, type DocParts } from "./simple-auth-parse";
+import { taxInvWorkbook, toInvoices, type TaxInvPage } from "./simple-auth-taxinv";
 import { baseYear, buildCalls, kstMidnight, kstToday, type Call, type Obj } from "./simple-auth-calls";
 import { digitsOnly, formatBizNo } from "@/lib/document-ocr/bizno";
 
@@ -81,10 +82,19 @@ async function keepOriginals(job: Job, doc: SimpleAuthDocKey, data: unknown) {
   }
 }
 
+/** 받은 세금계산서를 사업자별 엑셀(.xlsx)로 만들어 원문 자리에 봉인 저장(키 taxinv). */
+async function keepTaxInvoiceExcel(job: Job) {
+  const pages = (job.datas.get("taxinv") ?? []) as TaxInvPage[];
+  for (const biz of new Set(pages.filter((p) => !p.failed).map((p) => p.biz))) {
+    const xlsx = taxInvWorkbook(toInvoices(pages.filter((p) => !p.failed && p.biz === biz)));
+    await store.saveSimpleAuthOriginal(job.reqId, biz, "taxinv", xlsx).then(() => job.saved.add(`${biz}|taxinv`)).catch(() => undefined);
+  }
+}
+
 async function settle(job: Job, call: Call, r: CodefResult) {
   if (r.code === SUCCESS) {
     const list = job.datas.get(call.doc) ?? [];
-    list.push(r.data);
+    list.push(call.tag ? ({ ...call.tag, rows: r.data } satisfies TaxInvPage) : r.data);
     job.datas.set(call.doc, list);
     await keepOriginals(job, call.doc, r.data);
   } else {
@@ -92,6 +102,8 @@ async function settle(job: Job, call: Call, r: CodefResult) {
     console.log(JSON.stringify({ t: "simple_auth_fail", doc: call.doc, group: call.group, code: r.code }));
     const text = failText(r);
     if (!job.datas.get(call.doc)?.length && !job.errors.has(call.doc)) job.errors.set(call.doc, call.doc === "fs" && FS_NEEDS_BIZ.test(text) ? FS_MULTI_BIZ : text);
+    // 세금계산서는 3개월씩 8번 — 못 받은 기간도 세어 요약에 「빠진 기간」을 알린다.
+    if (call.tag) job.datas.set(call.doc, [...(job.datas.get(call.doc) ?? []), { ...call.tag, rows: [], failed: true } satisfies TaxInvPage]);
   }
   job.pending -= 1;
   const done = new Set([...job.datas.keys(), ...job.errors.keys()]).size;
@@ -226,6 +238,7 @@ async function finish(job: Job) {
   reportActive();
   // 인증서·비밀번호는 요청에만 — 끝나면 메모리에서도 지운다(다시 보내기는 간편인증만).
   if (job.input.mode === "cert") job.input = { ...job.input, certPfx: undefined, certDer: undefined, certKey: undefined, certPassword: "" };
+  await keepTaxInvoiceExcel(job);
   const businesses = assemble(job);
   if (!businesses.length) {
     const why = [...job.errors.values()][0] ?? "받은 서류가 없어요.";
@@ -457,13 +470,14 @@ async function applyBusiness(who: SimpleAuthWho, r: SimpleAuthRequest, bizNo: st
 }
 
 /** 원문 PDF(base64) — 사업자 몫이 없으면 개인 서류 몫(""). */
-export async function originalOf(who: SimpleAuthWho, id: string, bizNo: string, doc: string): Promise<{ pdf: Buffer; fileName: string }> {
+export async function originalOf(who: SimpleAuthWho, id: string, bizNo: string, doc: string): Promise<{ pdf: Buffer; fileName: string; type: string }> {
   const r = await own(who, id);
   const b = bizOf(r, bizNo);
   const pdf = (await store.readSimpleAuthOriginal(who.spreadsheetId, id, bizNo, doc)) ?? (await store.readSimpleAuthOriginal(who.spreadsheetId, id, "", doc));
   if (!pdf) throw new SimpleAuthError("원문이 없어요.", 404);
   const label = doc.startsWith("fs-") ? `${simpleAuthDocLabel("fs")} ${doc.slice(3)}` : simpleAuthDocLabel(doc as SimpleAuthDocKey);
-  return { pdf: Buffer.from(pdf, "base64"), fileName: `${b.name} ${label}.pdf` };
+  if (doc === "taxinv") return { pdf: Buffer.from(pdf, "base64"), fileName: `${b.name} 전자세금계산서 ${baseYear() - 1}년.xlsx`, type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" };
+  return { pdf: Buffer.from(pdf, "base64"), fileName: `${b.name} ${label}.pdf`, type: "application/pdf" };
 }
 
 /** 테스트 전용 — 진행 중 작업 비우기. */

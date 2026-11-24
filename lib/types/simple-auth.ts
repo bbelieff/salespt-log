@@ -5,8 +5,8 @@
  */
 import { z } from "zod";
 
-/** 받을 서류. biz 사업자등록증명 · vat 부가세 과세표준증명 · fs 표준재무제표증명 · tax 국세 납세증명 · localTax 지방세 납세증명 · ins 4대보험 가입자명부 · income 소득금액증명 · closed 폐업사실증명. */
-export const SimpleAuthDocKey = z.enum(["biz", "vat", "fs", "tax", "localTax", "ins", "income", "closed"]);
+/** 받을 서류. biz 사업자등록증명 · vat 부가세 과세표준증명 · fs 표준재무제표증명 · tax 국세 납세증명 · localTax 지방세 납세증명 · ins 4대보험 가입자명부 · income 소득금액증명 · closed 폐업사실증명 · taxinv 전년도 전자세금계산서(매출·매입, 품목 포함 엑셀). */
+export const SimpleAuthDocKey = z.enum(["biz", "vat", "fs", "tax", "localTax", "ins", "income", "closed", "taxinv"]);
 export type SimpleAuthDocKey = z.infer<typeof SimpleAuthDocKey>;
 
 /** 간편인증 앱. 공동인증서는 별도 수단. */
@@ -81,7 +81,7 @@ export const SimpleAuthStartSimple = z.object({
   phone,
   telecom: z.enum(["", "SKT", "KT", "LG U+", "알뜰폰 SKT", "알뜰폰 KT", "알뜰폰 LG U+"]).default(""),
   method: SimpleAuthMethod.exclude(["공동인증서"]),
-  docs: z.array(SimpleAuthDocKey.exclude(["ins"])).min(1),
+  docs: z.array(SimpleAuthDocKey.exclude(["ins", "taxinv"])).min(1),
   rrnBack: z.string().regex(/^\d{7}$/).optional(),
   address: SimpleAuthAddress.optional(),
   bizNos,

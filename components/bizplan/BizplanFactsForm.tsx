@@ -101,7 +101,7 @@ export default function BizplanFactsForm({ draft, onPatch }: { draft: BizplanDra
   const storyId = useId();
   return (
     <section aria-labelledby="bizplan-facts-title" className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <h2 id="bizplan-facts-title" className="text-base font-bold text-slate-900">2. 팩트시트 — 숫자 확인</h2>
+      <h2 id="bizplan-facts-title" className="text-base font-bold text-slate-900">팩트시트 — 숫자 확인</h2>
       <p className="mt-1 text-sm text-slate-600">위 「서류에서 숫자 읽기」로 채우거나 직접 적어 주세요. 모르는 칸은 비워 두면 AI 가 만들기 전에 물어봐요. 금액은 백만원 단위예요.</p>
 
       <div className="mt-4 grid grid-cols-1 gap-3 2xl:grid-cols-2">

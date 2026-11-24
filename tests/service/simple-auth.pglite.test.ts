@@ -54,6 +54,14 @@ vi.mock("@/repo/codef-client", () => ({
       if (!params.identity) return { code: "CF-13000", message: "사용자 주민번호/사업자 번호를 입력하지 않았습니다. 확인 후 거래하시기 바랍니다.", extraMessage: "", data: null };
       return ok({ resCompanyIdentityNo: params.identity, resCompanyNm: "가상", resAttrYear: params.startDate, resIssueDate: "20261109" });
     }
+    if (path.endsWith("integrated-check-list")) {
+      // 가상 세금계산서: 사업장마다 분기 1장. 매입 4분기는 거절해 「빠진 기간」을 본다(가상정밀만).
+      if (params.transeType === "02" && params.startDate === "20251001" && params.identity === "2148877123") return { code: "CF-12100", message: "실패", extraMessage: "가상 오류", data: null };
+      const sales = params.transeType === "01";
+      const partner = sales ? { resContractorRegNumber: "1018100001", resContractorCompanyName: "가상거래처" } : { resSupplierRegNumber: "2028200002", resSupplierCompanyName: "가상공급처" };
+      return ok([{ resApprovalNo: `${params.identity}-${params.transeType}-${params.startDate}`, resReportingDate: params.startDate, resSupplyValue: "1000000", resTaxAmt: "100000", resTotalAmount: "1100000", resETaxInvoiceType: "일반", resReceiptOrCharge: "청구", resRepItems: "가상부품 외 1건", ...partner,
+        resTradeItemList: [{ resTaxItemName: "가상부품", resStandards: "A형", resQuantity: "10", resUnitPrice: "60000", resSupplyValue: "600000", resTaxAmt: "60000" }, { resTaxItemName: "가상공임", resSupplyValue: "400000", resTaxAmt: "40000" }] }]);
+    }
     return { code: "CF-12100", message: "실패", extraMessage: "가상 오류", data: null };
   },
 }));
@@ -164,6 +172,36 @@ describe("간편인증 보내기 → 승인 확인 → 결과", () => {
     expect(ids.sort()).toEqual(["2141290311", "2141290311", "2141290311", "2148877123", "2148877123", "2148877123"]);
     const [done] = await listSimpleAuth(who);
     expect(done!.businesses.map((b) => b.results.find((r) => r.key === "fs")!.ok)).toEqual([true, true]);
+  });
+
+  it("공동인증서로 전년도 세금계산서(매출·매입 3개월씩, 사업장별)를 받아 품목 포함 엑셀 + TOP3 요약을 만든다", async () => {
+    const XLSX = await import("xlsx");
+    const req = await startSimpleAuth(who, { mode: "cert", owner: "김가상", phone: "", certPfx: "A".repeat(200), certPassword: "pw", docs: ["biz", "taxinv"] });
+    await wait(async () => (await listSimpleAuth(who))[0]!.status === "done");
+    const calls = h.calls.filter((c) => c.path.endsWith("integrated-check-list"));
+    // 사업장 2곳 × 매출·매입 × 4분기 = 16번, 기관코드 0002, 전년도(2025) 1~12월.
+    expect(calls).toHaveLength(16);
+    expect(calls[0]!.params).toMatchObject({ organization: "0002", loginType: "0", inquiryType: "01", startDate: "20250101", endDate: "20250331" });
+    expect(new Set(calls.map((c) => `${c.params.startDate}-${c.params.endDate}`))).toEqual(new Set(["20250101-20250331", "20250401-20250630", "20250701-20250930", "20251001-20251231"]));
+    const [done] = await listSimpleAuth(who);
+    const a = done!.businesses.find((b) => b.bizNo === "214-88-77123")!.results.find((r) => r.key === "taxinv")!;
+    expect(a).toMatchObject({ ok: true, hasOriginal: true });
+    expect(a.facts).toEqual([
+      "2025년 매출 4건 · 공급가액 4,000,000원", "매출처 TOP3 — 가상거래처 100%",
+      "2025년 매입 3건 · 공급가액 3,000,000원", "매입처 TOP3 — 가상공급처 100%",
+      "3개월 단위 8번 중 1번은 받지 못했어요 — 엑셀에서 빠진 기간이 있어요.",
+    ]);
+    const file = await originalOf(who, req.id, "214-88-77123", "taxinv");
+    expect(file.fileName).toBe("가상정밀 전자세금계산서 2025년.xlsx");
+    expect(file.type).toContain("spreadsheetml");
+    const wb = XLSX.read(file.pdf);
+    expect(wb.SheetNames).toEqual(["거래처 합계(TOP3)", "매출", "매입"]);
+    const sales = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets["매출"]!);
+    // 품목마다 한 줄(세금계산서 4장 × 품목 2개).
+    expect(sales).toHaveLength(8);
+    expect(sales[0]).toMatchObject({ 작성일자: "2025-01-01", "거래처 사업자번호": "101-81-00001", 품목: "가상부품", 규격: "A형", 수량: "10", 단가: 60000, "품목 공급가액": 600000 });
+    const top = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets["거래처 합계(TOP3)"]!, { header: 1 });
+    expect(top[2]).toEqual([1, "101-81-00001", "가상거래처", 4, 4000000, 100]);
   });
 
   it("서버가 재시작돼 작업이 사라져도 이미 받은 서류는 「받음」으로 남는다", async () => {

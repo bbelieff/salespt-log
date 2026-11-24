@@ -39,11 +39,13 @@ export const SIMPLE_AUTH_DOCS: readonly SimpleAuthDocDef[] = [
   // 폐업한 사업장만 나온다(계속사업장은 「신청가능한 계속사업장이 없습니다」 대신 이걸로). CODEF 간편인증 목록에 토스 없음.
   { key: "closed", label: "폐업사실증명", short: "폐업", note: "토스 제외", site: "홈택스" },
   { key: "localTax", label: "지방세 완납증명", short: "지방세", site: "정부24" },
+  // 전년도 1~12월 매출·매입 세금계산서(품목 포함) → 엑셀 + 거래처 TOP3(belie 2026-11-24, 사업계획서 도구용). 공동인증서만.
+  { key: "taxinv", label: "전자세금계산서 목록", short: "세금계산서", note: "전년도·품목", site: "홈택스", certOnly: true },
   { key: "ins", label: "4대보험 가입자명부", short: "4대보험", site: "4대사회보험 정보연계센터", certOnly: true },
 ];
 export const SIMPLE_AUTH_DEFAULT_DOCS: readonly SimpleAuthDocKey[] = ["biz", "vat", "fs"];
 /** 공동인증서 탭 기본 — 법인·개인 같은 6종(belie 2026-11-09). */
-export const SIMPLE_AUTH_CERT_DEFAULT_DOCS: readonly SimpleAuthDocKey[] = ["biz", "vat", "fs", "tax", "localTax", "ins"];
+export const SIMPLE_AUTH_CERT_DEFAULT_DOCS: readonly SimpleAuthDocKey[] = ["biz", "vat", "fs", "tax", "taxinv", "localTax", "ins"];
 
 export const simpleAuthDocLabel = (k: SimpleAuthDocKey) => SIMPLE_AUTH_DOCS.find((d) => d.key === k)?.label ?? k;
 export const simpleAuthDocShort = (k: SimpleAuthDocKey) => SIMPLE_AUTH_DOCS.find((d) => d.key === k)?.short ?? k;

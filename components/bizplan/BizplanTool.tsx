@@ -8,12 +8,13 @@
  * - PC 는 왼쪽 입력 · 오른쪽 「어떻게 만들까요?」(따라 내려옴), 좁은 화면은 위아래.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RotateCcw } from "lucide-react";
-import { bizplanMissing, emptyBizplanDraft, normalizeBizplanDraft, type BizplanDraft, type BizplanSlotKey } from "@/util/bizplan-pack";
+import { ChevronDown, RotateCcw } from "lucide-react";
+import { bizplanMissing, emptyBizplanDraft, isBlankDraft, normalizeBizplanDraft, type BizplanDraft, type BizplanSlotKey } from "@/util/bizplan-pack";
 import BizplanFiles from "./BizplanFiles";
 import BizplanFactsForm from "./BizplanFactsForm";
 import BizplanKitPanel from "./BizplanKitPanel";
 import BizplanOcr from "./BizplanOcr";
+import BizplanShowcase from "./BizplanShowcase";
 import { applySuggestions, type BizplanSuggestion } from "@/lib/document-ocr/bizplan-map";
 import {
   PACK_MAX_BYTES,
@@ -100,6 +101,10 @@ export default function BizplanTool() {
 
   const refs = useMemo(() => fileRefs(files), [files]);
   const missing = useMemo(() => bizplanMissing(draft, refs, !!kit?.builder), [draft, refs, kit]);
+  const blank = isBlankDraft(draft);
+  // 「더 정확하게 만들기」는 접어 둔다. 이미 채운 값·올린 서류가 있으면 펼친다.
+  const [more, setMore] = useState(false);
+  useEffect(() => { if (!blank || refs.length > 0) setMore(true); }, [blank, refs.length]);
   const bytes = totalBytes(files);
 
   async function download() {
@@ -108,7 +113,7 @@ export default function BizplanTool() {
     try {
       const pack = await buildPack(draft, files, kit);
       saveBytes(pack.name, pack.bytes);
-      setToast({ text: "꾸러미를 받았어요. 압축을 풀고 시작 프롬프트부터 붙여 넣으세요.", error: false });
+      setToast({ text: "꾸러미를 받았어요. 압축을 풀고 아래 순서대로 해 주세요.", error: false });
     } catch (e) {
       setToast({ text: e instanceof Error ? e.message : "꾸러미를 만들지 못했어요.", error: true });
     } finally {
@@ -119,9 +124,9 @@ export default function BizplanTool() {
   async function copyPrompt() {
     try {
       await navigator.clipboard.writeText(startPromptFor(draft, kit));
-      setToast({ text: "시작 프롬프트를 복사했어요.", error: false });
+      setToast({ text: "지시문을 복사했어요. 대화창에 붙여 넣어 보내세요.", error: false });
     } catch {
-      setToast({ text: "복사하지 못했어요. 꾸러미 안의 00_시작프롬프트.txt 를 열어 복사해 주세요.", error: true });
+      setToast({ text: "복사하지 못했어요. 꾸러미 안의 00_AI지시_먼저읽기.txt 를 열어 복사해 주세요.", error: true });
     }
   }
 
@@ -141,35 +146,48 @@ export default function BizplanTool() {
 
   return (
     <div className="pb-10">
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <p className="min-w-0 flex-1 text-sm text-slate-600">
-          고객사 자료를 올리고 숫자를 확인하면, 내 AI 대화창에서 사업계획서 PPT · 슬라이드별 설명 · 현장클리닉 보고서를 만들 자료 꾸러미를 드려요.
-        </p>
-        <button type="button" onClick={reset} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100">
-          <RotateCcw className="h-4 w-4" aria-hidden="true" />
-          새로 시작
-        </button>
-      </div>
-      <div className="flex flex-col gap-4 pc:flex-row pc:items-start">
-        <div className="flex min-w-0 flex-1 flex-col gap-4">
-          <BizplanFiles files={files} kit={kit} onAdd={addFiles} onRemove={removeFile} />
-          <BizplanOcr files={files} draft={draft} onApply={applyOcr} />
-          <BizplanFactsForm draft={draft} onPatch={patch} />
+      <div className="mx-auto flex max-w-3xl flex-col gap-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="min-w-0 flex-1 text-sm text-slate-600">
+            꾸러미를 받아 내 클로드·ChatGPT 대화창에 서류와 함께 넣고 「실행」만 보내면, 사업계획서 PPT · 슬라이드별 설명 · 현장클리닉 보고서가 나와요.
+          </p>
+          <button type="button" onClick={reset} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100">
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            새로 시작
+          </button>
         </div>
-        <div className="pc:sticky pc:top-4 pc:w-96 pc:shrink-0">
-          <BizplanKitPanel
-            kit={kit}
-            kitError={kitError}
-            missing={missing}
-            fileCount={refs.length}
-            sizeText={sizeLabel(bytes)}
-            overLimit={bytes > PACK_MAX_BYTES}
-            busy={busy}
-            onDownload={download}
-            onCopy={copyPrompt}
-            onTemplate={template}
-          />
-        </div>
+        <BizplanShowcase />
+        <BizplanKitPanel
+          kit={kit}
+          kitError={kitError}
+          missing={blank ? [] : missing}
+          showMissing={!blank}
+          fileCount={refs.length}
+          sizeText={sizeLabel(bytes)}
+          overLimit={bytes > PACK_MAX_BYTES}
+          busy={busy}
+          onDownload={download}
+          onCopy={copyPrompt}
+          onTemplate={template}
+        />
+        <details open={more} onToggle={(e) => setMore(e.currentTarget.open)} className="group rounded-xl border border-slate-200 bg-slate-50">
+          <summary className="flex cursor-pointer list-none items-center gap-3 rounded-xl px-4 py-3 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500">
+            <span className="min-w-0 flex-1">
+              <span className="block text-base font-bold text-slate-900">
+                더 정확하게 만들기 <span className="text-sm font-semibold text-slate-500">(선택)</span>
+              </span>
+              <span className="mt-0.5 block text-sm text-slate-600">
+                서류를 여기 올려 숫자를 미리 확인해 두면, AI 가 숫자를 잘못 읽을 일이 줄어요. 안 해도 만들 수 있어요.
+              </span>
+            </span>
+            <ChevronDown className="h-5 w-5 shrink-0 text-slate-500 transition-transform group-open:rotate-180" aria-hidden="true" />
+          </summary>
+          <div className="flex flex-col gap-4 px-3 pb-3">
+            <BizplanFiles files={files} kit={kit} onAdd={addFiles} onRemove={removeFile} />
+            <BizplanOcr files={files} draft={draft} onApply={applyOcr} />
+            <BizplanFactsForm draft={draft} onPatch={patch} />
+          </div>
+        </details>
       </div>
       {toast && (
         <div role={toast.error ? "alert" : "status"} className="fixed inset-x-4 bottom-6 z-50 mx-auto max-w-md">
