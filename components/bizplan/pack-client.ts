@@ -7,6 +7,7 @@ import {
   bizplanMissing,
   buildChecklist,
   buildFactsheet,
+  isBlankDraft,
   buildStartPrompt,
   packFileStem,
   type BizplanDraft,
@@ -63,21 +64,25 @@ export function startPromptFor(draft: BizplanDraft, kit: KitInfo | null): string
   });
 }
 
-/** ZIP 바이트와 파일 이름. */
+/** 꾸러미 맨 앞 파일 — AI 가 「실행」 한 마디로 시작하게 하는 지시문. */
+export const START_FILE = "00_AI지시_먼저읽기.txt";
+
+/** ZIP 바이트와 파일 이름. 하위 폴더 없이 한 폴더에 모두 둔다 — 폴더를 열어 전부 골라 대화창에 끌어다 놓으면 끝. */
 export async function buildPack(draft: BizplanDraft, files: SlotFiles, kit: KitInfo | null): Promise<{ name: string; bytes: Uint8Array }> {
   const enc = new TextEncoder();
   const stamp = todayStamp();
   const refs = fileRefs(files);
   const missing = bizplanMissing(draft, refs, !!kit?.builder);
   const raw: { name: string; data: Uint8Array }[] = [];
-  raw.push({ name: "00_시작프롬프트.txt", data: enc.encode(startPromptFor(draft, kit)) });
+  raw.push({ name: START_FILE, data: enc.encode(startPromptFor(draft, kit)) });
   if (kit?.builder) raw.push({ name: `01_빌더_${kit.builder.name}`, data: await fetchKit("builder") });
-  raw.push({ name: "02_팩트시트.md", data: enc.encode(buildFactsheet(draft, refs, missing, stamp.label)) });
+  // 팩트시트를 안 채웠으면 넣지 않는다 — AI 가 서류에서 직접 읽고 숫자를 먼저 확인받는다.
+  if (!isBlankDraft(draft)) raw.push({ name: "02_팩트시트.md", data: enc.encode(buildFactsheet(draft, refs, missing, stamp.label)) });
   for (const s of BIZPLAN_SLOTS) {
-    for (const f of files[s.key]) raw.push({ name: `03_원본자료/${s.folder}/${f.name}`, data: new Uint8Array(await f.arrayBuffer()) });
+    for (const f of files[s.key]) raw.push({ name: `03_원본_${s.folder}_${f.name}`, data: new Uint8Array(await f.arrayBuffer()) });
   }
   raw.push({ name: "04_산출물체크리스트.md", data: enc.encode(buildChecklist(draft)) });
-  if (kit?.clinic) raw.push({ name: `05_양식/${kit.clinic.name}`, data: await fetchKit("clinic") });
+  if (kit?.clinic) raw.push({ name: `05_양식_${kit.clinic.name}`, data: await fetchKit("clinic") });
   const names = uniqueZipNames(raw.map((r) => r.name));
   const entries: ZipEntry[] = raw.map((r, i) => ({ name: names[i]!, data: r.data }));
   return { name: `사업계획서꾸러미_${packFileStem(draft.company)}_${stamp.compact}.zip`, bytes: buildStoredZip(entries) };

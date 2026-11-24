@@ -54,6 +54,16 @@ export type BizplanDraft = {
   focus: string;
 };
 
+/** 팩트시트를 하나도 안 채웠는가 — 그러면 꾸러미에 팩트시트를 넣지 않고 AI 가 서류에서 직접 읽는다. */
+export function isBlankDraft(d: BizplanDraft): boolean {
+  const vals = [
+    d.company, d.ceo, d.bizNo, d.industry, d.founded, d.address, d.employees, d.story, d.fundAgency, d.fundAmount, d.fundUse, d.focus,
+    ...d.years.flatMap(({ year: _y, ...v }) => Object.values(v)),
+    ...[...d.sales, ...d.purchases].flatMap((p) => [p.name, p.item, p.amount]),
+  ];
+  return vals.every((v) => !String(v ?? "").trim());
+}
+
 /** 올린 파일 목록(이름·칸) — 팩트시트 「올린 자료」와 빠진 칸 판단에 쓴다. */
 export type BizplanFileRef = { slot: BizplanSlotKey; name: string };
 
@@ -125,11 +135,10 @@ export function growthLabel(prev: string, cur: string): string {
 export type BizplanMissing = { level: "필수" | "권장"; text: string };
 
 /** 만들기 전에 채우거나 AI 가 먼저 물어봐야 할 것. 필수 = 빠지면 결과가 비는 것. */
-export function bizplanMissing(draft: BizplanDraft, files: BizplanFileRef[], hasBuilder: boolean): BizplanMissing[] {
+export function bizplanMissing(draft: BizplanDraft, _files: BizplanFileRef[], hasBuilder: boolean): BizplanMissing[] {
   const out: BizplanMissing[] = [];
-  const has = (slot: BizplanSlotKey) => files.some((f) => f.slot === slot);
   if (!hasBuilder) out.push({ level: "필수", text: "공식 빌더가 아직 준비되지 않았어요 — 내 빌더 파일을 직접 함께 올려 주세요." });
-  for (const s of BIZPLAN_SLOTS) if (s.required && !has(s.key)) out.push({ level: "필수", text: `${s.label} 파일이 없어요.` });
+  // 서류는 여기 안 올리고 대화창에 직접 넣어도 된다(① 내 구독) — 서류가 있는지는 AI 가 대화에 올린 파일로 확인한다.
   if (!draft.company.trim()) out.push({ level: "필수", text: "업체명이 비어 있어요." });
   for (const y of draft.years) {
     if (!y.매출액.trim()) out.push({ level: "필수", text: `${y.year}년 매출액이 비어 있어요.` });
@@ -151,7 +160,7 @@ export function buildFactsheet(draft: BizplanDraft, files: BizplanFileRef[], mis
   const L: string[] = [];
   L.push(`# 팩트시트 — ${cell(draft.company)}`, "");
   L.push(`> 경영일지 사업계획서 작성도구가 ${madeAt} 에 만든 자료입니다. 숫자는 사용자가 확인해 적은 값입니다.`);
-  L.push("> 원본 서류(03_원본자료)와 다르면 원본을 따르고, 다른 곳을 사용자에게 알려 주세요. (빈칸) 은 아직 모르는 값입니다.", "");
+  L.push("> 원본 서류(대화에 함께 올린 서류 파일)와 다르면 원본을 따르고, 다른 곳을 사용자에게 알려 주세요. (빈칸) 은 아직 모르는 값입니다.", "");
   L.push("## 1. 회사", "", "| 항목 | 값 |", "|---|---|");
   const rows: [string, string][] = [
     ["업체명", draft.company], ["대표자", draft.ceo], ["사업자등록번호", draft.bizNo], ["업태·종목", draft.industry],
@@ -194,9 +203,10 @@ export function buildFactsheet(draft: BizplanDraft, files: BizplanFileRef[], mis
 
 export type BizplanKitNames = { builder: string | null; clinic: string | null; interview: string | null };
 
-/** 00_시작프롬프트.txt — AI 대화창 첫 메시지로 붙여 넣는다. */
+/** 00_AI지시_먼저읽기.txt — 꾸러미 파일을 모두 올리고 「실행」만 보내면 AI 가 이 지시대로 시작한다(붙여 넣어도 된다). */
 export function buildStartPrompt(draft: BizplanDraft, kit: BizplanKitNames): string {
-  const company = draft.company.trim() || "[업체명]";
+  const blank = isBlankDraft(draft);
+  const company = draft.company.trim() || (blank ? "이 회사" : "[업체명]");
   const builder = kit.builder ? `「${kit.builder}」` : "함께 올린 빌더 md";
   const outputs = [
     "① 사업계획서 PPT(.pptx)",
@@ -206,11 +216,16 @@ export function buildStartPrompt(draft: BizplanDraft, kit: BizplanKitNames): str
       : "③ 현장클리닉 보고서 워드(.docx) — 진단·문제점·개선과제·개선방안·사후관리 순서",
   ];
   const L = [
+    "[AI 에게] 이 파일과 함께 올린 파일들로 사업계획서를 만든다. 사용자가 「실행」이라고만 보내도 아래 지시대로 바로 시작해.",
+    "",
     `첨부한 ${builder} 대로 ${company} 사업계획서를 만들어줘.${draft.story ? ` 상황: ${draft.story}` : ""}`,
     "",
-    "- 회사 정보와 숫자는 「02_팩트시트.md」를 먼저 보고, 원본 서류(03_원본자료 폴더의 파일)로 확인해.",
+    blank
+      ? "- 회사 정보와 숫자는 올린 서류에서 직접 읽어. 만들기 전에 읽은 핵심 숫자(연도별 매출·영업이익·부가세 과세표준, 매출처·매입처 TOP3)를 표로 먼저 보여 주고 나에게 확인받아."
+      : "- 회사 정보와 숫자는 「02_팩트시트.md」를 먼저 보고, 원본 서류(대화에 함께 올린 다른 파일)로 확인해.",
     `- 만들 파일 3가지: ${outputs.join(" / ")}.`,
-    "- 팩트시트 9번 「빠진 자료·정보」와 빌더 STEP 4 의 추가 인터뷰 질문은 만들기 전에 나에게 먼저 묻고 멈춰. 내가 답하거나 「이대로 진행」이라고 하면 이어서 만들어.",
+    `- 필요한 서류(${BIZPLAN_SLOTS.filter((x) => x.required).map((x) => x.label).join("·")})는 이 대화에 올린 파일 전부에서 찾아. 없는 서류는 목록으로 알려 줘.`,
+    (blank ? "- 빠진 서류·정보" : "- 팩트시트 9번 「빠진 자료·정보」") + "와 빌더 STEP 4 의 추가 인터뷰 질문은 만들기 전에 나에게 먼저 묻고 멈춰. 내가 답하거나 「이대로 진행」이라고 하면 이어서 만들어.",
   ];
   if (draft.focus.trim()) L.push(`- 이번 주안점: ${draft.focus.trim().replace(/\n+/g, " ")}`);
   L.push("- 끝나면 빌더 §12 형식으로 결과와 남은 질문을 알려 줘.");
