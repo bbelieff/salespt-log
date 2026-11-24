@@ -88,7 +88,21 @@ export function partners(invoices: readonly Invoice[], transe: Transe): Partner[
   return all;
 }
 
-/** 화면 요약 줄 — 매출·매입 건수와 합계, TOP3 거래처. */
+/** 품목별 공급가액 합계(큰 순). 품목 줄이 없는 세금계산서는 대표품목(「○○ 외 N건」의 ○○)에 그 장의 공급가액을 붙인다. */
+export function topItems(invoices: readonly Invoice[], transe: Transe): { name: string; supply: number; share: number }[] {
+  const map = new Map<string, number>();
+  const add = (raw: string, v: number) => { const name = raw.replace(/\s+외\s*\d+\s*건\s*$/, "").replace(/\s+/g, " ").trim(); if (name) map.set(name, (map.get(name) ?? 0) + v); };
+  for (const v of invoices.filter((x) => x.transe === transe)) {
+    if (v.items.some((i) => i.name)) for (const i of v.items) add(i.name, i.supply);
+    else add(v.repItem, v.supply);
+  }
+  const all = [...map.entries()].map(([name, supply]) => ({ name, supply, share: 0 })).sort((a, b) => b.supply - a.supply);
+  const sum = all.reduce((t, x) => t + Math.max(x.supply, 0), 0);
+  for (const x of all) x.share = sum ? Math.round((x.supply / sum) * 1000) / 10 : 0;
+  return all;
+}
+
+/** 화면 요약 줄 — 매출·매입 건수와 합계, TOP3 거래처, 주요 품목 TOP3(belie 2026-11-25). */
 export function taxInvFacts(invoices: readonly Invoice[], year: number): string[] {
   const facts: string[] = [];
   for (const t of ["매출", "매입"] as const) {
@@ -97,6 +111,8 @@ export function taxInvFacts(invoices: readonly Invoice[], year: number): string[
     facts.push(`${year}년 ${t} ${rows.length}건 · 공급가액 ${groupThousands(sum)}원`);
     const top = partners(invoices, t).slice(0, 3);
     if (top.length) facts.push(`${t}처 TOP3 — ${top.map((p) => `${p.name || p.no} ${p.share}%`).join(" · ")}`);
+    const items = topItems(invoices, t).slice(0, 3);
+    if (items.length) facts.push(`${t} 주요 품목 — ${items.map((x) => `${x.name} ${x.share}%`).join(" · ")}`);
   }
   return facts;
 }

@@ -43,12 +43,16 @@ describe("표준재무제표증명", () => {
   it("해마다 매출을 매출 칸에, 가장 최근 해의 손익·재무를 재무 칸에(손실 과목은 음수)", () => {
     const year = (y: string, sales: string, op: { t: string; v: string }) => ({
       resCompanyIdentityNo: "2148877123", resAttrYear: y,
-      resIncomeStatement: [{ _title: "Ⅰ.매출액", _amt: sales }, { _title: op.t, _amt: op.v }, { _title: "이자비용", _amt: "1000000" }],
-      resBalanceSheet: [{ _title: "자산총계", _amt: "2050000000" }],
+      resIncomeStatement: [{ _title: "Ⅰ.매출액", _amt: sales }, { _title: op.t, _amt: op.v }, { _title: "이자비용", _amt: "1000000" }, { _title: "Ⅹ.당기순손실", _amt: "7000000" }],
+      resBalanceSheet: [{ _title: "자산총계", _amt: "2050000000" }, { _title: "부채총계", _amt: "1200000000" }, { _title: "자본총계", _amt: "850000000" }],
     });
     const parts = parseFs([year("2025", "1301000000", { t: "Ⅴ.영업손실", v: "5000000" }), year("2024", "1020000000", { t: "영업이익", v: "80000000" })], 2026);
     const p = parts.get("214-88-77123")!;
-    expect(p.facts).toEqual(["2025년 매출액 1,301,000,000원 · 영업이익 -5,000,000원", "2024년 매출액 1,020,000,000원 · 영업이익 80,000,000원"]);
+    // 요약은 자본 · 매출 · 부채합계 · 당기순이익 순(belie 2026-11-25).
+    expect(p.facts).toEqual([
+      "2025년 자본 850,000,000원 · 매출 1,301,000,000원 · 부채합계 1,200,000,000원 · 당기순이익 -7,000,000원",
+      "2024년 자본 850,000,000원 · 매출 1,020,000,000원 · 부채합계 1,200,000,000원 · 당기순이익 -7,000,000원",
+    ]);
     expect(Object.fromEntries(p.fields.map((f) => [f.key, f.value]))).toMatchObject({ 과년도매출: "1,301", 과년도매출Y2: "1,020", 결산연도: "2025", 영업이익: "-5", 이자비용: "1", 자산총계: "2,050" });
   });
 });
