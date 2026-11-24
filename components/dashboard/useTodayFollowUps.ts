@@ -32,11 +32,13 @@ export function useTodayFollowUps(todayISO: string, opts: { enabled?: boolean; b
   const loading = contracts.isPending || todos.isPending || meetings.isPending || leads.isPending;
   const anyFailure = workFailed || meetings.isError || dbFailed;
   const allFailed = workFailed && meetings.isError && (dbFailed || dbHidden);
+  // 계약·할 일·미팅·DB 기록이 하나도 없는 계정(새 수강생) — 할 일 구역이 「모두 끝냄」 대신 DB 등록 안내를 보인다.
+  const hasRecords = Boolean(contracts.data?.rows.length || todos.data?.todos.length || meetings.data?.meetings.length || leads.data?.leads.length);
   const retry = () => {
     if (contracts.isError) void contracts.refetch();
     if (todos.isError) void todos.refetch();
     if (meetings.isError) void meetings.refetch();
     if (dbFailed) void leads.refetch();
   };
-  return { summary, loading, anyFailure, allFailed, retry };
+  return { summary, loading, anyFailure, allFailed, hasRecords, retry };
 }

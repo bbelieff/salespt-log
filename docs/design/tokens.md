@@ -487,7 +487,9 @@ transition: transform 0.2s;  /* hover/tap 효과 */
 - 보기 옵션40: centered/viewport 여백12/radius16/내용 높이·최대100dvh-24, body만 overflow auto. close/reset 버튼44, 정렬/표와 보기 항목2열. 유입일·상태 anchored110, 보기 옵션100, 기존 중첩 portal120. 선택/초점/disabled 규칙 유지. C에서 정상 유입 두 상태만 아이콘 표시하며 투영 오류는 기존 sheet-error의 명시 alert/write0로 구분한다(새 토큰·레이아웃 변경 없음).
 
 ### 대시보드 후속 업무 압축 규격 (2026-10-13)
-- 기존 slate 카드(테두리 slate-200, radius16, padding12), 장기누락 rose-700·경과 amber-800·오늘 blue-700 색을 재사용한다.
+- 기존 slate 카드(테두리 slate-200, radius16, padding12), 7일 넘게 밀림(옛 「장기누락」) rose-700·밀림(옛 「경과」) amber-800·오늘 blue-700 색을 재사용한다.
+- **할 일 구역(2026-11-24)**: 비율 막대·칩 점 = rose-600 / amber-500 / blue-500(`--ui-accent-bright`) / 오늘 처리 emerald-600 / 날짜 확인 `--ui-border-strong`. 건수 26px/800, 줄 13px, 보조 11px(폰 12px 하한). 줄 격자 `minmax(3.5rem,max-content) minmax(0,1fr) auto`.
+- **움직임(2026-11-24)**: 이어지는 전환 240ms(빠지는 줄 120ms)·칩 표시 220ms, 모두 `cubic-bezier(0.2, 0.8, 0.2, 1)`(fx-* 와 같은 감속 곡선), 튕김 없음. `prefers-reduced-motion: reduce` 면 전환을 시작하지 않고 표시는 즉시 옮긴다. View Transitions 미지원 브라우저는 즉시 전환. 이름·길이는 `html.tz-vt` 아래에만 걸어 다른 화면에 영향이 없다.
 - STEP 요약: PC 숫자 버튼 높이28, 모바일44; 행간 padding5. 상세 popover 폭440 이하·화면여백12·최대높이520, 작은 화면은 100dvh-24. 숫자 앵커와 간격8.
 - 상세 본문: 업체명15/700, 행동13/600, 설명11. 관련정보2열, 항목gap8×12, 정보영역padding10. 상세CTA PC36/모바일44. 그림자 #0f172a26은 떠 있는 목록에만 적용한다.
 - 주간목표: PT과제 한줄 padding6×8·글씨11, 목표간 화살표 slate-400. 원 지름은 기존 모바일48/PC64를 그대로 사용한다.

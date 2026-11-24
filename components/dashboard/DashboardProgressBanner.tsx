@@ -11,8 +11,8 @@ import CountUp from "@/components/motion/CountUp";
  *   1. 매출/비용 박스 분리 — 본문 상단 "재무 한 세트"로 이동
  *   2. D-day 통합 — TopHeader 슬림바에서 빠지고 우측에 배치
  *   3. (화면 마감 v2, 2026-11-10) 페이지 맨 위 .surface-hero 띠 안에 재무 3종과 함께 놓인다 — 자체 바탕·선 없음.
- *   4. (A안, 2026-11-13) PC 는 같은 줄 오른쪽에 기간 칩이 붙는다 — 자리를 내려고 PC 에서만 「M/D 시작」·「종강총회」 글을 숨긴다
- *      (D-day 배지는 그대로). 폰 세 줄은 그대로.
+ *   4. (A안, 2026-11-13) PC 는 같은 줄 오른쪽에 기간 칩이 붙는다.
+ *   5. (할 일 구역 개편, 2026-11-24) 폰도 한 줄 — 주차·진행률·진행바·D-day. 「M/D 시작」·「종강총회」 글과 폰의 오늘 날짜는 뺐다.
  *
  * SSOT: docs/design/components.md §9-1
  */
@@ -24,9 +24,11 @@ interface Props {
   graduated?: boolean;
   /** 수료 다음 날부터 1, 2, … 주 (수료 전 0) — D2 「수료 후 N주」. */
   weeksAfterGraduation?: number;
-  startDate: string;
+  /** 2026-11-24 부터 그리지 않는다(한 줄 압축) — 호출부 호환용. */
+  startDate?: string;
   progressPercent: number;
-  graduationDate: string;
+  /** 2026-11-24 부터 그리지 않는다 — D-day 배지가 대신한다. */
+  graduationDate?: string;
   graduationISO?: string;
 }
 
@@ -37,9 +39,7 @@ export default function DashboardProgressBanner({
   hasDates = true,
   graduated = false,
   weeksAfterGraduation = 0,
-  startDate,
   progressPercent,
-  graduationDate,
   graduationISO,
 }: Props) {
   const pct = Math.max(0, Math.min(100, progressPercent));
@@ -60,33 +60,30 @@ export default function DashboardProgressBanner({
 
   return (
     <div>
-      {/* PC(1024+)는 한 줄: 날짜·주차 | 진행바 | 진행률 | D-day (belie 2026-10-24 「풀사이즈면 한 줄」, A안 2026-11-13 시작·종강총회 글은 PC 에서 뺌 — 오른쪽에 기간 칩).
-          좁은 화면은 지금처럼 세 줄 — 묶음 div 를 pc:contents 로 풀고 order 로 순서만 바꾼다. */}
-      <div className="px-3 pb-2.5 pt-3 pc:flex pc:items-center pc:gap-4 pc:py-2.5">
-        {/* 상단 라벨 — 현재 날짜·주차 + D-day (요청 [6] — D-day 진행표 우측) */}
-        <div className={`${graduated ? "" : "mb-3 "}flex items-center justify-between gap-2.5 pc:contents`}>
-          <div className="flex min-w-0 flex-wrap items-baseline gap-x-2.5 gap-y-1 pc:order-1 pc:shrink-0 pc:flex-nowrap pc:whitespace-nowrap">
-            <span
-              className="text-sm font-extrabold text-slate-900 sm:text-base"
-              style={{ fontVariantNumeric: "tabular-nums" }}
-            >
-              현재 {today} ({weekday})
+      {/* 어느 폭이든 한 줄(2026-11-24 할 일 구역 개편 — 폰도 「주차·진행률·진행바·D-day」 한 줄로 압축해 바로 아래 「오늘 챙길 일」이 첫 화면에 들어온다).
+          PC(1024+)는 날짜·주차 | 진행바 | 진행률 | D-day (belie 2026-10-24, A안 2026-11-13 — 오른쪽에 기간 칩),
+          폰은 날짜를 빼고 주차 | 진행률 | 진행바 | D-day. 시작일·종강총회 글은 어느 폭에서도 그리지 않는다(D-day 배지가 종강을 알린다). */}
+      <div className="flex items-center gap-2.5 px-3 py-2.5 pc:gap-4">
+        <div className="order-1 flex shrink-0 items-baseline gap-x-2.5 whitespace-nowrap">
+          <span
+            className="hidden text-base font-extrabold text-slate-900 pc:inline"
+            style={{ fontVariantNumeric: "tabular-nums" }}
+          >
+            현재 {today} ({weekday})
+          </span>
+          {graduated ? (
+            <span className="text-sm font-extrabold text-emerald-600">🎓 수료{weeksAfterGraduation > 0 ? ` 후 ${weeksAfterGraduation}주` : ""}</span>
+          ) : (
+            <span className="text-sm font-extrabold text-blue-600">
+              {currentWeek}주차 진행중
             </span>
-            {graduated ? (
-              <span className="text-sm font-extrabold text-emerald-600">🎓 수료{weeksAfterGraduation > 0 ? ` 후 ${weeksAfterGraduation}주` : ""}</span>
-            ) : (
-              <span className="text-sm font-extrabold text-blue-600">
-                {currentWeek}주차 진행중
-              </span>
-            )}
-          </div>
-          <div className={`shrink-0 pc:order-6${graduated ? " pc:ml-auto" : ""}`}><DDayBadge graduationISO={graduationISO} /></div>
+          )}
         </div>
 
-        {/* 수료하면 진행바·시작·진행률·종강총회는 뺀다 — 날짜·「수료 후 N주」·배지만(belie 2026-11-08) */}
+        {/* 수료하면 진행바·진행률은 뺀다 — 「수료 후 N주」·배지만(belie 2026-11-08) */}
         {!graduated && <>
         {/* 진행바 + amber 5겹 끝점 */}
-        <div className="relative mb-3 h-1.5 rounded-full bg-slate-200/70 pc:order-3 pc:mb-0 pc:min-w-0 pc:flex-1">
+        <div className="relative order-3 h-1.5 min-w-0 flex-1 rounded-full bg-slate-200/70">
           <div
             className={`bar-brand absolute left-0 top-0 h-full rounded-full ${play ? "fx-grow-x" : ""}`}
             style={{ width: `${pct}%` }}
@@ -113,18 +110,15 @@ export default function DashboardProgressBanner({
           </svg>
         </div>
 
-        {/* 시작 · 진행률 · 종강총회 — 3-라벨 justify-between */}
-        <div className="flex items-center justify-between text-xs pc:contents">
-          <span className="text-slate-400 pc:hidden">{startDate} 시작</span>
-          <span
-            className="font-bold text-red-700 pc:order-4 pc:shrink-0 pc:whitespace-nowrap pc:text-xs"
-            style={{ fontVariantNumeric: "tabular-nums" }}
-          >
-            <CountUp value={Math.round(pct)} play={play} format={(n) => `${n}%`} /> 진행
-          </span>
-          <span className="text-slate-500 pc:hidden">🎓 {graduationDate} 종강총회</span>
-        </div>
+        <span
+          className="order-2 shrink-0 whitespace-nowrap text-xs font-bold text-red-700 pc:order-4"
+          style={{ fontVariantNumeric: "tabular-nums" }}
+        >
+          <CountUp value={Math.round(pct)} play={play} format={(n) => `${n}%`} /> 진행
+        </span>
         </>}
+
+        <div className={`order-6 shrink-0${graduated ? " ml-auto" : ""}`}><DDayBadge graduationISO={graduationISO} /></div>
       </div>
     </div>
   );

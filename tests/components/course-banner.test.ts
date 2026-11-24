@@ -61,14 +61,18 @@ describe("DashboardProgressBanner — 수료 후 N주 표시", () => {
   it("수료 뒤에는 '수료 후 N주'", () => {
     const html = renderToStaticMarkup(React.createElement(DashboardProgressBanner, { ...base, graduated: true, weeksAfterGraduation: 2 }));
     expect(html).toContain("수료 후 2주");
-    // 수료하면 진행바·시작·진행률·종강총회 줄은 뺀다(belie 2026-11-08)
-    for (const gone of ["8/7 시작", "진행</span>", "종강총회", "h-1.5 rounded-full bg-slate-100"]) expect(html).not.toContain(gone);
+    // 수료하면 진행바·진행률은 뺀다(belie 2026-11-08)
+    for (const gone of ["8/7 시작", "진행</span>", "종강총회", "h-1.5", "bar-brand"]) expect(html).not.toContain(gone);
   });
   it("수료 전에는 'N주차 진행중'", () => {
     const html = renderToStaticMarkup(React.createElement(DashboardProgressBanner, { ...base, graduated: false, weeksAfterGraduation: 0 }));
     expect(html).toContain("12주차 진행중");
     expect(html).not.toContain("수료 후");
-    expect(html).toContain("8/7 시작");
-    expect(html).toContain("10/25 종강총회");
+    expect(html).toContain("bar-brand");
+    expect(html).toContain("진행</span>");
+    // 2026-11-24 한 줄 압축: 시작일·종강총회 글은 어느 폭에서도 그리지 않고(D-day 배지가 대신), 오늘 날짜는 PC 에서만.
+    expect(html).not.toContain("8/7 시작");
+    expect(html).not.toContain("종강총회");
+    expect(html).toMatch(/class="hidden [^"]*pc:inline"[^>]*>현재 10\/30/);
   });
 });

@@ -196,27 +196,36 @@ describe("A안 대시보드 배치(소스)", () => {
   const css = readFileSync("components/dashboard/dashboard-action-overview.css", "utf8");
   const banner = readFileSync("components/dashboard/DashboardProgressBanner.tsx", "utf8");
 
-  it("진행 줄과 기간 칩이 같은 윗줄 — 진행 왼쪽, 칩 오른쪽(PC), 폰은 선 아래 칩", () => {
-    const top = page.slice(page.indexOf('data-testid="dashboard-hero-top"'), page.indexOf("<DashboardFinance"));
+  it("진행 줄과 기간 칩이 같은 윗줄 — 진행 왼쪽, 칩 오른쪽(PC). 폰은 칩이 매출·비용 띠의 머리(2026-11-24)", () => {
+    const top = page.slice(page.indexOf('data-testid="dashboard-hero"'), page.indexOf("<DashboardFinance"));
     expect(top.indexOf("<DashboardProgressBanner")).toBeGreaterThan(0);
     expect(top.indexOf("<PeriodPicker")).toBeGreaterThan(top.indexOf("<DashboardProgressBanner"));
-    expect(page).toContain('className="pc:flex pc:flex-wrap pc:items-center" data-testid="dashboard-hero-top"');
-    expect(top).toMatch(/data-testid="dashboard-period-chips"[\s\S]*border-t[\s\S]*pc:ml-auto[\s\S]*pc:border-t-0/);
+    // PC 윗줄 배치는 CSS(.dash-hero flex-wrap · 진행 flex 1 1 24rem)가 맡고, 칩은 오른쪽 끝으로 민다.
+    expect(css).toContain(".dash-hero { display: flex; flex-wrap: wrap; align-items: center; }");
+    expect(css).toContain(".dash-hero > .dash-hero-progress { flex: 1 1 24rem;");
+    expect(top).toMatch(/data-testid="dashboard-period-chips"[\s\S]*pc:ml-auto[\s\S]*pc:justify-end/);
+    // 칩과 재무는 폰에서 한 띠(dash-hero-money) 안에 있다.
+    expect(top.indexOf("dash-hero-money")).toBeLessThan(top.indexOf('data-testid="dashboard-period-chips"'));
     // 칩 상태는 페이지가 갖고 재무는 그 기간으로만 계산(칩 한 벌).
     expect(page).toContain("periodState={financePeriod}");
     expect(page.match(/<PeriodPicker/g)).toHaveLength(1);
     expect(page).toContain("work={work}");
   });
 
-  it("아래 진행건 판은 PC 에서만 숨기고 폰 순서는 그대로", () => {
+  it("아래 진행건 판은 PC 에서만 숨기고 폰은 주간 목표 다음 자리 그대로", () => {
     expect(css).toMatch(/@media \(min-width: 1024px\) \{\s*\.dashboard-work-status-slot \{ display: none; \}/);
-    const mobile = css.slice(css.indexOf("@media (max-width: 1023.98px)"));
-    expect(mobile).toContain(".dashboard-work-status-slot { order: 4; }");
+    const overview = readFileSync("components/dashboard/DashboardActionOverview.tsx", "utf8");
+    expect(overview.indexOf("dashboard-action-goals")).toBeLessThan(overview.indexOf("dashboard-work-status-slot"));
+    expect(overview.indexOf("dashboard-work-status-slot")).toBeLessThan(overview.indexOf("dashboard-action-productivity"));
   });
 
-  it("PC 진행 줄은 시작·종강총회 글을 빼고 D-day 는 남긴다", () => {
-    expect(banner).toContain('<span className="text-slate-400 pc:hidden">{startDate} 시작</span>');
-    expect(banner).toContain('<span className="text-slate-500 pc:hidden">🎓 {graduationDate} 종강총회</span>');
+  it("진행 줄은 어느 폭에서도 한 줄 — 시작·종강총회 글은 빼고 D-day 는 남긴다(폰도 압축, 2026-11-24)", () => {
+    expect(banner).not.toContain("{startDate} 시작");
+    expect(banner).not.toContain("{graduationDate} 종강총회");
+    expect(banner).toContain('className="flex items-center gap-2.5 px-3 py-2.5 pc:gap-4"');
+    // 폰 순서: 주차 → 진행률 → 진행바 → D-day. PC 는 진행바가 진행률 앞.
+    expect(banner).toContain("order-2 shrink-0 whitespace-nowrap text-xs font-bold text-red-700 pc:order-4");
+    expect(banner).toContain("relative order-3 h-1.5 min-w-0 flex-1");
     expect(banner).toContain("<DDayBadge graduationISO={graduationISO} />");
   });
 });

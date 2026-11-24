@@ -1,7 +1,9 @@
-/** 대시보드: 공용 헤더 → 맨 위 요약 띠(.surface-hero: 진행 줄+기간 칩 / 재무 3종·PC 진행건) → 할 일·목표 → 분석. SSOT: docs/design/components.md §8–9. */
+/** 대시보드: 공용 헤더 → 맨 위 요약 띠(.surface-hero: 진행 줄+기간 칩 / 재무 3종·PC 진행건) → 오늘 챙길 일(폭 전체) → 성과(목표·생산성) → 분석. 폰은 진행도 → 챙길 일 → 재무 순. SSOT: docs/design/components.md §8–9. */
 "use client";
 import PageContainer from "@/components/PageContainer";
 import DashboardActionOverview from "@/components/dashboard/DashboardActionOverview";
+import DashboardFollowUps from "@/components/dashboard/DashboardFollowUps";
+import PushPrompt from "@/components/push/PushPrompt";
 import CollapsibleGoalCard from "@/components/dashboard/CollapsibleGoalCard";
 import "@/components/dashboard/dashboard-action-overview.css";
 
@@ -46,16 +48,13 @@ export default function DashboardPage() {
   // 진행도 라벨 — 더미 날짜 fallback 은 G5 가드 위반이라 제거(R4 W1-3).
   // ⚠️ 날짜가 없어도 **배너 자체는 렌더**한다(hasDates=false 로 진행도 줄만 숨김) — me 시트 read 가
   // 실패해도(200+빈문자열 강등, me.ts) 본문의 매출/비용과 경비장부 진입점은 유지한다.
-  const banner = useMemo(() => {
-    const b = computeCourseBanner({
-      courseStartISO: me.data?.courseStartISO,
-      graduationISO: me.data?.graduationISO,
-      cohort: me.data?.cohort,
-      todayISO: today,
-      weeks,
-    });
-    if (!b.hasDates) return b;
-    return { ...b, startDate: fmtMD(me.data?.courseStartISO ?? ""), graduationDate: fmtMD(b.endISO) };  }, [me.data, today, weeks]);
+  const banner = useMemo(() => computeCourseBanner({
+    courseStartISO: me.data?.courseStartISO,
+    graduationISO: me.data?.graduationISO,
+    cohort: me.data?.cohort,
+    todayISO: today,
+    weeks,
+  }), [me.data, today, weeks]);
 
   const graduated = banner.hasDates && banner.graduated;
   // A안(belie 2026-11-13): 기간 칩은 진행 줄 오른쪽(PC)·재무 칸 위(폰), 진행건은 PC 띠의 네 번째 칸 — 아래 진행건 판과 같은 조회.
@@ -70,60 +69,58 @@ export default function DashboardPage() {
 
       <PageContainer width="fluid">
 
-      {/* 화면 마감 v2 (belie 2026-11-10 승인 시안): 맨 위 요약 한 칸 — 진행도 + 매출·비용·영업이익을
-          밝은 그라데이션 한 띠(.surface-hero)로 묶는다. 재무는 데이터가 오면 같은 띠 아래쪽에 붙는다.
-          A안(belie 2026-11-13): PC 는 진행 줄 오른쪽에 기간 칩(세 줄 → 두 줄), 재무는 네 칸(매출·비용·영업이익·진행건)+미리보기.
-          폰은 그대로 — 진행 줄 / 선 / 칩 / 세 칸 숫자. */}
-      <div className="px-3 pt-3">
-        <div className="surface-hero" data-testid="dashboard-hero">
-          <div className="pc:flex pc:flex-wrap pc:items-center" data-testid="dashboard-hero-top">
-            <div role="group" aria-label="오늘 날짜와 수강 진행" className="min-w-0 pc:flex-1 pc:basis-96">
-              <DashboardProgressBanner
-                hasDates={banner.hasDates}
-                today={fmtMD(today)}
-                weekday={KO_DAY[new Date(today + "T00:00").getDay()] ?? ""}
-                currentWeek={banner.hasDates ? banner.currentWeek : 0}
-                graduated={banner.hasDates ? banner.graduated : false}
-                weeksAfterGraduation={banner.hasDates ? banner.weeksAfterGraduation : 0}
-                startDate={banner.hasDates ? banner.startDate : ""}
-                progressPercent={banner.hasDates ? banner.progressPercent : 0}
-                graduationDate={banner.hasDates ? banner.graduationDate : ""}
-                graduationISO={banner.hasDates ? banner.endISO : me.data?.graduationISO}
-              />
-            </div>
-            {dash.data && (
-              <div role="group" aria-label="매출·비용 기간" data-testid="dashboard-period-chips"
-                className="flex flex-wrap items-center gap-1.5 border-t border-slate-200/70 px-3 pt-3 pc:ml-auto pc:justify-end pc:border-t-0 pc:py-2 pc:pl-0">
-                <PeriodPicker
-                  period={financePeriod.period}
-                  from={financePeriod.from}
-                  to={financePeriod.to}
-                  onPeriod={financePeriod.setPeriod}
-                  onFrom={financePeriod.setFrom}
-                  onTo={financePeriod.setTo}
-                />
-              </div>
-            )}
+      {/* 한 줄 흐름(flex column) — 폰에서는 띠를 풀어 진행도 → 오늘 챙길 일 → 매출·비용 순으로 다시 놓는다(order, dashboard-action-overview.css). */}
+      <div className="flex flex-col gap-4 p-3">
+        {/* 화면 마감 v2 (belie 2026-11-10 승인 시안): 맨 위 요약 한 칸 — 진행도 + 매출·비용·영업이익을
+            밝은 그라데이션 한 띠(.surface-hero)로 묶는다. 재무는 데이터가 오면 같은 띠 아래쪽에 붙는다.
+            A안(belie 2026-11-13): PC 는 진행 줄 오른쪽에 기간 칩(두 줄), 재무는 네 칸(매출·비용·영업이익·진행건)+미리보기.
+            할 일 구역 개편(belie 2026-11-24): 폰은 진행도 한 줄 띠와 「기간 칩 + 세 칸 숫자」 띠 둘로 갈라지고 그 사이에 「오늘 챙길 일」이 온다. PC 는 한 띠 그대로. */}
+        <div className="dash-hero surface-hero" data-testid="dashboard-hero">
+          <div role="group" aria-label="오늘 날짜와 수강 진행" className="dash-hero-progress surface-hero min-w-0">
+            <DashboardProgressBanner
+              hasDates={banner.hasDates}
+              today={fmtMD(today)}
+              weekday={KO_DAY[new Date(today + "T00:00").getDay()] ?? ""}
+              currentWeek={banner.hasDates ? banner.currentWeek : 0}
+              graduated={banner.hasDates ? banner.graduated : false}
+              weeksAfterGraduation={banner.hasDates ? banner.weeksAfterGraduation : 0}
+              progressPercent={banner.hasDates ? banner.progressPercent : 0}
+              graduationISO={banner.hasDates ? banner.endISO : me.data?.graduationISO}
+            />
           </div>
           {(dash.data || !dash.isError) && (
-            <div className={dash.data ? "px-3 pb-3 pt-2 pc:border-t pc:border-slate-200/70 pc:pt-3" : "border-t border-slate-200/70 px-3 pb-3 pt-3"}>
-              {dash.data ? (
-                <DashboardFinance
-                  contractChannels={dash.data.contractChannels}
-                  onRefreshChannels={dash.refetch}
-                  channelsRefreshing={dash.isFetching}
-                  periodState={financePeriod}
-                  work={work}
-                />
-              ) : <HeroFinanceSkeleton />}
+            <div className="dash-hero-money surface-hero min-w-0">
+              {dash.data && (
+                <div role="group" aria-label="매출·비용 기간" data-testid="dashboard-period-chips"
+                  className="relative isolate flex flex-wrap items-center gap-1.5 px-3 pt-3 pc:ml-auto pc:justify-end pc:py-2 pc:pl-0">
+                  <PeriodPicker
+                    slidingIndicator
+                    period={financePeriod.period}
+                    from={financePeriod.from}
+                    to={financePeriod.to}
+                    onPeriod={financePeriod.setPeriod}
+                    onFrom={financePeriod.setFrom}
+                    onTo={financePeriod.setTo}
+                  />
+                </div>
+              )}
+              <div className={`dash-hero-finance px-3 pb-3 ${dash.data ? "pt-2" : "pt-3"} pc:border-t pc:border-slate-200/70 pc:pt-3`}>
+                {dash.data ? (
+                  <DashboardFinance
+                    contractChannels={dash.data.contractChannels}
+                    onRefreshChannels={dash.refetch}
+                    channelsRefreshing={dash.isFetching}
+                    periodState={financePeriod}
+                    work={work}
+                  />
+                ) : <HeroFinanceSkeleton />}
+              </div>
             </div>
           )}
         </div>
-      </div>
 
-      {/* 에러 안내 — 500/404 에 무안내 빈 화면이던 부수결함 수리 (P1, 2026-07-28) */}
-      {dash.isError && (
-        <div className="px-4 pt-4">
+        {/* 에러 안내 — 500/404 에 무안내 빈 화면이던 부수결함 수리 (P1, 2026-07-28) */}
+        {dash.isError && (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-5 text-center">
             <p className="text-sm font-bold text-red-700">
               {dash.error instanceof Error && dash.error.message === "no_sheet"
@@ -146,24 +143,28 @@ export default function DashboardPage() {
               </a>
             )}
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="flex flex-col gap-4 p-3 pt-4">
         {/* 로딩은 전역 오버레이(LoadingProvider)가 자동 표시 — 수동 렌더 제거.
             에러 안내는 상단 카드 1곳으로 통합 (P1 2026-07-28 — 이중 표시·상충 문구 제거). */}
         {/* 불러오는 동안 카드 자리를 먼저 잡아 둔다(belie 2026-10-09). */}
-        {!dash.data && !dash.isError && <DashboardSkeleton />}
+        {!dash.data && !dash.isError && <div className="dash-after"><DashboardSkeleton /></div>}
         {dash.data && (
           <>
             {/* 새 수강생 「첫걸음」(2026-11-11) — 처음 하는 일 일곱 가지, 다 하면 사라진다. */}
             <FirstStepsCard view={dash.data} />
-            <DashboardActionOverview matrix={dash.data.channelMatrix} weeks={weeks}
-              todayISO={today} courseStartISO={me.data?.courseStartISO} graduated={graduated} />
+            {/* 할 일 구역(2026-11-24) — 폭 전체. 관리자가 다른 사람 화면을 볼 때는 이 기기의 「오늘 N건 처리」를 세지 않는다. */}
+            <DashboardFollowUps todayISO={today} trackHandled={Boolean(me.data?.email) && !me.data?.impersonating} handledScope={me.data?.email} />
+            <PushPrompt />
+            <h2 className="section-head dash-after px-1">성과 <small className="text-xs font-medium text-slate-500">{weeks}주 누적</small></h2>
+            <div className="dash-after">
+              <DashboardActionOverview matrix={dash.data.channelMatrix} weeks={weeks}
+                todayISO={today} courseStartISO={me.data?.courseStartISO} graduated={graduated} />
+            </div>
             {/* [3] 매출·비용·영업이익(기간 선택, ADR-0034)은 맨 위 .surface-hero 띠로 옮겼다(화면 마감 v2).
                 상세는 컬럼 클릭 시 행 아래 공용 패널(SSOT: docs/design/components.md §9-2). */}
 
-            {hasDashboardChartRecords(dash.data) ? <div className="space-y-3 pc:grid pc:grid-cols-3 pc:items-stretch pc:gap-4 pc:space-y-0">
+            {hasDashboardChartRecords(dash.data) ? <div className="dash-after space-y-3 pc:grid pc:grid-cols-3 pc:items-stretch pc:gap-4 pc:space-y-0">
               {/* 1024 미만: 차트 3종을 옆으로 넘기는 카드(인터랙션 ②, 2026-10-09). PC 는 래퍼가 풀려 그리드 칸 그대로. */}
               <MobileChartCarousel labels={dash.data.weeklyTrendPeriod?.kind === 'recent' ? ['영업 퍼널', '지난 8주간 추이', '채널별 성과'] : CHART_LABELS}>
                 <div className={CHART_SLIDE}><FunnelChart weeks={weeks} matrix={dash.data.channelMatrix} /></div>
@@ -175,9 +176,9 @@ export default function DashboardPage() {
                   />
                 </div>
               </MobileChartCarousel>
-            </div> : <section className="surface-panel flex flex-wrap items-center justify-between gap-3" aria-label="영업 분석 시작하기"><div><h2 className="text-sm font-bold text-slate-900">{dash.data.weeklyTrendPeriod?.kind === 'recent' ? '최근 8주간 분석할 영업 기록이 없어요' : '아직 분석할 영업 기록이 없어요'}</h2><p className="mt-1 text-xs text-slate-600">DB를 등록하고 활동을 기록하면 퍼널·추이·채널별 성과가 표시됩니다.</p></div><Link href="/db-sheet" className="btn-depth-blue rounded-lg px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">DB 등록하기</Link></section>}
+            </div> : <section className="dash-after surface-panel flex flex-wrap items-center justify-between gap-3" aria-label="영업 분석 시작하기"><div><h2 className="text-sm font-bold text-slate-900">{dash.data.weeklyTrendPeriod?.kind === 'recent' ? '최근 8주간 분석할 영업 기록이 없어요' : '아직 분석할 영업 기록이 없어요'}</h2><p className="mt-1 text-xs text-slate-600">DB를 등록하고 활동을 기록하면 퍼널·추이·채널별 성과가 표시됩니다.</p></div><Link href="/db-sheet" className="btn-depth-blue rounded-lg px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">DB 등록하기</Link></section>}
             {/* 수료생 모바일: 주간 목표는 맨 아래, 기본 접힘(belie 2026-11-05). PC 는 위 개요 자리. */}
-            {graduated && <div className="dashboard-goals-bottom surface-panel"><CollapsibleGoalCard layout="mobile" /></div>}
+            {graduated && <div className="dashboard-goals-bottom dash-after surface-panel"><CollapsibleGoalCard layout="mobile" /></div>}
           </>
         )}
       </div>

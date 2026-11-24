@@ -23,6 +23,8 @@ const VAR_CSS_FILES = [
   "components/dashboard/dashboard-follow-ups.css",
   "components/dashboard/followups-launcher.css",
   "components/dashboard/followups-table.css",
+  "components/dashboard/dashboard-task-zone.css",
+  "components/motion/sliding-thumb.css",
   "components/training-log/training-log.css",
   "components/bug-report/bug-report.css",
   "components/push/push.css",

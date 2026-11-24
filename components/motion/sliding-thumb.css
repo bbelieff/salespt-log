@@ -1,0 +1,15 @@
+/* 선택 바탕이 옮겨 가는 칩(useSlidingThumb, 2026-11-24). 표시는 칩 묶음의 첫 자식.
+   못 쟀으면([data-on] 없음) 표시를 그리지 않고 칩이 제 바탕을 쓴다. 동작 줄이기면 즉시 옮긴다. 튕김 없음(감속 곡선 = fx-* 와 같은 계열).
+   층(칩 묶음은 isolation:isolate 여야 한다): 칩의 흰 바탕(::before, z -1) → 표시 → 칩 글자·테두리.
+   그래서 표시가 옆 칩 밑을 지나가도 흰 바탕에 가리지 않고 글자는 늘 위에 있다. */
+.slide-thumb { position:absolute; top:0; left:0; z-index:0; box-sizing:border-box; border:1px solid transparent; border-radius:999px; pointer-events:none; transition:transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1), width 220ms cubic-bezier(0.2, 0.8, 0.2, 1), height 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+.slide-thumb:not([data-on]) { display:none; }
+.slide-thumb ~ [aria-pressed] { position:relative; }
+.slide-thumb[data-on] ~ [aria-pressed] { background-color:transparent; }
+.slide-thumb[data-on] ~ [aria-pressed]::before { content:""; position:absolute; inset:-1px; z-index:-1; border-radius:inherit; background:var(--ui-surface); pointer-events:none; }
+.slide-thumb[data-on] ~ [aria-pressed="true"] { border-color:transparent; }
+/* 할 일 구역 급한 정도 칩 — 진한 바탕 */
+.slide-thumb[data-tone=ink] { border-color:var(--ui-text); background:var(--ui-text); }
+/* 기간 칩(PeriodPicker slidingIndicator) — 지금 선택 모양(파란 테두리 + 옅은 파랑) 그대로 */
+.slide-thumb[data-tone=accent] { border-color:var(--ui-accent-bright); background:var(--ui-accent-soft); }
+@media (prefers-reduced-motion: reduce) { .slide-thumb { transition:none; } }
