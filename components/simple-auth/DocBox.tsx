@@ -63,6 +63,7 @@ function DbLinkPanel({ biz, busy, onLink }: { biz: Biz; busy: boolean; onLink: (
 /** 원문 PDF 링크 — 재무제표는 연도마다 따로. 서버가 「사업자명 서류이름.pdf」 이름으로 내려준다. */
 function originals(req: AuthRequest, biz: Biz, key: string, facts: string[]) {
   const base = `/api/simple-auth/${req.id}/original?biz=${encodeURIComponent(biz.bizNo)}&doc=`;
+  if (key === "taxinv") return [{ href: base + key, label: "엑셀" }];
   if (key !== "fs") return [{ href: base + key, label: "원문" }];
   return facts.map((f) => f.match(/^(\d{4})년/)?.[1]).filter((y): y is string => !!y).map((y) => ({ href: base + `fs-${y}`, label: `${y} 원문` }));
 }

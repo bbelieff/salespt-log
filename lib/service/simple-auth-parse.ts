@@ -9,6 +9,7 @@ import { groupThousands } from "@/lib/document-ocr/amount";
 import { wonToMillion } from "@/util/company-money";
 import { SALES_YEAR_KEYS, salesSlotOf } from "@/util/company-sales";
 import type { SimpleAuthDocKey, SimpleAuthField } from "@/types/simple-auth";
+import { taxInvFacts, toInvoices, type TaxInvPage } from "./simple-auth-taxinv";
 
 type Obj = Record<string, unknown>;
 /** 사업자번호(000-00-00000) → 이 서류의 몫. 키 "" = 사업자에 묶이지 않은 몫(개인 서류) — 모든 사업자에 붙인다. */
@@ -217,6 +218,21 @@ export function parseClosed(data: unknown): DocParts {
   return parts;
 }
 
+/** 전자세금계산서 — 사업자별 매출·매입 건수·합계·TOP3. 받은 기간이 하나도 없으면 몫을 만들지 않는다(실패 사유가 보이게). */
+export function parseTaxInv(pages: TaxInvPage[], year: number): DocParts {
+  const parts: DocParts = new Map();
+  for (const biz of new Set(pages.map((p) => p.biz))) {
+    const mine = pages.filter((p) => p.biz === biz);
+    const ok = mine.filter((p) => !p.failed);
+    if (!ok.length) continue;
+    const p = part(parts, biz, "");
+    p.facts.push(...taxInvFacts(toInvoices(ok), year));
+    const miss = mine.length - ok.length;
+    if (miss) p.facts.push(`3개월 단위 ${mine.length}번 중 ${miss}번은 받지 못했어요 — 엑셀에서 빠진 기간이 있어요.`);
+  }
+  return parts;
+}
+
 export const PARSERS: Record<SimpleAuthDocKey, (datas: unknown[], baseYear: number) => DocParts> = {
   biz: (d) => parseBizCert(d.flatMap(asList)),
   vat: (d, y) => parseVat(d.flatMap(asList), y),
@@ -226,4 +242,5 @@ export const PARSERS: Record<SimpleAuthDocKey, (datas: unknown[], baseYear: numb
   ins: (d) => parseIns(d.flatMap(asList)),
   income: (d) => parseIncome(d.flatMap(asList)),
   closed: (d) => parseClosed(d.flatMap(asList)),
+  taxinv: (d, y) => parseTaxInv(d as TaxInvPage[], y - 1),
 };

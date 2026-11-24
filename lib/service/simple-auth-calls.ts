@@ -6,9 +6,11 @@ import { type SimpleAuthDocKey, type SimpleAuthStart } from "@/types/simple-auth
 import { CODEF_LOGIN_LEVEL, CODEF_PATH, CODEF_TELECOM, SIMPLE_AUTH_YEARS } from "@/config/simple-auth";
 import { codefEncrypt } from "@/repo/codef-client";
 import { digitsOnly } from "@/lib/document-ocr/bizno";
+import { TAXINV_PATH, taxInvQueries, type Transe } from "./simple-auth-taxinv";
 
 export type Obj = Record<string, unknown>;
-export type Call = { doc: SimpleAuthDocKey; path: string; params: Obj; group: "nt" | "mw" | "pp" };
+/** tag = 세금계산서 응답에 붙일 매출/매입·사업자(응답 행에는 구분이 없다). */
+export type Call = { doc: SimpleAuthDocKey; path: string; params: Obj; group: "nt" | "mw" | "pp"; tag?: { transe: Transe; biz: string } };
 
 const KST = 9 * 3_600_000;
 export const kstNow = (now = Date.now()) => new Date(now + KST);
@@ -73,6 +75,8 @@ export function buildCalls(input: SimpleAuthStart, ids: Record<Call["group"], st
         } });
       }
     }
+    // 전자세금계산서 통합은 홈택스 기관코드가 0002(증명발급 상품은 0001).
+    if (doc === "taxinv" && input.mode === "cert") for (const q of taxInvQueries(y - 1, fsBizNos)) calls.push({ ...nt("taxinv", TAXINV_PATH, q.params), tag: { transe: q.transe, biz: q.biz } });
     if (doc === "ins" && input.mode === "cert") calls.push({ doc, group: "pp", path: CODEF_PATH.ins, params: { ...loginParams(input, ids.pp, "pp"), inquiryType: "0", originDataYN: "1" } });
   }
   return calls;
