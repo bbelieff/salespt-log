@@ -14,6 +14,7 @@ import BizplanFiles from "./BizplanFiles";
 import BizplanFactsForm from "./BizplanFactsForm";
 import BizplanKitPanel from "./BizplanKitPanel";
 import BizplanOcr from "./BizplanOcr";
+import BizplanShowcase from "./BizplanShowcase";
 import { applySuggestions, type BizplanSuggestion } from "@/lib/document-ocr/bizplan-map";
 import {
   PACK_MAX_BYTES,
@@ -155,6 +156,7 @@ export default function BizplanTool() {
             새로 시작
           </button>
         </div>
+        <BizplanShowcase />
         <BizplanKitPanel
           kit={kit}
           kitError={kitError}
