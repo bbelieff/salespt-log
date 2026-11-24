@@ -11,7 +11,7 @@
  */
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, ClipboardCheck, Download, FileText, Presentation } from "lucide-react";
-import SAMPLE from "@/config/bizplan-sample.json";
+import { BIZPLAN_SAMPLE as SAMPLE } from "@/config/bizplan-sample";
 
 const BASE = "/bizplan-samples";
 const SLIDES = SAMPLE.slides;
