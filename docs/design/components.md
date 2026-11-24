@@ -1873,7 +1873,7 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 
 ### DashboardFollowUps 할 일 구역 · 2026-11-24 사용자 승인 (아래 「STEP별 표」를 대체)
 
-기획서·목업 https://claude.ai/artifact/48ThjyvvV9mhEmwsThzK9f (1단계). 계획: `docs/plans/active/dashboard-task-zone.md`. 세는 규칙·정렬·조회는 그대로(`lib/analytics/dashboard-follow-ups.ts`, `useTodayFollowUps`).
+기획서·목업 https://claude.ai/artifact/48ThjyvvV9mhEmwsThzK9f (1단계). 계획: `docs/plans/completed/dashboard-task-zone.md`. 세는 규칙·정렬·조회는 그대로(`lib/analytics/dashboard-follow-ups.ts`, `useTodayFollowUps`).
 
 - **DashboardFollowUpsView** (`dashboard-task-zone.css`): 화면 폭 전체 구역. 틀은 옛 카드 클래스(`.follow-ups-card.ft-card`) 그대로 — 평소 흰 판, 밀린 일이 있으면 `data-emphasis="flow"` 무지개 테두리 + `.ft-glow`(유지 — 기획서의 「빼기」 권고는 기각).
   - 머리: 제목 「오늘 챙길 일」 → 「**N**건 남았어요」(26px/800) + 「0건이 되면 오늘 챙길 일은 끝입니다.」 + 15건 초과면 「밀린 일이 많을 땐 위에서부터 5건만 먼저 끝내 보세요.」, 아니면 「가장 급한 일이 맨 위에 있어요.」

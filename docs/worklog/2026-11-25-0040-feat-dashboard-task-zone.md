@@ -1,5 +1,5 @@
 ## 2026-11-25 · 대시보드 「오늘 챙길 일」을 폭 전체 할 일 구역으로 (기획서 1단계)
-- 브랜치 `feat/dashboard-task-zone`(base `3de933e0`). belie 「기획서대로 진행, 대신 무지개는 살리고 나머지 수용」(2026-11-24) — 기획서 https://claude.ai/artifact/48ThjyvvV9mhEmwsThzK9f , [plan](../plans/active/dashboard-task-zone.md).
+- 브랜치 `feat/dashboard-task-zone`(base `3de933e0`). belie 「기획서대로 진행, 대신 무지개는 살리고 나머지 수용」(2026-11-24) — 기획서 https://claude.ai/artifact/48ThjyvvV9mhEmwsThzK9f , [plan](../plans/completed/dashboard-task-zone.md).
 - 변경: 반쪽 숫자표 카드 → 폭 전체 구역(「N건 남았어요」·비율 막대·급한 정도 칩·줄 목록 PC 6줄/폰 3줄·단계 3줄·예정된 일). 용어 「장기누락·경과」→「7일 넘게 밀림·밀림」(세는 규칙 그대로). 0건/기록 없음/조회 실패/불러오는 중 상태. 「오늘 N건 처리」는 기기 기억(localStorage) 어림값.
 - 배치: PC 띠 그대로 → 할 일 구역 → 「성과」 + 주간 목표 | 생산성 → 차트. 폰은 진행도 한 줄 → 오늘 챙길 일 → 매출·비용·영업이익 → 목표 → 진행건 → 생산성 → 차트(띠를 `display: contents` 로 풀고 `order`).
 - 무지개 테두리 유지(기획서의 「빼기」 권고 기각).
