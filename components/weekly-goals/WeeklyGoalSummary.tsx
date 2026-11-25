@@ -75,6 +75,8 @@ function Summary({ date, metrics, student, className = "m-4", compact = false, o
   const entry = new URLSearchParams(p);
   entry.set("returnTo", goalReturnTarget(pathname).href);
   const current = !q.isError ? q.data?.current : undefined;
+  // 수료 후에는 PT과제가 없다(belie 2026-11-25) — 이름과 미리보기를 감춘다.
+  const graduated = q.data?.graduated === true;
   const anchorStart = fmtISO(friOf(parseISO(date ?? todayKST())));
   const move = (days: number) => {
     if (!current) return;
@@ -92,7 +94,7 @@ function Summary({ date, metrics, student, className = "m-4", compact = false, o
   const status = q.isPending ? <span role="status" className="text-xs text-slate-500">불러오는 중…</span> :
     q.isError ? <div role="alert" className="relative z-20 text-xs text-red-600">목표를 불러오지 못했어요.<button type="button" onClick={() => void q.refetch()} className="min-h-11 px-2 underline">다시 시도</button></div> : null;
   if (compact) return <section aria-label="주간 목표" className="relative isolate flex min-h-11 min-w-0 items-center gap-2 rounded-lg text-xs">
-    <button type="button" aria-label="목표·PT과제 열기" onClick={() => router.push("/weekly-goals?" + entry)}
+    <button type="button" aria-label={graduated ? "목표 열기" : "목표·PT과제 열기"} onClick={() => router.push("/weekly-goals?" + entry)}
       className="absolute inset-0 z-10 rounded-lg hover:bg-blue-500/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500" />
     <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
       <span className="flex shrink-0 items-center gap-1 font-semibold text-slate-600"><Target className="h-3.5 w-3.5" aria-hidden />{current ? `${current.week}주 목표` : "주간 목표"}</span>
@@ -101,7 +103,7 @@ function Summary({ date, metrics, student, className = "m-4", compact = false, o
     <ChevronRight className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
   </section>;
   return <section className={className + " weekly-goals-flow-card relative isolate flex flex-col rounded-2xl border border-slate-200 bg-white p-3 shadow-sm"} aria-label="주간 목표">
-    <button type="button" aria-label="주간 목표·PT과제 상세 보기" onClick={() => router.push("/weekly-goals?" + entry)} className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500" />
+    <button type="button" aria-label={graduated ? "주간 목표 상세 보기" : "주간 목표·PT과제 상세 보기"} onClick={() => router.push("/weekly-goals?" + entry)} className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500" />
     <div className="weekly-goals-heading">
       <div className="weekly-goals-heading-label">
       <h2 className="flex items-center gap-2 text-base font-extrabold text-slate-900"><span aria-hidden className="h-5 w-1 shrink-0 rounded-full bg-teal-400" /><span>주간 목표 {current && <span className="text-sm text-slate-500">· {current.week}주차</span>}</span></h2>
@@ -111,17 +113,17 @@ function Summary({ date, metrics, student, className = "m-4", compact = false, o
       {onCollapse && <button type="button" aria-expanded="true" aria-label="주간 목표 접기" onClick={onCollapse}
         className="relative z-20 flex min-h-11 shrink-0 items-center gap-0.5 rounded-lg px-2 text-xs font-semibold text-slate-600 hover:bg-slate-100">접기<ChevronUp className="h-4 w-4" aria-hidden /></button>}
     </div>
-    {status ?? (current && <div className="weekly-goals-split">
-      <div className="weekly-goals-qualitative">
+    {status ?? (current && <div className={"weekly-goals-split" + (graduated ? " weekly-goals-split--solo" : "")}>
+      {!graduated && <div className="weekly-goals-qualitative">
         <h3>정성목표</h3>
         <div className="weekly-goals-task">
           <b>{selectedDate ? `${current.week}주차 PT과제` : "이번 주 PT과제"}</b>
           <TaskSummaryCopy task={current.record.task} refreshKey={`${student ?? "self"}:${current.start}:${current.week}`} />
           <span className="weekly-goals-task-link">과제 보기 <ChevronRight className="h-3 w-3" aria-hidden /></span>
         </div>
-      </div>
+      </div>}
       <div className="weekly-goals-quantitative">
-        <h3>정량목표</h3>
+        {!graduated && <h3>정량목표</h3>}
         <div className="weekly-goals-flow" aria-label="생산 → 유입 → 컨택완료 → 미팅완료 → 계약">
           <GoalRings goals={current.record.goals} actuals={current.actuals} metrics={metrics} showStatus={false} />
         </div>

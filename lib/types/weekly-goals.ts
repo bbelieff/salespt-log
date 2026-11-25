@@ -54,6 +54,8 @@ export interface WeeklyGoalView {
   /** Week 1 through the end of the previous week. Basis for the cumulative back-calculation. */
   cumulative: GoalActuals;
   canReadInternal: boolean;
+  /** 오늘 기준 수료 후(총회일·수료일 다음 날부터). 화면은 PT과제·복사·회의록을 감춘다 — 저장된 과제는 그대로 둔다. */
+  graduated?: boolean;
 }
 export interface GoalStudent {
   email: string;

@@ -60,3 +60,11 @@ describe("CollapsibleGoalCard", () => {
     expect(localStorage.getItem(goalCardStorageKey("mobile"))).toBeNull();
   });
 });
+
+describe("CollapsibleGoalCard 접힌 줄", () => {
+  it("수료 후에는 PT과제 글자를 쓰지 않는다(belie 2026-11-25)", () => {
+    const text = mount("mobile").textContent ?? "";
+    expect(text).toContain("주간 목표");
+    expect(text).not.toContain("PT과제");
+  });
+});

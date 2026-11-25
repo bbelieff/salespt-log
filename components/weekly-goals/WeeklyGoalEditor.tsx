@@ -105,7 +105,7 @@ export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed 
     setConflict(false);
     setTaskRows(editableTaskRows(publicAuto.saved.task));
     discardUnsaved(publicAuto); // leave-without-save; F2 core discard() auto-used when present
-  }, "주간 목표·PT과제");
+  }, view.graduated ? "주간 목표" : "주간 목표·PT과제");
 
   // Undo mirror: the hook restores the pre-save snapshot (previous saved).
   // Track it here so the displayed rows follow the draft — the separate
@@ -192,7 +192,7 @@ export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed 
 
     <section className="space-y-3 rounded-2xl border border-slate-200 bg-white p-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-bold text-slate-900">이번 주 목표·PT과제</h2>
+        <h2 className="text-sm font-bold text-slate-900">{view.graduated ? "이번 주 목표" : "이번 주 목표·PT과제"}</h2>
         <AutosaveStatus status={publicAuto.status} error={publicAuto.error}
           savedAt={publicAuto.savedAt} onRetry={publicAuto.retry}
           canUndo={publicAuto.canUndo} onUndo={handleUndo} />
@@ -233,17 +233,18 @@ export default function WeeklyGoalEditor({ view, changeWeek, reload, readFailed 
         </table>
       </div>
 
-      {!view.canReadInternal && view.previous && previousTasks.length > 0 && <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+      {!view.graduated && !view.canReadInternal && view.previous && previousTasks.length > 0 && <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
         <p className="text-sm font-semibold">지난 PT과제</p>
         <ol className="mt-1 list-decimal space-y-0.5 pl-5 text-sm">{previousTasks.map((t, i) => <li key={i} className="break-words">{t}</li>)}</ol>
       </div>}
 
+      {/* 수료 후(belie 2026-11-25): PT과제 입력을 감춘다. 저장된 과제 글은 draft 에 그대로 남아 목표만 고쳐도 지워지지 않는다. */}
       {view.canReadInternal ? <GoalInternalEditor view={view} onDirty={setInternalDirty}
-        onRecord={setInternalRecord}>{currentTasks}</GoalInternalEditor> : currentTasks}
+        onRecord={setInternalRecord}>{view.graduated ? null : currentTasks}</GoalInternalEditor> : view.graduated ? null : currentTasks}
     </section>
 
-    {/* 클립보드는 명시적 복사로만 — 저장 후 자동 복사 없음. */}
-    <GoalCopyPanel view={{ ...view, current: { ...view.current, record: { ...view.current.record, ...publicAuto.draft } } }}
-      internal={internalRecord ?? undefined} dirty={anyDirty || readFailed} />
+    {/* 클립보드는 명시적 복사로만 — 저장 후 자동 복사 없음. 수료 후에는 복사·회의록 열기를 두지 않는다. */}
+    {!view.graduated && <GoalCopyPanel view={{ ...view, current: { ...view.current, record: { ...view.current.record, ...publicAuto.draft } } }}
+      internal={internalRecord ?? undefined} dirty={anyDirty || readFailed} />}
   </div>;
 }

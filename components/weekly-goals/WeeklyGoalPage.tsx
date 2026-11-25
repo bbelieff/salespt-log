@@ -6,7 +6,7 @@ import DirtyProvider from "@/components/DirtyGuard";
 import { useGoalView, goalAccessDenied } from "./client";
 import WeeklyGoalEditor from "./WeeklyGoalEditor";
 
-function Content({ student, date, week }: { student: string; date: string; week: string }) {
+function Content({ student, date, week, onGraduated }: { student: string; date: string; week: string; onGraduated: (graduated: boolean) => void }) {
   const [selected, setSelected] = useState(week);
   const [generation, setGeneration] = useState(0);
   const [deniedTarget, setDeniedTarget] = useState<string | null>(null);
@@ -16,6 +16,8 @@ function Content({ student, date, week }: { student: string; date: string; week:
   if (selected) p.set("week", selected);
   const target = p.toString();
   const query = useGoalView(target);
+  const graduated = query.data?.graduated === true;
+  useEffect(() => { onGraduated(graduated); }, [graduated, onGraduated]);
   const denied = goalAccessDenied(query.error);
   useEffect(() => { if (denied) setDeniedTarget(target); }, [denied, target]);
   const locked = denied || deniedTarget === target;
@@ -41,8 +43,10 @@ function Content({ student, date, week }: { student: string; date: string; week:
 export default function WeeklyGoalPage(props: { student: string; date: string; week: string; trainer: boolean; returnTo?: string }) {
   // 트레이너 보조 화면(props.student && props.trainer)에는 사이드바를 두지 않는다.
   const isTrainerView = !!(props.student && props.trainer);
-  const header = <TopHeader pageEmoji="" pageTitle="주간 목표·PT과제" roleMode={isTrainerView ? "trainer" : "student"} />;
-  const body = <Content student={props.student} date={props.date} week={props.week} />;
+  // 수료 후에는 PT과제가 없어 제목에서도 뺀다(belie 2026-11-25).
+  const [graduated, setGraduated] = useState(false);
+  const header = <TopHeader pageEmoji="" pageTitle={graduated ? "주간 목표" : "주간 목표·PT과제"} roleMode={isTrainerView ? "trainer" : "student"} />;
+  const body = <Content student={props.student} date={props.date} week={props.week} onGraduated={setGraduated} />;
   if (isTrainerView) {
     return <DirtyProvider><div className="min-h-dvh">{header}{body}</div></DirtyProvider>;
   }
