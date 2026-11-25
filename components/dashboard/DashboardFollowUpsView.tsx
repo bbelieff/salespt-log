@@ -2,7 +2,7 @@
 /**
  * 「오늘 챙길 일」 할 일 구역(2026-11-24 개편, belie 승인 기획서 1단계) — 화면 폭 전체.
  * 누르지 않아도 가장 급한 일이 줄로 보인다: 「N건 남았어요」 → 비율 막대 → 급한 정도 칩 → 줄 목록(PC 6줄·폰 3줄, 그 자리에서 펼침)
- * | 오른쪽 열(FollowUpsSidePanel — 단계·종류·이유 보기 전환, 누르면 목록이 좁혀짐) · 세는 기준 · 예정된 일. 세는 규칙·정렬은 lib/analytics/dashboard-follow-ups 그대로.
+ * | 오른쪽 열(FollowUpsSidePanel — 단계·종류·이유 보기 전환, 누르면 목록이 좁혀짐) · 예정된 일. 세는 규칙·정렬은 lib/analytics/dashboard-follow-ups 그대로.
  * 밀린 일이 있으면 무지개 테두리(data-emphasis=flow · .ft-glow)를 유지한다. 조회·재시도·집계는 DashboardFollowUps 책임.
  * 움직임(belie 2026-11-24 추가 지시, 이 둘만): ① 이어지는 전환 — 펼침/접기 · 칩·단계로 좁히기 · 0건으로 접힘(useZoneTransition)
  * ② 선택 바탕이 옮겨 가는 칩(useSlidingThumb). 나머지는 이미 쓰는 fx-*(막대 차오름·0건 달성 체크)만.
@@ -54,7 +54,6 @@ export default function DashboardFollowUpsView({ items: latest, notice, incomple
   const [pick, setPick] = useState<SidePick | null>(null);
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState<string | null>(null);
-  const [rules, setRules] = useState(false);
   const [popover, setPopover] = useState<Popover | null>(null);
   const id = useId();
   const pop = useFollowUpsPopover(popover, setPopover, () => {});
@@ -104,18 +103,15 @@ export default function DashboardFollowUpsView({ items: latest, notice, incomple
   const shell = (state: string, body: ReactNode) => <section data-dashboard-follow-ups data-state={state} data-emphasis={emphasis ? "flow" : undefined} ref={pop.card} className="follow-ups-card ft-card tz-zone" aria-label="오늘 챙길 일">
     {emphasis && <span aria-hidden className="ft-glow" />}
     {body}
-    {rules && <div className="follow-ups-guide"><p>첫 연락·미팅 결과는 당일 처리. 다음 날부터 「밀림」, 7일째부터 「7일 넘게 밀림」으로 셉니다.</p><p>기관·다음 할 일 누락은 진행건별 한 번, 등록된 투두는 각각 셉니다. 시작일을 모르면 날짜 확인으로 표시합니다. DB생산은 주간목표에서 확인합니다.</p></div>}
     {notice}
     {popover && <FollowUpsDetailPanel id={id} items={upcoming} incomplete={incomplete} panelRef={pop.panel} position={pop.position} onClose={pop.close} onPointerEnter={pop.cancelClose} onPointerLeave={pop.leave} />}
   </section>;
-  const rulesButton = <button type="button" className="tz-rules" onClick={() => setRules(!rules)} aria-expanded={rules}>세는 기준 {rules ? "닫기" : "보기"}</button>;
   const upcomingProps = { "data-upcoming-trigger": true, "aria-haspopup": "dialog" as const, "aria-expanded": popover !== null, "aria-controls": popover ? id : undefined, onClick: (e: React.MouseEvent<HTMLButtonElement>) => pop.open(e.currentTarget, "", "upcoming", true) };
 
   // 조회가 실패해 확인된 일이 하나도 없으면 0건·완료로 보이지 않게 한다.
   if (!urgent.length && incomplete) return shell("unconfirmed", <div className="tz-state">
     <span className="tz-state-icon" data-tone="unknown" aria-hidden><CircleAlert size={20} /></span>
     <div><h2>오늘 챙길 일 <b className="tz-unconfirmed">확인 필요</b></h2><p>불러오지 못한 항목이 있어 남은 건수를 아직 알 수 없습니다. 아래 「다시 시도」를 눌러 주세요.</p></div>
-    {rulesButton}
   </div>);
 
   if (!urgent.length && firstRun) return shell("first", <div className="tz-state">
@@ -127,7 +123,6 @@ export default function DashboardFollowUpsView({ items: latest, notice, incomple
   if (!urgent.length) return shell("done", <div className="tz-state">
     <span className="tz-state-icon" data-tone="done" aria-hidden><Check size={20} className={achieved ? "fx-check-pop" : undefined} /></span>
     <div><h2>오늘 챙길 일을 모두 끝냈어요</h2><p>{done > 0 ? `오늘 ${done}건을 처리했습니다. ` : ""}{upcoming.length ? `7일 안에 예정된 일이 ${upcoming.length}건 있어요.` : "7일 안에 예정된 일도 없습니다."}</p></div>
-    {rulesButton}
     {upcoming.length > 0 && <button type="button" className="tz-go" {...upcomingProps}>예정된 일 보기</button>}
   </div>);
 
@@ -168,7 +163,6 @@ export default function DashboardFollowUpsView({ items: latest, notice, incomple
       </button>}
     </div>
     <FollowUpsSidePanel urgent={urgent} incomplete={incomplete} view={view} pick={pick} onView={switchView} onPick={pickSide}>
-      {rulesButton}
       <button type="button" className="tz-upcoming" {...upcomingProps}><span>예정된 일 · 7일 안</span><b>{incomplete && !upcoming.length ? "—" : `${upcoming.length}건`} <DisclosureChevron open={popover !== null} /></b></button>
     </FollowUpsSidePanel>
   </div>);
