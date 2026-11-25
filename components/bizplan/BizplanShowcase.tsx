@@ -78,7 +78,7 @@ function SlideDeck() {
   return (
     <div>
       <div
-        className="relative mx-auto mt-12 w-5/6 max-w-2xl select-none"
+        className="relative mx-auto mt-12 w-5/6 max-w-2xl select-none pc:mt-14 pc:w-11/12 pc:max-w-none"
         style={{ perspective: "1800px" }}
         onPointerEnter={() => setHold(true)}
         onPointerLeave={() => { setHold(false); setTilt({ x: 0, y: 0 }); }}
@@ -121,7 +121,7 @@ function SlideDeck() {
         </div>
       </div>
 
-      <div className="mx-auto mt-5 flex w-full max-w-2xl items-center gap-3">
+      <div className="mx-auto mt-5 flex w-full max-w-2xl items-center gap-3 pc:max-w-none">
         <button type="button" onClick={() => go(i - 1)} aria-label="이전 장" className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-slate-700 text-slate-300 transition-colors hover:border-slate-500 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-300">
           <ChevronLeft className="h-4 w-4" aria-hidden="true" />
         </button>
@@ -133,9 +133,9 @@ function SlideDeck() {
           <ChevronRight className="h-4 w-4" aria-hidden="true" />
         </button>
       </div>
-      <p className="mx-auto mt-1.5 w-full max-w-2xl text-xs leading-relaxed text-slate-400">{cur.explain}</p>
-      <p className="mx-auto mt-1 hidden w-full max-w-2xl text-xs text-slate-500 pc:block">슬라이드 위에서 마우스를 좌우로 움직이면 1장부터 {N}장까지 넘겨 볼 수 있어요.</p>
-      <div className="mx-auto mt-3 flex w-full max-w-2xl gap-1" aria-hidden="true">
+      <p className="mx-auto mt-1.5 w-full max-w-2xl text-xs leading-relaxed text-slate-400 pc:max-w-none">{cur.explain}</p>
+      <p className="mx-auto mt-1 hidden w-full text-xs text-slate-500 pc:block">슬라이드 위에서 마우스를 좌우로 움직이면 1장부터 {N}장까지 넘겨 볼 수 있어요.</p>
+      <div className="mx-auto mt-3 flex w-full max-w-2xl gap-1 pc:max-w-none" aria-hidden="true">
         {SLIDES.map((s, k) => (
           <span key={s.no} className="h-1 flex-1 overflow-hidden rounded-full bg-slate-800">
             <span
@@ -153,7 +153,7 @@ function SlideDeck() {
 function Pages({ doc, pages }: { doc: string; pages: number }) {
   const shown = Math.min(pages, 2);
   return (
-    <div className="relative h-40 overflow-hidden">
+    <div className="relative h-40 overflow-hidden pc:h-32">
       {Array.from({ length: shown }, (_, k) => shown - k).map((n, k) => (
         <img
           key={n}
@@ -248,14 +248,15 @@ function OutputCard({ icon, title, desc, file, label, preview, onOpen }: {
   onOpen: () => void;
 }) {
   return (
-    <li className="group flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900 p-3 transition-all duration-300 hover:-translate-y-1 hover:border-slate-600">
-      <button type="button" onClick={onOpen} aria-label={`${title} 전체 미리보기`} className="relative block w-full rounded-md text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-300">
+    <li className="group flex flex-col gap-3 rounded-xl border border-slate-800 bg-slate-900 p-3 transition-all duration-300 hover:-translate-y-1 hover:border-slate-600 pc:flex-row pc:items-stretch">
+      <button type="button" onClick={onOpen} aria-label={`${title} 전체 미리보기`} className="relative block w-full rounded-md text-left pc:w-1/2 pc:shrink-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-300">
         <div className="transition-transform duration-300 group-hover:scale-105">{preview}</div>
         <span className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-xs font-semibold text-slate-900 opacity-90 shadow transition-opacity group-hover:opacity-100">
           <LayoutGrid className="h-3.5 w-3.5" aria-hidden="true" />
           전체 보기
         </span>
       </button>
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
       <div className="flex items-start gap-2">
         <span className="mt-0.5 text-indigo-300">{icon}</span>
         <div className="min-w-0">
@@ -271,6 +272,7 @@ function OutputCard({ icon, title, desc, file, label, preview, onOpen }: {
         <Download className="h-4 w-4" aria-hidden="true" />
         {label}
       </a>
+      </div>
     </li>
   );
 }
@@ -289,11 +291,12 @@ export default function BizplanShowcase() {
         꾸러미 하나로 파일 3개가 나와요. 아래는 예시회사로 만든 샘플이에요 — 넘겨 보고, 카드를 눌러 전체를 보고, 받아서 열어 보세요.
       </p>
 
-      <div className="mt-6">
+      <div className="pc:mt-2 pc:grid pc:grid-cols-3 pc:items-center pc:gap-6">
+      <div className="mt-6 pc:col-span-2 pc:mt-0">
         <SlideDeck />
       </div>
 
-      <ul className="mt-6 grid gap-3 sm:grid-cols-3">
+      <ul className="mt-6 grid gap-3 sm:grid-cols-3 pc:mt-0 pc:grid-cols-1">
         <OutputCard
           icon={<Presentation className="h-4 w-4" aria-hidden="true" />}
           title="사업계획서 PPT"
@@ -302,7 +305,7 @@ export default function BizplanShowcase() {
           onOpen={() => setOpen("pptx")}
           label="PPT 받기"
           preview={
-            <div className="relative h-40">
+            <div className="relative h-40 pc:h-32">
               {[3, 2, 1].map((n, k) => (
                 <img
                   key={n}
@@ -335,6 +338,7 @@ export default function BizplanShowcase() {
           preview={<Pages doc="clinic" pages={SAMPLE.docs.clinic} />}
         />
       </ul>
+      </div>
       <p className="mt-4 text-center text-xs text-slate-500">{SAMPLE.notice}</p>
       {open && <Gallery kind={open} onClose={() => setOpen(null)} />}
     </section>

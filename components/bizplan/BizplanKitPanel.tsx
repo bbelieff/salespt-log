@@ -67,7 +67,7 @@ export default function BizplanKitPanel({ kit, kitError, missing, showMissing, f
     </button>
   );
   return (
-    <section aria-labelledby="bizplan-make-title" className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <section aria-labelledby="bizplan-make-title" className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm pc:grid pc:grid-cols-2 pc:items-start pc:gap-x-8 pc:p-6">
       <div>
         <h2 id="bizplan-make-title" className="text-base font-bold text-slate-900">사업계획서 만들기</h2>
         <p className="mt-0.5 text-sm text-slate-600">
@@ -112,7 +112,7 @@ export default function BizplanKitPanel({ kit, kitError, missing, showMissing, f
         </p>
       </div>
 
-      <div>
+      <div className="pc:col-start-2 pc:row-span-6 pc:row-start-1">
         <div role="tablist" aria-label="쓰는 AI" className="flex gap-1 rounded-lg bg-slate-100 p-1">
           {tab("claude", "Claude 로 만들기")}
           {tab("chatgpt", "ChatGPT 로 만들기")}

@@ -8,7 +8,7 @@
  * - PC 는 왼쪽 입력 · 오른쪽 「어떻게 만들까요?」(따라 내려옴), 좁은 화면은 위아래.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, RotateCcw } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { bizplanMissing, emptyBizplanDraft, isBlankDraft, normalizeBizplanDraft, type BizplanDraft, type BizplanSlotKey } from "@/util/bizplan-pack";
 import BizplanFiles from "./BizplanFiles";
 import BizplanFactsForm from "./BizplanFactsForm";
@@ -138,22 +138,21 @@ export default function BizplanTool() {
     }
   }
 
-  function reset() {
-    if (!window.confirm("적은 내용과 올린 파일을 모두 지우고 새로 시작할까요?")) return;
-    setDraft(emptyBizplanDraft(baseYear()));
-    setFiles(emptySlotFiles());
-  }
+  // 휠 한 번에 「예시」 → 「사업계획서 만들기」가 한 화면씩 맞춰 들어오게(belie 2026-11-25). 이 화면을 떠나면 되돌린다.
+  useEffect(() => {
+    const root = document.documentElement;
+    const prev = root.style.scrollSnapType;
+    root.style.scrollSnapType = "y proximity";
+    return () => { root.style.scrollSnapType = prev; };
+  }, []);
 
   return (
     <div className="pb-10">
-      <div className="mx-auto flex max-w-3xl flex-col gap-4">
-        <div className="flex justify-end">
-          <button type="button" onClick={reset} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100">
-            <RotateCcw className="h-4 w-4" aria-hidden="true" />
-            새로 시작
-          </button>
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 pt-2">
+        <div className="snap-start scroll-mt-20">
+          <BizplanShowcase />
         </div>
-        <BizplanShowcase />
+        <div className="snap-start scroll-mt-20">
         <BizplanKitPanel
           kit={kit}
           kitError={kitError}
@@ -167,6 +166,7 @@ export default function BizplanTool() {
           onCopy={copyPrompt}
           onTemplate={template}
         />
+        </div>
         <details open={more} onToggle={(e) => setMore(e.currentTarget.open)} className="group rounded-xl border border-slate-200 bg-slate-50">
           <summary className="flex cursor-pointer list-none items-center gap-3 rounded-xl px-4 py-3 hover:bg-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500">
             <span className="min-w-0 flex-1">
