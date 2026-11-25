@@ -78,7 +78,7 @@ function SlideDeck() {
   return (
     <div>
       <div
-        className="relative mx-auto mt-12 w-5/6 max-w-2xl select-none pc:mt-14 pc:w-11/12 pc:max-w-none"
+        className="relative mx-auto mt-12 w-5/6 max-w-2xl select-none pc:mt-12 pc:w-11/12 pc:max-w-none"
         style={{ perspective: "1800px" }}
         onPointerEnter={() => setHold(true)}
         onPointerLeave={() => { setHold(false); setTilt({ x: 0, y: 0 }); }}
@@ -153,7 +153,7 @@ function SlideDeck() {
 function Pages({ doc, pages }: { doc: string; pages: number }) {
   const shown = Math.min(pages, 2);
   return (
-    <div className="relative h-40 overflow-hidden pc:h-32">
+    <div className="relative h-40 overflow-hidden pc:h-32 wide:h-44">
       {Array.from({ length: shown }, (_, k) => shown - k).map((n, k) => (
         <img
           key={n}
@@ -282,21 +282,21 @@ export default function BizplanShowcase() {
   return (
     <section
       aria-labelledby="bizplan-showcase-title"
-      className="overflow-hidden rounded-2xl bg-slate-950 px-4 pb-5 pt-6 text-white shadow-sm"
+      className="overflow-hidden rounded-2xl bg-slate-950 px-4 pb-5 pt-6 text-white shadow-sm pc:px-8"
       style={{ backgroundImage: "radial-gradient(60% 50% at 50% 0%, rgba(72,80,255,0.35), transparent 70%)" }}
     >
       <p className="text-center text-xs font-bold tracking-widest text-indigo-300">EXAMPLE</p>
       <h2 id="bizplan-showcase-title" className="mt-1 text-center text-xl font-bold">이렇게 만들어져요</h2>
-      <p className="mx-auto mt-1 max-w-md text-center text-sm text-slate-300">
+      <p className="mx-auto mt-1 max-w-md text-center text-sm text-slate-300 wide:max-w-none">
         꾸러미 하나로 파일 3개가 나와요. 아래는 예시회사로 만든 샘플이에요 — 넘겨 보고, 카드를 눌러 전체를 보고, 받아서 열어 보세요.
       </p>
 
-      <div className="pc:mt-2 pc:grid pc:grid-cols-3 pc:items-center pc:gap-6">
+      <div className="pc:mt-2 pc:grid pc:grid-cols-3 pc:items-center pc:gap-6 wide:gap-8">
       <div className="mt-6 pc:col-span-2 pc:mt-0">
         <SlideDeck />
       </div>
 
-      <ul className="mt-6 grid gap-3 sm:grid-cols-3 pc:mt-0 pc:grid-cols-1">
+      <ul className="mt-6 grid gap-3 sm:grid-cols-3 pc:mt-0 pc:grid-cols-1 wide:gap-4">
         <OutputCard
           icon={<Presentation className="h-4 w-4" aria-hidden="true" />}
           title="사업계획서 PPT"
@@ -305,7 +305,7 @@ export default function BizplanShowcase() {
           onOpen={() => setOpen("pptx")}
           label="PPT 받기"
           preview={
-            <div className="relative h-40 pc:h-32">
+            <div className="relative h-40 pc:h-32 wide:h-44">
               {[3, 2, 1].map((n, k) => (
                 <img
                   key={n}
