@@ -53,7 +53,7 @@ describe("할 일 구역 — 줄 목록", () => {
     const css = readFileSync("components/dashboard/dashboard-task-zone.css", "utf8");
     const phone = css.slice(css.indexOf("@media (max-width:1023.98px)"));
     expect(phone).toContain(".tz-list:not([data-open=true]) > .tz-row:nth-child(n+4) { display:none; }");
-    expect(css).toMatch(/\.tz-list\[data-open=true\] \{ max-height:[\d.]+rem; overflow-y:auto; overscroll-behavior:contain;/);
+    expect(css).toMatch(/\.tz-list\[data-open=true\] \{ max-height:min\([\d.]+rem, 70vh\); max-height:min\([\d.]+rem, 70dvh\); overflow-y:auto; overscroll-behavior:contain;/);
     // 4~6건이면 「모두 보기」는 폰에서만 필요하다. 3건 이하면 어디서도 없다.
     render(records.slice(0, 4));
     expect(more()!.getAttribute("data-pc-hidden")).toBe("true");
