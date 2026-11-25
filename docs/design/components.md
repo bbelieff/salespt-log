@@ -1879,7 +1879,7 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
   - 머리: 제목 「오늘 챙길 일」 → 「**N**건 남았어요」(26px/800) + 「0건이 되면 오늘 챙길 일은 끝입니다.」 + 15건 초과면 「밀린 일이 많을 땐 위에서부터 5건만 먼저 끝내 보세요.」, 아니면 「가장 급한 일이 맨 위에 있어요.」
   - 비율 막대(10px): 초록 = 오늘 처리, rose-600 = 7일 넘게 밀림, amber-500 = 밀림, blue-500 = 오늘, 회색 = 날짜 확인. 화면을 열 때 `fx-grow-x`.
   - 급한 정도 칩(`aria-pressed` 필터): 전체 / 7일 넘게 밀림 / 밀림 / 오늘 + 건수(날짜 확인은 건수가 있을 때만). 다시 누르면 풀린다. 오른쪽 끝 「✓ 오늘 N건 처리」.
-  - 줄 목록: 접힘 PC 6줄·폰 3줄(폰은 CSS `:nth-child(n+4)` 숨김) → 「남은 N건 모두 보기」(좁힌 상태면 「해당 N건…」)로 그 자리에서 펼침, 안쪽 스크롤(PC 23.5rem·폰 26.25rem) → 「접기」.
+  - 줄 목록: 접힘 PC 6줄·폰 3줄(폰은 CSS `:nth-child(n+4)` 숨김) → 「남은 N건 모두 보기」(좁힌 상태면 「해당 N건…」)로 그 자리에서 펼침, 안쪽 스크롤(화면 높이의 70%까지, 위 한도 PC 44rem·폰 40rem — 접힌 줄 수보다 눈에 띄게 많이 보이게) → 「접기」.
   - 오른쪽(폰은 아래) 「단계별로 보기」: STEP 2 DB관리 · 3 일정·계약 · 4 실무/수납 — 건수 + 4px 작은 막대, 누르면 목록이 좁혀진다. 「세는 기준 보기」, 「예정된 일 · 7일 안 N건」(누르면 FollowUpsDetailPanel).
   - 상태(`data-state`): `list` · `done`(0건 — 「오늘 챙길 일을 모두 끝냈어요」 한 줄 + 예정된 일 보기) · `first`(기록 없음 — DB 등록하기) · `unconfirmed`(조회 실패로 확인된 일 없음 — 「확인 필요」, 0건·완료로 보이지 않는다). 일부 실패는 「확인된 N건」, 확인 못 한 0 은 「—」. 불러오는 중은 `fx-skeleton`(DashboardFollowUps).
   - 용어(승인): 「장기누락」→「7일 넘게 밀림」(7일~), 「경과」→「밀림」(1~6일).
@@ -1888,6 +1888,8 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - **오늘 N건 처리** (`useHandledToday`): 서버 기록 없이 `localStorage["followups-handled-today"] = { date, who, peak }`. 그날 본 남은 건수의 최댓값 − 지금 남은 건수(어림값). 계정이 다르면 새로 센다(`who` = 계정 표시의 짧은 해시), 조회 일부 실패·관리자가 다른 사람 화면을 볼 때는 세지 않는다. 저장소를 못 써도 화면은 그대로.
 - **움직임 2가지(belie 2026-11-24)** — 그 밖의 새 애니메이션은 없다.
   1. 이어지는 전환 `useZoneTransition`: View Transitions(`document.startViewTransition` + `flushSync`). 펼침/접기·0건 접힘(과 반대)은 구역 상자까지(`html.tz-vt.tz-vt-zone`), 칩·단계 필터는 줄만(`html.tz-vt`) — 남는 줄은 미끄러지고 빠지는 줄은 사라지고 새 줄은 나타난다. 240ms `cubic-bezier(0.2, 0.8, 0.2, 1)`. 전환 중에만 클래스가 붙고 root 는 전환에서 뺀다(페이지 전체 깜빡임 없음, 다른 화면 영향 없음). 줄 이름 = `followUpTransitionName(item.key)`, 앞쪽 6줄만. 연타하면 앞 전환을 건너뛴다. **미지원 브라우저·동작 줄이기 = 즉시 전환.** 구역 아래 구역들은 전환에 넣지 않아 높이가 바뀌면 즉시 옮겨 간다.
+     - 구역 높이가 바뀌는 전환(`tz-vt-zone`)에서는 구역 아래 묶음도 이름을 받아 함께 움직인다(2026-11-25): 대시보드 page 의 `data-tz-after="1~5"`(폰 매출 띠·성과 제목·성과 묶음·차트·수료생 목표) + `.push-prompt`. 순번은 겹치면 안 된다(겹치면 전환 전체 취소 — 시험으로 고정).
+     - 좁혀 둔 조건(칩·단계)에 맞던 일이 조회 변화로 하나도 안 남으면 조건을 풀고 목록을 접는다(2026-11-25). 사용자가 직접 고른 0건 조건은 그대로 두고 「전체」 안내를 보여 준다.
   2. 선택 바탕이 옮겨 가는 칩 `useSlidingThumb` + `components/motion/sliding-thumb.css`: 눌린 칩의 자리·크기를 재서 표시(`.slide-thumb`, 장식 `aria-hidden`)를 옮긴다(transform·width·height 220ms, 동작 줄이기 = 즉시). 층 = 칩 흰 바탕(`::before`) → 표시 → 글자, 칩 묶음은 `position:relative; isolation:isolate`. 못 재면 표시 없이 칩이 제 바탕을 쓴다. 적용: 급한 정도 칩(`data-tone="ink"`), 대시보드 기간 칩(`PeriodPicker slidingIndicator`, `data-tone="accent"` — **기본 꺼짐**, 실무/수납·DB관리 유입일은 그대로).
   - 0건이 된 순간의 체크는 기존 `fx-check-pop`.
 - **DashboardActionOverview**: 「성과」 묶음만 — DOM 순서 주간 목표 → 진행건(PC 숨김) → 생산성. PC 2단(`repeat(2, minmax(0,1fr))`). 수료생 예외(목표 카드 접힘·폰은 맨 아래) 유지.

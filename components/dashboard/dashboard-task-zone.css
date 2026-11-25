@@ -39,7 +39,8 @@
 
 /* 줄 목록 — 접힘: PC 6줄(코드)·폰 3줄(아래 media). 펼침: 그 자리에서 안쪽 스크롤. */
 .tz-list { margin:10px 0 0; padding:0; list-style:none; }
-.tz-list[data-open=true] { max-height:23.5rem; overflow-y:auto; overscroll-behavior:contain; padding-right:6px; }
+/* 펼친 높이는 화면 높이의 70%까지(위 한도 44rem) — 접힌 6줄보다 눈에 띄게 많이 보여야 「모두 보기」가 펼친 것으로 읽힌다(2026-11-25 검수: 23.5rem 은 6.2줄이라 접힌 것과 같아 보였다). */
+.tz-list[data-open=true] { max-height:min(44rem, 70vh); max-height:min(44rem, 70dvh); overflow-y:auto; overscroll-behavior:contain; padding-right:6px; }
 .tz-row { display:grid; grid-template-columns:minmax(3.5rem,max-content) minmax(0,1fr) auto; align-items:center; gap:6px 12px; border-top:1px solid var(--ui-surface-muted); padding:7px 0; }
 .tz-row > .ft-badge { justify-self:start; font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:800; }
 .tz-what { display:flex; align-items:center; gap:6px; min-width:0; min-height:36px; border-radius:6px; text-align:left; }
@@ -101,7 +102,7 @@
 }
 @media (max-width:1023.98px) {
   .tz-list:not([data-open=true]) > .tz-row:nth-child(n+4) { display:none; }
-  .tz-list[data-open=true] { max-height:26.25rem; }
+  .tz-list[data-open=true] { max-height:min(40rem, 70vh); max-height:min(40rem, 70dvh); }
   .tz-row { gap:6px 8px; }
   .follow-ups-card .tz-chip { min-height:36px; }
   .tz-go { min-height:44px; padding:6px 12px; }
@@ -118,6 +119,15 @@
    240ms 감속 곡선(fx-* 와 같은 계열), 튕김 없음. 동작 줄이기·미지원 브라우저는 훅이 전환을 시작하지 않는다. */
 html.tz-vt { view-transition-name:none; }
 html.tz-vt-zone .tz-zone { view-transition-name:tz-zone; }
+/* 구역 높이가 바뀌는 전환(펼침/접기 · 0건 접힘)에서는 구역 아래 묶음도 같은 길이로 제자리를 찾아 간다 —
+   이름이 없으면 아래 묶음이 먼저 뛰어올라 줄어드는 옛 구역 그림과 겹쳐 보였다(2026-11-25 검수).
+   이름은 묶음마다 달라야 한다(겹치면 전환 전체가 취소된다) — page 가 data-tz-after 로 순번을 준다(폰의 매출 띠 1 · 성과 제목 2 · 성과 묶음 3 · 차트 4 · 수료생 목표 5). 알림 권유 판은 하나뿐이라 클래스로 건다. */
+html.tz-vt-zone [data-tz-after="1"] { view-transition-name:tz-after-1; }
+html.tz-vt-zone [data-tz-after="2"] { view-transition-name:tz-after-2; }
+html.tz-vt-zone [data-tz-after="3"] { view-transition-name:tz-after-3; }
+html.tz-vt-zone [data-tz-after="4"] { view-transition-name:tz-after-4; }
+html.tz-vt-zone [data-tz-after="5"] { view-transition-name:tz-after-5; }
+html.tz-vt-zone .push-prompt { view-transition-name:tz-after-push; }
 html.tz-vt:not(.tz-vt-zone) .tz-row { view-transition-name:var(--tz-vt-name, none); }
 html.tz-vt::view-transition-group(*) { animation-duration:240ms; animation-timing-function:cubic-bezier(0.2, 0.8, 0.2, 1); }
 html.tz-vt::view-transition-old(*), html.tz-vt::view-transition-new(*) { animation-duration:200ms; animation-timing-function:cubic-bezier(0.2, 0.8, 0.2, 1); }

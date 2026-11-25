@@ -83,6 +83,14 @@ describe("① 이어지는 전환 — 줄 이름", () => {
     expect(css).toContain("html.tz-vt { view-transition-name:none; }");
     expect(css).toContain("html.tz-vt-zone .tz-zone { view-transition-name:tz-zone; }");
     expect(css).toContain("html.tz-vt:not(.tz-vt-zone) .tz-row { view-transition-name:var(--tz-vt-name, none); }");
+    // 구역 높이가 바뀌는 전환에서는 구역 아래 묶음도 이름을 받아 함께 움직인다 — 이름은 서로 달라야 한다(2026-11-25 검수).
+    const after = [...css.matchAll(/html\.tz-vt-zone (\[data-tz-after="(\d)"\]|\.push-prompt) \{ view-transition-name:([\w-]+); \}/g)];
+    expect(after.map(m => m[3])).toEqual(["tz-after-1", "tz-after-2", "tz-after-3", "tz-after-4", "tz-after-5", "tz-after-push"]);
+    const page = readFileSync("app/(app)/dashboard/page.tsx", "utf8");
+    const used = [...page.matchAll(/data-tz-after="(\d)"/g)].map(m => m[1]);
+    // 차트 묶음과 「분석할 기록 없음」 판은 둘 중 하나만 그려지므로 같은 순번(4)을 쓴다. 나머지는 한 번씩.
+    expect(used.sort()).toEqual(["1", "2", "3", "4", "4", "5"]);
+    for (const n of used) expect(css).toContain(`html.tz-vt-zone [data-tz-after="${n}"] { view-transition-name:tz-after-${n}; }`);
     expect(css).toContain("html.tz-vt::view-transition-group(*) { animation-duration:240ms; animation-timing-function:cubic-bezier(0.2, 0.8, 0.2, 1); }");
     // 튕김·탄성 곡선 없음, 200~260ms.
     expect(css).not.toMatch(/cubic-bezier\([^)]*(1\.[1-9]|-0?\.[0-9])/);

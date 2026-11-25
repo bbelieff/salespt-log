@@ -64,7 +64,13 @@ export default function DashboardFollowUpsView({ items: latest, notice, incomple
   const [items, setItems] = useState(latest);
   const [achieved, setAchieved] = useState(false);
   const folds = latest !== items && hasUrgent(latest) !== hasUrgent(items);
-  if (latest !== items && !folds) setItems(latest);
+  if (latest !== items && !folds) {
+    // 좁혀 둔 조건(칩·단계)에 맞던 일이 조회가 바뀌면서 하나도 안 남았으면 조건을 풀어 남은 일을 보여 준다.
+    // 사용자가 직접 0건짜리 조건을 고른 경우(바뀌기 전에도 0건)는 그대로 둔다.
+    const matches = (list: readonly FollowUpItem[]) => list.filter(i => i.group !== "upcoming" && (group === "all" || i.group === group) && (!step || i.step === step)).length;
+    if ((group !== "all" || step !== null) && hasUrgent(latest) && matches(items) > 0 && matches(latest) === 0) { setGroup("all"); setStep(null); setOpen(false); setDetail(null); }
+    setItems(latest);
+  }
   useEffect(() => {
     if (folds) transition(() => { setItems(latest); setAchieved(!hasUrgent(latest)); }, { box: true });
   }, [folds, latest, transition]);
