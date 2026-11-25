@@ -92,10 +92,35 @@ describe("할 일 구역 — 줄 목록", () => {
     expect(step(0).getAttribute("aria-label")).toBe("STEP 2 DB관리 12건");
     click(step(0));
     expect(more()!.textContent).toContain("해당 12건 모두 보기");
+    // 사용자가 직접 0건짜리 조건을 고르면(합성 기록은 전부 STEP 4) 그대로 두고 길을 알려 준다.
+    act(() => root.unmount()); root = createRoot(host);
     render(records);
+    click(step(0));
+    expect(step(0).getAttribute("aria-pressed")).toBe("true");
     expect(rows()).toHaveLength(0);
     expect(host.querySelector(".tz-row-empty")!.textContent).toContain("위의 「전체」를 누르면 남은 일을 모두 볼 수 있습니다.");
     expect(more()).toBeNull();
+  });
+
+  it("좁혀 둔 조건의 일이 조회가 바뀌어 하나도 안 남으면 조건을 풀어 남은 일을 보여 준다(2026-11-25 검수)", () => {
+    render(many);
+    const step = (i: number) => host.querySelectorAll<HTMLButtonElement>(".tz-step")[i]!;
+    const chip = (tone: string) => host.querySelector<HTMLButtonElement>(`.tz-chip[data-tone="${tone}"]`)!;
+    click(step(0));
+    click(chip("today"));
+    expect(step(0).getAttribute("aria-pressed")).toBe("true");
+    expect(chip("today").getAttribute("aria-pressed")).toBe("true");
+    expect(rows().length).toBeGreaterThan(0);
+    // STEP 2 의 일이 전부 처리돼 사라졌다(다른 단계의 일은 남아 있다).
+    render(many.filter(item => item.step !== "2"));
+    expect(step(0).getAttribute("aria-pressed")).toBe("false");
+    expect(chip("all").getAttribute("aria-pressed")).toBe("true");
+    expect(host.querySelector(".tz-row-empty")).toBeNull();
+    expect(rows()).toHaveLength(6);
+    // 조건에 맞는 일이 아직 남아 있으면 건드리지 않는다.
+    click(step(2));
+    render(many.filter(item => item.step !== "2").slice(0, 20));
+    expect(step(2).getAttribute("aria-pressed")).toBe("true");
   });
 });
 

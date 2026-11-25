@@ -119,6 +119,15 @@
    240ms 감속 곡선(fx-* 와 같은 계열), 튕김 없음. 동작 줄이기·미지원 브라우저는 훅이 전환을 시작하지 않는다. */
 html.tz-vt { view-transition-name:none; }
 html.tz-vt-zone .tz-zone { view-transition-name:tz-zone; }
+/* 구역 높이가 바뀌는 전환(펼침/접기 · 0건 접힘)에서는 구역 아래 묶음도 같은 길이로 제자리를 찾아 간다 —
+   이름이 없으면 아래 묶음이 먼저 뛰어올라 줄어드는 옛 구역 그림과 겹쳐 보였다(2026-11-25 검수).
+   이름은 묶음마다 달라야 한다(겹치면 전환 전체가 취소된다) — page 가 data-tz-after 로 순번을 준다(폰의 매출 띠 1 · 성과 제목 2 · 성과 묶음 3 · 차트 4 · 수료생 목표 5). 알림 권유 판은 하나뿐이라 클래스로 건다. */
+html.tz-vt-zone [data-tz-after="1"] { view-transition-name:tz-after-1; }
+html.tz-vt-zone [data-tz-after="2"] { view-transition-name:tz-after-2; }
+html.tz-vt-zone [data-tz-after="3"] { view-transition-name:tz-after-3; }
+html.tz-vt-zone [data-tz-after="4"] { view-transition-name:tz-after-4; }
+html.tz-vt-zone [data-tz-after="5"] { view-transition-name:tz-after-5; }
+html.tz-vt-zone .push-prompt { view-transition-name:tz-after-push; }
 html.tz-vt:not(.tz-vt-zone) .tz-row { view-transition-name:var(--tz-vt-name, none); }
 html.tz-vt::view-transition-group(*) { animation-duration:240ms; animation-timing-function:cubic-bezier(0.2, 0.8, 0.2, 1); }
 html.tz-vt::view-transition-old(*), html.tz-vt::view-transition-new(*) { animation-duration:200ms; animation-timing-function:cubic-bezier(0.2, 0.8, 0.2, 1); }

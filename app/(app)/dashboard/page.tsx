@@ -89,7 +89,7 @@ export default function DashboardPage() {
             />
           </div>
           {(dash.data || !dash.isError) && (
-            <div className="dash-hero-money surface-hero min-w-0">
+            <div className="dash-hero-money surface-hero min-w-0" data-tz-after="1">
               {dash.data && (
                 <div role="group" aria-label="매출·비용 기간" data-testid="dashboard-period-chips"
                   className="relative isolate flex flex-wrap items-center gap-1.5 px-3 pt-3 pc:ml-auto pc:justify-end pc:py-2 pc:pl-0">
@@ -153,18 +153,19 @@ export default function DashboardPage() {
           <>
             {/* 새 수강생 「첫걸음」(2026-11-11) — 처음 하는 일 일곱 가지, 다 하면 사라진다. */}
             <FirstStepsCard view={dash.data} />
+            {/* 구역 아래 묶음의 data-tz-after 순번 = 할 일 구역 높이가 바뀌는 전환에서 함께 움직일 이름(dashboard-task-zone.css). 겹치면 안 된다. */}
             {/* 할 일 구역(2026-11-24) — 폭 전체. 관리자가 다른 사람 화면을 볼 때는 이 기기의 「오늘 N건 처리」를 세지 않는다. */}
             <DashboardFollowUps todayISO={today} trackHandled={Boolean(me.data?.email) && !me.data?.impersonating} handledScope={me.data?.email} />
             <PushPrompt />
-            <h2 className="section-head dash-after px-1">성과 <small className="text-xs font-medium text-slate-500">{weeks}주 누적</small></h2>
-            <div className="dash-after">
+            <h2 className="section-head dash-after px-1" data-tz-after="2">성과 <small className="text-xs font-medium text-slate-500">{weeks}주 누적</small></h2>
+            <div className="dash-after" data-tz-after="3">
               <DashboardActionOverview matrix={dash.data.channelMatrix} weeks={weeks}
                 todayISO={today} courseStartISO={me.data?.courseStartISO} graduated={graduated} />
             </div>
             {/* [3] 매출·비용·영업이익(기간 선택, ADR-0034)은 맨 위 .surface-hero 띠로 옮겼다(화면 마감 v2).
                 상세는 컬럼 클릭 시 행 아래 공용 패널(SSOT: docs/design/components.md §9-2). */}
 
-            {hasDashboardChartRecords(dash.data) ? <div className="dash-after space-y-3 pc:grid pc:grid-cols-3 pc:items-stretch pc:gap-4 pc:space-y-0">
+            {hasDashboardChartRecords(dash.data) ? <div className="dash-after space-y-3 pc:grid pc:grid-cols-3 pc:items-stretch pc:gap-4 pc:space-y-0" data-tz-after="4">
               {/* 1024 미만: 차트 3종을 옆으로 넘기는 카드(인터랙션 ②, 2026-10-09). PC 는 래퍼가 풀려 그리드 칸 그대로. */}
               <MobileChartCarousel labels={dash.data.weeklyTrendPeriod?.kind === 'recent' ? ['영업 퍼널', '지난 8주간 추이', '채널별 성과'] : CHART_LABELS}>
                 <div className={CHART_SLIDE}><FunnelChart weeks={weeks} matrix={dash.data.channelMatrix} /></div>
@@ -176,9 +177,9 @@ export default function DashboardPage() {
                   />
                 </div>
               </MobileChartCarousel>
-            </div> : <section className="dash-after surface-panel flex flex-wrap items-center justify-between gap-3" aria-label="영업 분석 시작하기"><div><h2 className="text-sm font-bold text-slate-900">{dash.data.weeklyTrendPeriod?.kind === 'recent' ? '최근 8주간 분석할 영업 기록이 없어요' : '아직 분석할 영업 기록이 없어요'}</h2><p className="mt-1 text-xs text-slate-600">DB를 등록하고 활동을 기록하면 퍼널·추이·채널별 성과가 표시됩니다.</p></div><Link href="/db-sheet" className="btn-depth-blue rounded-lg px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">DB 등록하기</Link></section>}
+            </div> : <section className="dash-after surface-panel flex flex-wrap items-center justify-between gap-3" aria-label="영업 분석 시작하기" data-tz-after="4"><div><h2 className="text-sm font-bold text-slate-900">{dash.data.weeklyTrendPeriod?.kind === 'recent' ? '최근 8주간 분석할 영업 기록이 없어요' : '아직 분석할 영업 기록이 없어요'}</h2><p className="mt-1 text-xs text-slate-600">DB를 등록하고 활동을 기록하면 퍼널·추이·채널별 성과가 표시됩니다.</p></div><Link href="/db-sheet" className="btn-depth-blue rounded-lg px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600">DB 등록하기</Link></section>}
             {/* 수료생 모바일: 주간 목표는 맨 아래, 기본 접힘(belie 2026-11-05). PC 는 위 개요 자리. */}
-            {graduated && <div className="dashboard-goals-bottom dash-after surface-panel"><CollapsibleGoalCard layout="mobile" /></div>}
+            {graduated && <div className="dashboard-goals-bottom dash-after surface-panel" data-tz-after="5"><CollapsibleGoalCard layout="mobile" /></div>}
           </>
         )}
       </div>
