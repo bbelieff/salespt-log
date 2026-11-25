@@ -90,7 +90,7 @@ describe("DashboardFollowUps 할 일 구역", () => {
     expect(links()).toEqual([STALLED, LATE, MEETING, LEAD, NOW]);
     expect(links()).not.toContain(SOON);
     expect(chips().map((c) => c.textContent!.replace(/\s+/g, " ").trim())).toEqual(["전체 5", "7일 넘게 밀림 1", "밀림 3", "오늘 1"]);
-    expect(steps().map((s) => s.getAttribute("aria-label"))).toEqual(["STEP 2 DB관리 1건", "STEP 3 일정·계약 1건", "STEP 4 실무/수납 3건"]);
+    expect(steps().map((s) => s.getAttribute("aria-label"))).toEqual(["STEP 2 DB관리 1건", "STEP 3 일정·계약 1건", "STEP 4 실무/수납 3건 · 가장 많이 몰림"]);
     expect(upcoming()!.textContent).toContain("예정된 일 · 7일 안");
     expect(upcoming()!.textContent).toContain("1건");
     // 승인된 용어 변경 — 옛 이름은 화면에 남지 않는다.

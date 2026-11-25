@@ -11,5 +11,7 @@
 /* 할 일 구역 급한 정도 칩 — 진한 바탕 */
 .slide-thumb[data-tone=ink] { border-color:var(--ui-text); background:var(--ui-text); }
 /* 기간 칩(PeriodPicker slidingIndicator) — 지금 선택 모양(파란 테두리 + 옅은 파랑) 그대로 */
+/* 오른쪽 열 보기 전환(단계·종류·이유) — 옅은 홈 위의 흰 알약 */
+.slide-thumb[data-tone=paper] { border-radius:6px; border-color:var(--ui-border); background:var(--ui-surface); box-shadow:0 1px 2px color-mix(in srgb, var(--ui-text) 12%, transparent); }
 .slide-thumb[data-tone=accent] { border-color:var(--ui-accent-bright); background:var(--ui-accent-soft); }
 @media (prefers-reduced-motion: reduce) { .slide-thumb { transition:none; } }

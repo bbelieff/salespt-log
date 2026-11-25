@@ -2,7 +2,7 @@
 /**
  * 「오늘 챙길 일」 할 일 구역(2026-11-24 개편, belie 승인 기획서 1단계) — 화면 폭 전체.
  * 누르지 않아도 가장 급한 일이 줄로 보인다: 「N건 남았어요」 → 비율 막대 → 급한 정도 칩 → 줄 목록(PC 6줄·폰 3줄, 그 자리에서 펼침)
- * | 단계별 건수(누르면 목록이 좁혀짐) · 세는 기준 · 예정된 일. 세는 규칙·정렬은 lib/analytics/dashboard-follow-ups 그대로.
+ * | 오른쪽 열(FollowUpsSidePanel — 단계·종류·이유 보기 전환, 누르면 목록이 좁혀짐) · 세는 기준 · 예정된 일. 세는 규칙·정렬은 lib/analytics/dashboard-follow-ups 그대로.
  * 밀린 일이 있으면 무지개 테두리(data-emphasis=flow · .ft-glow)를 유지한다. 조회·재시도·집계는 DashboardFollowUps 책임.
  * 움직임(belie 2026-11-24 추가 지시, 이 둘만): ① 이어지는 전환 — 펼침/접기 · 칩·단계로 좁히기 · 0건으로 접힘(useZoneTransition)
  * ② 선택 바탕이 옮겨 가는 칩(useSlidingThumb). 나머지는 이미 쓰는 fx-*(막대 차오름·0건 달성 체크)만.
@@ -12,11 +12,12 @@ import React, { useEffect, useId, useRef, useState, type ReactNode } from "react
 import Link from "next/link";
 import type { Route } from "next";
 import { Check, CircleAlert, Plus } from "lucide-react";
-import { compareFollowUpUrgency, hasOverdueFollowUps, type FollowUpGroup, type FollowUpItem, type FollowUpStep } from "@/lib/analytics/dashboard-follow-ups";
+import { compareFollowUpUrgency, hasOverdueFollowUps, type FollowUpGroup, type FollowUpItem } from "@/lib/analytics/dashboard-follow-ups";
 import "@/components/dashboard/dashboard-follow-ups.css";
 import "./followups-table.css";
 import "./dashboard-task-zone.css";
-import FollowUpRow, { FOLLOW_UP_STEP_LABEL } from "./FollowUpRow";
+import FollowUpRow from "./FollowUpRow";
+import FollowUpsSidePanel, { SIDE_VIEWS, sidePickLabel, sidePickMatches, type SidePick, type SideView } from "./FollowUpsSidePanel";
 import FollowUpsDetailPanel from "./FollowUpsDetailPanel";
 import { useFollowUpsPopover } from "./useFollowUpsPopover";
 import { useHandledToday } from "./useHandledToday";
@@ -25,7 +26,8 @@ import { usePlayOnOpen } from "@/components/motion/useMotion";
 import { useSlidingThumb } from "@/components/motion/useSlidingThumb";
 import "@/components/motion/sliding-thumb.css";
 
-const STEPS: FollowUpStep[] = ["2", "3", "4"];
+/** 오른쪽 열에서 마지막으로 본 보기(단계·종류·이유)를 이 기기에 기억한다. */
+export const SIDE_VIEW_KEY = "followups-side-view";
 const GROUPS = [{ id: "long-overdue", label: "7일 넘게 밀림" }, { id: "overdue", label: "밀림" }, { id: "today", label: "오늘" }] as const;
 type GroupFilter = "all" | "long-overdue" | "overdue" | "today" | "unknown";
 /** 접힌 목록의 줄 수 — PC 6줄. 폰(1024 미만)은 CSS 가 3줄까지만 보인다(dashboard-task-zone.css). */
@@ -48,7 +50,8 @@ export default function DashboardFollowUpsView({ items: latest, notice, incomple
   handledScope?: string;
 }) {
   const [group, setGroup] = useState<GroupFilter>("all");
-  const [step, setStep] = useState<FollowUpStep | null>(null);
+  const [view, setView] = useState<SideView>("step");
+  const [pick, setPick] = useState<SidePick | null>(null);
   const [open, setOpen] = useState(false);
   const [detail, setDetail] = useState<string | null>(null);
   const [rules, setRules] = useState(false);
@@ -67,8 +70,8 @@ export default function DashboardFollowUpsView({ items: latest, notice, incomple
   if (latest !== items && !folds) {
     // 좁혀 둔 조건(칩·단계)에 맞던 일이 조회가 바뀌면서 하나도 안 남았으면 조건을 풀어 남은 일을 보여 준다.
     // 사용자가 직접 0건짜리 조건을 고른 경우(바뀌기 전에도 0건)는 그대로 둔다.
-    const matches = (list: readonly FollowUpItem[]) => list.filter(i => i.group !== "upcoming" && (group === "all" || i.group === group) && (!step || i.step === step)).length;
-    if ((group !== "all" || step !== null) && hasUrgent(latest) && matches(items) > 0 && matches(latest) === 0) { setGroup("all"); setStep(null); setOpen(false); setDetail(null); }
+    const matches = (list: readonly FollowUpItem[]) => list.filter(i => i.group !== "upcoming" && (group === "all" || i.group === group) && sidePickMatches(i, pick)).length;
+    if ((group !== "all" || pick !== null) && hasUrgent(latest) && matches(items) > 0 && matches(latest) === 0) { setGroup("all"); setPick(null); setOpen(false); setDetail(null); }
     setItems(latest);
   }
   useEffect(() => {
@@ -79,7 +82,11 @@ export default function DashboardFollowUpsView({ items: latest, notice, incomple
   const upcoming = items.filter(i => i.group === "upcoming").sort(compareFollowUpUrgency);
   const unknown = urgent.filter(i => i.group === "unknown").length;
   const done = useHandledToday(todayISO, urgent.length, !incomplete, handledScope);
-  const shown = urgent.filter(i => (group === "all" || i.group === group) && (!step || i.step === step));
+  const shown = urgent.filter(i => (group === "all" || i.group === group) && sidePickMatches(i, pick));
+  // 마지막으로 본 보기를 되살린다(저장소를 못 쓰면 「단계」 그대로).
+  useEffect(() => {
+    try { const saved = localStorage.getItem(SIDE_VIEW_KEY); if (SIDE_VIEWS.some(v => v.id === saved)) setView(saved as SideView); } catch { /* 기억 못 해도 화면은 그대로 */ }
+  }, []);
   const emphasis = hasOverdueFollowUps(items);
   const num = (n: number) => incomplete && !n ? "—" : String(n);
   // 필터를 바꾸면 목록은 다시 접힌 첫 줄부터. 칩·단계는 다시 누르면 풀린다.
@@ -87,7 +94,12 @@ export default function DashboardFollowUpsView({ items: latest, notice, incomple
   const rewind = () => { if (list.current) list.current.scrollTop = 0; };
   const refold = () => { setOpen(false); setDetail(null); };
   const pickGroup = (key: GroupFilter) => transition(() => { setGroup(current => current === key ? "all" : key); refold(); }, { before: rewind });
-  const pickStep = (key: FollowUpStep) => transition(() => { setStep(current => current === key ? null : key); refold(); }, { before: rewind });
+  const pickSide = (next: SidePick | null) => transition(() => { setPick(current => next && current?.view === next.view && current.key === next.key ? null : next); refold(); }, { before: rewind });
+  const switchView = (next: SideView) => {
+    if (next === view) return;
+    try { localStorage.setItem(SIDE_VIEW_KEY, next); } catch { /* 기억 못 해도 전환은 된다 */ }
+    transition(() => { setView(next); setPick(null); refold(); }, { before: rewind });
+  };
 
   const shell = (state: string, body: ReactNode) => <section data-dashboard-follow-ups data-state={state} data-emphasis={emphasis ? "flow" : undefined} ref={pop.card} className="follow-ups-card ft-card tz-zone" aria-label="오늘 챙길 일">
     {emphasis && <span aria-hidden className="ft-glow" />}
@@ -119,11 +131,11 @@ export default function DashboardFollowUpsView({ items: latest, notice, incomple
     {upcoming.length > 0 && <button type="button" className="tz-go" {...upcomingProps}>예정된 일 보기</button>}
   </div>);
 
-  const count = (g: FollowUpGroup, s?: FollowUpStep) => urgent.filter(i => i.group === g && (!s || i.step === s)).length;
+  const count = (g: FollowUpGroup) => urgent.filter(i => i.group === g).length;
   const chip = (key: GroupFilter, label: string, n: number) => <button key={key} type="button" className="tz-chip" data-tone={key} aria-pressed={group === key} onClick={() => pickGroup(key)}>
     {key !== "all" && <i aria-hidden />}{label} <b>{num(n)}</b>
   </button>;
-  const filtered = group !== "all" || step !== null;
+  const filtered = group !== "all" || pick !== null;
   return shell("list", <div className="tz-grid">
     <div className="tz-main">
       <div className="tz-head">
@@ -145,6 +157,7 @@ export default function DashboardFollowUpsView({ items: latest, notice, incomple
         {unknown > 0 && chip("unknown", "날짜 확인", unknown)}
         {done > 0 && <span className="tz-done"><Check size={13} strokeWidth={2.6} aria-hidden />오늘 {done}건 처리</span>}
       </div>
+      {pick && <p className="tz-picked"><span>{sidePickLabel(pick)}만 보는 중</span><button type="button" onClick={() => pickSide(null)}>풀기</button></p>}
       <ul ref={list} className="tz-list" data-open={open}>
         {(open ? shown : shown.slice(0, PC_ROWS)).map((item, index) => <FollowUpRow key={item.key} item={item} primary={index === 0} expanded={detail === item.key} onToggle={() => setDetail(detail === item.key ? null : item.key)}
           transitionName={index < NAMED_ROWS ? followUpTransitionName(item.key) : undefined} />)}
@@ -154,17 +167,9 @@ export default function DashboardFollowUpsView({ items: latest, notice, incomple
         {open ? "접기" : `${filtered ? "해당" : "남은"} ${shown.length}건 모두 보기`} <DisclosureChevron open={open} />
       </button>}
     </div>
-    <div className="tz-aside">
-      <h3>단계별로 보기</h3>
-      {STEPS.map(s => {
-        const n = urgent.filter(i => i.step === s).length;
-        return <button key={s} type="button" className="tz-step" aria-pressed={step === s} aria-label={`STEP ${s} ${FOLLOW_UP_STEP_LABEL[s]} ${incomplete && !n ? "확인 필요" : `${n}건`}`} onClick={() => pickStep(s)}>
-          <span className="ft-step-id">{s}</span><span className="tz-step-name">{FOLLOW_UP_STEP_LABEL[s]}</span><strong>{num(n)}</strong>
-          <span className="tz-mini" aria-hidden>{GROUPS.map(g => <i key={g.id} data-seg={g.id} style={{ flexGrow: count(g.id, s) }} />)}</span>
-        </button>;
-      })}
+    <FollowUpsSidePanel urgent={urgent} incomplete={incomplete} view={view} pick={pick} onView={switchView} onPick={pickSide}>
       {rulesButton}
       <button type="button" className="tz-upcoming" {...upcomingProps}><span>예정된 일 · 7일 안</span><b>{incomplete && !upcoming.length ? "—" : `${upcoming.length}건`} <DisclosureChevron open={popover !== null} /></b></button>
-    </div>
+    </FollowUpsSidePanel>
   </div>);
 }

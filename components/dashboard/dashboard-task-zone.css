@@ -63,15 +63,44 @@
 .tz-more { display:flex; align-items:center; justify-content:center; gap:4px; width:100%; margin-top:2px; border-top:1px solid var(--ui-surface-muted); padding:9px; color:var(--ui-text-muted); font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:700; }
 .tz-more:hover { background:var(--ui-surface-subtle); color:var(--ui-text); }
 
-/* 단계별로 보기 · 세는 기준 · 예정된 일 */
+/* 오른쪽 열(FollowUpsSidePanel, 2026-11-25) — 「단계 · 종류 · 이유」 보기 전환 · 세는 기준 · 예정된 일 */
 .tz-aside { display:flex; flex-direction:column; gap:2px; margin-top:10px; border-top:1px solid var(--ui-border); padding-top:10px; }
-.tz-aside h3 { margin-bottom:4px; color:var(--ui-text-subtle); font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:700; }
-.tz-step { display:grid; grid-template-columns:28px minmax(0,1fr) auto; align-items:center; gap:5px 8px; width:100%; border-radius:8px; padding:7px 8px; text-align:left; }
-.tz-step:hover { background:var(--ui-surface-subtle); }
-.tz-step[aria-pressed=true] { background:var(--ui-accent-soft); }
-.tz-step-name { color:var(--ui-text); font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:600; }
-.tz-step strong { color:var(--ui-text); font-size:calc(14 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:800; font-variant-numeric:tabular-nums; }
-.tz-mini { grid-column:2 / 4; height:4px; }
+.tz-views { position:relative; isolation:isolate; display:inline-flex; align-self:flex-start; gap:2px; margin-bottom:8px; border-radius:8px; background:var(--ui-surface-muted); padding:2px; }
+.tz-view { min-height:28px; border-radius:6px; padding:3px 12px; color:var(--ui-text-muted); font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:700; }
+.tz-view[aria-pressed=true] { background:var(--ui-surface); color:var(--ui-text); box-shadow:0 1px 2px color-mix(in srgb, var(--ui-text) 12%, transparent); }
+/* 미끄러지는 표시가 자리를 잡으면 단추는 제 바탕·그림자를 비운다(표시가 대신 그린다). 칩용 흰 바탕 층은 여기서는 쓰지 않는다. */
+.tz-views .slide-thumb[data-on] ~ .tz-view { background:transparent; box-shadow:none; }
+.tz-views .slide-thumb[data-on] ~ .tz-view::before { content:none; }
+.tz-flow, .tz-picks { display:flex; flex-direction:column; gap:2px; }
+.tz-step, .tz-step-off { position:relative; display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:4px 8px; width:100%; border-radius:8px; padding:7px 8px; text-align:left; }
+.tz-step:hover, .tz-pick:hover { background:var(--ui-surface-subtle); }
+.tz-step[aria-pressed=true], .tz-pick[aria-pressed=true] { background:var(--ui-accent-soft); }
+/* 단계 사이를 잇는 짧은 선 — 영업 흐름의 순서. */
+:is(.tz-step, .tz-step-off) + .tz-step::before { content:""; position:absolute; top:-5px; left:calc(8px + 1.6em); width:2px; height:8px; border-radius:1px; background:var(--ui-border-strong); }
+.tz-step-name { display:flex; align-items:center; gap:6px; min-width:0; color:var(--ui-text); font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:600; }
+.tz-step strong, .tz-pick strong { color:var(--ui-text); font-size:calc(14 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:800; font-variant-numeric:tabular-nums; }
+.tz-step small, .tz-step-off small { color:var(--ui-text-subtle); font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1)); font-variant-numeric:tabular-nums; }
+.tz-step small { grid-column:2 / 4; }
+.tz-step-off .tz-step-name { color:var(--ui-text-subtle); font-weight:500; }
+.tz-crowded { flex:none; border-radius:4px; background:var(--ui-rose-50); padding:0 5px; color:var(--ui-rose-700); font-size:calc(max(10, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1)); font-style:normal; font-weight:800; }
+.tz-mini { grid-column:2 / 4; height:5px; }
+.tz-step .tz-mini { background:transparent; }
+.tz-pick { display:grid; grid-template-columns:18px minmax(0,1fr) auto; align-items:center; gap:4px 8px; width:100%; border-radius:8px; padding:6px 8px; text-align:left; }
+.tz-pick[data-plain] { grid-template-columns:minmax(0,1fr) auto; }
+.tz-pick > svg { color:var(--ui-text-subtle); }
+.tz-meter { grid-column:2 / 4; height:4px; overflow:hidden; border-radius:999px; background:var(--ui-surface-muted); }
+.tz-pick[data-plain] .tz-meter { grid-column:1 / 3; }
+.tz-meter i { display:block; height:100%; border-radius:999px; background:var(--ui-indigo-500); }
+.tz-side-note { padding:6px 8px 0; color:var(--ui-text-subtle); font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1)); line-height:1.5; }
+/* 오른쪽 열에서 고른 조건 — 목록 위 한 줄 */
+.tz-picked { display:flex; align-items:center; gap:10px; margin-top:8px; color:var(--ui-indigo-700); font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:700; }
+.tz-picked button { color:var(--ui-text-muted); font-weight:500; text-decoration:underline; text-underline-offset:3px; }
+/* 줄의 종류 칩 · 이유 칩 — 폰에서는 숨긴다(아래 PC 블록에서 켠다). */
+.tz-kind, .tz-reasons { display:none; }
+.tz-kind { align-items:center; justify-self:start; gap:5px; height:24px; border:1px solid var(--ui-border); border-radius:6px; background:var(--ui-surface); padding:0 8px 0 6px; color:var(--ui-text); font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:700; white-space:nowrap; }
+.tz-kind > svg { color:var(--ui-text-subtle); }
+.tz-reasons { flex-wrap:wrap; justify-content:flex-end; gap:5px; max-width:19rem; }
+.tz-reasons > span { border:1px dashed var(--ui-border-strong); border-radius:999px; padding:1px 8px; color:var(--ui-text-muted); font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1)); white-space:nowrap; }
 .tz-rules { align-self:flex-start; padding:4px 8px; color:var(--ui-text-subtle); font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1)); text-align:left; text-decoration:underline; text-underline-offset:3px; }
 .tz-upcoming { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; margin-top:auto; border-top:1px solid var(--ui-border); padding:10px 8px 2px; color:var(--ui-text-muted); font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1)); }
 .tz-upcoming b { display:inline-flex; align-items:center; gap:4px; color:var(--ui-text); font-variant-numeric:tabular-nums; }
@@ -92,11 +121,21 @@
 .tz-zone[data-emphasis=flow] :is(.tz-row, .tz-more) { border-top-color:color-mix(in srgb, var(--ui-indigo-200) 60%, transparent); }
 .tz-zone[data-emphasis=flow] :is(.tz-aside, .tz-upcoming) { border-color:var(--ui-indigo-200); }
 .tz-zone[data-emphasis=flow] :is(.tz-bar, .tz-mini) { background:color-mix(in srgb, var(--ui-indigo-200) 60%, transparent); }
-.tz-zone[data-emphasis=flow] :is(.tz-step:hover, .tz-more:hover, .tz-detail) { background:color-mix(in srgb, var(--ui-white) 70.2%, transparent); }
-.tz-zone[data-emphasis=flow] .tz-step[aria-pressed=true] { background:var(--ui-indigo-100); }
+.tz-zone[data-emphasis=flow] :is(.tz-step:hover, .tz-pick:hover, .tz-more:hover, .tz-detail) { background:color-mix(in srgb, var(--ui-white) 70.2%, transparent); }
+.tz-zone[data-emphasis=flow] :is(.tz-step, .tz-pick)[aria-pressed=true] { background:var(--ui-indigo-100); }
+.tz-zone[data-emphasis=flow] :is(.tz-views, .tz-meter) { background:color-mix(in srgb, var(--ui-indigo-200) 60%, transparent); }
 
 @media (min-width:1024px) {
-  .tz-grid { grid-template-columns:minmax(0,1fr) 15.5rem; column-gap:1.5rem; }
+  .tz-grid { grid-template-columns:minmax(0,1fr) 17rem; column-gap:1.5rem; }
+  /* PC 줄: 배지 · 종류 칩 · 업체와 할 일 · (넓을 때) 이유 칩 · 열기 — 「열기」는 늘 같은 줄. 이유 칩이 없으면 그 칸은 0 폭이다. */
+  .tz-main { container:tz-main / inline-size; }
+  .tz-row { grid-template-columns:minmax(3.5rem,max-content) 4.75rem minmax(0,1fr) auto auto; }
+  .tz-row > .tz-detail, .tz-row-empty p { grid-column:1 / -1; }
+  .tz-kind { display:inline-flex; }
+  .tz-row > .tz-go { grid-column:5; }
+  /* 좁은 PC: 오른쪽 열·종류 칩과 겹치는 「STEP n 단계」 글자를 뺀다(이유 칩은 처음부터 숨김). */
+  @container tz-main (max-width:759.98px) { .tz-meta-step { display:none; } }
+  @container tz-main (min-width:760px) { .tz-reasons { display:flex; grid-column:4; } }
   .tz-aside { margin-top:0; border-top:0; border-left:1px solid var(--ui-border); padding-top:0; padding-left:1.5rem; }
   .tz-more[data-pc-hidden=true] { display:none; }
 }
@@ -106,6 +145,8 @@
   .tz-row { gap:6px 8px; }
   .follow-ups-card .tz-chip { min-height:36px; }
   .tz-go { min-height:44px; padding:6px 12px; }
+  .tz-view { min-height:36px; padding:3px 16px; }
+  .tz-pick, .tz-step { min-height:44px; }
   .tz-state > .tz-go { flex:1 1 100%; }
 }
 
