@@ -42,7 +42,7 @@ export default function FollowUpsSidePanel({ urgent, incomplete, view, pick, onV
   pick: SidePick | null;
   onView: (view: SideView) => void;
   onPick: (pick: SidePick) => void;
-  /** 세는 기준 · 예정된 일. */
+  /** 예정된 일. */
   children?: ReactNode;
 }) {
   const thumb = useSlidingThumb();
@@ -73,7 +73,7 @@ export default function FollowUpsSidePanel({ urgent, incomplete, view, pick, onV
           aria-label={`STEP ${step} ${FOLLOW_UP_STEP_LABEL[step]} ${incomplete && !n ? "확인 필요" : `${n}건`}${crowded === step ? " · 가장 많이 몰림" : ""}`} onClick={() => onPick({ view: "step", key: step })}>
           <StepBadge step={step} aria-hidden /><span className="tz-step-name">{FOLLOW_UP_STEP_LABEL[step]}{crowded === step && <em className="tz-crowded">몰림</em>}</span><strong>{num(n)}</strong>
           <span className="tz-mini" aria-hidden style={{ width: n ? `${Math.max(14, Math.round(n / most * 100))}%` : undefined }}>{GROUPS.map(g => <i key={g} data-seg={g} style={{ flexGrow: list.filter(i => i.group === g).length }} />)}</span>
-          {n > 0 && <small>{oldest > 0 ? `가장 오래 D+${String(oldest).padStart(2, "0")}` : "모두 오늘 할 일"}{long > 0 ? ` · 7일 넘게 밀림 ${long}` : ""}</small>}
+          {n > 0 && <small>{oldest > 0 ? `가장 오래 D+${String(oldest).padStart(2, "0")}` : "모두 오늘 할 일"}{long > 0 ? ` · 7일 넘게 ${long}건` : ""}</small>}
         </button>;
       })}
     </div>}

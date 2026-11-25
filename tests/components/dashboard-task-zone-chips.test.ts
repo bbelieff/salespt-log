@@ -73,7 +73,7 @@ describe("오른쪽 열 — 단계 · 종류 · 이유", () => {
     expect(off.textContent).toContain("주간 목표에서");
     const steps = [...host.querySelectorAll<HTMLButtonElement>(".tz-step")];
     expect(steps.map(s => s.getAttribute("aria-label"))).toEqual(["STEP 2 DB관리 2건", "STEP 3 일정·계약 1건", "STEP 4 실무/수납 4건 · 가장 많이 몰림"]);
-    expect(steps.map(s => s.querySelector("small")!.textContent)).toEqual(["가장 오래 D+02", "가장 오래 D+31 · 7일 넘게 밀림 1", "가장 오래 D+40 · 7일 넘게 밀림 3"]);
+    expect(steps.map(s => s.querySelector("small")!.textContent)).toEqual(["가장 오래 D+02", "가장 오래 D+31 · 7일 넘게 1건", "가장 오래 D+40 · 7일 넘게 3건"]);
     expect(steps.filter(s => s.querySelector(".tz-crowded"))).toHaveLength(1);
     // 건수가 같으면 「몰림」은 붙지 않는다.
     render(items.filter(i => i.key !== "stalled:3:1" && i.key !== "todo:1"));

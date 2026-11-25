@@ -53,17 +53,26 @@
 .tz-go:not(.btn-depth-blue) { border-color:var(--ui-border); background:var(--ui-surface); color:var(--ui-accent-strong); }
 .tz-go:not(.btn-depth-blue):hover { border-color:var(--ui-blue-100); background:var(--ui-accent-soft); }
 .tz-detail { grid-column:1 / -1; border-radius:8px; background:var(--ui-surface-subtle); padding:10px 12px; color:var(--ui-text-muted); font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1)); line-height:1.5; overflow-wrap:anywhere; }
-.tz-detail dl { display:flex; flex-wrap:wrap; gap:6px 20px; margin-top:8px; }
-.tz-detail dl > div { display:flex; gap:5px; min-width:0; }
-.tz-detail dt { flex-shrink:0; color:var(--ui-text-subtle); }
-.tz-detail dd { color:var(--ui-text-body); font-weight:500; }
+/* 펼친 상세: 「이 일이 뜬 이유」와 「정보」 두 묶음. 폰은 위아래, PC 는 좌우(가운데 가는 선). */
+.tz-detail { display:grid; gap:10px; }
+.tz-detail-label { margin-bottom:5px; color:var(--ui-text-subtle); font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:700; }
+.tz-detail-why ul { display:grid; gap:3px; }
+.tz-detail-why li { display:flex; align-items:baseline; gap:7px; color:var(--ui-text); font-weight:600; }
+.tz-detail-why li::before { content:""; flex-shrink:0; width:5px; height:5px; border-radius:999px; background:var(--ui-border-strong); transform:translateY(-2px); }
+.tz-detail-info { border-top:1px solid var(--ui-border); padding-top:10px; }
+/* 칸 사이 세로선: 줄이 바뀌어도 각 줄 첫 칸의 선은 왼쪽 밖으로 나가 잘린다(칸이 왼쪽 끝에 맞는다). */
+.tz-detail dl { display:flex; flex-wrap:wrap; gap:8px 0; margin-left:-16px; overflow:hidden; }
+.tz-detail dl > div { min-width:0; margin-left:-1px; padding:0 16px; border-left:1px solid var(--ui-border); }
+.tz-detail dt { color:var(--ui-text-subtle); font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1)); }
+.tz-detail dd { color:var(--ui-text); font-weight:700; font-variant-numeric:tabular-nums; }
+.tz-detail-note { margin-top:6px; color:var(--ui-text-muted); }
 .tz-row-empty p { grid-column:2 / -1; padding:6px 0; }
 .tz-row-empty strong { display:block; color:var(--ui-text); font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1)); }
 .tz-row-empty small { display:block; margin-top:1px; color:var(--ui-text-subtle); font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1)); }
 .tz-more { display:flex; align-items:center; justify-content:center; gap:4px; width:100%; margin-top:2px; border-top:1px solid var(--ui-surface-muted); padding:9px; color:var(--ui-text-muted); font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:700; }
 .tz-more:hover { background:var(--ui-surface-subtle); color:var(--ui-text); }
 
-/* 오른쪽 열(FollowUpsSidePanel, 2026-11-25) — 「단계 · 종류 · 이유」 보기 전환 · 세는 기준 · 예정된 일 */
+/* 오른쪽 열(FollowUpsSidePanel, 2026-11-25) — 「단계 · 종류 · 이유」 보기 전환 · 예정된 일 */
 .tz-aside { display:flex; flex-direction:column; gap:2px; margin-top:10px; border-top:1px solid var(--ui-border); padding-top:10px; }
 .tz-views { position:relative; isolation:isolate; display:inline-flex; align-self:flex-start; gap:2px; margin-bottom:8px; border-radius:8px; background:var(--ui-surface-muted); padding:2px; }
 .tz-view { min-height:28px; border-radius:6px; padding:3px 12px; color:var(--ui-text-muted); font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:700; }
@@ -80,7 +89,8 @@
 .tz-step-name { display:flex; align-items:center; gap:6px; min-width:0; color:var(--ui-text); font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:600; }
 .tz-step strong, .tz-pick strong { color:var(--ui-text); font-size:calc(14 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:800; font-variant-numeric:tabular-nums; }
 .tz-step small, .tz-step-off small { color:var(--ui-text-subtle); font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1)); font-variant-numeric:tabular-nums; }
-.tz-step small { grid-column:2 / 4; }
+/* 한 줄로만 — 넘치면 말줄임(2026-11-25 「다음 줄로 늘어지지 않게」). */
+.tz-step small { grid-column:2 / 4; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
 .tz-step-off .tz-step-name { color:var(--ui-text-subtle); font-weight:500; }
 .tz-crowded { flex:none; border-radius:4px; background:var(--ui-rose-50); padding:0 5px; color:var(--ui-rose-700); font-size:calc(max(10, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1)); font-style:normal; font-weight:800; }
 .tz-mini { grid-column:2 / 4; height:5px; }
@@ -101,10 +111,8 @@
 .tz-kind > svg { color:var(--ui-text-subtle); }
 .tz-reasons { flex-wrap:wrap; justify-content:flex-end; gap:5px; max-width:19rem; }
 .tz-reasons > span { border:1px dashed var(--ui-border-strong); border-radius:999px; padding:1px 8px; color:var(--ui-text-muted); font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1)); white-space:nowrap; }
-.tz-rules { align-self:flex-start; padding:4px 8px; color:var(--ui-text-subtle); font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1)); text-align:left; text-decoration:underline; text-underline-offset:3px; }
 .tz-upcoming { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; margin-top:auto; border-top:1px solid var(--ui-border); padding:10px 8px 2px; color:var(--ui-text-muted); font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1)); }
 .tz-upcoming b { display:inline-flex; align-items:center; gap:4px; color:var(--ui-text); font-variant-numeric:tabular-nums; }
-.tz-zone .follow-ups-guide { margin-top:10px; }
 
 /* 한 줄로 접힌 상태 — 모두 끝냄 · 기록 없음 · 확인 필요 */
 .tz-state { display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; }
@@ -126,11 +134,13 @@
 .tz-zone[data-emphasis=flow] :is(.tz-views, .tz-meter) { background:color-mix(in srgb, var(--ui-indigo-200) 60%, transparent); }
 
 @media (min-width:1024px) {
-  .tz-grid { grid-template-columns:minmax(0,1fr) 17rem; column-gap:1.5rem; }
+  .tz-grid { grid-template-columns:minmax(0,1fr) 19rem; column-gap:1.5rem; }
   /* PC 줄: 배지 · 종류 칩 · 업체와 할 일 · (넓을 때) 이유 칩 · 열기 — 「열기」는 늘 같은 줄. 이유 칩이 없으면 그 칸은 0 폭이다. */
   .tz-main { container:tz-main / inline-size; }
   .tz-row { grid-template-columns:minmax(3.5rem,max-content) 4.75rem minmax(0,1fr) auto auto; }
   .tz-row > .tz-detail, .tz-row-empty p { grid-column:1 / -1; }
+  .tz-detail { grid-template-columns:minmax(11rem, 16rem) minmax(0, 1fr); gap:0 20px; padding:12px 16px; }
+  .tz-detail-info { border-top:0; border-left:1px solid var(--ui-border); padding-top:0; padding-left:20px; }
   .tz-kind { display:inline-flex; }
   .tz-row > .tz-go { grid-column:5; }
   /* 좁은 PC: 오른쪽 열·종류 칩과 겹치는 「STEP n 단계」 글자를 뺀다(이유 칩은 처음부터 숨김). */

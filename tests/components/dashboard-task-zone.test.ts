@@ -133,14 +133,13 @@ describe("할 일 구역 — 목표 문장과 용어", () => {
     expect(host.querySelector(".tz-hint")!.textContent).toBe("0건이 되면 오늘 챙길 일은 끝입니다. 밀린 일이 많을 땐 위에서부터 5건만 먼저 끝내 보세요.");
   });
 
-  it("「장기누락·경과」 대신 「7일 넘게 밀림·밀림」 — 칩·막대 설명·세는 기준 어디에도 옛 이름이 없다", () => {
+  it("「장기누락·경과」 대신 「7일 넘게 밀림·밀림」 — 칩·막대 설명 어디에도 옛 이름이 없다", () => {
     render();
     expect([...host.querySelectorAll(".tz-chip")].map(c => c.textContent!.replace(/\s+/g, " ").trim())).toEqual(["전체 7", "7일 넘게 밀림 4", "밀림 2", "오늘 1"]);
     expect(host.querySelector(".tz-bar")!.getAttribute("aria-label")).toBe("남은 일 7건 — 7일 넘게 밀림 4건, 밀림 2건, 오늘 1건");
-    click(host.querySelector(".tz-rules"));
-    expect(host.querySelector(".follow-ups-guide")!.textContent).toContain("다음 날부터 「밀림」, 7일째부터 「7일 넘게 밀림」");
+    // 「세는 기준」 안내는 없앴다(belie 2026-11-25).
+    expect(host.querySelector(".tz-rules")).toBeNull();
     expect(zone().textContent).not.toMatch(/장기누락|경과/);
-    expect(host.querySelector(".tz-rules")!.getAttribute("aria-expanded")).toBe("true");
   });
 
   it("비율 막대와 단계 작은 막대는 건수만큼 자란다", () => {
