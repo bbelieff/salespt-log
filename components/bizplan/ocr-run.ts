@@ -10,8 +10,10 @@ import { redactOcrText } from "@/lib/document-ocr/text-utils";
 import { classifyDocumentText, parseDocument } from "@/lib/document-ocr/registry";
 import { bundlePieces } from "@/lib/document-ocr/bundle";
 import { mergeParseResults } from "@/lib/document-ocr/merge";
+import { top3FromTaxInvSheets, type SheetRows } from "@/lib/document-ocr/taxinv-top3";
 import {
   BIZPLAN_OCR_SLOTS,
+  partnerSuggestions,
   pickDocType,
   suggestionsFromParse,
   type BizplanOcrSlot,
@@ -35,6 +37,25 @@ export function ocrJobs(files: SlotFiles): { jobs: OcrJob[]; skipped: string[] }
     }
   }
   return { jobs, skipped };
+}
+
+/** 「매출처·매입처 TOP3 자료」 칸의 엑셀(.xlsx) — 간편인증에서 받은 전자세금계산서 목록을 TOP3 표로 읽는다(2026-11-25). */
+export function taxInvFiles(files: SlotFiles): File[] {
+  return files.partners.filter((f) => /\.xlsx$/i.test(f.name));
+}
+
+/** 세금계산서 엑셀 하나 → 매출처·매입처 TOP3 제안. 모양이 다른 엑셀이면 안내만. 파일은 이 기기 안에서만 읽는다. */
+export async function readTaxInvFile(file: File): Promise<{ suggestions: BizplanRawSuggestion[]; notes: string[] }> {
+  const XLSX = await import("xlsx");
+  const wb = XLSX.read(new Uint8Array(await file.arrayBuffer()), { type: "array" });
+  const sheets: Record<string, SheetRows> = {};
+  for (const name of ["매출", "매입"]) {
+    const ws = wb.Sheets[name];
+    if (ws) sheets[name] = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: "" });
+  }
+  const top = top3FromTaxInvSheets(sheets);
+  if (!top) return { suggestions: [], notes: [`${file.name}: 간편인증에서 받은 「전자세금계산서」 엑셀만 TOP3 로 읽을 수 있어요.`] };
+  return { suggestions: partnerSuggestions(top, file.name), notes: [] };
 }
 
 /** 파일 하나를 읽는다. 합본 PDF 는 서류마다 조각으로 나눈다. */

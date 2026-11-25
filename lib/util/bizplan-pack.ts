@@ -13,7 +13,7 @@ export const BIZPLAN_SLOTS = [
   { key: "vat", label: "부가세 과세표준증명원 (3개년)", required: true, folder: "03_부가세과세표준", hint: "연도별 PDF" },
   { key: "photos", label: "공정·보유시설 사진", required: true, folder: "04_공정시설사진", hint: "공정 순서대로 여러 장" },
   { key: "interview", label: "팩트파인딩 인터뷰", required: true, folder: "05_인터뷰", hint: "인터뷰지·녹취 전사" },
-  { key: "partners", label: "매출처·매입처 TOP3 자료", required: true, folder: "06_매출매입처", hint: "전자세금계산서 목록 등" },
+  { key: "partners", label: "매출처·매입처 TOP3 자료", required: true, folder: "06_매출매입처", hint: "간편인증 세금계산서 엑셀을 올리면 TOP3 표를 채워요" },
   { key: "extra", label: "추가 자료", required: false, folder: "07_추가자료", hint: "회사소개서·수출확인서·특허·인증 등" },
 ] as const;
 export type BizplanSlotKey = (typeof BIZPLAN_SLOTS)[number]["key"];

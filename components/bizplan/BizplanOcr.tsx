@@ -11,7 +11,7 @@ import { ScanText } from "lucide-react";
 import { OCR_UNAVAILABLE_MESSAGE } from "@/lib/document-ocr/limits";
 import { bizplanBaseYear, resolveSuggestions, type BizplanSuggestion } from "@/lib/document-ocr/bizplan-map";
 import type { BizplanDraft } from "@/util/bizplan-pack";
-import { ocrJobs, readOcrFile, suggestionsFromPieces, type ReadPiece } from "./ocr-run";
+import { ocrJobs, readOcrFile, readTaxInvFile, suggestionsFromPieces, taxInvFiles, type ReadPiece } from "./ocr-run";
 import type { SlotFiles } from "./pack-client";
 
 type Progress = { index: number; total: number; name: string; ratio: number; message: string };
@@ -39,10 +39,12 @@ export default function BizplanOcr({ files, draft, onApply }: {
   }, []);
 
   const { jobs, skipped } = ocrJobs(files);
+  const sheets = taxInvFiles(files);
+  const total = jobs.length + sheets.length;
   const reading = progress !== null;
 
   async function run() {
-    if (reading || jobs.length === 0) return;
+    if (reading || total === 0) return;
     const ac = new AbortController();
     abortRef.current = ac;
     const pieces: ReadPiece[] = [];
@@ -63,8 +65,15 @@ export default function BizplanOcr({ files, draft, onApply }: {
           failed.push(`${job.file.name}: ${known ? (e as Error).message : OCR_UNAVAILABLE_MESSAGE}`);
         }
       }
+      const partnerRaw: Awaited<ReturnType<typeof readTaxInvFile>>[] = [];
+      for (const [i, file] of sheets.entries()) {
+        setProgress({ index: jobs.length + i + 1, total, name: file.name, ratio: 0, message: "엑셀 읽는 중" });
+        try { partnerRaw.push(await readTaxInvFile(file)); } catch { failed.push(`${file.name}: 엑셀을 열지 못했어요.`); }
+      }
+      if (ac.signal.aborted) return;
       const baseYear = bizplanBaseYear(draft, new Date().getFullYear() - 1);
-      const raw = suggestionsFromPieces(pieces, baseYear);
+      const ocr = suggestionsFromPieces(pieces, baseYear);
+      const raw = { suggestions: [...ocr.suggestions, ...partnerRaw.flatMap((p) => p.suggestions)], notes: [...ocr.notes, ...partnerRaw.flatMap((p) => p.notes)] };
       const resolved = resolveSuggestions(raw.suggestions, draft);
       setReadCount(raw.suggestions.length);
       setRows(resolved.rows);
@@ -102,7 +111,7 @@ export default function BizplanOcr({ files, draft, onApply }: {
         <div className="min-w-0 flex-1">
           <h2 id="bizplan-ocr-title" className="text-base font-bold text-slate-900">서류에서 숫자 읽기</h2>
           <p className="text-sm text-slate-600">
-            사업자등록증·재무제표·부가세 서류를 이 기기 안에서 읽어 아래 팩트시트 칸을 채워 드려요. 고른 칸만 들어가요.
+            사업자등록증·재무제표·부가세 서류와 세금계산서 엑셀(매출처·매입처 TOP3)을 이 기기 안에서 읽어 아래 팩트시트 칸을 채워 드려요. 고른 칸만 들어가요.
           </p>
         </div>
         {reading ? (
@@ -113,10 +122,10 @@ export default function BizplanOcr({ files, draft, onApply }: {
           <button
             type="button"
             onClick={run}
-            disabled={jobs.length === 0}
+            disabled={total === 0}
             className={`${BTN} bg-blue-700 text-white hover:bg-blue-800 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500`}
           >
-            {jobs.length === 0 ? "읽을 서류 없음" : `서류 ${jobs.length}개 읽기`}
+            {total === 0 ? "읽을 서류 없음" : `서류 ${total}개 읽기`}
           </button>
         )}
       </div>
