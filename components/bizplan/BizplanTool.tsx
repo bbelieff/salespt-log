@@ -147,10 +147,7 @@ export default function BizplanTool() {
   return (
     <div className="pb-10">
       <div className="mx-auto flex max-w-3xl flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="min-w-0 flex-1 text-sm text-slate-600">
-            꾸러미를 받아 내 클로드·ChatGPT 대화창에 서류와 함께 넣고 「실행」만 보내면, 사업계획서 PPT · 슬라이드별 설명 · 현장클리닉 보고서가 나와요.
-          </p>
+        <div className="flex justify-end">
           <button type="button" onClick={reset} className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-slate-600 hover:bg-slate-100">
             <RotateCcw className="h-4 w-4" aria-hidden="true" />
             새로 시작
@@ -177,7 +174,7 @@ export default function BizplanTool() {
                 더 정확하게 만들기 <span className="text-sm font-semibold text-slate-500">(선택)</span>
               </span>
               <span className="mt-0.5 block text-sm text-slate-600">
-                서류를 여기 올려 숫자를 미리 확인해 두면, AI 가 숫자를 잘못 읽을 일이 줄어요. 안 해도 만들 수 있어요.
+                여기 서류를 올리면 ① 숫자를 자동으로 읽어 팩트시트를 채워 주고 ② 서류가 꾸러미에 함께 담겨요. 그러면 대화창에는 꾸러미만 넣으면 돼요. 안 해도 만들 수 있어요.
               </span>
             </span>
             <ChevronDown className="h-5 w-5 shrink-0 text-slate-500 transition-transform group-open:rotate-180" aria-hidden="true" />
