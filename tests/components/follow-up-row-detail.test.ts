@@ -47,3 +47,18 @@ describe("FollowUpRow 펼친 상세", () => {
     expect(render({ ...stalled, detail: "진행 1 · 가상 상품" }).querySelector(".tz-detail-note")!.textContent).toBe("가상 상품");
   });
 });
+
+describe("「예정된 일」 창의 펼친 줄", () => {
+  it("할 일 줄과 같은 두 묶음을 쓰고, 표에서 잘리는 업체·할 일을 정보 맨 앞에 다시 보인다", async () => {
+    const { default: FollowUpsDetailPanel } = await import("@/components/dashboard/FollowUpsDetailPanel");
+    host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+    act(() => root!.render(React.createElement(FollowUpsDetailPanel, { id: "p", items: [{ ...stalled, kind: "upcoming", group: "upcoming" } as FollowUpItem], incomplete: false,
+      panelRef: { current: null }, position: {}, onClose: () => {}, onPointerEnter: () => {}, onPointerLeave: () => {} })));
+    const panel = document.querySelector<HTMLElement>("[role=dialog]")!;
+    act(() => panel.querySelector<HTMLButtonElement>(".ft-action")!.click());
+    const detail = panel.querySelector(".ft-expanded .tz-detail")!;
+    expect([...detail.querySelectorAll(".tz-detail-why li")].map(li => li.textContent)).toEqual(stalled.reasons);
+    expect([...detail.querySelectorAll("dt")].map(dt => dt.textContent)).toEqual(["업체", "해야 할 일", "기준일", "진행", "기관", "계약일"]);
+    expect(detail.textContent!.split("진행기관 없음")).toHaveLength(2);
+  });
+});

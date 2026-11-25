@@ -21,6 +21,29 @@ export function followUpDetailNotes(item: Pick<FollowUpItem, "detail" | "reasons
   return [...new Set(item.detail.split(" · ").map(part => part.trim()).filter(part => part !== "" && !shown.has(part)))];
 }
 
+/**
+ * 펼친 상세 — 「이 일이 뜬 이유」(이유 목록)와 「정보」(이름표 위·값 아래 칸)를 나눠 보여 준다. 같은 말을 두 번 쓰지 않는다.
+ * 할 일 줄(FollowUpRow)과 「예정된 일」 창(FollowUpsDetailPanel)이 같이 쓴다. lead 는 정보 맨 앞에 더할 칸(창은 표가 잘려 업체·할 일을 다시 보인다).
+ */
+export function FollowUpDetail({ item, lead = [] }: { item: FollowUpItem; lead?: Array<{ label: string; value: string }> }) {
+  const notes = followUpDetailNotes(item);
+  return <div className="tz-detail">
+    <div className="tz-detail-why">
+      <p className="tz-detail-label">이 일이 뜬 이유</p>
+      <ul>{item.reasons.map(reason => <li key={reason}>{reason}</li>)}</ul>
+    </div>
+    <div className="tz-detail-info">
+      <p className="tz-detail-label">정보</p>
+      <dl>
+        {lead.map(f => <div key={f.label}><dt>{f.label}</dt><dd>{f.value}</dd></div>)}
+        <div><dt>기준일</dt><dd>{item.dueISO ?? "날짜 확인"}</dd></div>
+        {item.facts.map(f => <div key={f.label}><dt>{f.label}</dt><dd>{f.value}</dd></div>)}
+      </dl>
+      {notes.length > 0 && <p className="tz-detail-note">{notes.join(" · ")}</p>}
+    </div>
+  </div>;
+}
+
 export default function FollowUpRow({ item, primary, expanded, onToggle, transitionName }: {
   item: FollowUpItem;
   /** 목록 맨 윗줄만 주 버튼. */
@@ -32,7 +55,6 @@ export default function FollowUpRow({ item, primary, expanded, onToggle, transit
 }) {
   const context = item.facts.find(f => /기관/.test(f.label))?.value ?? item.facts.find(f => /상태/.test(f.label))?.value;
   const kind = followUpWorkKind(item), KindIcon = WORK_KIND_ICON[kind], chips = followUpReasonChips(item);
-  const notes = expanded ? followUpDetailNotes(item) : [];
   const due = item.dueISO ? `기준일 ${item.dueISO.slice(5).replace("-", ".")}` : "날짜 확인";
   return <li className="tz-row" data-group={item.group} data-expanded={expanded} style={transitionName ? { "--tz-vt-name": transitionName } as CSSProperties : undefined}>
     <span className="ft-badge" data-tone={item.group}>{followUpBadgeLabel(item.badge)}</span>
@@ -48,20 +70,6 @@ export default function FollowUpRow({ item, primary, expanded, onToggle, transit
     {/* 이유 칩 — 넓은 PC 에서만, 최대 두 개. 좁으면 빠지고 줄을 펼치면 전부 보인다. */}
     {chips.length > 0 && <span className="tz-reasons" aria-label="이 일이 생긴 이유">{chips.map(chip => <span key={chip}>{chip}</span>)}</span>}
     <Link href={item.href as Route} className={primary ? "tz-go btn-depth-blue" : "tz-go"} aria-label={`${item.company} ${item.action} 열기`}>열기<ArrowUpRight size={13} aria-hidden /></Link>
-    {/* 펼친 상세 — 「왜 떴나」(이유 목록)와 「정보」(이름표 위·값 아래 칸)를 나눠 보여 준다. 같은 말을 두 번 쓰지 않는다. */}
-    {expanded && <div className="tz-detail">
-      <div className="tz-detail-why">
-        <p className="tz-detail-label">이 일이 뜬 이유</p>
-        <ul>{item.reasons.map(reason => <li key={reason}>{reason}</li>)}</ul>
-      </div>
-      <div className="tz-detail-info">
-        <p className="tz-detail-label">정보</p>
-        <dl>
-          <div><dt>기준일</dt><dd>{item.dueISO ?? "날짜 확인"}</dd></div>
-          {item.facts.map(f => <div key={f.label}><dt>{f.label}</dt><dd>{f.value}</dd></div>)}
-        </dl>
-        {notes.length > 0 && <p className="tz-detail-note">{notes.join(" · ")}</p>}
-      </div>
-    </div>}
+    {expanded && <FollowUpDetail item={item} />}
   </li>;
 }
