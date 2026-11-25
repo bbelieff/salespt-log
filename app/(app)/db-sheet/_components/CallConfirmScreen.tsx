@@ -114,8 +114,8 @@ export function CallConfirmScreen({ lead, call, onSaved, onClose }: { lead: DbSh
         {groups.map(([g, rs]) => <div key={g} className="dbs-cc-group"><h3>{g}{g === "재무" && <small> · 백만원</small>}</h3>
           {rs.map(r => <div key={r.key} className={`dbs-cc-row is-${r.status}${r.checked ? " is-on" : ""}`}>
             <input type="checkbox" aria-label={`${r.label} 넣기`} checked={r.checked && r.status !== "same"} disabled={r.status === "same"} onChange={e => setRow(r.key, { checked: e.target.checked })} />
-            <div>
-              <div className="dbs-cc-label"><span>{r.label}</span>{r.sensitive && <span className="dbs-cc-tag is-priv">민감</span>}</div>
+            <div className="dbs-cc-label"><span>{r.label}</span>{r.sensitive && <span className="dbs-cc-tag is-priv">민감</span>}</div>
+            <div className="dbs-cc-val">
               {r.options
                 ? <select className="sheet-input" aria-label={r.label} value={r.value} onChange={e => setRow(r.key, { value: e.target.value, checked: !!e.target.value })}>
                   <option value="">고르기</option>{r.options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}</select>

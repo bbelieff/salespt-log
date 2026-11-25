@@ -74,7 +74,8 @@ body.db-sheet-route .sheet-mobile-row>.sheet-mobile-card{flex:1;min-width:0;bord
 .dbs-cc-field .sheet-input,.dbs-cc-panel>select.sheet-input,.dbs-cc-row .sheet-input{width:100%;min-width:0;min-height:38px;padding:7px 10px;font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1));font-weight:400;border:1px solid var(--ui-border-strong);border-radius:8px;background:var(--ui-surface);color:var(--ui-text)}
 .dbs-cc-field textarea.sheet-input,.dbs-cc-row textarea.sheet-input{line-height:1.6;resize:vertical}
 /* 날짜·시간·글 칸 높이를 하나로(belie 2026-11-05: 날짜 칸만 살짝 높았음) — 폰 날짜 칸은 자체 높이를 가져 appearance 를 끈다. */
-.dbs-cc-field input.sheet-input,.dbs-cc-field select.sheet-input,.dbs-cc-row input.sheet-input,.dbs-cc-row select.sheet-input{height:38px;min-height:38px;line-height:20px}
+.dbs-cc-field input.sheet-input,.dbs-cc-field select.sheet-input{height:38px;min-height:38px;line-height:20px}
+.dbs-cc-row input.sheet-input,.dbs-cc-row select.sheet-input{height:34px;min-height:34px;line-height:20px;padding-block:5px}
 .dbs-cc input[type=date].sheet-input{-webkit-appearance:none;appearance:none;display:flex;align-items:center}
 .dbs-cc-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
 .dbs-cc-stack{display:grid;gap:12px}
@@ -85,14 +86,20 @@ body.db-sheet-route .sheet-mobile-row>.sheet-mobile-card{flex:1;min-width:0;bord
 .dbs-cc-empty{font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-text-subtle)}
 .dbs-cc-raw summary{cursor:pointer;font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-accent);font-weight:600}
 .dbs-cc-raw p{margin-top:8px;white-space:pre-wrap;font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1));color:var(--ui-text-body);background:var(--ui-surface-subtle);border-radius:8px;padding:10px;max-height:240px;overflow:auto}
-.dbs-cc-group{display:grid;gap:8px}
-.dbs-cc-group h3{font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1));font-weight:700;color:var(--ui-text-body);padding-top:4px}
+/* 업체정보 칸(2026-11-25 belie 「공백 낭비」): 칸마다 상자 대신 한 목록 안의 줄 — 체크 | 이름 | 값(아래 작게 「지금」·들은 말). */
+.dbs-cc-group{display:grid;gap:4px}
+.dbs-cc-group h3{font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1));font-weight:700;color:var(--ui-text-body);padding-top:2px}
+.dbs-cc-group>.dbs-cc-row{border:1px solid var(--ui-border);border-top:none;border-radius:0}
+.dbs-cc-group>h3+.dbs-cc-row{border-top:1px solid var(--ui-border);border-radius:10px 10px 0 0}
+.dbs-cc-group>.dbs-cc-row:last-child{border-radius:0 0 10px 10px}
+.dbs-cc-group>h3+.dbs-cc-row:last-child{border-radius:10px}
 .dbs-cc-group h3 small{font-weight:400;color:var(--ui-text-subtle)}
-.dbs-cc-row{display:grid;grid-template-columns:18px minmax(0,1fr);gap:10px;align-items:start;border:1px solid var(--ui-border);border-radius:10px;padding:10px 12px}
-.dbs-cc-row.is-on{border-color:var(--ui-blue-300);background:var(--ui-blue-25)}
-.dbs-cc-row>input{width:16px;height:16px;margin-top:3px;accent-color:var(--ui-accent)}
-.dbs-cc-row>div{display:grid;gap:6px;min-width:0}
-.dbs-cc-label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1));font-weight:600;color:var(--ui-text-body)}
+.dbs-cc-row{display:grid;grid-template-columns:18px minmax(0,7.5rem) minmax(0,1fr);column-gap:10px;row-gap:2px;align-items:start;padding:6px 10px}
+.dbs-cc-row.is-on{background:var(--ui-blue-25)}
+.dbs-cc-row>input{width:16px;height:16px;margin-top:9px;accent-color:var(--ui-accent)}
+.dbs-cc-row>.dbs-cc-label{min-height:34px}
+.dbs-cc-val{display:grid;gap:2px;min-width:0}
+.dbs-cc-label{display:flex;align-items:center;flex-wrap:wrap;gap:2px 6px;font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1));font-weight:600;color:var(--ui-text-body)}
 .dbs-cc-tag{flex:none;font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1));font-weight:600;border-radius:5px;padding:1px 6px;white-space:nowrap}
 .dbs-cc-tag.is-priv{background:var(--ui-violet-100);color:var(--ui-violet-700)}
 .dbs-cc-row .sheet-input:disabled{background:var(--ui-surface-subtle);color:var(--ui-text-subtle)}
@@ -106,6 +113,7 @@ body.db-sheet-route .sheet-mobile-row>.sheet-mobile-card{flex:1;min-width:0;bord
 .dbs-cc-err{color:var(--ui-red-700);font-weight:600}
 .dbs-cc button:focus-visible,.dbs-cc input:focus-visible,.dbs-cc select:focus-visible,.dbs-cc textarea:focus-visible,.dbs-cc summary:focus-visible{outline:2px solid var(--ui-accent-bright);outline-offset:2px}
 .dbs-cc .num{font-variant-numeric:tabular-nums}
+@media(max-width:640px){.dbs-cc-row{grid-template-columns:18px minmax(0,1fr)}.dbs-cc-row>.dbs-cc-label{min-height:0;padding-top:1px}.dbs-cc-row>.dbs-cc-val{grid-column:2}.dbs-cc-row>input{margin-top:2px}}
 @media(max-width:640px){.dbs-cc-foot-in{flex-wrap:wrap}.dbs-cc-foot-in p{flex-basis:100%}.dbs-cc-foot-in .dbs-button{flex:1}.dbs-cc-field .sheet-input,.dbs-cc-row .sheet-input,.dbs-cc-panel>select.sheet-input{font-size:calc(16 * var(--app-px, 1px) * var(--font-scale, 1))}}
 /* 📜 대본 보기(2026-11-07) — 통화 줄 끝. 폰에서는 한 줄을 다 쓴다. 대본 글은 읽기 쉽게 조금 크게. */
 .dbs-call-bar>.dbs-call-script{min-height:34px}
