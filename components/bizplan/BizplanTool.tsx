@@ -148,7 +148,7 @@ export default function BizplanTool() {
 
   return (
     <div className="pb-10">
-      <div className="mx-auto flex max-w-6xl flex-col gap-4 pt-2">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 pt-2 wide:max-w-none">
         <div className="snap-start scroll-mt-20">
           <BizplanShowcase />
         </div>
