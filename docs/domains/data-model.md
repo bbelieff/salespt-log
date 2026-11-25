@@ -41,7 +41,7 @@ last_review: 2026-04-27
 - `WeeklyGoalPrivateInput`: specialNotes, priorOutcome, revision. 별도 trainer/admin 권한 API.
 - `WeeklyGoalKey`: studentId(서버 해석 spreadsheetId)×cohort×courseStart×weekStart. 같은 수강의 로그인 별칭은 같은 행/revision을 공유한다. 저장 시 명시 student와 수강정보 echo를 확인하며 client sheetId는 받지 않는다.
 - `WeeklyGoalRecord`, `WeeklyGoalPrivateRecord`: 별도 public/private 테이블, 양쪽 독립 revision/updatedAt.
-- `GoalWeek`, `WeeklyGoalView`: 현재/지난 금~목 주간의 저장값과 기존 기록 기반 실적. 학생 payload에 내부기록 없음.
+- `GoalWeek`, `WeeklyGoalView`: 현재/지난 금~목 주간의 저장값과 기존 기록 기반 실적. 학생 payload에 내부기록 없음. `graduated?`(2026-11-25): 오늘이 총회일(없으면 수료일) 뒤인지 — 화면이 PT과제·복사·회의록을 감추는 근거. 저장값은 바꾸지 않는다.
 - `GoalStudent`, `GoalOverviewRow`: 담당/본인 수강 목록 및 공용 목표 집계. `GoalStudent.targetRef`는 단일 수강 등록의 opaque 전달값이며, 개별 실패는 error로 명시. 복수 본인 등록은 명시 선택 전 조회·저장을 하지 않는다.
 - migration `0005_weekly_goals.sql`: 가산 테이블, 자연 복합키와 CHECK, RLS 활성, public 권한 없음. 운영 적용은 별도 증거 필요.
 - 상세 집계·권한·기간 계약: [weekly-goals.md](./weekly-goals.md).

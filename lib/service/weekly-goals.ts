@@ -12,6 +12,7 @@ import { WeeklyGoalInput, WeeklyGoalPrivateInput, type WeeklyGoalKey, type Weekl
 import { canAccessManagedStudent } from "./trainer-student-access";
 import { activeAssigned, activeTrainerEmails } from "./trainer-pool";
 import { adminEmails, adminNames } from "@/config";
+import { ceremonyISO } from "@/config/cohort-dates";
 import type { TrainerAccessOperation, TrainerStudentTarget } from "@/types/trainer-access";
 import type { User } from "@/types";
 
@@ -142,6 +143,12 @@ async function context(params: URLSearchParams, operation: TrainerAccessOperatio
   return { a: checkedActor, u, key, week };
 }
 
+/** 대시보드 진행 줄과 같은 끝 날짜(총회일, 없으면 수료일) — 그 다음 날부터 수료 후. 끝 날짜를 모르면 수료 전으로 본다. */
+export function isGraduatedOn(courseStart: string, cohort: string | undefined, graduationISO: string | undefined, today: string): boolean {
+  const end = ceremonyISO(courseStart, cohort) || graduationISO || "";
+  return isValidISODate(end) && today > end;
+}
+
 export async function loadWeeklyGoals(params: URLSearchParams): Promise<WeeklyGoalView> {
   const { a, u, key, week } = await context(params);
   const window = goalWeekWindow(key.courseStart, week);
@@ -178,6 +185,7 @@ export async function loadWeeklyGoals(params: URLSearchParams): Promise<WeeklyGo
     reporting: { start: reportingStart, end: reportingEnd, actuals: weeklyGoalActuals(sales, meetings, [], reportingStart, reportingEnd) },
     cumulative,
     canReadInternal: a.internal,
+    graduated: isGraduatedOn(u.courseStartISO, u.cohort, u.graduationISO, todayKST()),
   };
 }
 

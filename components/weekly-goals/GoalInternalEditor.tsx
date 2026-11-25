@@ -162,7 +162,7 @@ export default function GoalInternalEditor({ view, onDirty, onRecord, children }
   // semantic overwrite mutation disables its own button while running.
   return <section aria-label="트레이너 내부 기록" className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 ph-no-capture">
     <div className="flex flex-wrap items-center justify-between gap-2">
-      <h2 className="font-bold">PT과제 성과·트레이너 기록</h2>
+      <h2 className="font-bold">{view.graduated ? "트레이너 기록" : "PT과제 성과·트레이너 기록"}</h2>
       <span className="inline-flex items-center gap-2">
         <AutosaveStatus status={auto.status} error={auto.error}
           savedAt={auto.savedAt} onRetry={auto.retry}
@@ -182,7 +182,7 @@ export default function GoalInternalEditor({ view, onDirty, onRecord, children }
     {auto.error && !conflict && <div role="alert" className="text-sm text-red-600">{auto.error}</div>}
     {!loaded ? (!error && <p className="text-sm">내부 기록 불러오는 중…</p>) :
       <fieldset className="space-y-3">
-        {view.previous && <div className="space-y-2">
+        {view.previous && !view.graduated && <div className="space-y-2">
           <p className="text-sm font-semibold">{view.previous.week}주차 PT과제 성과</p>
           {outcomes.map((row, i) => <label key={i} className="grid items-start gap-2 rounded-xl border border-slate-200 bg-white p-3 text-sm pc:grid-cols-2">
             <span className="break-words font-medium">{i + 1}. {row.task || "과제 기록 없음"}</span>

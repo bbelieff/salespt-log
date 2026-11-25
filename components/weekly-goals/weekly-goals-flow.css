@@ -43,6 +43,8 @@
 .weekly-goals-quantitative [aria-label="주간 목표 실적"]>div>.relative { width:var(--weekly-ring,64px); height:var(--weekly-ring,64px); }
 .weekly-goals-quantitative [aria-label="주간 목표 실적"]>div:not(:last-child)::after { top:calc(var(--weekly-ring,64px) / 2 - 4px); right:-8px; width:6px; height:6px; }
 .weekly-goals-split { --weekly-ring:clamp(48px, 12cqi, 80px); }
+/* 수료 후 — PT과제 칸 없이 목표 링만 한 칸. */
+.weekly-goals-split--solo { grid-template-columns:minmax(0,1fr); }
 @container weekly-goals-summary (max-width:450px) {
   .weekly-goals-split { grid-template-columns:minmax(0,1fr); gap:10px; --weekly-ring:clamp(44px, 12cqi, 54px); }
   .weekly-goals-qualitative { display:grid; grid-template-columns:64px minmax(0,1fr); align-items:center; gap:8px; }

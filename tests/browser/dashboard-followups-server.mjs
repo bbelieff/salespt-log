@@ -288,7 +288,7 @@ const server = createServer(async (req, res) => {
     const set = GOAL_SETS[goalKind];
     const item = (w) => { const start = shift(anchor, (w - 1) * 7); return { week: w, start, end: shift(start, 6),
       record: { goals: set.goals, task: process.env.WEEKLY_GOALS_SPLIT_PREVIEW === "1" ? "상담 질문을 정리하고 거절 대응 연습하기" : `${w}주 과제`, revision: 0, updatedAt: null }, actuals: w > nowWeek ? NO_ACTUALS : set.actuals }; };
-    return reply({ student: { email: "fixture@example.invalid", name: "가상 수강생", cohort: "연습", courseStart, region: "합성", trainers: [] }, current: item(week), previous: week > 1 ? item(week - 1) : null, canReadInternal: false });
+    return reply({ student: { email: "fixture@example.invalid", name: "가상 수강생", cohort: "연습", courseStart, region: "합성", trainers: [] }, current: item(week), previous: week > 1 ? item(week - 1) : null, canReadInternal: false, graduated: t > shift(courseStart, 84) });
   }
 
   // 계약·할 일
