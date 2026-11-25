@@ -11,6 +11,7 @@ import type { Route } from "next";
 import { ArrowUpRight, X } from "lucide-react";
 import DisclosureChevron from "@/components/ui/DisclosureChevron";
 import { followUpBadgeLabel, type FollowUpItem } from "@/lib/analytics/dashboard-follow-ups";
+import { FollowUpDetail } from "./FollowUpRow";
 
 export default function FollowUpsDetailPanel({ id, items, incomplete, panelRef, position, onClose, onPointerEnter, onPointerLeave }: {
   id: string;
@@ -32,7 +33,7 @@ export default function FollowUpsDetailPanel({ id, items, incomplete, panelRef, 
         const progress = item.facts.find(f => /진행건|^진행$/.test(f.label))?.value;
         const context = item.facts.find(f => /기관/.test(f.label))?.value ?? item.facts.find(f => /상태/.test(f.label))?.value ?? "—";
         return <React.Fragment key={item.key}><tr data-expanded={expanded === item.key}><td><span className="ft-badge" data-tone={item.group}>{followUpBadgeLabel(item.badge)}</span></td><td><div className="ft-company-inline"><strong title={item.company}>{item.company}</strong>{progress && <small title={`진행 ${progress}`}>진행 {progress}</small>}<small>STEP {item.step}</small></div></td><td><button type="button" className="ft-action" title={item.action} aria-label={`${item.company} · ${item.action} 상세`} aria-expanded={expanded === item.key} onClick={() => setExpanded(expanded === item.key ? null : item.key)}><span className="ft-action-text"><span>{item.action}</span><small className="ft-action-sub">{item.dueISO?.slice(5).replace("-", ".") ?? "날짜 확인"} · {context}</small></span><DisclosureChevron open={expanded === item.key} /></button></td><td className="ft-context"><span title={`${item.dueISO ?? "날짜 확인"} · ${context}`}>{item.dueISO?.replaceAll("-", ".") ?? "날짜 확인"} · {context}</span></td><td><Link href={item.href as Route} className="ft-go" aria-label={`${item.company} ${item.action} 바로가기`} onClick={() => onClose(false)}>열기<ArrowUpRight size={13} /></Link></td></tr>
-          {expanded === item.key && <tr className="ft-expanded"><td colSpan={5}><p>{item.reasons.join(" · ")}</p>{item.detail && <p>{item.detail}</p>}<dl><div><dt>업체</dt><dd>{item.company}</dd></div><div><dt>해야 할 일</dt><dd>{item.action}</dd></div><div><dt>기준일</dt><dd>{item.dueISO ?? "날짜 확인"}</dd></div>{item.facts.map(f => <div key={f.label}><dt>{f.label}</dt><dd>{f.value}</dd></div>)}</dl></td></tr>}
+          {expanded === item.key && <tr className="ft-expanded"><td colSpan={5}><FollowUpDetail item={item} lead={[{ label: "업체", value: item.company }, { label: "해야 할 일", value: item.action }]} /></td></tr>}
         </React.Fragment>;
       })}
     </tbody></table>{!items.length && <div className="ft-empty"><span aria-hidden>{incomplete ? "!" : "✓"}</span><strong>{incomplete ? "아직 확인하지 못한 항목이 있어요" : "7일 안에 예정된 일이 없어요"}</strong><p>{incomplete ? "일부 조회에 실패했어요. 다시 시도한 뒤 확인해 주세요." : "예정된 일은 0건입니다."}</p></div>}</div>
