@@ -131,8 +131,10 @@ export function parseFs(datas: unknown[], baseYear: number): DocParts {
     const p = part(parts, biz, "");
     list.sort((a, b) => b.year - a.year);
     for (const { year, got } of list) {
-      const sales = got.get("매출액"), op = got.get("영업이익");
-      p.facts.push(`${year}년 ${[sales !== undefined && `매출액 ${money(sales)}`, op !== undefined && `영업이익 ${money(op)}`].filter(Boolean).join(" · ") || "금액 없음"}`);
+      const sales = got.get("매출액");
+      // 요약 = 자본 · 매출 · 부채합계 · 당기순이익(belie 2026-11-25). 영업이익 등은 업체정보 칸 후보로만.
+      const shown: [string, number | undefined][] = [["자본", got.get("자본총계")], ["매출", sales], ["부채합계", got.get("부채총계")], ["당기순이익", got.get("당기순이익")]];
+      p.facts.push(`${year}년 ${shown.filter(([, v]) => v !== undefined).map(([k, v]) => `${k} ${money(v!)}`).join(" · ") || "금액 없음"}`);
       const slot = sales !== undefined ? salesSlotOf(year, baseYear) : null;
       if (slot !== null) p.fields.push({ key: SALES_YEAR_KEYS[slot]!, value: wonToMillion(sales!), confidence: 0.85, sourceWon: sales! });
     }

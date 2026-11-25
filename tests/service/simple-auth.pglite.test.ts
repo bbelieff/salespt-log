@@ -187,8 +187,8 @@ describe("간편인증 보내기 → 승인 확인 → 결과", () => {
     const a = done!.businesses.find((b) => b.bizNo === "214-88-77123")!.results.find((r) => r.key === "taxinv")!;
     expect(a).toMatchObject({ ok: true, hasOriginal: true });
     expect(a.facts).toEqual([
-      "2025년 매출 4건 · 공급가액 4,000,000원", "매출처 TOP3 — 가상거래처 100%",
-      "2025년 매입 3건 · 공급가액 3,000,000원", "매입처 TOP3 — 가상공급처 100%",
+      "2025년 매출 4건 · 공급가액 4,000,000원", "매출처 TOP3 — 가상거래처 100%", "매출 주요 품목 — 가상부품 60% · 가상공임 40%",
+      "2025년 매입 3건 · 공급가액 3,000,000원", "매입처 TOP3 — 가상공급처 100%", "매입 주요 품목 — 가상부품 60% · 가상공임 40%",
       "3개월 단위 8번 중 1번은 받지 못했어요 — 엑셀에서 빠진 기간이 있어요.",
     ]);
     const file = await originalOf(who, req.id, "214-88-77123", "taxinv");
