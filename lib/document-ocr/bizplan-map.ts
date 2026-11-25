@@ -11,7 +11,7 @@
  * 원문 글자는 싣지 않는다(개인정보).
  */
 import { SALES_YEAR_KEYS } from "@/util/company-sales";
-import type { BizplanDraft, BizplanYear } from "@/util/bizplan-pack";
+import type { BizplanDraft, BizplanPartner, BizplanYear } from "@/util/bizplan-pack";
 import type { DocParseResult, DocType } from "./types";
 
 export type BizplanInfoKey = "company" | "ceo" | "bizNo" | "industry" | "founded" | "address";
@@ -19,7 +19,9 @@ export type BizplanYearCol = Exclude<keyof BizplanYear, "year">;
 
 export type BizplanTarget =
   | { kind: "info"; key: BizplanInfoKey }
-  | { kind: "year"; year: string; col: BizplanYearCol };
+  | { kind: "year"; year: string; col: BizplanYearCol }
+  /** 매출처·매입처 TOP3 한 줄(rank 0~2) — 세금계산서 엑셀에서(2026-11-25). */
+  | { kind: "partner"; side: "sales" | "purchases"; rank: number };
 
 /** 파서 결과 하나에서 나온 제안(아직 팩트시트와 맞춰 보기 전). */
 export type BizplanRawSuggestion = {
@@ -30,6 +32,8 @@ export type BizplanRawSuggestion = {
   valid?: boolean;
   /** 어느 파일에서 읽었는지(파일 이름) — 화면 표시용. */
   source: string;
+  /** kind "partner" 일 때 넣을 거래처·품목·연 거래액. value 는 화면 표시용 한 줄. */
+  partner?: BizplanPartner;
 };
 
 /** 화면에 보여 줄 제안 한 줄. */
@@ -73,10 +77,25 @@ export function cleanWarnings(value: string, warnings: string[]): string[] {
 }
 
 export function targetId(t: BizplanTarget): string {
+  if (t.kind === "partner") return `partner:${t.side}:${t.rank}`;
   return t.kind === "info" ? `info:${t.key}` : `year:${t.year}:${t.col}`;
 }
 export function targetLabel(t: BizplanTarget): string {
+  if (t.kind === "partner") return `${t.side === "sales" ? "매출처" : "매입처"} ${t.rank + 1}위`;
   return t.kind === "info" ? INFO_LABEL[t.key] : `${t.year}년 ${t.col}`;
+}
+
+/** TOP3 한 줄 표시 — 「거래처 · 품목 · 연 거래액 N백만원」. 빈 줄이면 "". */
+export function partnerText(p: BizplanPartner): string {
+  return [p.name.trim(), p.item.trim(), p.amount.trim() ? `${p.amount.trim()}백만원` : ""].filter(Boolean).join(" · ");
+}
+
+/** 세금계산서 엑셀에서 뽑은 TOP3 → 제안(거래처 이름이 있는 줄만). */
+export function partnerSuggestions(top: { sales: BizplanPartner[]; purchases: BizplanPartner[] }, source: string): BizplanRawSuggestion[] {
+  return (["sales", "purchases"] as const).flatMap((side) =>
+    top[side].slice(0, 3).flatMap((partner, rank) => partner.name.trim()
+      ? [{ target: { kind: "partner" as const, side, rank }, value: partnerText(partner), confidence: 0.9, warnings: [], source, partner }]
+      : []));
 }
 
 /** 사업자등록증 개업일 "19.03.02" → "2019.03.02". 두 자리 연도가 기준 연도보다 뒤면 1900년대. */
@@ -155,6 +174,7 @@ export function suggestionsFromParse(
 }
 
 function currentValue(draft: BizplanDraft, t: BizplanTarget): string | null {
+  if (t.kind === "partner") { const p = draft[t.side][t.rank]; return p ? partnerText(p) : null; }
   if (t.kind === "info") return draft[t.key];
   const y = draft.years.find((r) => r.year === t.year);
   return y ? y[t.col] : null;
@@ -209,17 +229,19 @@ export function resolveSuggestions(
     });
   }
   const rank = (t: BizplanTarget) =>
-    t.kind === "info" ? INFO_ORDER.indexOf(t.key) : 100 + Number(t.year) * 10 + YEAR_COL_ORDER.indexOf(t.col);
+    t.kind === "partner" ? 1e6 + (t.side === "sales" ? 0 : 10) + t.rank
+      : t.kind === "info" ? INFO_ORDER.indexOf(t.key) : 100 + Number(t.year) * 10 + YEAR_COL_ORDER.indexOf(t.col);
   rows.sort((a, b) => rank(a.target) - rank(b.target));
   return { rows, notes };
 }
 
 /** 고른 제안만 팩트시트에 넣은 새 초안. */
 export function applySuggestions(draft: BizplanDraft, chosen: BizplanSuggestion[]): BizplanDraft {
-  const next: BizplanDraft = { ...draft, years: draft.years.map((y) => ({ ...y })) };
+  const next: BizplanDraft = { ...draft, years: draft.years.map((y) => ({ ...y })), sales: [...draft.sales], purchases: [...draft.purchases] };
   for (const s of chosen) {
     const t = s.target;
-    if (t.kind === "info") next[t.key] = s.value;
+    if (t.kind === "partner") { if (s.partner && t.rank < next[t.side].length) next[t.side][t.rank] = { ...s.partner }; }
+    else if (t.kind === "info") next[t.key] = s.value;
     else {
       const y = next.years.find((r) => r.year === t.year);
       if (y) y[t.col] = s.value;
