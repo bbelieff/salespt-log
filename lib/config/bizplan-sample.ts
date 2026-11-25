@@ -6,15 +6,15 @@
  */
 export const BIZPLAN_SAMPLE = {
   "company": "(주)예시정밀",
-  "notice": "가상의 회사로 만든 견본이에요. 숫자·업체명은 모두 지어냈고, 공장 사진은 AI 로 만든 그림이에요.",
+  "notice": "예시회사 샘플 파일입니다.",
   "highlight": [
     1,
     12,
     13
   ],
   "docs": {
-    "notes": 2,
-    "clinic": 2
+    "notes": 16,
+    "clinic": 6
   },
   "slides": [
     {
