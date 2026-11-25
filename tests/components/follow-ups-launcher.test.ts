@@ -27,18 +27,20 @@ const pop = () => host.querySelector<HTMLElement>(".fl-pop")!;
 const click = (el: Element) => act(() => (el as HTMLElement).click());
 
 describe("오늘 챙길 일 강조 규칙", () => {
-  it("경과 또는 장기누락이 있을 때만 움직이는 테두리", () => {
+  it("밀림 또는 7일 넘게 밀림이 있을 때만 움직이는 테두리", () => {
     expect(hasOverdueFollowUps(mixed)).toBe(true);
     expect(hasOverdueFollowUps([make(0, "long-overdue", 9)])).toBe(true);
     expect(hasOverdueFollowUps([make(0, "overdue", 1)])).toBe(true);
     expect(hasOverdueFollowUps(calm)).toBe(false);
     expect(hasOverdueFollowUps([])).toBe(false);
   });
-  it("카드에 data-emphasis=flow 를 지연이 있을 때만 단다", () => {
+  it("할 일 구역에 data-emphasis=flow(무지개 테두리 + .ft-glow)를 지연이 있을 때만 단다 — 2026-11-24 개편 뒤에도 유지", () => {
     render(React.createElement(DashboardFollowUpsView, { items: mixed }));
     expect(host.querySelector("[data-dashboard-follow-ups]")?.getAttribute("data-emphasis")).toBe("flow");
+    expect(host.querySelector("[data-dashboard-follow-ups].follow-ups-card.ft-card > .ft-glow")).not.toBeNull();
     render(React.createElement(DashboardFollowUpsView, { items: calm }));
     expect(host.querySelector("[data-dashboard-follow-ups]")?.hasAttribute("data-emphasis")).toBe(false);
+    expect(host.querySelector(".ft-glow")).toBeNull();
   });
 });
 

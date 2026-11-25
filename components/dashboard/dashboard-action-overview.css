@@ -2,10 +2,7 @@
 .dashboard-action-productivity { container: dashboard-productivity / inline-size; }
 .dashboard-action-goals { container: dashboard-goals / inline-size; }
 @media (min-width: 1024px) {
-  .dashboard-action-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto 1fr; align-items: stretch; }
-  .dashboard-action-productivity { grid-column: 2; grid-row: 1; }
-  .dashboard-action-work { grid-column: 1; grid-row: 1 / span 2; }
-  .dashboard-action-goals { grid-column: 2; grid-row: 2; }
+  .dashboard-action-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; }
 }
 @media (min-width: 1024px) {
 @container dashboard-productivity (max-width: 420px) {
@@ -22,20 +19,24 @@
 }
 
 @media(min-width:1024px) {
-  .dashboard-action-work > .follow-ups-card { flex:1; display:flex; flex-direction:column; }
-  .dashboard-action-work .follow-ups-upcoming { margin-top:auto; }
   .dashboard-action-goals .weekly-goals-flow { margin-block:auto; padding-top:4px; }
 }
 
-/* Mobile first look (belie 2026-10-23): 오늘 챙길 일 → 주간 목표 → 진행건 → 생산성.
-   PC(≥1024px)는 위 grid 배치 그대로라 이 블록의 영향을 받지 않는다. */
+/* 할 일 구역 개편(belie 2026-11-24 승인 기획서 1단계).
+   PC(≥1024px): 맨 위 띠(.surface-hero, 2026-11-13 A안 그대로) → 「오늘 챙길 일」 폭 전체 → 「성과」 제목 + 주간 목표 | 생산성 → 차트.
+   폰: 진행도 한 줄 → 오늘 챙길 일 → 매출·비용·영업이익(기간 칩) → 주간 목표 → 진행건 → 생산성 → 차트(성과 묶음은 DOM 순서 그대로).
+   띠 하나를 두 번 그리지 않는다 — 폰에서는 바깥 띠를 풀고(display:contents) 안의 두 묶음이 각각 띠가 되며, 돈 묶음만 order 로 내려간다.
+   PC 에서는 반대로 안쪽 묶음의 상자를 지워 지금까지와 같은 한 띠(진행 왼쪽 · 칩 오른쪽 / 아래 재무)로 보인다. */
+@media (min-width: 1024px) {
+  .dash-hero { display: flex; flex-wrap: wrap; align-items: center; }
+  .dash-hero > .dash-hero-progress { flex: 1 1 24rem; border: 0; border-radius: 0; background: none; box-shadow: none; }
+  .dash-hero > .dash-hero-money { display: contents; }
+  .dash-hero-finance { flex: 0 0 100%; min-width: 0; }
+}
 @media (max-width: 1023.98px) {
-  .dashboard-action-work { display: contents; }
-  .dashboard-action-work > [data-dashboard-follow-ups] { order: 1; }
-  .dashboard-action-work > .push-prompt { order: 2; }
-  .dashboard-action-goals { order: 3; }
-  .dashboard-work-status-slot { order: 4; }
-  .dashboard-action-productivity { order: 5; }
+  .dash-hero.surface-hero { display: contents; }
+  .dash-hero-money { order: 1; }
+  .dash-after { order: 2; }
 }
 
 /* 수료생: 모바일은 목표 카드를 대시보드 맨 아래(page 의 .dashboard-goals-bottom)로 옮긴다(belie 2026-11-05). */

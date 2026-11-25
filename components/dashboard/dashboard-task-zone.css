@@ -1,0 +1,129 @@
+/* 「오늘 챙길 일」 할 일 구역(2026-11-24 개편, belie 승인 기획서 1단계) — DashboardFollowUpsView · FollowUpRow.
+   구역 틀(흰 판·무지개 테두리)은 dashboard-follow-ups.css · followups-table.css 의 .follow-ups-card.ft-card 그대로 쓴다.
+   색은 globals.css 의 --ui-* 만, 글자 크기는 --app-px·--font-scale 을 곱한다(tests/structural/css-color-vars).
+   움직임은 맨 아래 「이어지는 전환」과 칩 표시(sliding-thumb.css) 둘뿐 — 나머지는 globals.css 의 fx-* 를 쓴다. */
+.tz-grid { display:grid; grid-template-columns:minmax(0,1fr); }
+.tz-main { min-width:0; }
+.tz-head { display:flex; flex-wrap:wrap; align-items:flex-end; gap:4px 16px; }
+.tz-head h2 { width:100%; }
+.tz-count { color:var(--ui-text); font-size:calc(26 * var(--app-px, 1px) * var(--font-scale, 1)); line-height:1.15; font-weight:800; letter-spacing:-0.02em; font-variant-numeric:tabular-nums; }
+.tz-count .tz-count-pre { margin:0 4px 0 0; }
+.tz-count span { margin-left:3px; font-size:calc(14 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:700; letter-spacing:0; }
+.tz-hint { padding-bottom:4px; color:var(--ui-text-muted); font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1)); line-height:1.5; }
+
+/* 비율 막대 — 초록(오늘 처리) · 장미(7일 넘게 밀림) · 호박(밀림) · 파랑(오늘) · 회색(날짜 확인). 건수 0 인 구간은 flex-grow 0 이라 보이지 않는다. */
+.tz-bar, .tz-mini { display:flex; overflow:hidden; border-radius:999px; background:var(--ui-surface-muted); }
+.tz-bar { height:10px; margin-top:12px; }
+.tz-bar-fill { display:flex; flex:1; min-width:0; height:100%; }
+.tz-bar i, .tz-mini i { display:block; height:100%; flex-basis:0; }
+:is(.tz-bar, .tz-mini, .tz-chip) [data-seg=done] { background:var(--ui-emerald-600); }
+:is(.tz-bar, .tz-mini) [data-seg=long-overdue], .tz-chip[data-tone=long-overdue] i { background:var(--ui-rose-600); }
+:is(.tz-bar, .tz-mini) [data-seg=overdue], .tz-chip[data-tone=overdue] i { background:var(--ui-amber-500); }
+:is(.tz-bar, .tz-mini) [data-seg=today], .tz-chip[data-tone=today] i { background:var(--ui-accent-bright); }
+:is(.tz-bar, .tz-mini) [data-seg=unknown], .tz-chip[data-tone=unknown] i { background:var(--ui-border-strong); }
+
+/* 급한 정도 칩(필터) */
+.tz-chips { position:relative; isolation:isolate; display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:10px; }
+/* 선택 바탕이 옮겨 가는 표시(.slide-thumb, components/motion/sliding-thumb.css)가 자리를 잡으면 칩은 제 바탕을 비우고 흰 바탕을 표시 아래 층으로 내린다. */
+.follow-ups-card .slide-thumb[data-on] ~ .tz-chip { background:transparent; }
+.follow-ups-card .slide-thumb[data-on] ~ .tz-chip[aria-pressed=true] { border-color:transparent; }
+.follow-ups-card .tz-chip { display:inline-flex; align-items:center; gap:6px; min-height:28px; border:1px solid var(--ui-border); border-radius:999px; background:var(--ui-surface); padding:4px 10px; color:var(--ui-text-muted); font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:600; white-space:nowrap; }
+.follow-ups-card .tz-chip:hover { border-color:var(--ui-border-strong); }
+.follow-ups-card .tz-chip[aria-pressed=true] { border-color:var(--ui-text); background:var(--ui-text); color:var(--ui-white); }
+/* 선택 바탕이 미끄러져 오는 동안 글자색도 같은 길이로 바뀐다(흰 글자가 먼저 바뀌어 흰 바탕에서 사라져 보이지 않게). */
+.follow-ups-card .slide-thumb[data-on] ~ .tz-chip { transition:color 220ms cubic-bezier(0.2, 0.8, 0.2, 1); }
+@media (prefers-reduced-motion: reduce) { .follow-ups-card .slide-thumb[data-on] ~ .tz-chip { transition:none; } }
+.tz-chip i { width:7px; height:7px; border-radius:50%; }
+.tz-chip b { font-weight:800; font-variant-numeric:tabular-nums; }
+.tz-done { display:inline-flex; align-items:center; gap:5px; margin-left:auto; color:var(--ui-emerald-700); font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:700; white-space:nowrap; }
+
+/* 줄 목록 — 접힘: PC 6줄(코드)·폰 3줄(아래 media). 펼침: 그 자리에서 안쪽 스크롤. */
+.tz-list { margin:10px 0 0; padding:0; list-style:none; }
+.tz-list[data-open=true] { max-height:23.5rem; overflow-y:auto; overscroll-behavior:contain; padding-right:6px; }
+.tz-row { display:grid; grid-template-columns:minmax(3.5rem,max-content) minmax(0,1fr) auto; align-items:center; gap:6px 12px; border-top:1px solid var(--ui-surface-muted); padding:7px 0; }
+.tz-row > .ft-badge { justify-self:start; font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:800; }
+.tz-what { display:flex; align-items:center; gap:6px; min-width:0; min-height:36px; border-radius:6px; text-align:left; }
+.tz-what > svg { flex-shrink:0; color:var(--ui-text-subtle); }
+.tz-what-text { display:block; flex:1; min-width:0; }
+.tz-title { display:block; color:var(--ui-text-body); font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1)); line-height:1.4; overflow-wrap:anywhere; }
+.tz-title strong { color:var(--ui-text); font-weight:700; }
+.tz-what small { display:block; margin-top:1px; color:var(--ui-text-subtle); font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1)); line-height:1.4; overflow-wrap:anywhere; font-variant-numeric:tabular-nums; }
+.tz-go { display:inline-flex; align-items:center; justify-content:center; gap:4px; min-height:32px; border:1px solid transparent; border-radius:8px; padding:6px 10px; font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:700; white-space:nowrap; }
+.tz-go:not(.btn-depth-blue) { border-color:var(--ui-border); background:var(--ui-surface); color:var(--ui-accent-strong); }
+.tz-go:not(.btn-depth-blue):hover { border-color:var(--ui-blue-100); background:var(--ui-accent-soft); }
+.tz-detail { grid-column:1 / -1; border-radius:8px; background:var(--ui-surface-subtle); padding:10px 12px; color:var(--ui-text-muted); font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1)); line-height:1.5; overflow-wrap:anywhere; }
+.tz-detail dl { display:flex; flex-wrap:wrap; gap:6px 20px; margin-top:8px; }
+.tz-detail dl > div { display:flex; gap:5px; min-width:0; }
+.tz-detail dt { flex-shrink:0; color:var(--ui-text-subtle); }
+.tz-detail dd { color:var(--ui-text-body); font-weight:500; }
+.tz-row-empty p { grid-column:2 / -1; padding:6px 0; }
+.tz-row-empty strong { display:block; color:var(--ui-text); font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1)); }
+.tz-row-empty small { display:block; margin-top:1px; color:var(--ui-text-subtle); font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1)); }
+.tz-more { display:flex; align-items:center; justify-content:center; gap:4px; width:100%; margin-top:2px; border-top:1px solid var(--ui-surface-muted); padding:9px; color:var(--ui-text-muted); font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:700; }
+.tz-more:hover { background:var(--ui-surface-subtle); color:var(--ui-text); }
+
+/* 단계별로 보기 · 세는 기준 · 예정된 일 */
+.tz-aside { display:flex; flex-direction:column; gap:2px; margin-top:10px; border-top:1px solid var(--ui-border); padding-top:10px; }
+.tz-aside h3 { margin-bottom:4px; color:var(--ui-text-subtle); font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:700; }
+.tz-step { display:grid; grid-template-columns:28px minmax(0,1fr) auto; align-items:center; gap:5px 8px; width:100%; border-radius:8px; padding:7px 8px; text-align:left; }
+.tz-step:hover { background:var(--ui-surface-subtle); }
+.tz-step[aria-pressed=true] { background:var(--ui-accent-soft); }
+.tz-step-name { color:var(--ui-text); font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:600; }
+.tz-step strong { color:var(--ui-text); font-size:calc(14 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:800; font-variant-numeric:tabular-nums; }
+.tz-mini { grid-column:2 / 4; height:4px; }
+.tz-rules { align-self:flex-start; padding:4px 8px; color:var(--ui-text-subtle); font-size:calc(max(11, var(--ui-fs-floor, 0)) * var(--app-px, 1px) * var(--font-scale, 1)); text-align:left; text-decoration:underline; text-underline-offset:3px; }
+.tz-upcoming { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; margin-top:auto; border-top:1px solid var(--ui-border); padding:10px 8px 2px; color:var(--ui-text-muted); font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1)); }
+.tz-upcoming b { display:inline-flex; align-items:center; gap:4px; color:var(--ui-text); font-variant-numeric:tabular-nums; }
+.tz-zone .follow-ups-guide { margin-top:10px; }
+
+/* 한 줄로 접힌 상태 — 모두 끝냄 · 기록 없음 · 확인 필요 */
+.tz-state { display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; }
+.tz-state-icon { display:grid; flex:none; place-items:center; width:38px; height:38px; border-radius:50%; }
+.tz-state-icon[data-tone=done] { background:var(--ui-emerald-50); color:var(--ui-emerald-600); }
+.tz-state-icon[data-tone=first] { background:var(--ui-accent-soft); color:var(--ui-accent-strong); }
+.tz-state-icon[data-tone=unknown] { background:var(--ui-amber-50); color:var(--ui-amber-700); }
+.tz-state > div { flex:1; min-width:200px; }
+.follow-ups-card.ft-card.tz-zone .tz-state h2 { color:var(--ui-text); font-size:calc(15 * var(--app-px, 1px) * var(--font-scale, 1)); font-weight:800; }
+.tz-state p { margin-top:1px; color:var(--ui-text-muted); font-size:calc(13 * var(--app-px, 1px) * var(--font-scale, 1)); line-height:1.5; }
+.tz-unconfirmed { margin-left:6px; border-radius:4px; background:var(--ui-amber-50); padding:1px 6px; color:var(--ui-amber-800); font-size:calc(12 * var(--app-px, 1px) * var(--font-scale, 1)); }
+
+/* 무지개 테두리 안(연보라 바탕)에서는 줄 사이 선을 같은 계열로 */
+.tz-zone[data-emphasis=flow] :is(.tz-row, .tz-more) { border-top-color:color-mix(in srgb, var(--ui-indigo-200) 60%, transparent); }
+.tz-zone[data-emphasis=flow] :is(.tz-aside, .tz-upcoming) { border-color:var(--ui-indigo-200); }
+.tz-zone[data-emphasis=flow] :is(.tz-bar, .tz-mini) { background:color-mix(in srgb, var(--ui-indigo-200) 60%, transparent); }
+.tz-zone[data-emphasis=flow] :is(.tz-step:hover, .tz-more:hover, .tz-detail) { background:color-mix(in srgb, var(--ui-white) 70.2%, transparent); }
+.tz-zone[data-emphasis=flow] .tz-step[aria-pressed=true] { background:var(--ui-indigo-100); }
+
+@media (min-width:1024px) {
+  .tz-grid { grid-template-columns:minmax(0,1fr) 15.5rem; column-gap:1.5rem; }
+  .tz-aside { margin-top:0; border-top:0; border-left:1px solid var(--ui-border); padding-top:0; padding-left:1.5rem; }
+  .tz-more[data-pc-hidden=true] { display:none; }
+}
+@media (max-width:1023.98px) {
+  .tz-list:not([data-open=true]) > .tz-row:nth-child(n+4) { display:none; }
+  .tz-list[data-open=true] { max-height:26.25rem; }
+  .tz-row { gap:6px 8px; }
+  .follow-ups-card .tz-chip { min-height:36px; }
+  .tz-go { min-height:44px; padding:6px 12px; }
+  .tz-state > .tz-go { flex:1 1 100%; }
+}
+
+/* 이어지는 전환(belie 2026-11-24, useZoneTransition) — 펼침/접기 · 칩·단계로 좁히기 · 0건으로 접힘.
+   전환이 도는 동안만 <html class="tz-vt"> 가 붙고, 이름·길이·곡선은 전부 그 아래에만 건다 → 다른 화면과 평소 화면에는 영향이 없다.
+   페이지 전체(root)는 전환에서 뺀다 — 화면이 통째로 깜빡이지 않고 구역 밖은 그대로 살아 있다.
+   구역 자체(tz-zone)는 높이가 바뀌는 펼침/접기·0건 접힘에서만 찍는다(tz-vt-zone) — 이때 줄은 구역 그림 안에 담겨 구역과 함께 잘린다.
+   칩·단계로 좁힐 때는 줄만 찍어(남는 줄은 미끄러지고, 빠지는 줄은 사라지고, 새 줄은 나타남) 구역이 살아 있게 둔다 —
+   그래야 칩의 선택 바탕이 미끄러지는 모습(sliding-thumb.css)이 그대로 보인다.
+   줄 이름은 FollowUpRow 가 준 --tz-vt-name(앞쪽 6줄만, 줄마다 다름 — 겹치면 브라우저가 전환을 통째로 취소한다).
+   240ms 감속 곡선(fx-* 와 같은 계열), 튕김 없음. 동작 줄이기·미지원 브라우저는 훅이 전환을 시작하지 않는다. */
+html.tz-vt { view-transition-name:none; }
+html.tz-vt-zone .tz-zone { view-transition-name:tz-zone; }
+html.tz-vt:not(.tz-vt-zone) .tz-row { view-transition-name:var(--tz-vt-name, none); }
+html.tz-vt::view-transition-group(*) { animation-duration:240ms; animation-timing-function:cubic-bezier(0.2, 0.8, 0.2, 1); }
+html.tz-vt::view-transition-old(*), html.tz-vt::view-transition-new(*) { animation-duration:200ms; animation-timing-function:cubic-bezier(0.2, 0.8, 0.2, 1); }
+/* 칩·단계로 좁힐 때는 구역이 먼저 새 높이가 되므로, 빠지는 줄은 빨리 사라지게 한다(구역 밖에 남아 보이지 않게). */
+html.tz-vt:not(.tz-vt-zone)::view-transition-old(*) { animation-duration:120ms; }
+/* 구역은 높이가 달라지므로 찍힌 그림을 늘리지 않고 위쪽에 맞춰 두고, 줄어드는 상자 밖은 잘라 낸다(글자가 눌리거나 아래 구역 위에 남지 않게).
+   무지개 빛 번짐(테두리 밖 23px)은 잘리지 않게 여유를 둔다. */
+html.tz-vt::view-transition-group(tz-zone) { overflow:clip; overflow-clip-margin:24px; }
+html.tz-vt::view-transition-old(tz-zone), html.tz-vt::view-transition-new(tz-zone) { height:100%; object-fit:none; object-position:top center; }

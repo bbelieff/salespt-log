@@ -203,9 +203,10 @@ describe("⑤ desktop arrangements keep order, workflow, and natural scroll", ()
     const src = read("app/(app)/dashboard/page.tsx");
     const overview = read("components/dashboard/DashboardActionOverview.tsx");
     const overviewCss = read("components/dashboard/dashboard-action-overview.css");
+    // 2026-11-24 할 일 구역 개편: 「오늘 챙길 일」이 폭 전체로 빠지고, 2단은 주간 목표 | 생산성(DOM 순서 그대로).
     expect(overviewCss).toContain("grid-template-columns: repeat(2, minmax(0, 1fr))");
-    expect(overviewCss).toContain(".dashboard-action-work { grid-column: 1; grid-row: 1 / span 2; }");
-    expect(overviewCss).toContain(".dashboard-action-goals { grid-column: 2; grid-row: 2; }");
+    expect(overview.indexOf("dashboard-action-goals")).toBeLessThan(overview.indexOf("dashboard-action-productivity"));
+    expect(src.indexOf("<DashboardFollowUps")).toBeLessThan(src.indexOf("<DashboardActionOverview"));
     expect(src.indexOf("<DashboardActionOverview")).toBeLessThan(src.indexOf("<FunnelChart"));
     expect(src).toContain("pc:grid-cols-3");
     // Charts side by side below, legibility untouched (no height flattening).

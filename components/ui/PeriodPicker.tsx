@@ -7,6 +7,8 @@
  */
 import { PERIOD_LABEL, type FinancePeriod } from "@/util/finance-period";
 import DateInputCustom from "./DateInputCustom";
+import { useSlidingThumb } from "@/components/motion/useSlidingThumb";
+import "@/components/motion/sliding-thumb.css";
 
 const ORDER: FinancePeriod[] = ["all", "month", "week", "custom"];
 
@@ -23,11 +25,18 @@ interface Props {
   labels?: Partial<Record<FinancePeriod, string>>;
   /** Separate-range callers opt out; all existing callers retain inline inputs. */
   showRangeInputs?: boolean;
+  /**
+   * 선택 바탕이 옆 칩으로 미끄러진다(대시보드 맨 위 띠, 2026-11-24). 켜려면 칩을 감싼 부모가 `position: relative` 여야 한다.
+   * 기본은 꺼짐 — 다른 화면(실무/수납 성과 요약·DB관리 유입일)은 모양·동작이 그대로다.
+   */
+  slidingIndicator?: boolean;
 }
 
-export default function PeriodPicker({ period, from, to, onPeriod, onFrom, onTo, incomplete, labels, showRangeInputs = true }: Props) {
+export default function PeriodPicker({ period, from, to, onPeriod, onFrom, onTo, incomplete, labels, showRangeInputs = true, slidingIndicator = false }: Props) {
+  const slide = useSlidingThumb();
   return (
     <>
+      {slidingIndicator && <span ref={slide.thumb} className="slide-thumb" data-tone="accent" data-on={slide.on ? "" : undefined} style={slide.style} aria-hidden />}
       {ORDER.map((p) => (
         <button
           key={p}

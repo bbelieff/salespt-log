@@ -30,7 +30,11 @@ const inventory: Array<[string,number,number]> = [
  ['components/auth/TrainerCohortView.tsx',1,1],
  // components/auth/TrainerMgmtSections.tsx(1→1): 2026-11-16 admin-phase1 에서 「수강생 명단확인」 구역째 제거 — 목록에서 뺐다(45→44, 43→42).
  ['components/company-info/CompanyInfoLayoutToggle.tsx',1,1],
- ['components/dashboard/DashboardFollowUpsView.tsx',3,3],
+ // 2026-11-24 할 일 구역 개편: 옛 세 자리(전체 건수·예정된 일·목록 창 줄 펼침) 중 「전체 건수」는 화면째 없어졌다(44→43).
+ // 「예정된 일」은 그대로, 목록 창 줄 펼침은 FollowUpsDetailPanel 로 옮겼다. 새 「모두 보기/접기」도 공용 표시를 써서 이 파일은 2개(합계 42 그대로).
+ // 새 줄 컴포넌트(FollowUpRow)의 줄 펼침은 옛 자리가 아니라 목록에 넣지 않는다.
+ ['components/dashboard/DashboardFollowUpsView.tsx',1,2],
+ ['components/dashboard/FollowUpsDetailPanel.tsx',1,1],
  ['components/dashboard/FinanceSummaryBoxes.tsx',3,3],
  ['components/dashboard/expense-ledger/ExpenseCategoryPicker.tsx',1,1],
  ['components/announcements/UpdateAccordion.tsx',1,1],
@@ -43,8 +47,8 @@ describe('approved disclosure migration boundary',()=>{
   expect(source).toContain('aria-expanded={rawOpen} onClick={()=>setRawOpen(!rawOpen)}');
   expect(source).toContain('<DisclosureChevron open={rawOpen} />');
  });
- it('maps exactly 44 legacy positions to 42 shared indicators without forcing alternate pairs',()=>{
-  expect(inventory.reduce((sum,[,before])=>sum+before,0)).toBe(44);
+ it('maps exactly 43 legacy positions to 42 shared indicators without forcing alternate pairs',()=>{
+  expect(inventory.reduce((sum,[,before])=>sum+before,0)).toBe(43);
   expect(inventory.reduce((sum,[,,after])=>sum+after,0)).toBe(42);
   for(const [file,,after] of inventory){
    const source=readFileSync(file,'utf8');

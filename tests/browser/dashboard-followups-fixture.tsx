@@ -22,6 +22,8 @@ import DesktopNav from "../../components/desktop/DesktopNav";
 import FollowUpsLauncher from "../../components/dashboard/FollowUpsLauncher";
 import DirtyProvider from "../../components/DirtyGuard";
 import { LoadingProvider } from "../../components/ui/LoadingProvider";
+// 실제 앱은 app/layout.tsx 가 불러온다 — 목업에서도 띠·판·주 버튼 마감이 같게(2026-11-24).
+import "../../app/surfaces.css";
 
 
 
@@ -62,6 +64,8 @@ window.__fixtureNavigate = (href, replace = false) => {
 
 // 운영 providers.tsx 와 같은 기본값(30초 신선·창 포커스 재조회 없음·재시도 1회).
 const client = new QueryClient({ defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false, retry: 1 }, mutations: { retry: 0 } } });
+// 목업 전용: 콘솔에서 캐시를 바꿔 「남은 일 → 0건」처럼 조회 결과가 바뀌는 순간(구역이 접히는 전환)을 눈으로 확인한다.
+(window as unknown as { __fixtureQueryClient?: QueryClient }).__fixtureQueryClient = client;
 
 const PAGES: Record<string, React.ComponentType> = {
   "/weekly-summary-check": () => <div className="p-4"><WeeklyGoalSummary /></div>,

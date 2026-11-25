@@ -4,11 +4,15 @@ import DashboardFollowUpsView from "./DashboardFollowUpsView";
 import { useTodayFollowUps } from "./useTodayFollowUps";
 import BadgeChip from "@/components/badges/BadgeChip";
 
-export default function DashboardFollowUps({ todayISO }: { todayISO: string }) {
-  const { summary, loading, anyFailure, allFailed, retry } = useTodayFollowUps(todayISO);
-  if (loading) return <section data-dashboard-follow-ups aria-label="오늘 챙길 일" aria-busy="true" className="follow-ups-card ft-card">
-    <div className="fx-skeleton h-4 w-40 rounded-md" />
-    <div className="mt-2 flex gap-2">{[0, 1, 2].map(i => <div key={i} className="fx-skeleton h-11 w-20 rounded-full pc:h-6 pc:w-16" />)}</div>
+/** trackHandled=false 면 이 기기의 「오늘 N건 처리」를 세지 않는다(관리자가 다른 사람 화면을 볼 때). handledScope 는 한 브라우저의 계정을 가른다. */
+export default function DashboardFollowUps({ todayISO, trackHandled = true, handledScope }: { todayISO: string; trackHandled?: boolean; handledScope?: string }) {
+  const { summary, loading, anyFailure, allFailed, hasRecords, retry } = useTodayFollowUps(todayISO);
+  // 불러오는 동안 구역 자리(제목·건수·막대·줄 세 개)를 먼저 잡는다.
+  if (loading) return <section data-dashboard-follow-ups aria-label="오늘 챙길 일" aria-busy="true" className="follow-ups-card ft-card tz-zone">
+    <div className="fx-skeleton h-4 w-28 rounded-md" />
+    <div className="fx-skeleton mt-2 h-7 w-40 rounded-md" />
+    <div className="fx-skeleton mt-3 h-2.5 w-full rounded-full" />
+    <div className="mt-3 space-y-2">{[0, 1, 2].map(i => <div key={i} className="fx-skeleton h-11 w-full rounded-lg" />)}</div>
   </section>;
   const notice = <>
     {summary.unlinkedTodos > 0 && <p className="mt-2 text-px-11 text-slate-500">업체 연결이 끊긴 할 일 {summary.unlinkedTodos}건은 빼고 셌어요 · 캘린더에서 정리해 주세요</p>}
@@ -16,5 +20,5 @@ export default function DashboardFollowUps({ todayISO }: { todayISO: string }) {
     {/* 배지 칩 — 승인 목업 2026-10-24: 챙길 일이 0건이어도 남는다 */}
     <BadgeChip />
   </>;
-  return <DashboardFollowUpsView items={summary.items} incomplete={anyFailure} notice={notice} />;
+  return <DashboardFollowUpsView items={summary.items} incomplete={anyFailure} firstRun={!hasRecords} todayISO={trackHandled ? todayISO : undefined} handledScope={handledScope} notice={notice} />;
 }

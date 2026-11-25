@@ -49,7 +49,7 @@
 - PC는 목록과 상세를 항상 2열로 배치하고 중앙 핸들을 드래그해 열 폭을 조절한다. 1뎁스 목록은 처음 열 때와 「기본 너비」 복원 시 최소 너비 300px이며, 드래그 하한도 같은 값을 사용한다. 작업판 높이는 현재 뷰포트의 남은 공간에 맞춘다. 목록과 상세의 업체정보/실무정보 세 열은 각각 휠을 소유하고 끝까지 스크롤해도 문서로 전파하지 않는다. 스크롤바는 얇고 화살표가 없다. `PaymentSelectionBridge`는 선택 박스의 위·아래 직선을 상세 패널 앞까지 그대로 늘이고, 끝에서 박스와 같은 R(업체 12px·기관 8px, 계산값 — 단 틈 폭의 55% 이하)로 바깥쪽으로 뒤집혀 휘어(역라운드, 물방울 모양) 패널 외곽선에 붙는다. 모든 좌표·선 두께·SVG 폭은 기기 픽셀 칸에 맞춰(브라우저 테두리 반올림과 동일, 모니터 배율이 바뀌면 다시 맞춘다) 목록 칸마다 이가 빠지지 않게 한다. 선택 박스 배경은 오른쪽 끝이 흰색으로 끝나고 연결부도 흰색이라 박스·연결부·패널이 한 덩어리로 보인다. 이어지는 구간은 패널 외곽선을 2px 덮어 테두리가 없고, 면은 선택 카드 끝색(파랑/빨강-50)에서 패널 바탕 흰색으로 그라데이션되어 양쪽 이음새에 색 경계가 없다. 곡선 바깥 패널 외곽선은 그대로 둔다. 상세 내부를 침범하지 않으며 선택 행이 스크롤 밖으로 나가면 숨긴다. 진행기관 그룹을 접어 선택 행이 사라지면 활성 기관 헤더에 연결한다. 목록 외곽의 직각 테두리는 제거하고 상세 상단은 선택 업체명 배너로 유지한다. PC 검색·정렬은 한 줄이며 파란 계약 안내 줄은 표시하지 않는다.
 - 1280px 이상 실무/수납에서 연결된 Drive 바로가기는 숨긴다. 아레나/이월 매출 보조 카드는 모바일에서도 성과 요약과 중복되어 표시하지 않는다. 미연결 Drive는 사이드바의 연결 필요 링크에서 기존 연결 UI로 이동한다. 상단 배너는 성과 요약 팝오버보다 높은 레이어다.
 - 2뎁스는 업체정보와 실무정보 2열이며 기본 너비는 6:4다. 업체정보 열이 55% 이상이면 기업정보와 대표자정보를 병렬로 보여 주고 그보다 좁으면 세로로 쌓는다. 기존 필드와 편집 팝업은 유지한다. 우측은 계약정보, 서류·진행 체크, 노란 로드맵 메모, 노란 실무진행 순서다. PC와 모바일 모두 이 다섯 섹션 제목을 같은 `text-sm font-bold text-slate-800` 단계와 같은 이모지로 표시한다. 모바일의 선택 진행 상세는 해당 목록 행 바로 아래에서 열리고, 계약정보를 펼치면 두 화면 모두 업체명·계약일·수임비 연동 필드와 비고가 바로 보인다. 계약정보와 체크리스트는 접을 수 있다. 진행 슬롯 1/2/3의 카드·번호·진행바·Todo 색상은 에메랄드/파랑/보라로 구별한다.
-- `PaymentPerformanceSummary`는 전체·이번 달·이번 주·직접 기간의 계약/매출과 전체 진행건 상태를 병렬로 보여 준다. 기간 칩은 공용 `PeriodPicker`, 매출은 `@/util/finance-period` `periodRevenue`(이월·해지 구분 없이 수임비+수납−반환, ADR-0034) — 대시보드와 같은 숫자. 모바일에서는 기간 선택 아래 계약·매출과 업무 현황을 2열로 놓고, PC에서는 기간 선택까지 한 줄에 배치한다. `WorkStatusBar`는 대시보드와 공유하는 진행 상태 바로, 상태 구간을 누르면 해당 업체·진행 목록이 팝오버로 열리고 선택 시 해당 슬롯으로 이동한다. `usePaymentFocus`는 대시보드의 회차 링크와 기존 캘린더 Todo 링크를 받아 해당 상세를 펼친다.
+- `PaymentPerformanceSummary`는 전체·이번 달·이번 주·직접 기간의 계약/매출과 전체 진행건 상태를 병렬로 보여 준다. 기간 칩은 공용 `PeriodPicker`(선택 prop `slidingIndicator` — 선택 바탕이 옆 칩으로 미끄러짐, 대시보드 띠만 켠다·기본 꺼짐), 매출은 `@/util/finance-period` `periodRevenue`(이월·해지 구분 없이 수임비+수납−반환, ADR-0034) — 대시보드와 같은 숫자. 모바일에서는 기간 선택 아래 계약·매출과 업무 현황을 2열로 놓고, PC에서는 기간 선택까지 한 줄에 배치한다. `WorkStatusBar`는 대시보드와 공유하는 진행 상태 바로, 상태 구간을 누르면 해당 업체·진행 목록이 팝오버로 열리고 선택 시 해당 슬롯으로 이동한다. `usePaymentFocus`는 대시보드의 회차 링크와 기존 캘린더 Todo 링크를 받아 해당 상세를 펼친다.
 - 실무진행은 진행기관:진행상품을 3.5:6.5로 배치한다. Todo/History 입력은 제목·날짜·시·분을 넓은 열에서는 한 줄로, 좁은 상세 열에서는 입력 묶음 단위로 자연스럽게 접어 가로 스크롤을 만들지 않는다. 추가 후 상세 팝업을 연다. 시간은 09:00~20:00, 분은 00·15·30·45이고 20시는 00분만 허용한다. 캘린더 표시는 기본 ON이다.
 - `StandaloneCompanyAdd`(2026-09-28, payment-standalone-company): 업체 모드 목록 맨 위(토글과 첫 업체 사이)·빈 목록 안내 위에 점선 1줄 버튼 「＋ 영업기록 없이 업체추가」. 누르면 제자리 인라인 폼(업체명 필수·계약일 기본 오늘 KST·수임비 천단위 콤마)과 이월 안내 한 줄, 취소/추가. 폼을 열 때 requestKey(uuid) 1개를 만들어 재시도에도 같게 보낸다. 성공 시 목록 재조회 후 새 업체를 선택(PC)하거나 펼친다(모바일, `ContractRow openSignal`). 진행기관 모드에서는 그리지 않는다. 이렇게 만든 업체는 목록·카드에 회색 `영업기록 없음` 배지를 붙인다(AK=`manual:`). Props: `listMode`, `onCreated(row)`, `className`.
 - `MeetingLinkPicker`·`MeetingLinkDialog`(2026-09-29, contract-meeting-link): 1뎁스 `영업기록 없음 ＋` 배지(점선·호버 파랑, 행 선택과 분리된 role=button)를 누르면 `MeetingLinkPicker`(연결 가능한 미팅 목록 — 이름 비슷한 미팅 먼저, 나머지 최근 순, 검색)가 열리고, 고르면 `MeetingLinkDialog`(components/payment)로 비교·선택한다. 계약일은 미팅 날짜로 바뀐다는 안내 + 업체명·수임비·업체정보 다른 칸마다 실무/수납↔영업기록 라디오(마지막 저장이 최근인 쪽 기본·「최근」 표시), 빈 칸은 자동 채움. 일정·계약에서 미팅을 계약으로 바꿀 때 같은 이름의 수동 업체가 있으면 같은 팝업이 [따로 등록]과 함께 뜬다(`useManualLinkPrompt`). Props: Picker `row, 업체명, onClose, onLinked(failures)` · Dialog `row, meetingId, onClose, onLinked(failures), onSkip?`. 2026-11-10: Picker 는 AppDialog(Esc·「닫기」, 검색 칸이 있어 바깥 누르기 무시). 2026-11-12: Dialog 도 AppDialog(size lg) — 실무/수납 진입은 Esc·「취소」 = 저장 없이 닫기. 일정·계약 진입(`onSkip`)은 「따로 등록」·「연결하기」 중 하나를 꼭 고른다(Esc·바깥 누르기 무시, 저장 없는 닫기 버튼 없음): 이 창이 뜰 때 미팅은 이미 「계약」으로 저장돼 있어 둘 다 안 하면 장부(계약수납) 행이 빠져 매출이 사라진다.
@@ -108,6 +108,7 @@
 - **CountUp** / `useCountUp` (`components/motion/CountUp.tsx`): 숫자를 처음엔 0에서 700ms 동안 올라가며 멈추게, 값이 바뀌면 이전 값에서 이어서 움직인다(easeOutCubic, requestAnimationFrame). 동작 줄이기면 즉시 최종 값, 화면낭독기는 최종 값(aria-label). SVG 글자 안에서는 훅을 직접 쓴다.
 - **usePlayOnOpen** (`components/motion/useMotion.ts`): 대시보드를 열 때마다 true(belie 2026-10-09 — 처음 한 번만에서 바꿈). 동작 줄이기면 false.
 - 움직임 클래스는 `app/globals.css` 의 `fx-*`(fx-grow-x/y·fx-draw·fx-ring·fx-pop·fx-fade·fx-rise·fx-ping·fx-glow·fx-skeleton, transform·opacity·stroke 만, 1초 안, 동작 줄이기면 끔). 적용: GoalRings(링 차오름·% 올라감·100% 달성 반짝), DashboardProgressBanner(진행바·%·지금 위치 맥박 3번), ProductivityIndicators(막대 차례로·%), FunnelChart(단계 차례로·합계), WeeklyDualChart(막대 차례로·계약수 선 그리기·점), ChannelPerformance(도넛 나타남), FinanceSummaryBoxes(금액 올라감·기간 바꾸면 이전 금액에서 이어짐 — 칸 너비는 최종 금액으로 잡음), MobileChartCarousel(지금 카드 점 길게).
+- **이어지는 전환·옮겨 가는 칩 (2026-11-24)**: `useZoneTransition`(View Transitions, 할 일 구역 전용 — `html.tz-vt` 범위)과 `useSlidingThumb`(`components/motion/`, `.slide-thumb`)는 위 「DashboardFollowUps 할 일 구역」 참고. 둘 다 동작 줄이기면 즉시, 전환은 미지원 브라우저에서도 즉시.
 - **DashboardSkeleton** (`components/dashboard/DashboardSkeleton.tsx`): 대시보드 숫자를 불러오는 동안 재무 3칸 + 카드 4개 자리를 반짝이는 회색 상자로 먼저 잡아 둔다(`aria-busy`).
 
 ## 컨택관리 저장 (2026-10-09)
@@ -1143,11 +1144,13 @@ app/(app)/dashboard/page.tsx
   TopHeader                                  # 공용 반응형 헤더 + 페이지 배너
   sticky top-app-content z-30 래퍼
     PageContainer > .surface-hero 띠
-      [DashboardProgressBanner | PeriodPicker]  # A안(2026-11-13) PC 한 줄: 날짜·주차|진행바|진행률|D-day ‥ 오른쪽 기간 칩. 폰: 진행 세 줄 / 선 / 칩
+      [DashboardProgressBanner | PeriodPicker]  # A안(2026-11-13) PC 한 줄: 날짜·주차|진행바|진행률|D-day ‥ 오른쪽 기간 칩
       DashboardFinance > FinanceSummaryBoxes    # 폰 3열 숫자만 · PC 4열(매출·비용·영업이익·진행건 FinanceWorkColumn — 늘 펼침) + 칸 아래 미리보기 두 줄
-  PageContainer > 일반 본문
-    [생산성 + DashboardWorkStatus] + WeeklyGoalSummary  # ≥1600px 윗줄 반반
-    MobileChartCarousel > FunnelChart / WeeklyDualChart / ChannelPerformance  # ≥1600px 아랫줄 3등분 (1024~1599: 2열) · <1024px 옆으로 넘기기
+    DashboardFollowUps > DashboardFollowUpsView # 「오늘 챙길 일」 할 일 구역 — 폭 전체(2026-11-24). 줄 = FollowUpRow, 예정된 일 창 = FollowUpsDetailPanel
+    「성과」 제목(.section-head) + DashboardActionOverview  # PC 주간 목표 | 생산성 2단 · 폰 주간 목표 → 진행건 → 생산성
+    MobileChartCarousel > FunnelChart / WeeklyDualChart / ChannelPerformance  # PC 3등분 · <1024px 옆으로 넘기기
+  # 폰(1024 미만) 순서(2026-11-24): 진행도 한 줄 띠 → 오늘 챙길 일 → 「기간 칩 + 매출·비용·영업이익」 띠 → 성과 → 차트.
+  #   띠를 두 번 그리지 않는다 — .dash-hero 를 display:contents 로 풀고 .dash-hero-money{order:1} · .dash-after{order:2} (dashboard-action-overview.css).
 ```
 
 **카드 서식 통일(2026-09-28)**: 대시보드 본문 카드 6종(생산성·전체 진행건·주간 목표·퍼널·주차 추이·채널별 성과)은 모두 `rounded-2xl border border-slate-200 bg-white p-3 shadow-sm` 한 가지 틀을 쓴다. 제목 줄이 있는 5종(생산성·주간 목표·퍼널·주차 추이·채널별 성과)은 `h-5 w-1` 색 강조선 + `text-base font-extrabold`로 맞추고(주간 목표는 민트 `teal-400`, 제목 줄에 주차 이동 버튼 포함), 전체 진행건은 한 줄 요약 카드라 `WorkStatusBar`의 인라인 라벨을 그대로 쓴다.
@@ -1179,6 +1182,7 @@ app/(app)/dashboard/page.tsx
 | `graduationISO` | string, 선택 | `DDayBadge`에 전달하는 종강총회일(없으면 수강 종료일) — D-day·수료 판정·진행바 끝이 모두 이 날 기준(2026-10-15 D1) |
 | `weeksAfterGraduation` | number, 선택 | 수료 다음 날부터 1·2·…주. 0 이면 표시 안 함(D2) |
 
+- **2026-11-24 한 줄 압축(할 일 구역 개편)**: 어느 폭이든 한 줄(`flex items-center`). PC = 날짜·주차 | 진행바 | 진행률 | D-day, 폰 = 주차 | 진행률 | 진행바 | D-day(오늘 날짜는 PC 에서만). 「M/D 시작」·「🎓 종강총회」 글은 더 그리지 않는다(`startDate`·`graduationDate` prop 은 호환용으로만 남음) — 아래 항목 중 세 줄·하단 세 라벨 설명은 이 규칙이 대체한다.
 - 상단 왼쪽: `현재 M/D (요일)`과 `N주차 진행중` 또는 `🎓 수료 후 N주`. 오른쪽: `DDayBadge`. 계산은 `app/(app)/dashboard/_lib/course-banner.ts`.
 - 진행바: `h-1.5 bg-slate-100 rounded-full`, 파란 그라데이션과 amber SVG 끝점. 위아래 `mb-3`, 컨테이너 `pt-3 pb-2.5`.
 - 하단: 시작일 / 진행률 / `🎓 종강총회일` 세 라벨. 날짜와 기간은 저장된 시작·종강일을 사용하며 고정 57일을 적용하지 않는다.
@@ -1867,7 +1871,28 @@ FinanceSummaryBoxes의 세 제목은 ProductivityIndicators 제목과 동일한 
 - 합성 화면: tests/browser/db-sheet-supplier-server.mjs, empty/few/many/error 시나리오 지원. 운영 API 접근 없이 PGlite로 저장·조회 검증.
 
 
-### DashboardFollowUps STEP별 표 · 2026-10-14 사용자 승인
+### DashboardFollowUps 할 일 구역 · 2026-11-24 사용자 승인 (아래 「STEP별 표」를 대체)
+
+기획서·목업 https://claude.ai/artifact/48ThjyvvV9mhEmwsThzK9f (1단계). 계획: `docs/plans/completed/dashboard-task-zone.md`. 세는 규칙·정렬·조회는 그대로(`lib/analytics/dashboard-follow-ups.ts`, `useTodayFollowUps`).
+
+- **DashboardFollowUpsView** (`dashboard-task-zone.css`): 화면 폭 전체 구역. 틀은 옛 카드 클래스(`.follow-ups-card.ft-card`) 그대로 — 평소 흰 판, 밀린 일이 있으면 `data-emphasis="flow"` 무지개 테두리 + `.ft-glow`(유지 — 기획서의 「빼기」 권고는 기각).
+  - 머리: 제목 「오늘 챙길 일」 → 「**N**건 남았어요」(26px/800) + 「0건이 되면 오늘 챙길 일은 끝입니다.」 + 15건 초과면 「밀린 일이 많을 땐 위에서부터 5건만 먼저 끝내 보세요.」, 아니면 「가장 급한 일이 맨 위에 있어요.」
+  - 비율 막대(10px): 초록 = 오늘 처리, rose-600 = 7일 넘게 밀림, amber-500 = 밀림, blue-500 = 오늘, 회색 = 날짜 확인. 화면을 열 때 `fx-grow-x`.
+  - 급한 정도 칩(`aria-pressed` 필터): 전체 / 7일 넘게 밀림 / 밀림 / 오늘 + 건수(날짜 확인은 건수가 있을 때만). 다시 누르면 풀린다. 오른쪽 끝 「✓ 오늘 N건 처리」.
+  - 줄 목록: 접힘 PC 6줄·폰 3줄(폰은 CSS `:nth-child(n+4)` 숨김) → 「남은 N건 모두 보기」(좁힌 상태면 「해당 N건…」)로 그 자리에서 펼침, 안쪽 스크롤(PC 23.5rem·폰 26.25rem) → 「접기」.
+  - 오른쪽(폰은 아래) 「단계별로 보기」: STEP 2 DB관리 · 3 일정·계약 · 4 실무/수납 — 건수 + 4px 작은 막대, 누르면 목록이 좁혀진다. 「세는 기준 보기」, 「예정된 일 · 7일 안 N건」(누르면 FollowUpsDetailPanel).
+  - 상태(`data-state`): `list` · `done`(0건 — 「오늘 챙길 일을 모두 끝냈어요」 한 줄 + 예정된 일 보기) · `first`(기록 없음 — DB 등록하기) · `unconfirmed`(조회 실패로 확인된 일 없음 — 「확인 필요」, 0건·완료로 보이지 않는다). 일부 실패는 「확인된 N건」, 확인 못 한 0 은 「—」. 불러오는 중은 `fx-skeleton`(DashboardFollowUps).
+  - 용어(승인): 「장기누락」→「7일 넘게 밀림」(7일~), 「경과」→「밀림」(1~6일).
+- **FollowUpRow**: 한 줄 = 밀린 날수 배지(`.ft-badge`) · **업체명**(잘리지 않고 줄바꿈) · 해야 할 일 · 「STEP n 단계 · 기준일 MM.DD · 기관」 · 「열기 ↗」(`item.href`, 맨 윗줄만 `.btn-depth-blue`). 글자 부분을 누르면 줄 아래에 이유·세부 정보가 펼쳐진다. 폰 「열기」 44px. `key = item.key`.
+- **FollowUpsDetailPanel**: 「예정된 일 · 7일 안」 목록 창 — 옛 긴급도 표(`.ft-panel`)를 그대로 옮김(body 포털, 위치·닫기 `useFollowUpsPopover`). 지금 챙길 일은 더는 창으로 열지 않는다.
+- **오늘 N건 처리** (`useHandledToday`): 서버 기록 없이 `localStorage["followups-handled-today"] = { date, who, peak }`. 그날 본 남은 건수의 최댓값 − 지금 남은 건수(어림값). 계정이 다르면 새로 센다(`who` = 계정 표시의 짧은 해시), 조회 일부 실패·관리자가 다른 사람 화면을 볼 때는 세지 않는다. 저장소를 못 써도 화면은 그대로.
+- **움직임 2가지(belie 2026-11-24)** — 그 밖의 새 애니메이션은 없다.
+  1. 이어지는 전환 `useZoneTransition`: View Transitions(`document.startViewTransition` + `flushSync`). 펼침/접기·0건 접힘(과 반대)은 구역 상자까지(`html.tz-vt.tz-vt-zone`), 칩·단계 필터는 줄만(`html.tz-vt`) — 남는 줄은 미끄러지고 빠지는 줄은 사라지고 새 줄은 나타난다. 240ms `cubic-bezier(0.2, 0.8, 0.2, 1)`. 전환 중에만 클래스가 붙고 root 는 전환에서 뺀다(페이지 전체 깜빡임 없음, 다른 화면 영향 없음). 줄 이름 = `followUpTransitionName(item.key)`, 앞쪽 6줄만. 연타하면 앞 전환을 건너뛴다. **미지원 브라우저·동작 줄이기 = 즉시 전환.** 구역 아래 구역들은 전환에 넣지 않아 높이가 바뀌면 즉시 옮겨 간다.
+  2. 선택 바탕이 옮겨 가는 칩 `useSlidingThumb` + `components/motion/sliding-thumb.css`: 눌린 칩의 자리·크기를 재서 표시(`.slide-thumb`, 장식 `aria-hidden`)를 옮긴다(transform·width·height 220ms, 동작 줄이기 = 즉시). 층 = 칩 흰 바탕(`::before`) → 표시 → 글자, 칩 묶음은 `position:relative; isolation:isolate`. 못 재면 표시 없이 칩이 제 바탕을 쓴다. 적용: 급한 정도 칩(`data-tone="ink"`), 대시보드 기간 칩(`PeriodPicker slidingIndicator`, `data-tone="accent"` — **기본 꺼짐**, 실무/수납·DB관리 유입일은 그대로).
+  - 0건이 된 순간의 체크는 기존 `fx-check-pop`.
+- **DashboardActionOverview**: 「성과」 묶음만 — DOM 순서 주간 목표 → 진행건(PC 숨김) → 생산성. PC 2단(`repeat(2, minmax(0,1fr))`). 수료생 예외(목표 카드 접힘·폰은 맨 아래) 유지.
+
+### DashboardFollowUps STEP별 표 · 2026-10-14 사용자 승인 (2026-11-24 할 일 구역으로 대체 — 기록용)
 
 - **DashboardActionOverview**: PC 왼쪽 진행건→오늘 챙길 일, 오른쪽 생산성→주간목표. 두 열 하단을 stretch/flex로 맞추며 내용이 넘치면 함께 늘어난다. 모바일 실제 교육주차별 순서 유지, 모든 카드 처음부터 표시.
 - **DashboardFollowUpsView** 글자 크기(2026-11-16 belie 「폰트가 더 커야」, `followups-table.css`): 단계 이름 14px(전 PC 12·폰 11), 건수 15px(전 13), 열 제목 12px(전 11), 「예정된 일」·「날짜 확인」 13px(전 11). 제목 「오늘 챙길 일」·전체 건수는 다른 판 제목과 같은 14px 그대로. 폰 열 폭(`minmax(0,1fr) 3.4375rem 2.6875rem 2.6875rem`)은 그대로다.

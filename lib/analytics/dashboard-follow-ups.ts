@@ -207,7 +207,7 @@ export function summarizeFollowUps(src: FollowUpSources, today: string, nowHHMM?
   const groupCounts = Object.fromEntries((["today", "overdue", "long-overdue", "upcoming", "unknown"] as const).map(group => [group, items.filter(i => i.group === group).length])) as Record<FollowUpGroup, number>;
   return { groups, counts, total: urgent.length, headline: followUpHeadline(counts), unlinkedTodos: todo.unlinked, items, urgent, stepCounts, groupCounts };
 }
-/** 경과·장기누락이 한 건이라도 있으면 카드 테두리를 움직여 강조한다(오늘·예정·날짜 확인만 있으면 정지). */
+/** 밀림·7일 넘게 밀림(옛 이름 경과·장기누락)이 한 건이라도 있으면 카드 테두리를 움직여 강조한다(오늘·예정·날짜 확인만 있으면 정지). */
 export function hasOverdueFollowUps(items: readonly FollowUpItem[]): boolean {
   return items.some(i => i.group === "overdue" || i.group === "long-overdue");
 }
